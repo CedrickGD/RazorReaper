@@ -31,7 +31,7 @@ namespace RazorReaper
                 }
                 catch
                 {
-                    // ignore parsing errors
+
                 }
             }
 
