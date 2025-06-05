@@ -1,0 +1,2262 @@
+﻿@page "/ini-changer"
+@using Microsoft.Win32
+
+
+<div class="app-container">
+    <nav class="sidebar">
+        <div class="brand">
+            <h1>RazorReaper</h1>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/home" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Home
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/server" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    Server
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/ini-changer" class="nav-link active">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    INI Changer
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/pixel" class="nav-link">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="10.8,1.7 2.5,11.7 10,11.7 9.2,18.3 17.5,8.3 10,8.3 10.8,1.7"></polygon>
+                    </svg>
+                    Pixel Glitch
+                </a>
+            </li>
+
+             <li class="nav-item">
+                <a href="/paintings" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Paintings
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/game" class="nav-link">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1.5" y="3" width="17" height="14" rx="2" />
+                        <path d="M6 8l3 2-3 2" />
+                        <path d="M10.5 12h4" />
+                    </svg>
+                    Game
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">INI Changer</h1>
+            <p class="page-subtitle">Manage & Modify INI Configuration File</p>
+        </header>
+
+        <div style="display: grid; grid-template-columns: 300px 1fr; gap: 2rem; height: calc(100vh - 200px);">
+
+            <!-- Left Side - Control Buttons -->
+            <div class="content-card" style="height: fit-content;">
+                <h3 class="mb-3 text-purple">File Operations</h3>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button class="btn btn-primary" @onclick="OpenIniFile" style="width: 100%; justify-content: flex-start;">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Open INI File
+                    </button>
+
+                    <button class="btn" @onclick="ClearFile" style="width: 100%; justify-content: flex-start; background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        Clear File
+                    </button>
+
+                    <button class="btn btn-secondary" @onclick="CreateFile" style="width: 100%; justify-content: flex-start;">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        Create New
+                    </button>
+
+                    <button class="btn" @onclick="CheckIniFileExists" style="width: 100%; justify-content: flex-start; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        Check INI Path
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(statusMessage))
+                {
+                    <div class="mt-3 status-message @GetStatusClass()">
+                        <div class="status-content">
+                            @if (isPathStatus && !string.IsNullOrEmpty(currentPath))
+                            {
+                                <div style="font-weight: 600; margin-bottom: 0.5rem;">@GetStatusTitle()</div>
+                                <div style="font-size: 0.85rem; word-break: break-all; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; font-family: monospace;">
+                                    @currentPath
+                                </div>
+                            }
+                            else
+                            {
+                                <div style="font-weight: 600;">@statusMessage</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Right Side - INI Content and Presets -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
+
+                <!-- Preset INI Options -->
+                <div class="content-card">
+                    <h3 class="mb-3 text-green">Preset INI Configurations</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        @foreach (var preset in iniPresets)
+                        {
+                            <button class="preset-button @(selectedPreset == preset.Name ? "active" : "")"
+                                    @onclick="() => SelectPreset(preset)">
+                                <div style="font-weight: 600; margin-bottom: 0.25rem;">@preset.Name</div>
+                                <div style="font-size: 0.8rem; opacity: 0.8;">@preset.Description</div>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- INI Content Display -->
+                <div class="content-card" style="flex: 1; display: flex; flex-direction: column;">
+                    <h3 class="mb-3">INI File Content</h3>
+                    <textarea @bind="currentIniContent"
+                              style="flex: 1; background: var(--background-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.9rem; resize: none; min-height: 300px;"
+                              placeholder="INI file content will appear here..."></textarea>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" @onclick="SaveChanges">
+                            <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+                            </svg>
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .preset-button {
+        background: var(--background-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .preset-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .preset-button:hover::before {
+            left: 100%;
+        }
+
+        .preset-button:hover {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--primary-purple);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .preset-button.active {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(16, 185, 129, 0.1));
+            border-color: var(--accent-green);
+            box-shadow: 0 0 25px var(--glow-green);
+        }
+
+            .preset-button.active::after {
+                content: '✓';
+                position: absolute;
+                top: 0.5rem;
+                right: 0.5rem;
+                color: var(--accent-green);
+                font-weight: bold;
+                font-size: 1.2rem;
+            }
+
+    .status-message {
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 3px solid;
+    }
+
+    .status-success {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: var(--accent-green);
+        color: var(--accent-green);
+    }
+
+    .status-error {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
+    .status-warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: #f59e0b;
+        color: #f59e0b;
+    }
+
+    .status-info {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+</style>
+
+
+@code {
+    private string currentIniContent = "";
+    private string statusMessage = "";
+    private string selectedPreset = "";
+    private string currentPath = "";
+    private bool isPathStatus = false;
+    private StatusType currentStatusType = StatusType.Info;
+
+    private enum StatusType
+    {
+        Success,
+        Error,
+        Warning,
+        Info
+    }
+
+    private List<IniPreset> iniPresets = new List<IniPreset>
+    {
+        new IniPreset
+        {
+            Name = "Default",
+            Description = "Standard Game Configuration",
+            Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=iPad2,IOS
++DeviceProfileNameAndTypes=iPad3,IOS
++DeviceProfileNameAndTypes=iPad4,IOS
++DeviceProfileNameAndTypes=iPadAir,IOS
++DeviceProfileNameAndTypes=iPadMini,IOS
++DeviceProfileNameAndTypes=iPadMini2,IOS
++DeviceProfileNameAndTypes=iPhone4,IOS
++DeviceProfileNameAndTypes=iPhone4S,IOS
++DeviceProfileNameAndTypes=iPhone5,IOS
++DeviceProfileNameAndTypes=iPhone5S,IOS
++DeviceProfileNameAndTypes=iPodTouch5,IOS
++DeviceProfileNameAndTypes=iPhone6,IOS
++DeviceProfileNameAndTypes=iPhone6Plus,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
+
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
++CVars=r.BloomQuality=0
++CVars=r.DepthOfFieldQuality=0
++CVars=r.LightShaftQuality=0
++CVars=r.RefractionQuality=0
+
+[iPad2 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPad3 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPad4 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPadAir DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.BloomQuality=1
+
+[iPadMini DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPadMini2 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=iPadAir
+
+[iPhone4 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone4S DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone5 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone5S DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.MobileContentScaleFactor=2
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
+
+[iPodTouch5 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone6 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.MobileContentScaleFactor=0
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
+
+[iPhone6Plus DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.MobileContentScaleFactor=0
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
++CVars=r.MobileContentScaleFactor=1
++CVars=r.BloomQuality=0
++CVars=r.DepthOfFieldQuality=0
++CVars=r.LightShaftQuality=0
++CVars=r.RefractionQuality=0
+
+[Android_Low DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android
++CVars=r.MobileContentScaleFactor=0.5
+
+[Android_Mid DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android
++CVars=r.BloomQuality=1
++CVars=r.MobileContentScaleFactor=0.8
+
+[Android_High DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
++CVars=r.MobileContentScaleFactor=1.0
+
+[Android_Unrecognized DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_Mid
+
+[Android_Adreno320 DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_Mid
+
+;This offset needs to be set for the mosaic fallback to work on Galaxy S4 (SAMSUNG-IGH-I337)
+;+CVars=r.DemosaicVposOffset=0.5
+
+[Android_Adreno330 DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_High
+
+[Android_Adreno330_Ver53 DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_Adreno330
++CVars=r.DisjointTimerQueries=1
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+; we output 10:10:10, not 8:8:8 so we don't need color quantization
++CVars=r.TonemapperQuality=0
+; For SSAO we rely on TemporalAA (with a randomized sample pattern over time) so we can use less samples
++CVars=r.AmbientOcclusionSampleSetQuality=0
+; less passes, and no upsampling as even upsampling costs some performance
++CVars=r.AmbientOcclusionLevels=1
+; larger radius to compensate for fewer passes
++CVars=r.AmbientOcclusionRadiusScale=2
+
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
++CVars=r.RefractionQuality=0
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+        },
+new IniPreset
+{
+    Name = "Farming",
+    Description = "Gen2 Optimized",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=iPad2,IOS
++DeviceProfileNameAndTypes=iPad3,IOS
++DeviceProfileNameAndTypes=iPad4,IOS
++DeviceProfileNameAndTypes=iPadAir,IOS
++DeviceProfileNameAndTypes=iPadMini,IOS
++DeviceProfileNameAndTypes=iPadMini2,IOS
++DeviceProfileNameAndTypes=iPhone4,IOS
++DeviceProfileNameAndTypes=iPhone4S,IOS
++DeviceProfileNameAndTypes=iPhone5,IOS
++DeviceProfileNameAndTypes=iPhone5S,IOS
++DeviceProfileNameAndTypes=iPodTouch5,IOS
++DeviceProfileNameAndTypes=iPhone6,IOS
++DeviceProfileNameAndTypes=iPhone6Plus,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=ShowFlag.Materials=0
++CVars=FrameRateCap=144
++CVars=FrameRateMinimum=144
++CVars=MaxSmoothedFrameRate=144
++CVars=MinDesiredFrameRate=144
++CVars=NearClipPlane=12.0
++CVars=ShowFlag.MeshEdges=0
++CVars=ShowFlag.MotionBlur=0
++CVars=ShowFlag.AmbientOcclusion=0
++CVars=ShowFlag.AntiAliasing=0
++CVars=ShowFlag.Atmosphere=0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=ShowFlag.AudioRadius=0
++CVars=ShowFlag.BSP=0
++CVars=ShowFlag.BSPSplit=0
++CVars=ShowFlag.BSPTriangles=0
++CVars=ShowFlag.BillboardSprites=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.BuilderBrush=0
++CVars=ShowFlag.CameraAspectRatioBars=0
++CVars=ShowFlag.CameraFrustums=0
++CVars=ShowFlag.CameraImperfections=0
++CVars=ShowFlag.CameraInterpolation=0
++CVars=ShowFlag.CameraSafeFrames=0
++CVars=ShowFlag.ColorGrading=0
++CVars=ShowFlag.CompositeEditorPrimitives=0
++CVars=ShowFlag.Constraints=0
++CVars=ShowFlag.Cover=0
++CVars=ShowFlag.Decals=0
++CVars=ShowFlag.DeferredLighting=0
++CVars=ShowFlag.DepthOfField=0
++CVars=ShowFlag.Diffuse=0
++CVars=ShowFlag.DirectLighting=0
++CVars=ShowFlag.DirectionalLights=0
++CVars=ShowFlag.DistanceCulledPrimitives=0
++CVars=ShowFlag.DistanceFieldAO=0
++CVars=ShowFlag.DynamicShadows=0
++CVars=ShowFlag.Editor=0
++CVars=ShowFlag.EyeAdaptation=0
++CVars=ShowFlag.Fog=1
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.OnScreenDebug=0
++CVars=ShowFlag.LOD=0
++CVars=ShowFlag.Landscape=0
++CVars=ShowFlag.LargeVertices=0
++CVars=ShowFlag.LensFlares=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.LightInfluences=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.LightRadius=0
++CVars=ShowFlag.LightShafts=0
++CVars=ShowFlag.Lighting=0
++CVars=ShowFlag.LpvLightingOnly=0
++CVars=ShowFlag.PointLights=0
++CVars=ShowFlag.PostProcessMaterial=0
++CVars=ShowFlag.PostProcessing=0
++CVars=ShowFlag.PrecomputedVisibility=0
++CVars=ShowFlag.PreviewShadowsIndicator=0
++CVars=ShowFlag.ReflectionEnvironment=0
++CVars=ShowFlag.ReflectionOverride=0
++CVars=ShowFlag.Refraction=0
++CVars=ShowFlag.SelectionOutline=0
++CVars=ShowFlag.ShaderComplexity=0
++CVars=ShowFlag.ShadowFrustums=0
++CVars=ShowFlag.ShadowsFromEditorHiddenActors=0
++CVars=ShowFlag.SkeletalMeshes=0
++CVars=ShowFlag.SkyLighting=0
++CVars=ShowFlag.Snap=0
++CVars=ShowFlag.Specular=0
++CVars=ShowFlag.SpotLights=0
++CVars=ShowFlag.StaticMeshes=0
++CVars=ShowFlag.StationaryLightOverlap=0
++CVars=ShowFlag.StereoRendering=0
++CVars=ShowFlag.SubsurfaceScattering=0
++CVars=ShowFlag.TemporalAA=0
++CVars=ShowFlag.Tessellation=0
++CVars=ShowFlag.TestImage=0
++CVars=ShowFlag.TextRender=0
++CVars=ShowFlag.TexturedLightProfiles=0
++CVars=ShowFlag.Tonemapper=0
++CVars=ShowFlag.Translucency=0
++CVars=ShowFlag.VectorFields=0
++CVars=ShowFlag.VertexColors=0
++CVars=ShowFlag.Vignette=0
++CVars=ShowFlag.VisualizeAdaptiveDOF=0
++CVars=ShowFlag.VisualizeBuffer=0
++CVars=ShowFlag.VisualizeDOF=0
++CVars=ShowFlag.VisualizeDistanceFieldAO=0
++CVars=ShowFlag.VisualizeHDR=0
++CVars=ShowFlag.VisualizeLPV=0
++CVars=ShowFlag.VisualizeLightCulling=0
++CVars=ShowFlag.VisualizeMotionBlur=0
++CVars=ShowFlag.VisualizeOutOfBoundsPixels=0
++CVars=ShowFlag.VisualizeSSR=0
++CVars=ShowFlag.VisualizeSenses=0
++CVars=ShowFlag.VolumeLightingSamples=0
++CVars=ShowFlag.Wireframe=0
++CVars=SmoothedFrameRateRange=(LowerBound=(Type=""ERangeBoundTypes::Inclusive"",Value=60),UpperBound=(Type=""ERangeBoundTypes::Exclusive"",Value=70))
++CVars=TEXTUREGROUP_Character=(MinLODSize=1,MaxLODSize=4,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_CharacterNormalMap=(MinLODSize=1,MaxLODSize=4,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_CharacterSpecular=(MinLODSize=1,MaxLODSize=4,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Cinematic=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Effects=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=linear,MipFilter=point)
++CVars=TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Lightmap=(MinLODSize=1,MaxLODSize=8,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_MobileFlattened=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Shadowmap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point,NumStreamedMips=3)
++CVars=TEXTUREGROUP_Skybox=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_UI=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Vehicle=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_VehicleNormalMap=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_VehicleSpecular=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Weapon=(MinLODSize=1,MaxLODSize=64,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WeaponNormalMap=(MinLODSize=1,MaxLODSize=64,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WeaponSpecular=(MinLODSize=1,MaxLODSize=64,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_World=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WorldNormalMap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WorldSpecular=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=r.DefaultFeature.AmbientOcclusion=False
++CVars=r.DefaultFeature.AntiAliasing=0
++CVars=r.DefaultFeature.AutoExposure=False
++CVars=r.DefaultFeature.Bloom=False
++CVars=r.DefaultFeature.LensFlare=False
++CVars=r.DefaultFeature.MotionBlur=False
++CVars=r.DepthOfFieldQuality=0
++CVars=r.DetailMode=0
++CVars=r.EarlyZPass=0
++CVars=r.ExposureOffset=0.3
++CVars=r.HZBOcclusion=0
++CVars=r.LensFlareQuality=0
++CVars=r.LightFunctionQuality=0
++CVars=r.LightShaftQuality=0
++CVars=r.LightShafts=0
++CVars=r.MaxAnisotropy=0
++CVars=r.MotionBlurQuality=0
++CVars=r.PostProcessAAQuality=0
++CVars=r.ReflectionEnvironment=0
++CVars=r.RefractionQuality=0
++CVars=r.SSAOSmartBlur=0
++CVars=r.SSR.Quality=0
++CVars=r.SSS.SampleSet=0
++CVars=r.SSS.Scale=0
++CVars=r.SceneColorFringe.Max=0
++CVars=r.SceneColorFringeQuality=0
++CVars=r.Shadow.CSM.MaxCascades=1
++CVars=r.Shadow.CSM.TransitionScale=0
++CVars=r.Shadow.DistanceScale=0.1
++CVars=r.Shadow.MaxResolution=2
++CVars=r.Shadow.MinResolution=2
++CVars=r.Shadow.RadiusThreshold=0.1
++CVars=r.ShadowQuality=0
++CVars=r.TonemapperQuality=0
++CVars=r.TriangleOrderOptimization=1
++CVars=r.TrueSkyQuality=0
++CVars=r.UpsampleQuality=0
++CVars=r.ViewDistanceScale=0
++CVars=r.oneframethreadlag=1
++CVars=t.maxfps=144
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
++CVars=r.BloomQuality=0
++CVars=r.DepthOfFieldQuality=0
++CVars=r.LightShaftQuality=0
++CVars=r.RefractionQuality=0
+
+[iPad2 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPad3 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPad4 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPadAir DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.BloomQuality=1
+
+[iPadMini DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPadMini2 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=iPadAir
+
+[iPhone4 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone4S DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone5 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone5S DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.MobileContentScaleFactor=2
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
+
+[iPodTouch5 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.RenderTargetSwitchWorkaround=1
+
+[iPhone6 DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.MobileContentScaleFactor=0
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
+
+[iPhone6Plus DeviceProfile]
+DeviceType=IOS
+BaseProfileName=IOS
++CVars=r.MobileContentScaleFactor=0
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
++CVars=r.MobileContentScaleFactor=1
++CVars=r.BloomQuality=0
++CVars=r.DepthOfFieldQuality=0
++CVars=r.LightShaftQuality=0
++CVars=r.RefractionQuality=0
+
+[Android_Low DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android
++CVars=r.MobileContentScaleFactor=0.5
+
+[Android_Mid DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android
++CVars=r.BloomQuality=1
++CVars=r.MobileContentScaleFactor=0.8
+
+[Android_High DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android
++CVars=r.BloomQuality=1
++CVars=r.DepthOfFieldQuality=1
++CVars=r.LightShaftQuality=1
++CVars=r.MobileContentScaleFactor=1.0
+
+[Android_Unrecognized DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_Mid
+
+[Android_Adreno320 DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_Mid
+
+;This offset needs to be set for the mosaic fallback to work on Galaxy S4 (SAMSUNG-IGH-I337)
+;+CVars=r.DemosaicVposOffset=0.5
+
+[Android_Adreno330 DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_High
+
+[Android_Adreno330_Ver53 DeviceProfile]
+DeviceType=Android
+BaseProfileName=Android_Adreno330
++CVars=r.DisjointTimerQueries=1
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+; we output 10:10:10, not 8:8:8 so we don't need color quantization
++CVars=r.TonemapperQuality=0
+; For SSAO we rely on TemporalAA (with a randomized sample pattern over time) so we can use less samples
++CVars=r.AmbientOcclusionSampleSetQuality=0
+; less passes, and no upsampling as even upsampling costs some performance
++CVars=r.AmbientOcclusionLevels=1
+; larger radius to compensate for fewer passes
++CVars=r.AmbientOcclusionRadiusScale=2
+
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
++CVars=r.RefractionQuality=0
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "Snow North",
+    Description = "Clear Water, 180 Fps Cap",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=foliage.UseOcclusionType=0
++CVars=ShowFloatingDamageText=True
++CVars=FogDensity=0.0
++CVars=FrameRateCap=144
++CVars=FrameRateMinimum=144
++CVars=MaxES2PixelShaderAdditiveComplexityCount=45
++CVars=MaxPixelShaderAdditiveComplexityCount=128
++CVars=MaxSmoothedFrameRate=144
++CVars=MinDesiredFrameRate=75
++CVars=MinSmoothedFrameRate=5
++CVars=NearClipPlane=12.0
++CVars=ShowFlag.Grain=0
++CVars=ShowFlag.Specular=0
++CVars=ShowFlag.AmbientOcclusion=0
++CVars=ShowFlag.AntiAliasing=0
++CVars=ShowFlag.Tessellation=0
++CVars=ShowFlag.SkyLighting=0
++CVars=ShowFlag.Atmosphere=0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=ShowFlag.AudioRadius=0
++CVars=ShowFlag.BSP=0
++CVars=ShowFlag.BSPSplit=0
++CVars=ShowFlag.BSPTriangles=0
++CVars=ShowFlag.BillboardSprites=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.BuilderBrush=0
++CVars=ShowFlag.CameraAspectRatioBars=0
++CVars=ShowFlag.CameraFrustums=0
++CVars=ShowFlag.CameraImperfections=0
++CVars=ShowFlag.CameraInterpolation=0
++CVars=ShowFlag.CameraSafeFrames=0
++CVars=ShowFlag.CompositeEditorPrimitives=0
++CVars=ShowFlag.Constraints=0
++CVars=ShowFlag.Cover=0
++CVars=ShowFlag.Decals=0
++CVars=ShowFlag.DeferredLighting=0
++CVars=ShowFlag.DepthOfField=0
++CVars=ShowFlag.Diffuse=0
++CVars=ShowFlag.DirectLighting=0
++CVars=ShowFlag.DirectionalLights=0
++CVars=ShowFlag.DistanceCulledPrimitives=0
++CVars=ShowFlag.DistanceFieldAO=0
++CVars=ShowFlag.DynamicShadows=1
++CVars=ShowFlag.Editor=0
++CVars=ShowFlag.Bloom=0
++CVars=ShowFlag.Pivot=0
++CVars=ShowFlag.EyeAdaptation=0
++CVars=ShowFlag.Fog=1
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.LOD=0
++CVars=ShowFlag.Landscape=0
++CVars=ShowFlag.PreviewShadowsIndicator=0
++CVars=ShowFlag.LargeVertices=0
++CVars=ShowFlag.LensFlares=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.Bounds=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.LightInfluences=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.LightFunctions=1
++CVars=ShowFlag.LightRadius=0
++CVars=ShowFlag.LightShafts=0
++CVars=ShowFlag.Lighting=0
++CVars=ShowFlag.LpvLightingOnly=0
++CVars=ShowFlag.Materials=0
++CVars=ShowFlag.MeshEdges=0
++CVars=ShowFlag.MotionBlur=0
++CVars=ShowFlag.OnScreenDebug=0
++CVars=ShowFlag.OverrideDiffuseAndSpecular=0
++CVars=ShowFlag.Paper2DSprites=0
++CVars=ShowFlag.Particles=0
++CVars=ShowFlag.VisualizeLPV=0
++CVars=t.maxfps=180
++CVars=FX.MaxCPUParticlesPerEmitter=1
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "Black Super Hard",
+    Description = "Nigga Config",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
+; === FOG AND ATMOSPHERE SETTINGS ===
++CVars=FogDensity=0.0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=r.Atmosphere=0
++CVars=ShowFlag.Atmosphere=0
++CVars=ShowFlag.Fog=0
+
+; === VISUAL EFFECTS DISABLED ===
++CVars=ShowFlag.Tessellation=0
++CVars=ShowFlag.DepthOfField=0
++CVars=r.DepthOfFieldQuality=0
++CVars=r.BloomQuality=0
++CVars=r.DefaultFeature.Bloom=False
++CVars=r.LensFlareQuality=0
++CVars=r.DefaultFeature.LensFlare=False
++CVars=ShowFlag.LensFlares=0
++CVars=r.MotionBlurQuality=0
++CVars=r.DefaultFeature.MotionBlur=False
++CVars=ShowFlag.MotionBlur=0
++CVars=ShowFlag.SubsurfaceScattering=0
++CVars=r.SSS.Scale=0
+
+; === ANTI-ALIASING SETTINGS ===
++CVars=r.DefaultFeature.AntiAliasing=0
++CVars=r.PostProcessAAQuality=0
++CVars=ShowFlag.AntiAliasing=0
++CVars=ShowFlag.TemporalAA=0
+
+; === AMBIENT OCCLUSION SETTINGS ===
++CVars=r.DefaultFeature.AmbientOcclusion=False
++CVars=r.AmbientOcclusionLevels=0
++CVars=r.AOTrimOldRecordsFraction=0
++CVars=r.SSAOSmartBlur=0
++CVars=ShowFlag.AmbientOcclusion=0
++CVars=ShowFlag.DistanceFieldAO=0
++CVars=r.DistanceFieldAO=0
+
+; === SHADOW SETTINGS ===
++CVars=r.ShadowQuality=0
++CVars=r.Shadow.CSM.MaxCascades=1
++CVars=r.Shadow.CSM.TransitionScale=0
++CVars=r.Shadow.DistanceScale=0.1
++CVars=r.Shadow.MaxResolution=2
++CVars=r.Shadow.MinResolution=2
++CVars=r.Shadow.RadiusThreshold=0.1
++CVars=ShowFlag.DynamicShadows=0
++CVars=ShowFlag.ShadowFrustums=0
+
+; === REFLECTION SETTINGS ===
++CVars=r.ReflectionEnvironment=0
++CVars=r.SSR.Quality=0
++CVars=ShowFlag.ReflectionEnvironment=0
++CVars=ShowFlag.ReflectionOverride=0
++CVars=ShowFlag.VisualizeSSR=0
+
+; === LIGHTING SETTINGS ===
++CVars=ShowFlag.LightFunctions=1
++CVars=r.LightFunctionQuality=0
++CVars=r.LightShaftQuality=0
++CVars=r.LightShafts=0
++CVars=ShowFlag.LightShafts=0
++CVars=ShowFlag.DirectLighting=0
++CVars=ShowFlag.DirectionalLights=0
++CVars=ShowFlag.PointLights=0
++CVars=ShowFlag.SpotLights=0
++CVars=ShowFlag.Lighting=0
++CVars=ShowFlag.SkyLighting=0
+
+; === FRAME RATE SETTINGS ===
++CVars=t.maxfps=144
++CVars=FrameRateCap=144
++CVars=FrameRateMinimum=144
++CVars=MaxSmoothedFrameRate=144
++CVars=MinDesiredFrameRate=120
++CVars=MinSmoothedFrameRate=5
++CVars=SmoothedFrameRateRange=(LowerBound=(Type=\""ERangeBoundTypes::Inclusive\"",Value=60),UpperBound=(Type=\""ERangeBoundTypes::Exclusive\"",Value=70))
++CVars=bSmoothFrameRate=true
++CVars=r.oneframethreadlag=1
+
+; === TEXTURE QUALITY SETTINGS ===
+; Character Textures
++CVars=TEXTUREGROUP_Character=(MinLODSize=1,MaxLODSize=4,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_CharacterNormalMap=(MinLODSize=1,MaxLODSize=4,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_CharacterSpecular=(MinLODSize=1,MaxLODSize=4,LODBias=0,MinMagFilter=aniso,MipFilter=point)
+
+; World Textures (Very Low Quality)
++CVars=TEXTUREGROUP_World=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WorldNormalMap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WorldSpecular=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
+
+; Weapon Textures
++CVars=TEXTUREGROUP_Weapon=(MinLODSize=1,MaxLODSize=64,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WeaponNormalMap=(MinLODSize=1,MaxLODSize=64,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_WeaponSpecular=(MinLODSize=1,MaxLODSize=64,LODBias=0,MinMagFilter=aniso,MipFilter=point)
+
+; Vehicle Textures
++CVars=TEXTUREGROUP_Vehicle=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_VehicleNormalMap=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_VehicleSpecular=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
+
+; Other Texture Groups
++CVars=TEXTUREGROUP_Cinematic=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Effects=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=linear,MipFilter=point)
++CVars=TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Lightmap=(MinLODSize=1,MaxLODSize=8,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Shadowmap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point,NumStreamedMips=3)
++CVars=TEXTUREGROUP_Skybox=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_UI=(MinLODSize=1,MaxLODSize=256,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_MobileFlattened=(MinLODSize=1,MaxLODSize=2,LODBias=0,MinMagFilter=aniso,MipFilter=point)
++CVars=TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=128,LODBias=0,MinMagFilter=aniso,MipFilter=point)
+
+; === RENDERING QUALITY SETTINGS ===
++CVars=r.DetailMode=0
++CVars=r.MaxAnisotropy=0
++CVars=r.ViewDistanceScale=3
++CVars=r.EarlyZPass=0
++CVars=r.HZBOcclusion=0
++CVars=r.TonemapperQuality=0
++CVars=r.UpsampleQuality=0
++CVars=r.TriangleOrderOptimization=1
++CVars=r.TrueSkyQuality=0
++CVars=r.RefractionQuality=0
++CVars=r.ClearWithExcludeRects=0
++CVars=r.CompileShadersForDevelopment=0
++CVars=r.CustomDepth=0
+
+; === POST-PROCESSING SETTINGS ===
++CVars=r.DefaultFeature.AutoExposure=False
++CVars=r.ExposureOffset=0.3
++CVars=r.SceneColorFringe.Max=0
++CVars=r.SceneColorFringeQuality=0
++CVars=ShowFlag.PostProcessing=0
++CVars=ShowFlag.PostProcessMaterial=0
++CVars=ShowFlag.ColorGrading=0
++CVars=ShowFlag.EyeAdaptation=0
++CVars=ShowFlag.Tonemapper=0
++CVars=ShowFlag.Vignette=0
+
+; === PERFORMANCE SETTINGS ===
++CVars=MaxES2PixelShaderAdditiveComplexityCount=45
++CVars=MaxPixelShaderAdditiveComplexityCount=128
++CVars=NearClipPlane=12.0
++CVars=bDisablePhysXHardwareSupport=True
++CVars=bFirstRun=False
+
+; === DEBUG/EDITOR FLAGS DISABLED ===
++CVars=ShowFlag.Pivot=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.Bounds=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.Materials=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.GameplayDebug=0
++CVars=ShowFlag.VisualizeLPV=0
++CVars=ShowFlag.AudioRadius=0
++CVars=ShowFlag.BSP=0
++CVars=ShowFlag.BSPSplit=0
++CVars=ShowFlag.BSPTriangles=0
++CVars=ShowFlag.BillboardSprites=0
++CVars=ShowFlag.BuilderBrush=0
++CVars=ShowFlag.CameraAspectRatioBars=0
++CVars=ShowFlag.CameraFrustums=0
++CVars=ShowFlag.CameraImperfections=0
++CVars=ShowFlag.CameraInterpolation=0
++CVars=ShowFlag.CameraSafeFrames=0
++CVars=ShowFlag.CompositeEditorPrimitives=0
++CVars=ShowFlag.Constraints=0
++CVars=ShowFlag.Cover=0
++CVars=ShowFlag.Decals=0
++CVars=ShowFlag.DeferredLighting=0
++CVars=ShowFlag.Diffuse=0
++CVars=ShowFlag.DistanceCulledPrimitives=0
++CVars=ShowFlag.Editor=0
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.LOD=0
++CVars=ShowFlag.Landscape=0
++CVars=ShowFlag.LargeVertices=0
++CVars=ShowFlag.LightInfluences=0
++CVars=ShowFlag.LightRadius=0
++CVars=ShowFlag.LpvLightingOnly=0
++CVars=ShowFlag.MeshEdges=0
++CVars=ShowFlag.OnScreenDebug=0
++CVars=ShowFlag.OverrideDiffuseAndSpecular=0
++CVars=ShowFlag.Paper2DSprites=0
++CVars=ShowFlag.Particles=0
++CVars=ShowFlag.PrecomputedVisibility=0
++CVars=ShowFlag.PreviewShadowsIndicator=0
++CVars=ShowFlag.Refraction=0
++CVars=ShowFlag.SelectionOutline=0
++CVars=ShowFlag.ShaderComplexity=0
++CVars=ShowFlag.ShadowsFromEditorHiddenActors=0
++CVars=ShowFlag.SkeletalMeshes=0
++CVars=ShowFlag.Snap=0
++CVars=ShowFlag.Specular=0
++CVars=ShowFlag.StaticMeshes=0
++CVars=ShowFlag.StationaryLightOverlap=0
++CVars=ShowFlag.StereoRendering=0
++CVars=ShowFlag.TestImage=0
++CVars=ShowFlag.TextRender=0
++CVars=ShowFlag.TexturedLightProfiles=0
++CVars=ShowFlag.Translucency=0
++CVars=ShowFlag.VectorFields=0
++CVars=ShowFlag.VertexColors=0
++CVars=ShowFlag.VisualizeAdaptiveDOF=0
++CVars=ShowFlag.VisualizeBuffer=0
++CVars=ShowFlag.VisualizeDOF=0
++CVars=ShowFlag.VisualizeDistanceFieldAO=0
++CVars=ShowFlag.VisualizeHDR=0
++CVars=ShowFlag.VisualizeLightCulling=0
++CVars=ShowFlag.VisualizeMotionBlur=0
++CVars=ShowFlag.VisualizeOutOfBoundsPixels=0
++CVars=ShowFlag.VisualizeSenses=0
++CVars=ShowFlag.Wireframe=0
++CVars=ShowFlag.SeparateTranslucency=0
+
+; === FOLIAGE SETTINGS ===
++CVars=foliage.UseOcclusionType=0
+
+; === GAMEPLAY SETTINGS ===
++CVars=ShowFloatingDamageText=True
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "Bloodstalker",
+    Description = "Awesome Spyglass On",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=ShowFlag.AmbientOcclusion=0
++CVars=ShowFlag.AntiAliasing=0
++CVars=ShowFlag.Atmosphere=0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=ShowFlag.AudioRadius=0
++CVars=ShowFlag.BSP=0
++CVars=ShowFlag.BSPSplit=0
++CVars=ShowFlag.BSPTriangles=0
++CVars=ShowFlag.BillboardSprites=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.BuilderBrush=0
++CVars=ShowFlag.CameraAspectRatioBars=0
++CVars=ShowFlag.CameraFrustums=0
++CVars=ShowFlag.CameraImperfections=0
++CVars=ShowFlag.CameraInterpolation=0
++CVars=ShowFlag.CameraSafeFrames=0
++CVars=ShowFlag.ColorGrading=0
++CVars=ShowFlag.CompositeEditorPrimitives=0
++CVars=ShowFlag.Constraints=0
++CVars=ShowFlag.Cover=0
++CVars=ShowFlag.Decals=0
++CVars=ShowFlag.DeferredLighting=0
++CVars=ShowFlag.DepthOfField=0
++CVars=ShowFlag.Diffuse=0
++CVars=ShowFlag.DirectLighting=0
++CVars=ShowFlag.DirectionalLights=0
++CVars=ShowFlag.DistanceCulledPrimitives=0
++CVars=ShowFlag.DistanceFieldAO=0
++CVars=ShowFlag.DynamicShadows=0
++CVars=ShowFlag.Editor=0
++CVars=ShowFlag.EyeAdaptation=0
++CVars=ShowFlag.Fog=1
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.LOD=0
++CVars=ShowFlag.Landscape=0
++CVars=ShowFlag.LargeVertices=0
++CVars=ShowFlag.LensFlares=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.LightInfluences=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.LightRadius=0
++CVars=ShowFlag.LightShafts=0
++CVars=ShowFlag.Lighting=0
++CVars=ShowFlag.LpvLightingOnly=0
++CVars=ShowFlag.MeshEdges=0
++CVars=ShowFlag.MotionBlur=0
++CVars=ShowFlag.OnScreenDebug=0
++CVars=ShowFlag.OverrideDiffuseAndSpecular=0
++CVars=ShowFlag.Paper2DSprites=0
++CVars=ShowFlag.Particles=1
++CVars=ShowFlag.Pivot=0
++CVars=ShowFlag.PointLights=0
++CVars=ShowFlag.PostProcessMaterial=0
++CVars=ShowFlag.PostProcessing=0
++CVars=ShowFlag.PrecomputedVisibility=0
++CVars=ShowFlag.PreviewShadowsIndicator=0
++CVars=ShowFlag.ReflectionEnvironment=0
++CVars=ShowFlag.ReflectionOverride=0
++CVars=ShowFlag.Refraction=0
++CVars=ShowFlag.SelectionOutline=0
++CVars=ShowFlag.ShaderComplexity=0
++CVars=ShowFlag.ShadowFrustums=0
++CVars=ShowFlag.ShadowsFromEditorHiddenActors=0
++CVars=ShowFlag.SkeletalMeshes=0
++CVars=ShowFlag.SkyLighting=0
++CVars=ShowFlag.Snap=0
++CVars=ShowFlag.Specular=0
++CVars=ShowFlag.SpotLights=0
++CVars=ShowFlag.StaticMeshes=0
++CVars=ShowFlag.StationaryLightOverlap=0
++CVars=ShowFlag.StereoRendering=0
++CVars=ShowFlag.SubsurfaceScattering=0
++CVars=ShowFlag.TemporalAA=0
++CVars=ShowFlag.Tessellation=0
++CVars=ShowFlag.TestImage=0
++CVars=ShowFlag.TextRender=0
++CVars=ShowFlag.TexturedLightProfiles=0
++CVars=ShowFlag.Tonemapper=0
++CVars=ShowFlag.Translucency=0
++CVars=ShowFlag.VectorFields=0
++CVars=ShowFlag.VertexColors=0
++CVars=ShowFlag.Vignette=0
++CVars=ShowFlag.VisualizeAdaptiveDOF=0
++CVars=ShowFlag.VisualizeBuffer=0
++CVars=ShowFlag.VisualizeDOF=0
++CVars=ShowFlag.VisualizeDistanceFieldAO=0
++CVars=ShowFlag.VisualizeHDR=0
++CVars=ShowFlag.VisualizeLPV=0
++CVars=ShowFlag.VisualizeLightCulling=0
++CVars=ShowFlag.VisualizeMotionBlur=0
++CVars=ShowFlag.VisualizeOutOfBoundsPixels=0
++CVars=ShowFlag.VisualizeSSR=0
++CVars=ShowFlag.VisualizeSenses=0
++CVars=ShowFlag.VolumeLightingSamples=0
++CVars=ShowFlag.Wireframe=0S
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "Super Hard",
+    Description = "No Visals, No Water",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=FogDensity=0.0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=ShowFlag.g=0
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.Tessellation=0
++CVars=ShowFlag.DepthOfField=0
++CVars=ShowFlag.Pivot=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.LightFunctions=1
++CVars=ShowFlag.Bounds=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.Materials=0
++CVars=foliage.UseOcclusionType=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.GameplayDebug=0
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "PVP Water",
+    Description = "No Water Surface",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=foliage.UseOcclusionType=0
++CVars=FogDensity=0.0
++CVars=FrameRateCap=300
++CVars=MaxES2PixelShaderAdditiveComplexityCount=45
++CVars=MaxPixelShaderAdditiveComplexityCount=128
++CVars=MaxSmoothedFrameRate=300
++CVars=ShowFlag.Tessellation=0
++CVars=ShowFlag.Materials=0
++CVars=ShowFlag.LightFunctions=1
++CVars=ShowFloatingDamageText=True
++CVars=r.SceneColorFringe.Max=0
++CVars=r.SceneColorFringeQuality=0
++CVars=ShowFlag.GameplayDebug=1
++CVars=FX.MaxCPUParticlesPerEmitter=0
++CVars=t.maxfps=300
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "PVP Soft",
+    Description = "Standard Pvp Config",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=foliage.UseOcclusionType=0
++CVars=ShowFloatingDamageText=True
++CVars=FogDensity=0.0
++CVars=FrameRateCap=240
++CVars=FrameRateMinimum=240
++CVars=MaxES2PixelShaderAdditiveComplexityCount=45
++CVars=MaxPixelShaderAdditiveComplexityCount=128
++CVars=MaxSmoothedFrameRate=240
++CVars=MinDesiredFrameRate=70
++CVars=MinSmoothedFrameRate=5
++CVars=NearClipPlane=12.0
++CVars=ShowFlag.AmbientOcclusion=0
++CVars=ShowFlag.AntiAliasing=0
++CVars=ShowFlag.Atmosphere=0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=ShowFlag.AudioRadius=0
++CVars=ShowFlag.BSP=0
++CVars=ShowFlag.BSPSplit=0
++CVars=ShowFlag.BSPTriangles=0
++CVars=ShowFlag.BillboardSprites=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.BuilderBrush=0
++CVars=ShowFlag.CameraAspectRatioBars=0
++CVars=ShowFlag.CameraFrustums=0
++CVars=ShowFlag.CameraImperfections=0
++CVars=ShowFlag.CameraInterpolation=0
++CVars=ShowFlag.CameraSafeFrames=0
++CVars=ShowFlag.CompositeEditorPrimitives=0
++CVars=ShowFlag.Constraints=0
++CVars=ShowFlag.Cover=0
++CVars=ShowFlag.Decals=0
++CVars=ShowFlag.DeferredLighting=0
++CVars=ShowFlag.DepthOfField=0
++CVars=ShowFlag.Diffuse=0
++CVars=ShowFlag.DirectLighting=0
++CVars=ShowFlag.DirectionalLights=0
++CVars=ShowFlag.DynamicShadows=1
++CVars=ShowFlag.DistanceCulledPrimitives=0
++CVars=ShowFlag.DistanceFieldAO=0
++CVars=ShowFlag.DynamicShadows=0
++CVars=ShowFlag.Editor=0
++CVars=ShowFlag.EyeAdaptation=0
++CVars=ShowFlag.Fog=1
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.LOD=0
++CVars=ShowFlag.Landscape=0
++CVars=ShowFlag.LargeVertices=0
++CVars=ShowFlag.LensFlares=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.LightInfluences=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.LightRadius=0
++CVars=ShowFlag.LightShafts=0
++CVars=ShowFlag.Lighting=0
++CVars=ShowFlag.LpvLightingOnly=0
++CVars=ShowFlag.Materials=0
++CVars=ShowFlag.MeshEdges=0
++CVars=ShowFlag.MotionBlur=0
++CVars=ShowFlag.OnScreenDebug=0
++CVars=ShowFlag.OverrideDiffuseAndSpecular=0
++CVars=ShowFlag.Paper2DSprites=0
++CVars=ShowFlag.Particles=0
++CVars=ShowFlag
++CVars=FX.MaxCPUParticlesPerEmitter=1
++CVars=t.maxfps=360
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+new IniPreset
+{
+    Name = "PVP Hard",
+    Description = "Minimal Visuals, Fogless",
+    Content = @"[DeviceProfiles]
++DeviceProfileNameAndTypes=Windows,Windows
++DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
++DeviceProfileNameAndTypes=WindowsServer,WindowsServer
++DeviceProfileNameAndTypes=IOS,IOS
++DeviceProfileNameAndTypes=Android,Android
++DeviceProfileNameAndTypes=PS4,PS4
++DeviceProfileNameAndTypes=XboxOne,XboxOne
++DeviceProfileNameAndTypes=HTML5,HTML5
++DeviceProfileNameAndTypes=Mac,Mac
++DeviceProfileNameAndTypes=MacNoEditor,MacNoEditor
++DeviceProfileNameAndTypes=MacServer,MacServer
++DeviceProfileNameAndTypes=WinRT,WinRT
++DeviceProfileNameAndTypes=Linux,Linux
++DeviceProfileNameAndTypes=LinuxNoEditor,LinuxNoEditor
++DeviceProfileNameAndTypes=LinuxServer,LinuxServer
+
+[Windows DeviceProfile]
+DeviceType=Windows
+BaseProfileName=
+
++CVars=foliage.UseOcclusionType=0
++CVars=ShowFloatingDamageText=True
++CVars=FogDensity=0.0
++CVars=FrameRateCap=180
++CVars=FrameRateMinimum=180
++CVars=MaxES2PixelShaderAdditiveComplexityCount=45
++CVars=MaxPixelShaderAdditiveComplexityCount=128
++CVars=MaxSmoothedFrameRate=180
++CVars=MinDesiredFrameRate=80
++CVars=MinSmoothedFrameRate=5
++CVars=NearClipPlane=12.5
++CVars=ShowFlag.AmbientOcclusion=0
++CVars=ShowFlag.AntiAliasing=0
++CVars=ShowFlag.Atmosphere=0
++CVars=ShowFlag.AtmosphericFog=0
++CVars=ShowFlag.AudioRadius=0
++CVars=ShowFlag.BSP=0
++CVars=ShowFlag.BSPSplit=0
++CVars=ShowFlag.BSPTriangles=0
++CVars=ShowFlag.BillboardSprites=0
++CVars=ShowFlag.Brushes=0
++CVars=ShowFlag.BuilderBrush=0
++CVars=ShowFlag.CameraAspectRatioBars=0
++CVars=ShowFlag.CameraFrustums=0
++CVars=ShowFlag.CameraImperfections=0
++CVars=ShowFlag.CameraInterpolation=0
++CVars=ShowFlag.CameraSafeFrames=0
++CVars=ShowFlag.CompositeEditorPrimitives=0
++CVars=ShowFlag.Constraints=0
++CVars=ShowFlag.Cover=0
++CVars=ShowFlag.Decals=0
++CVars=ShowFlag.DeferredLighting=0
++CVars=ShowFlag.DepthOfField=0
++CVars=ShowFlag.Diffuse=0
++CVars=ShowFlag.DirectLighting=0
++CVars=ShowFlag.DirectionalLights=0
++CVars=ShowFlag.DistanceCulledPrimitives=0
++CVars=ShowFlag.DistanceFieldAO=0
++CVars=ShowFlag.DynamicShadows=0
++CVars=ShowFlag.Editor=0
++CVars=ShowFlag.EyeAdaptation=0
++CVars=ShowFlag.Fog=1
++CVars=ShowFlag.Game=0
++CVars=ShowFlag.LOD=0
++CVars=ShowFlag.Landscape=0
++CVars=ShowFlag.LargeVertices=0
++CVars=ShowFlag.LensFlares=0
++CVars=ShowFlag.LevelColoration=0
++CVars=ShowFlag.LightComplexity=0
++CVars=ShowFlag.LightInfluences=0
++CVars=ShowFlag.LightMapDensity=0
++CVars=ShowFlag.LightRadius=0
++CVars=ShowFlag.LightShafts=0
++CVars=ShowFlag.Lighting=0
++CVars=FX.MaxCPUParticlesPerEmitter=0
++CVars=ShowFlag.LpvLightingOnly=0
++CVars=ShowFlag.Materials=0
++CVars=ShowFlag.MeshEdges=0
++CVars=ShowFlag.MotionBlur=0
++CVars=ShowFlag.OnScreenDebug=0
++CVars=ShowFlag.OverrideDiffuseAndSpecular=0
++CVars=ShowFlag.Paper2DSprites=0
++CVars=ShowFlag.Particles=0
++CVars=ShowFlag
++CVars=r.SceneColorFringe.Max=0
++CVars=ShowFlag.DynamicShadows=1
++CVars=ShowFlag.LightComplexity=0
++CVars=r.oneframethreadlag=1
++CVars=t.maxfps=
+
+[WindowsNoEditor DeviceProfile]
+DeviceType=WindowsNoEditor
+BaseProfileName=Windows
+
+[WindowsServer DeviceProfile]
+DeviceType=WindowsServer
+BaseProfileName=Windows
+
+[IOS DeviceProfile]
+DeviceType=IOS
+BaseProfileName=
+
+[Android DeviceProfile]
+DeviceType=Android
+BaseProfileName=
+
+[PS4 DeviceProfile]
+DeviceType=PS4
+BaseProfileName=
+
+[XboxOne DeviceProfile]
+DeviceType=XboxOne
+BaseProfileName=
+
+[HTML5 DeviceProfile]
+DeviceType=HTML5
+BaseProfileName=
+
+[Mac DeviceProfile]
+DeviceType=Mac
+BaseProfileName=
+
+[MacNoEditor DeviceProfile]
+DeviceType=MacNoEditor
+BaseProfileName=Mac
+
+[MacServer DeviceProfile]
+DeviceType=MacServer
+BaseProfileName=Mac
+
+[WinRT DeviceProfile]
+DeviceType=WinRT
+BaseProfileName=
+
+[Linux DeviceProfile]
+DeviceType=Linux
+BaseProfileName=
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxNoEditor DeviceProfile]
+DeviceType=LinuxNoEditor
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings=
+
+[LinuxServer DeviceProfile]
+DeviceType=LinuxServer
+BaseProfileName=Linux
+MeshLODSettings=
+TextureLODSettings="
+},
+    };
+
+
+    private string GetStatusClass()
+    {
+        return currentStatusType switch
+        {
+            StatusType.Success => "status-success",
+            StatusType.Error => "status-error",
+            StatusType.Warning => "status-warning",
+            StatusType.Info => "status-info",
+            _ => "status-info"
+        };
+    }
+
+    private string GetStatusTitle()
+    {
+        return currentStatusType switch
+        {
+            StatusType.Success => "✅ INI File Found",
+            StatusType.Error => "❌ INI File Not Found",
+            StatusType.Warning => "⚠️ Steam Path Issue",
+            _ => "ℹ️ Path Information"
+        };
+    }
+
+    private void SetStatus(string message, StatusType type, bool isPath = false, string path = "")
+    {
+        statusMessage = message;
+        currentStatusType = type;
+        isPathStatus = isPath;
+        currentPath = path;
+        StateHasChanged();
+    }
+
+    private void OpenIniFile()
+    {
+        try
+        {
+            string? iniPath = ArkUtilities.GetBaseDeviceProfilesPath();
+
+            if (iniPath == null)
+            {
+                SetStatus("Steam installation not found in registry.", StatusType.Error);
+                return;
+            }
+
+            if (!File.Exists(iniPath))
+            {
+                SetStatus("INI file does not exist. Create it first using the 'Create New' button.", StatusType.Warning);
+                return;
+            }
+
+            currentIniContent = File.ReadAllText(iniPath);
+            SetStatus("INI file loaded successfully.", StatusType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error loading INI file: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void ClearFile()
+    {
+        try
+        {
+            string? iniPath = ArkUtilities.GetBaseDeviceProfilesPath();
+
+            if (iniPath == null)
+            {
+                SetStatus("Steam installation not found in registry.", StatusType.Error);
+                return;
+            }
+
+            currentIniContent = "";
+            File.WriteAllText(iniPath, currentIniContent);
+
+            selectedPreset = "";
+            SetStatus("INI file content cleared successfully.", StatusType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error clearing INI file: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void CreateFile()
+    {
+        try
+        {
+            string? iniPath = ArkUtilities.GetBaseDeviceProfilesPath();
+
+            if (iniPath == null)
+            {
+                SetStatus("Steam installation not found in registry.", StatusType.Error);
+                return;
+            }
+
+            currentIniContent = @"";
+
+            var directory = Path.GetDirectoryName(iniPath);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory!);
+            }
+
+            File.WriteAllText(iniPath, currentIniContent);
+            SetStatus("New BaseDeviceProfiles.ini file created successfully.", StatusType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error creating INI file: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void SelectPreset(IniPreset preset)
+    {
+        currentIniContent = preset.Content;
+        selectedPreset = preset.Name;
+        SetStatus($"Loaded preset: {preset.Name}", StatusType.Success);
+    }
+
+    private void SaveChanges()
+    {
+        try
+        {
+            string? iniPath = ArkUtilities.GetBaseDeviceProfilesPath();
+
+            if (iniPath == null)
+            {
+                SetStatus("Steam installation not found in registry.", StatusType.Error);
+                return;
+            }
+
+            var directory = Path.GetDirectoryName(iniPath);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory!);
+            }
+
+            File.WriteAllText(iniPath, currentIniContent);
+            SetStatus("INI file saved successfully!", StatusType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error saving INI file: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void CheckIniFileExists()
+    {
+        try
+        {
+            string? iniPath = ArkUtilities.GetBaseDeviceProfilesPath();
+
+            if (iniPath == null)
+            {
+                SetStatus("Steam installation not found in registry. Please ensure Steam is properly installed.", StatusType.Error, true, "Registry path not found");
+                return;
+            }
+
+            if (!File.Exists(iniPath))
+            {
+                SetStatus("INI file not found at the expected location.", StatusType.Warning, true, iniPath);
+            }
+            else
+            {
+                var fileInfo = new FileInfo(iniPath);
+                var fileSize = fileInfo.Length;
+                var lastModified = fileInfo.LastWriteTime;
+
+                SetStatus($"File exists • Size: {fileSize} bytes • Modified: {lastModified:yyyy-MM-dd HH:mm}", StatusType.Success, true, iniPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error checking INI file: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    public class IniPreset
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Content { get; set; } = "";
+    }
+}

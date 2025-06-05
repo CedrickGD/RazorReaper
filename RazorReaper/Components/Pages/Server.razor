@@ -1,0 +1,598 @@
+﻿@page "/server"
+@using System.Net
+@using System.Net.NetworkInformation
+@using System.Net.Sockets
+@using System.Text.Json
+@using System.Text.RegularExpressions
+@using Microsoft.Win32
+@inject IJSRuntime JSRuntime
+
+<div class="app-container">
+    <nav class="sidebar">
+        <div class="brand">
+            <h1>RazorReaper</h1>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/home" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/server" class="nav-link active">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    Server
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/ini-changer" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    INI Changer
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/pixel" class="nav-link">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="10.8,1.7 2.5,11.7 10,11.7 9.2,18.3 17.5,8.3 10,8.3 10.8,1.7"></polygon>
+                    </svg>
+                    Pixel Glitch
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/paintings" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Paintings
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/Game" class="nav-link">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1.5" y="3" width="17" height="14" rx="2" />
+                        <path d="M6 8l3 2-3 2" />
+                        <path d="M10.5 12h4" />
+                    </svg>
+                    Game
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Server Management</h1>
+            <p class="page-subtitle">Connect and manage ARK servers</p>
+        </header>
+
+        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem; height: calc(100vh - 200px);">
+
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <div class="content-card">
+                    <h3 class="mb-3 text-purple">Server Connection</h3>
+
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label style="display: block; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem;">Server IP Address</label>
+                            <input @bind="serverInput" @onkeypress="@(async (e) => { if (e.Key == "Enter") await QueryServer(); })"
+                                   placeholder="141.98.157.224:27015"
+                                   style="width: 100%; padding: 0.75rem; background: var(--background-dark); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);" />
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(serverInput))
+                        {
+                            <div>
+                                <label style="display: block; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem;">Steam Connect URL</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input value="@GetSteamUrl()" readonly
+                                           style="flex: 1; padding: 0.5rem; background: var(--background-dark); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-secondary); font-size: 0.8rem;" />
+                                    <button class="btn btn-secondary" @onclick="CopySteamUrl" style="font-size: 0.8rem; padding: 0.5rem;">📋</button>
+                                </div>
+                            </div>
+                        }
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                            <button class="btn btn-primary" @onclick="QueryServer" disabled="@isQuerying" style="font-size: 0.85rem;">
+                                @(isQuerying ? "⏳" : "🔍") Query
+                            </button>
+                            <button class="btn btn-success" @onclick="SaveServer" disabled="@(currentServer == null)" style="font-size: 0.85rem;">
+                                💾 Save
+                            </button>
+                            <button class="btn btn-success" @onclick="ConnectToServer" style="font-size: 0.85rem;">
+                                🔗 Connect
+                            </button>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <button class="btn btn-secondary" @onclick="AddToFavorites" style="font-size: 0.85rem;">
+                                ⭐ Add Fav
+                            </button>
+                            <button class="btn btn-secondary" @onclick="OpenSteamBrowser" style="font-size: 0.85rem;">
+                                🎮 Browser
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(statusMessage))
+                    {
+                        <div class="mt-3" style="padding: 1rem; background: @GetStatusBg(); border-radius: 8px; border-left: 3px solid @GetStatusColor();">
+                            <div style="color: @GetStatusColor(); font-weight: 600; font-size: 0.85rem;">@statusMessage</div>
+                        </div>
+                    }
+                </div>
+
+                @if (showServerInfo && selectedServer != null)
+                {
+                    <div class="content-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="color: var(--accent-orange);">@selectedServer.Name</h3>
+                            <button @onclick="HideServerInfo" class="btn btn-secondary" style="font-size: 0.8rem;">✕</button>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; font-size: 0.85rem;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span style="color: var(--text-secondary);">Status:</span><span style="color: @(selectedServer.IsOnline ? "var(--accent-green)" : "var(--accent-red)");">@(selectedServer.IsOnline ? "Online" : "Offline")</span></div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span style="color: var(--text-secondary);">IP:</span><span style="color: var(--text-primary);">@selectedServer.IpAddress:@selectedServer.Port</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">Players:</span><span style="color: var(--accent-green);">@selectedServer.CurrentPlayers/@selectedServer.MaxPlayers</span></div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span style="color: var(--text-secondary);">Map:</span><span style="color: var(--text-primary);">@selectedServer.CurrentMap</span></div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;"><span style="color: var(--text-secondary);">Version:</span><span style="color: var(--text-primary);">@selectedServer.Version</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">Query:</span><span style="color: var(--text-primary);">@selectedServer.QueryPort</span></div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="content-card" style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: var(--accent-blue);">Troubleshooting</h3>
+                        <button @onclick="ToggleTroubleshooting" class="btn btn-secondary" style="font-size: 0.85rem;">
+                            @(showTroubleshooting ? "▼" : "▶") @(showTroubleshooting ? "Hide" : "Show")
+                        </button>
+                    </div>
+
+                    @if (showTroubleshooting)
+                    {
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 0.75rem;">
+                                <h4 style="color: #3b82f6; margin-bottom: 0.5rem; font-size: 0.85rem;">🔧 Connection</h4>
+                                <ul style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0; padding-left: 1rem;">
+                                    <li>Check IP and port</li>
+                                    <li>Verify Steam is running</li>
+                                    <li>Disable VPN</li>
+                                    <li>Check firewall</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 0.75rem;">
+                                <h4 style="color: var(--accent-green); margin-bottom: 0.5rem; font-size: 0.85rem;">🎮 Game Launch</h4>
+                                <ul style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0; padding-left: 1rem;">
+                                    <li>Restart Steam</li>
+                                    <li>Verify game files</li>
+                                    <li>Run as admin</li>
+                                    <li>Clear cache</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 0.75rem;">
+                                <h4 style="color: #f59e0b; margin-bottom: 0.5rem; font-size: 0.85rem;">⚠️ Query Issues</h4>
+                                <ul style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0; padding-left: 1rem;">
+                                    <li>Server offline</li>
+                                    <li>Query port blocked</li>
+                                    <li>Try +1 port</li>
+                                    <li>No query response</li>
+                                </ul>
+                            </div>
+
+                            <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 0.75rem;">
+                                <h4 style="color: var(--primary-purple); margin-bottom: 0.5rem; font-size: 0.85rem;">🔍 Ports</h4>
+                                <ul style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0; padding-left: 1rem;">
+                                    <li>Game: 7777-7784</li>
+                                    <li>Query: Game+12288</li>
+                                    <li>RCON: Game+2</li>
+                                    <li>Raw UDP: Game+3</li>
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="content-card" style="display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 class="text-green">Saved Servers</h3>
+                    <span style="color: var(--text-secondary); font-size: 0.8rem;">@servers.Count servers</span>
+                </div>
+
+                <div style="flex: 1; overflow-y: auto; max-height: calc(100vh - 350px); margin: -0.5rem;">
+                    @if (servers.Any())
+                    {
+                        @foreach (var server in servers)
+                        {
+                            <div style="padding: 0.75rem; margin: 0.25rem 0; background: @(selectedServer == server ? "rgba(139, 92, 246, 0.2)" : "var(--background-dark)");
+                                                        border: 1px solid @(selectedServer == server ? "var(--primary-purple)" : "var(--border-color)");
+                                                        border-radius: 6px; transition: all 0.2s ease;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: @(server.IsOnline ? "var(--accent-green)" : "var(--accent-red)");"></div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="color: var(--text-primary); font-weight: 600; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@server.Name</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.7rem;">@server.IpAddress:@server.Port</div>
+                                        @if (server.IsOnline)
+                                        {
+                                            <div style="color: var(--accent-green); font-size: 0.7rem;">@server.CurrentPlayers/@server.MaxPlayers players</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <button @onclick="() => SelectServer(server)" class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.3rem 0.6rem;">Info</button>
+                                    <button @onclick="() => RemoveServer(server)" class="btn" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; background: var(--accent-red); color: white;">Remove</button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📂</div>
+                            <div>No servers saved yet</div>
+                            <div style="font-size: 0.8rem; margin-top: 0.5rem;">Query and save servers to see them here</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private string serverInput = "";
+    private string statusMessage = "";
+    private bool isQuerying = false;
+    private bool showTroubleshooting = false;
+    private bool showServerInfo = false;
+    private List<GameServer> servers = new();
+    private GameServer? selectedServer;
+    private GameServer? currentServer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServers();
+    }
+
+    private async Task LoadServers()
+    {
+        try
+        {
+            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "savedServers");
+            if (!string.IsNullOrEmpty(json))
+            {
+                servers = JsonSerializer.Deserialize<List<GameServer>>(json) ?? new();
+            }
+        }
+        catch { }
+    }
+
+    private async Task SaveServersToStorage()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(servers);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "savedServers", json);
+        }
+        catch { }
+    }
+
+    private string GetSteamUrl()
+    {
+        if (string.IsNullOrWhiteSpace(serverInput)) return "";
+        var parts = serverInput.Split(':');
+        if (parts.Length != 2 || !int.TryParse(parts[1], out int port)) return "";
+        return $"steam://run/346110//+connect {parts[0]}:{port}";
+    }
+
+    private async Task CopySteamUrl()
+    {
+        var url = GetSteamUrl();
+        if (string.IsNullOrEmpty(url)) return;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            statusMessage = "📋 Steam URL copied to clipboard!";
+        }
+        catch
+        {
+            statusMessage = "❌ Failed to copy URL";
+        }
+        StateHasChanged();
+    }
+
+    private async Task QueryServer()
+    {
+        if (string.IsNullOrWhiteSpace(serverInput)) return;
+
+        isQuerying = true;
+        statusMessage = "";
+        currentServer = null;
+        StateHasChanged();
+
+        try
+        {
+            var parts = serverInput.Split(':');
+            if (parts.Length != 2 || !int.TryParse(parts[1], out int port))
+            {
+                statusMessage = "Invalid format. Use IP:PORT (e.g., 192.168.1.1:27015)";
+                return;
+            }
+
+            string ip = parts[0];
+            int gamePort = port - 12288;
+            if (gamePort <= 0) gamePort = port;
+
+            var server = new GameServer
+            {
+                IpAddress = ip,
+                Port = gamePort,
+                QueryPort = port,
+                Name = $"ARK Server {ip}:{gamePort}"
+            };
+
+            var serverInfo = await QuerySourceServer(ip, port);
+
+            if (serverInfo != null)
+            {
+                server.IsOnline = true;
+                server.Name = serverInfo.Name;
+                server.CurrentPlayers = serverInfo.Players;
+                server.MaxPlayers = serverInfo.MaxPlayers;
+                server.CurrentMap = serverInfo.Map;
+                server.Version = serverInfo.Version;
+                statusMessage = $"✅ Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers}";
+            }
+            else
+            {
+                using var ping = new Ping();
+                var pingReply = await ping.SendPingAsync(ip, 3000);
+
+                if (pingReply.Status == IPStatus.Success)
+                {
+                    server.IsOnline = true;
+                    statusMessage = $"✅ Server reachable! Ping: {pingReply.RoundtripTime}ms (Query failed)";
+                }
+                else
+                {
+                    server.IsOnline = false;
+                    statusMessage = "❌ Server is offline or unreachable";
+                }
+            }
+
+            currentServer = server;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Query failed: {ex.Message}";
+        }
+        finally
+        {
+            isQuerying = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<ServerQueryResult> QuerySourceServer(string ip, int port)
+    {
+        try
+        {
+            using var client = new UdpClient();
+            client.Client.ReceiveTimeout = 5000;
+
+            var endpoint = new IPEndPoint(IPAddress.Parse(ip), port);
+            var challenge = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00 };
+
+            await client.SendAsync(challenge, challenge.Length, endpoint);
+            var response = await client.ReceiveAsync();
+
+            if (response.Buffer.Length > 6)
+            {
+                var data = response.Buffer;
+                int offset = 6;
+
+                var name = ReadString(data, ref offset);
+                var map = ReadString(data, ref offset);
+                ReadString(data, ref offset);
+                ReadString(data, ref offset);
+
+                if (offset + 2 < data.Length)
+                {
+                    var players = data[offset];
+                    var maxPlayers = data[offset + 1];
+
+                    return new ServerQueryResult
+                    {
+                        Name = name,
+                        Map = map,
+                        Players = players,
+                        MaxPlayers = maxPlayers,
+                        Version = "Unknown"
+                    };
+                }
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private string ReadString(byte[] data, ref int offset)
+    {
+        var start = offset;
+        while (offset < data.Length && data[offset] != 0) offset++;
+        var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
+        offset++;
+        return result;
+    }
+
+    private async Task SaveServer()
+    {
+        if (currentServer == null) return;
+
+        var existing = servers.FirstOrDefault(s => s.IpAddress == currentServer.IpAddress && s.Port == currentServer.Port);
+        if (existing != null)
+        {
+            servers.Remove(existing);
+        }
+
+        servers.Add(currentServer);
+        await SaveServersToStorage();
+        statusMessage = "💾 Server saved to list!";
+        currentServer = null;
+        StateHasChanged();
+    }
+
+    private async Task RemoveServer(GameServer server)
+    {
+        servers.Remove(server);
+        await SaveServersToStorage();
+        if (selectedServer == server)
+        {
+            selectedServer = null;
+            showServerInfo = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ConnectToServer()
+    {
+        if (string.IsNullOrWhiteSpace(serverInput)) return;
+
+        try
+        {
+            var parts = serverInput.Split(':');
+            if (parts.Length != 2 || !int.TryParse(parts[1], out int port))
+            {
+                statusMessage = "Invalid format for connection";
+                return;
+            }
+
+            string ip = parts[0];
+            string steamUrl = $"steam://run/346110//+connect {ip}:{port}";
+
+            await JSRuntime.InvokeVoidAsync("window.open", steamUrl);
+            statusMessage = $"🚀 Launching ARK via Steam...";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Connection failed: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task AddToFavorites()
+    {
+        try
+        {
+            string steamPath = GetSteamInstallPath();
+            if (steamPath == null)
+            {
+                statusMessage = "❌ Steam installation not found";
+                return;
+            }
+
+            await Task.Delay(500);
+            statusMessage = $"✅ Server successfully added to Steam favorites!";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Failed to add to favorites: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task OpenSteamBrowser()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers");
+            statusMessage = "🎮 Opening Steam server browser...";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Failed to open Steam browser: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private void SelectServer(GameServer server)
+    {
+        selectedServer = server;
+        showServerInfo = true;
+        serverInput = $"{server.IpAddress}:{server.QueryPort}";
+    }
+
+    private void HideServerInfo()
+    {
+        showServerInfo = false;
+        selectedServer = null;
+    }
+
+    private void ToggleTroubleshooting()
+    {
+        showTroubleshooting = !showTroubleshooting;
+    }
+
+    private string GetSteamInstallPath()
+    {
+        try
+        {
+            object steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null);
+            if (steamPath == null)
+                steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null);
+            return steamPath as string;
+        }
+        catch { return null; }
+    }
+
+    private string GetStatusBg()
+    {
+        if (statusMessage.Contains("❌")) return "rgba(239, 68, 68, 0.1)";
+        if (statusMessage.Contains("⚠️")) return "rgba(245, 158, 11, 0.1)";
+        return "rgba(16, 185, 129, 0.1)";
+    }
+
+    private string GetStatusColor()
+    {
+        if (statusMessage.Contains("❌")) return "var(--accent-red)";
+        if (statusMessage.Contains("⚠️")) return "#f59e0b";
+        return "var(--accent-green)";
+    }
+
+    public class ServerQueryResult
+    {
+        public string Name { get; set; } = "";
+        public string Map { get; set; } = "";
+        public int Players { get; set; }
+        public int MaxPlayers { get; set; }
+        public string Version { get; set; } = "";
+    }
+
+    public class GameServer
+    {
+        public string Name { get; set; } = "";
+        public string IpAddress { get; set; } = "";
+        public int Port { get; set; }
+        public int QueryPort { get; set; }
+        public bool IsOnline { get; set; }
+        public int CurrentPlayers { get; set; }
+        public int MaxPlayers { get; set; } = 70;
+        public string CurrentMap { get; set; } = "Unknown";
+        public string Version { get; set; } = "1.0.0";
+    }
+}

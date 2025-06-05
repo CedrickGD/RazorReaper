@@ -1,0 +1,157 @@
+﻿@page "/"
+@page "/home"
+
+<div class="app-container">
+    <!-- Left Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="brand">
+            <h1>RazorReaper</h1>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/home" class="nav-link @(IsActiveRoute("/home") ? "active" : "")">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Home
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/server" class="nav-link @(IsActiveRoute("/server") ? "active" : "")">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    Server
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/ini-changer" class="nav-link @(IsActiveRoute("/ini-changer") ? "active" : "")">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    INI Changer
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/pixel" class="nav-link">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="10.8,1.7 2.5,11.7 10,11.7 9.2,18.3 17.5,8.3 10,8.3 10.8,1.7"></polygon>
+                    </svg>
+                    Pixel Glitch
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/paintings" class="nav-link @(IsActiveRoute("/paintings") ? "active" : "")">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Paintings
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/game" class="nav-link @(IsActiveRoute("/game") ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1.5" y="3" width="17" height="14" rx="2" />
+                        <path d="M6 8l3 2-3 2" />
+                        <path d="M10.5 12h4" />
+                    </svg>
+                    Game
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Welcome Home</h1>
+            <p class="page-subtitle">Home Page Dashboard</p>
+        </header>
+
+        <div class="content-card">
+            <h2 class="mb-2">Getting Started</h2>
+            <p class="mb-3">Welcome to your sleek, modern application. Navigate through the different sections using the sidebar to explore all features.</p>
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <a href="/server" class="btn btn-primary">
+                    <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    View Server
+                </a>
+
+                <a href="/paintings" class="btn btn-secondary">
+                    <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Browse Paintings
+                </a>
+
+                <a href="/game" class="btn btn-success">
+                    <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Manage Game
+                </a>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h3 class="mb-2 text-purple">Quick Stats</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                <div style="text-align: center; padding: 1rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--accent-green); margin-bottom: 0.5rem;">42</div>
+                    <div style="color: var(--text-secondary);">Active Sessions</div>
+                </div>
+                <div style="text-align: center; padding: 1rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary-purple); margin-bottom: 0.5rem;">128</div>
+                    <div style="color: var(--text-secondary);">Total Projects</div>
+                </div>
+                <div style="text-align: center; padding: 1rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--light-green); margin-bottom: 0.5rem;">97%</div>
+                    <div style="color: var(--text-secondary);">System Health</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card glow-effect">
+            <h3 class="mb-2 text-green">Recent Activity</h3>
+            <div style="space-y: 1rem;">
+                <div style="padding: 1rem; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border-left: 3px solid var(--primary-purple); margin-bottom: 1rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Server configuration updated</div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;">2 minutes ago</div>
+                </div>
+                <div style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-green); margin-bottom: 1rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">New painting uploaded</div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;">15 minutes ago</div>
+                </div>
+                <div style="padding: 1rem; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border-left: 3px solid var(--primary-purple);">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">INI file processed</div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;">1 hour ago</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private string currentRoute = "/home";
+
+    protected override void OnInitialized()
+    {
+        // Get current route from navigation manager if available
+        // currentRoute = NavigationManager.Uri;
+    }
+
+    private bool IsActiveRoute(string route)
+    {
+        // Simple route matching - you can make this more sophisticated
+        return currentRoute == route;
+    }
+}

@@ -1,0 +1,518 @@
+﻿@page "/game"
+@using System.Diagnostics
+@using System.Runtime.InteropServices
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JSRuntime
+
+<div class="app-container">
+    <nav class="sidebar">
+        <div class="brand">
+            <h1>RazorReaper</h1>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/home" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Home
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/server" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    Server
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/ini-changer" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    INI Changer
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/pixel" class="nav-link">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="10.8,1.7 2.5,11.7 10,11.7 9.2,18.3 17.5,8.3 10,8.3 10.8,1.7"></polygon>
+                    </svg>
+                    Pixel Glitch
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/paintings" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Paintings
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/game" class="nav-link active">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1.5" y="3" width="17" height="14" rx="2" />
+                        <path d="M6 8l3 2-3 2" />
+                        <path d="M10.5 12h4" />
+                    </svg>
+                    Game
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Game</h1>
+            <p class="page-subtitle">In-Game Management & Controls</p>
+        </header>
+
+        <!-- Game Status Card -->
+        <div class="content-card status-card">
+            <h2>Game Status</h2>
+            <div class="status-info">
+                <div class="status-indicator @(isGameRunning ? "online" : "offline")">
+                    <span class="status-dot"></span>
+                    <span class="status-text">ARK: Survival Evolved - @(isGameRunning ? "Running" : "Not Running")</span>
+                </div>
+                <div class="game-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Process Status:</span>
+                        <span class="detail-value">@(isGameRunning ? "Online" : "Offline")</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Steam ID:</span>
+                        <span class="detail-value">346110</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Last Action:</span>
+                        <span class="detail-value">@lastAction</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Commands -->
+        <div class="content-card">
+            <h2>Game Commands</h2>
+            <div class="button-group">
+                <button class="btn btn-success" @onclick="ExecuteReconnect" disabled="@(!isGameRunning)">
+                    <i class="icon-reconnect"></i>
+                    Reconnect to Server
+                </button>
+                <button class="btn btn-warning" @onclick="ExecuteDisconnect" disabled="@(!isGameRunning)">
+                    <i class="icon-disconnect"></i>
+                    Disconnect from Server
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Management -->
+        <div class="content-card">
+            <h2>Game Management</h2>
+            <div class="button-group">
+                <button class="btn btn-primary" @onclick="LaunchGame" disabled="@isGameRunning">
+                    <i class="icon-play"></i>
+                    Launch ARK via Steam
+                </button>
+                <button class="btn btn-danger" @onclick="CloseGame" disabled="@(!isGameRunning)">
+                    <i class="icon-stop"></i>
+                    Close ARK Process
+                </button>
+            </div>
+        </div>
+
+        <!-- Action Log -->
+        <div class="content-card">
+            <h2>Action Log</h2>
+            <div class="log-container">
+                @foreach (var logEntry in actionLog)
+                {
+                    <div class="log-entry">
+                        <span class="log-time">@logEntry.Time.ToString("HH:mm:ss")</span>
+                        <span class="log-message">@logEntry.Message</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+
+    .status-card {
+        margin-bottom: 20px;
+    }
+
+    .status-info {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+    }
+
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #dc3545;
+        animation: pulse 2s infinite;
+    }
+
+    .status-indicator.online .status-dot {
+        background-color: #28a745;
+    }
+
+    @@keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    .game-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        padding: 15px;
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .detail-label {
+        font-size: 0.9em;
+        color: #666;
+        font-weight: 500;
+    }
+
+    .detail-value {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-decoration: none;
+        min-height: 36px;
+    }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: #218838;
+            transform: translateY(-1px);
+        }
+
+    .btn-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+
+        .btn-warning:hover:not(:disabled) {
+            background-color: #e0a800;
+            transform: translateY(-1px);
+        }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: #c82333;
+            transform: translateY(-1px);
+        }
+
+    .log-container {
+        max-height: 300px;
+        overflow-y: auto;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        padding: 15px;
+    }
+
+    .log-entry {
+        display: flex;
+        gap: 15px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+    .log-time {
+        font-family: monospace;
+        color: #666;
+        font-size: 0.9em;
+        min-width: 70px;
+    }
+
+    .log-message {
+        flex: 1;
+        color: #333;
+    }
+
+    .icon-reconnect::before {
+        content: "↻";
+    }
+
+    .icon-disconnect::before {
+        content: "⏻";
+    }
+
+    .icon-play::before {
+        content: "▶";
+    }
+
+    .icon-stop::before {
+        content: "⏹";
+    }
+</style>
+
+@code {
+    // Windows API imports
+    private const int SW_RESTORE = 9;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const uint VK_TAB = 0x09;
+    private const uint VK_RETURN = 0x0D;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    // Component state
+    private bool isGameRunning = false;
+    private string lastAction = "None";
+    private List<LogEntry> actionLog = new List<LogEntry>();
+    private Timer? statusTimer;
+
+    protected override void OnInitialized()
+    {
+        CheckGameStatus();
+        // Check game status every 5 seconds
+        statusTimer = new Timer(async _ =>
+        {
+            CheckGameStatus();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+    }
+
+    private void CheckGameStatus()
+    {
+        Process[] processes = Process.GetProcessesByName("ShooterGame");
+        isGameRunning = processes.Length > 0;
+    }
+
+    private async Task ExecuteReconnect()
+    {
+        await ExecuteGameCommand("reconnect");
+    }
+
+    private async Task ExecuteDisconnect()
+    {
+        await ExecuteGameCommand("disconnect");
+    }
+
+    private async Task ExecuteGameCommand(string command)
+    {
+        try
+        {
+            Process[] processes = Process.GetProcessesByName("ShooterGame");
+            if (processes.Length > 0)
+            {
+                IntPtr gameWindowHandle = processes[0].MainWindowHandle;
+
+                // Bring window to foreground
+                ShowWindow(gameWindowHandle, SW_RESTORE);
+                await Task.Delay(100);
+                SetForegroundWindow(gameWindowHandle);
+                await Task.Delay(500); // Give more time for window focus
+
+                AddLogEntry($"Focused ARK window, sending {command} command...");
+
+                // Press TAB to open console
+                keybd_event((byte)VK_TAB, 0, 0, UIntPtr.Zero);
+                await Task.Delay(50);
+                keybd_event((byte)VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                await Task.Delay(300); // Wait for console to open
+
+                // Send each character of the command
+                foreach (char c in command.ToLower())
+                {
+                    SendChar(c);
+                    await Task.Delay(50); // Small delay between characters
+                }
+
+                await Task.Delay(200);
+
+                // Press Enter
+                keybd_event((byte)VK_RETURN, 0, 0, UIntPtr.Zero);
+                await Task.Delay(50);
+                keybd_event((byte)VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+                lastAction = $"{command.Substring(0, 1).ToUpper()}{command.Substring(1)} Command";
+                AddLogEntry($"Successfully executed {command} command");
+            }
+            else
+            {
+                AddLogEntry($"Failed to execute {command}: ARK is not running!");
+                await JSRuntime.InvokeVoidAsync("alert", "ARK: Survival Evolved is not running!");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLogEntry($"Error executing {command}: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void SendChar(char c)
+    {
+        // Convert character to virtual key code and send it
+        byte vk = (byte)char.ToUpper(c);
+        keybd_event(vk, 0, 0, UIntPtr.Zero);
+        keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    private async Task LaunchGame()
+    {
+        try
+        {
+            lastAction = "Game Launch";
+            AddLogEntry("Launching ARK: Survival Evolved via Steam...");
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "steam://rungameid/346110",
+                UseShellExecute = true
+            });
+
+            AddLogEntry("ARK launch command sent to Steam");
+
+            // Wait a bit then check if game started
+            await Task.Delay(5000);
+            CheckGameStatus();
+        }
+        catch (Exception ex)
+        {
+            AddLogEntry($"Error launching game: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", $"Error launching game: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CloseGame()
+    {
+        try
+        {
+            lastAction = "Game Closure";
+            AddLogEntry("Closing ARK: Survival Evolved...");
+
+            Process[] processes = Process.GetProcessesByName("ShooterGame");
+            foreach (var process in processes)
+            {
+                process.Kill();
+                process.WaitForExit(5000);
+            }
+
+            CheckGameStatus();
+            AddLogEntry("ARK: Survival Evolved closed successfully");
+        }
+        catch (Exception ex)
+        {
+            AddLogEntry($"Error closing game: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", $"Error closing game: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void AddLogEntry(string message)
+    {
+        actionLog.Insert(0, new LogEntry { Time = DateTime.Now, Message = message });
+
+        // Keep only last 50 entries
+        if (actionLog.Count > 50)
+        {
+            actionLog.RemoveAt(actionLog.Count - 1);
+        }
+    }
+
+    public void Dispose()
+    {
+        statusTimer?.Dispose();
+    }
+
+    private class LogEntry
+    {
+        public DateTime Time { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+}

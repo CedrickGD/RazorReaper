@@ -1,0 +1,726 @@
+﻿@page "/pixel"
+@using System.Diagnostics
+@using System.IO
+
+<div class="app-container">
+    <nav class="sidebar">
+        <div class="brand">
+            <h1>RazorReaper</h1>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/home" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Home
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/server" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    Server
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/ini-changer" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    INI Changer
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/pixel" class="nav-link">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="10.8,1.7 2.5,11.7 10,11.7 9.2,18.3 17.5,8.3 10,8.3 10.8,1.7"></polygon>
+                    </svg>
+                    Pixel Glitch
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/paintings" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Paintings
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/Game" class="nav-link">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1.5" y="3" width="17" height="14" rx="2" />
+                        <path d="M6 8l3 2-3 2" />
+                        <path d="M10.5 12h4" />
+                    </svg>
+                    Game
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Pixel Textures</h1>
+            <p class="page-subtitle">Manage ARK texture files and pixel modifications</p>
+        </header>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; height: calc(100vh - 200px);">
+
+            <div class="content-card" style="height: fit-content;">
+                <h3 class="mb-3 text-red">Delete Texture Files</h3>
+
+                <div style="margin-bottom: 2rem;">
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
+                        Remove custom texture files from your ARK installation. This will delete weapon harpoon textures and related pixel modifications.
+                    </p>
+
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                            <svg style="width: 20px; height: 20px; color: var(--accent-red); margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            <strong style="color: var(--accent-red);">Warning</strong>
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                            This action will permanently delete texture files from your ARK installation.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button class="btn" @onclick="DeleteTextureFiles" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Delete Texture Files
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(statusMessage))
+                {
+                    <div class="mt-3" style="padding: 1rem; background: @GetStatusBackgroundColor(); border-radius: 8px; border-left: 3px solid @GetStatusBorderColor();">
+                        <div style="color: @GetStatusTextColor(); font-weight: 600;">@statusMessage</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(arkPath))
+                {
+                    <div class="mt-3" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-green);">
+                        <div style="color: var(--accent-green); font-weight: 600; margin-bottom: 0.5rem;">ARK Installation Found:</div>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem; word-break: break-all;">@arkPath</div>
+                    </div>
+                }
+            </div>
+
+            <div class="content-card" style="height: fit-content;">
+                <h3 class="mb-3 text-green">Repair Game Files</h3>
+
+                <div style="margin-bottom: 2rem;">
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
+                        After deleting texture files, you can restore them by verifying the integrity of your ARK game files through Steam.
+                    </p>
+
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="feature-tag">🔧 Steam Integration</div>
+                        <div class="feature-tag">📁 File Verification</div>
+                        <div class="feature-tag">🔄 Auto Repair</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+                    <h4 style="color: var(--accent-green); margin-bottom: 1rem; font-weight: 600;">Repair Process</h4>
+                    <div style="display: grid; gap: 1rem;">
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 24px; height: 24px; background: var(--accent-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.8rem; font-weight: bold; color: white;">1</div>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Opens Steam ARK properties</span>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 24px; height: 24px; background: var(--accent-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.8rem; font-weight: bold; color: white;">2</div>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Navigate to "Local Files" tab</span>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 24px; height: 24px; background: var(--accent-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.8rem; font-weight: bold; color: white;">3</div>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Click "Verify integrity of game files"</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button class="btn btn-primary" @onclick="OpenSteamGameProperties">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                        </svg>
+                        Open Steam Properties
+                    </button>
+
+                    <button class="btn btn-secondary" @onclick="OpenArkGameFolder">
+                        <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                        </svg>
+                        Open ARK Game Folder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .feature-tag {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--primary-purple);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .text-red {
+        color: var(--accent-red);
+    }
+
+    .text-green {
+        color: var(--accent-green);
+    }
+</style>
+
+@code {
+    private string statusMessage = "";
+    private string arkPath = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckArkInstallation();
+    }
+
+    private async Task CheckArkInstallation()
+    {
+        try
+        {
+            string? foundPath = ArkUtilities.FindArkPath();
+            if (foundPath != null && Directory.Exists(foundPath))
+            {
+                arkPath = foundPath;
+            }
+            else
+            {
+                arkPath = "";
+            }
+        }
+        catch (Exception)
+        {
+            arkPath = "";
+        }
+    }
+
+    private async Task DeleteTextureFiles()
+    {
+        try
+        {
+            string? arkBasePath = ArkUtilities.FindArkPath();
+
+            if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
+            {
+                statusMessage = "ARK installation not found!";
+                StateHasChanged();
+                return;
+            }
+
+            string shooterGamePath = Path.Combine(arkBasePath, "ShooterGame", "Content", "PrimalEarth");
+            int deletedCount = 0;
+
+                var filesToDelete = new Dictionary<string, string[]>
+            {
+            // ------------WEAPON HARPOON------------ //
+            { Path.Combine(shooterGamePath, "WeaponHarpoon", "Textures"), new[] {
+                  "T_HarpoonProjectile_Net_N.uasset",
+                  "T_HarpoonProjectile_Net_Layered.uasset",
+                  "T_HarpoonProjectile_Net_BC.uasset",
+                  "T_Harpoon_N.uasset",
+                  "T_Harpoon_Layered.uasset",
+                  "T_Arrow_N.uasset",
+                  "T_Arrow_layered.uasset",
+                  "T_Arrow_D.uasset"
+            }},
+            // ------------WEAPON HARPOON------------ //
+            { Path.Combine(shooterGamePath, "WeaponHarpoon"), new[] {
+                  "SK_HarpoonProjectile_Net.uasset",
+                  "SM_Harpoon.uasset",
+                  "SM_HarpoonAmmo_Net.uasset",
+                  "SM_HarpoonProjectile.uasset"
+            } },
+            // ------------WEAPON TEK RIFLE------------ //
+            { Path.Combine(shooterGamePath, "WeaponTekRifle"), new[] {
+                  "M_ScopeOverlay.uasset",
+                  "M_ScopeOverlay_Inst.uasset",
+                  "MF_TekRifle_Lens.uasset"
+            } },
+            // ------------WEAPON TEK RIFLE------------ //
+            { Path.Combine(shooterGamePath, "WeaponTekRifle", "Textures"), new[] {
+                  "T_TekRifle_Colorize_d.uasset",
+                  "T_TekRifle_Colorize_m.uasset",
+                  "T_TekRifle_Layered.uasset",
+                  "T_TekRifle_N.uasset",
+                  "T_TekRifle_Scope_Colorize_d.uasset",
+                  "T_TekRifle_Scope_Colorize_m.uasset",
+                  "T_TekRifle_Scope_Layered.uasset",
+                  "T_TekRifle_Scope_N.uasset"
+            } },
+            // ------------WEAPON METAL SHIELD------------ //
+            { Path.Combine(shooterGamePath, "WeaponShieldMetal"), new[] {
+                  "T_MetalShield_Colorize_d.uasset",
+                  "T_MetalShield_Colorize_m.uasset",
+                  "T_MetalShield_Layered.uasset",
+                  "T_MetalShield_N.uasset"
+            } },
+            // ------------WEAPON METAL PICK------------ //
+            { Path.Combine(shooterGamePath, "WeaponMetalPick"), new[] {
+                  "T_MetalPick_layered.uasset",
+                  "T_MetalPick_Normal_.uasset",
+                  "MetalPick_colorize_d.uasset",
+                  "MetalPick_colorize_m.uasset"
+            } },
+            // ------------WEAPON SHOTGUN------------ //
+            { Path.Combine(shooterGamePath, "WeaponMachinedShotgun"), new[] {
+                  "T_shotgun_FP_Layered.uasset",
+                  "T_shotgun_FP_N.uasset",
+                  "T_shotgunMachined_Colorize_d.uasset",
+                  "T_shotgunMachined_Colorize_m.uasset",
+                  "Shotgun_Machined_Colorize_MIC.uasset",
+                  "T_shotgun__FPV_N.uasset",
+                  "T_shotgun_FPV_Layered.uasset"
+            } },
+            // ------------WEAPON MACHINED SNIPER------------ //
+            { Path.Combine(shooterGamePath, "WeaponMachinedSniper"), new[] {
+                  "T_SniperRifle_Colorize_d.uasset",
+                  "T_SniperRifle_Colorize_m.uasset",
+                  "T_SniperRifle_D.uasset",
+                  "T_SniperRifle_Layered.uasset",
+                  "T_SniperRifle_N.uasset",
+                  "T_SniperScope_Colorize_d.uasset",
+                  "T_SniperScope_Colorize_m.uasset",
+                  "T_SniperScope_Layered.uasset",
+                  "T_SniperScope_N.uasset"
+            } },
+            // ------------WEAPON STONE AXE------------ //
+            { Path.Combine(shooterGamePath, "WeaponHatchet"), new[] {
+                  "Hatchet_normal.uasset",
+                  "Hatchet_Material.uasset"
+            } },
+            // ------------WEAPON COMPOUND BOW------------ //
+            { Path.Combine(shooterGamePath, "WeaponCompoundBow", "Textures"), new[] {
+                  "T_CompoundBow_Colorize_d.uasset",
+                  "T_CompoundBow_Colorize_m.uasset",
+                  "T_CompoundBow_Layered.uasset",
+                  "T_CompoundBow_N.uasset"
+            } },
+            // ------------SADDLE TEK REX------------ //
+            { Path.Combine(shooterGamePath, "TekTier", "tek_rex_saddle"), new[] {
+                  "tek_rex_saddle_Colorize_d.uasset",
+                  "tek_rex_saddle_Colorize_m.uasset",
+                  "tek_rex_saddle_Layered.uasset",
+                  "tek_rex_saddle_N.uasset"
+            } },
+            // ------------SADDLE TEK REX HELMET------------ //
+            { Path.Combine(shooterGamePath, "TekTier", "tek_rex_helmet"), new[] {
+                   "rex_tek_helmet_Colorize_d.uasset",
+                   "rex_tek_helmet_Colorize_m.uasset",
+                   "rex_tek_helmet_Layered.uasset",
+                   "rex_tek_helmet_N.uasset"
+            } },
+            // ------------SPYGLASS------------ //
+            { Path.Combine(shooterGamePath, "WeaponSpyglass", "Textures"), new[] {
+                  "T_Spyglass_D.uasset",
+                  "T_Spyglass_Layered.uasset",
+                  "T_Spyglass_N.uasset"
+            } },
+            // ------------WEAPON METAL SPEAR------------ //
+            { Path.Combine(shooterGamePath, "WeaponMetalSpear", "Pitchfork"), new[] {
+                   "T_Pitchfork_Colorize_d.uasset",
+                   "T_Pitchfork_Layered.uasset",
+                   "T_Pitchfork_M.uasset",
+                   "T_Pitchfork_N.uasset"
+            } },
+            // ------------WEAPON METAL SPEAR------------ //
+            { Path.Combine(shooterGamePath, "WeaponMetalSpear"), new[] {
+                   "T_MetalSpear_Colorize_d.uasset",
+                   "T_MetalSpear_Layered.uasset",
+                   "T_MetalSpear_M.uasset",
+                   "T_MetalSpear_N.uasset"
+            } },
+            // ------------WEAPON CROSSBOW------------ //
+            { Path.Combine(shooterGamePath, "WeaponCrossbow", "Textures"), new[] {
+                   "Crossbow_Arrow_Metal_D.uasset",
+                   "Crossbow_Arrow_Metal_Layered.uasset",
+                   "Crossbow_Arrow_Metal_N.uasset",
+                   "Crossbow_Arrow_Sedative_D.uasset",
+                   "Crossbow_Arrow_Sedative_Layered.uasset",
+                   "Crossbow_Arrow_Sedative_N.uasset",
+                   "Crossbow_Arrow_Stone_D.uasset",
+                   "Crossbow_Arrow_Stone_Layered.uasset",
+                   "Crossbow_Arrow_Stone_N.uasset",
+                   "Crossbow_Colorize_d.uasset",
+                   "Crossbow_Colorize_m.uasset",
+                   "Crossbow_Layered.uasset",
+                   "Crossbow_N.uasset"
+            } },
+            // ------------WEAPON GRAPPLE HOOK------------ //
+            { Path.Combine(shooterGamePath, "WeaponGrapHook"), new[] {
+                  "SM_GrappHook_Arrow.uasset",
+                  "M_Cable.uasset",
+                  "M_HideMesh.uasset",
+                  "T_GrapHook_D.uasset",
+                  "T_GrapHook_Layered.uasset",
+                  "T_GrapHook_N.uasset",
+                  "TempReelInCue.uasset",
+                  "TempReelOutCue.uasset"
+            } },
+            // ------------WEAPON GRAPPLE HOOK------------ //
+            { Path.Combine(shooterGamePath, "WeaponGrapHook", "Projectile"), new[] {
+                  "T_GrapProjectile_D.uasset",
+                  "T_GrapProjectile_Layered.uasset",
+                  "T_GrapProjectile_N.uasset"
+            } },
+            // ------------WEAPON SICKLE------------ //
+            { Path.Combine(shooterGamePath, "WeaponMetalSickle"), new[] {
+                   "MetalSickle_Colorize_m.uasset",
+                   "T_MetalSickle_d.uasset",
+                   "T_MetalSickle_Layered.uasset",
+                   "T_MetalSickle_n.uasset"
+            } },
+            // ------------RIOT SHIELD------------ //
+            { Path.Combine(shooterGamePath, "WeaponRiotShieldTransparent"), new[] {
+                   "SM_TransparentRiotShield.uasset",
+                   "T_TransparentRiotShield_Colorization_d.uasset",
+                   "T_TransparentRiotShield_Colorization_m.uasset",
+                   "T_TransparentRiotShield_LP_D.uasset",
+                   "T_TransparentRiotShield_Colorization_m.uasset",
+                   "T_TransparentRiotShield_LP_D.uasset",
+                   "T_TransparentRiotShield_LP_Layered.uasset",
+                   "T_TransparentRiotShield_LP_N.uasset"
+            } },
+            // ------------WEAPON R LAUNCHER------------ //
+            { Path.Combine(shooterGamePath, "WeaponRocketLauncher", "Textures"), new[] {
+                   "RocketLauncher_d.uasset",
+                   "RocketLauncher_Layered.uasset",
+                   "RocketLauncher_n.uasset",
+                   "T_rocketLauncher_D.uasset",
+                   "T_rocketLauncher_N.uasset",
+                   "T_rocketLauncher_M.uasset",
+                   "T_rocketLauncher_Layered.uasset",
+                   "T_rocketLauncher_Colorize_d.uasset",
+                   "T_rocketLauncher_Colorize_m.uasset"
+            } },
+            // ------------WEAPON ROCKET LAUNCHER------------ //
+            { Path.Combine(shooterGamePath, "WeaponRocketLauncher"), new[] {
+                   "rocket.uasset",
+                   "rocketLauncher_MIC.uasset"
+            } },
+            // ------------ARMOR TEK SUIT------------ //
+            { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Tek"), new[] {
+                   "Tek_Colorize_BaseMIC.uasset",
+                   "Tek_Armor_Emissive_Colorize_MIC.uasset",
+                   "Tek_Male_gloves_FPV_skin_m.uasset",
+                   "Tek_Male_gloves_skin_m.uasset",
+                   "Tek_Male_pants_skin_m.uasset",
+                   "Tek_Male_shirt_skin_m.uasset",
+                   "Tek_jetpack_Colorize_MIC.uasset",
+                   "Tek_shoes_Colorize_MIC.uasset",
+                   "Tek_shirt_Colorize_MIC.uasset",
+                   "Tek_pants_Colorize_MIC.uasset",
+                   "Tek_Armor_Emissive_Colorize_MIC.uasset",
+                   "Tek_gloves_Colorize_MIC.uasset",
+                   "tek_Gloves_FPV_Colorize_MIC.uasset",
+                   "Tek_helmet_Colorize_MIC.uasset"
+            } },
+            // ------------ARMOR TEK SUIT------------ //
+            { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Tek", "Textures"), new[] {
+                   "tek_armor_helmet_Layered.uasset",
+                   "tek_armor_pants_Layered.uasset",
+                   "tek_armor_shirt_Layered.uasset",
+                   "tek_armor_shoes_Layered.uasset",
+                   "tek_armor_gloves_Layered.uasset",
+                   "tek_armor_pants_N.uasset",
+                   "tek_armor_helmet_N.uasset",
+                   "tek_armor_shirt_N.uasset",
+                   "tek_armor_shoes_N.uasset",
+                   "tek_armor_gloves_N.uasset",
+                   "tek_armor_shirt_D.uasset",
+                   "Tek_Helmet_LightingMask.uasset",
+                   "Tek_Helmet_N.uasset"
+            } },
+            // ------------ARMOR TEK SUIT------------ //
+            { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Tek", "Colorization"), new[] {
+                   "jetpack_Colorize_d.uasset",
+                   "jetpack_Colorize_m.uasset",
+                   "tek_armor_FPV_Colorize_d.uasset",
+                   "tek_armor_FPV_Colorize_m.uasset",
+                   "tek_armor_gloves_Colorize_d.uasset",
+                   "tek_armor_gloves_Colorize_m.uasset",
+                   "tek_armor_helmet_Colorize_d.uasset",
+                   "tek_armor_helmet_Colorize_m.uasset",
+                   "tek_armor_pants_Colorize_d.uasset",
+                   "tek_armor_pants_Colorize_m.uasset",
+                   "tek_armor_shirt_Colorize_d.uasset",
+                   "tek_armor_shirt_Colorize_m.uasset",
+                   "tek_armor_shoes_Colorize_d.uasset",
+                   "tek_armor_shoes_Colorize_m.uasset"
+            } },
+            // ------------WEAPON MATEL AXE------------ //
+            { Path.Combine(shooterGamePath, "WeaponMetalAxe"), new[] {
+                   "T_MetalAxe_Normal.uasset",
+                   "T_MetalAxe_Layered.uasset",
+                   "MetalAxe_Colorize_m.uasset",
+                   "MetalAxe_Colorize_d.uasset",
+                   "axe.uasset"
+            } },
+            // ------------WEAPON SILENCER------------ //
+            { Path.Combine(shooterGamePath, "WeaponSilencer"), new[] {
+                   "MI_Silencer.uasset",
+                   "Silencer_colorize_m.uasset",
+                   "SM_Silencer.uasset",
+                   "T_Silencer_D.uasset",
+                   "T_Silencer_Layered.uasset",
+                   "T_Silencer_N.uasset"
+            } },
+            // ------------WEAPON BOLA------------ //
+            { Path.Combine(shooterGamePath, "WeaponBola"), new[] {
+                   "SM_Bola_thrown.uasset",
+                   "SM_Bola_wrapped.uasset",
+                   "T_Bola_D.uasset",
+                   "T_Bola_Layered.uasset",
+                   "T_Bola_N.uasset"
+            } },
+            // ------------WEAPON HARPOON------------ //
+            { Path.Combine(shooterGamePath, "WeaponHarpoon", "Projectile"), new[] {
+                   "HarpoonProjectile_Net.uasset",
+                   "HarpoonProjectile_Net_Inst.uasset"
+            } },
+            // ------------WEAPON C4------------ //
+            { Path.Combine(shooterGamePath, "WeaponC4"), new[] {
+                   "C4_FPV_RIG.uasset",
+                   "C4_TPV_RIG.uasset",
+                   "detonator_TPV_RIG.uasset",
+                   "C4_explosive.uasset"
+            } },
+            // ------------WEAPON C4------------ //
+            { Path.Combine(shooterGamePath, "WeaponC4", "Textures"), new[] {
+                   "C4Detonator_E.uasset",
+                   "C4Detonator_layered.uasset",
+                   "C4Detonator_N.uasset",
+                   "Explosive_BC.uasset",
+                   "Explosive_E.uasset",
+                   "Explosive_Layered.uasset",
+                   "Explosive_N.uasset"
+            } },
+            // ------------WEAPON C4------------ //
+            { Path.Combine(shooterGamePath, "WeaponC4", "Colorization"), new[] {
+                   "C4Detonator_colorize_d.uasset",
+                   "C4Detonator_colorize_m.uasset"
+            } },
+            // ------------WEAPON C4------------ //
+            { Path.Combine(shooterGamePath, "WeaponC4", "Materials"), new[] {
+                   "C4Detonator_Colorize_MIC.uasset",
+                   "Explosive_MlC_Active.uasset",
+                   "Explosive_MlC.uasset"
+            } },
+           // ------------ARMOR EXO SUIT------------ //
+            { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "TekGen2"), new[] {
+                   "MIC_TekSuitGen2_Colorized.uasset",
+                   "MIC_TekSuitGen2_Emissive.uasset",
+                   "MIC_TekSuitGen2_Gloves_Colorized.uasset",
+                   "MIC_TekSuitGen2_Helmet_Colorized.uasset",
+                   "MIC_TekSuitGen2_Jetpack_Colorized.uasset",
+                   "MIC_TekSuitGen2_Pants_Colorized.uasset",
+                   "MIC_TekSuitGen2_Shirt_Colorized.uasset",
+                   "MIC_TekSuitGen2_Shoes_Colorized.uasset",
+                   "Tek_Gen2_armor_male_FPV.uasset",
+                   "tekGen2_armor_male_gloves.uasset",
+                   "tekGen2_armor_male_helmet.uasset",
+                   "tekGen2_armor_male_pants.uasset",
+                   "tekGen2_armor_male_shirt.uasset",
+                   "tekGen2_armor_male_shoes.uasset",
+                   ""
+            } },
+            // ------------ARMOR EXO SUIT------------ //
+            { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "TekGen2", "Textures"), new[] {
+                   "T_TekSuitGen2_Gloves_Colorized_D.uasset",
+                   "T_TekSuitGen2_Gloves_Colorized_M.uasset",
+                   "T_TekSuitGen2_Gloves_N.uasset",
+                   "T_TekSuitGen2_Gloves_Layered.uasset",
+                   "T_TekSuitGen2_Helmet_Colorized_D.uasset",
+                   "T_TekSuitGen2_Helmet_Colorized_M.uasset",
+                   "T_TekSuitGen2_Helmet_N.uasset",
+                   "T_TekSuitGen2_Helmet_Layered.uasset",
+                   "T_TekSuitGen2_Jetpack_Colorized_D.uasset",
+                   "T_TekSuitGen2_Jetpack_Colorized_M.uasset",
+                   "T_TekSuitGen2_Jetpack_N.uasset",
+                   "T_TekSuitGen2_Jetpack_Layered.uasset",
+                   "T_TekSuitGen2_Pants_Colorized_D.uasset",
+                   "T_TekSuitGen2_Pants_Colorized_M.uasset",
+                   "T_TekSuitGen2_Pants_N.uasset",
+                   "T_TekSuitGen2_Pants_Layered.uasset",
+                   "T_TekSuitGen2_Shirt_Colorized_D.uasset",
+                   "T_TekSuitGen2_Shirt_Colorized_M.uasset",
+                   "T_TekSuitGen2_Shirt_N.uasset",
+                   "T_TekSuitGen2_Shirt_Layered.uasset",
+                   "T_TekSuitGen2_Shoes_Colorized_D.uasset",
+                   "T_TekSuitGen2_Shoes_Colorized_M.uasset",
+                   "T_TekSuitGen2_Shoes_N.uasset"
+            } },
+            // ------------WEAPON R LAUNCHER------------ //
+            { Path.Combine(shooterGamePath, "Test_Henrique", "RocketLauncher", "Textures"), new[] {
+                   "T_RocketLauncher_N.uasset",
+                   "T_RocketLauncher_Layered.uasset",
+                   "T_RocketLauncher_E.uasset",
+                   "T_RocketLauncher_Colorize_m.uasset",
+                   "T_RocketLauncher_Colorize_d.uasset"
+            } },
+            // ------------WEAPON R LAUNCHER------------ //
+            { Path.Combine(shooterGamePath, "Test_Henrique", "RocketLauncher"), new[] {
+                   "RocketLauncher_Colorize_Emissive_MIC.uasset"
+            } },
+            // ------------WEAPON LASSO------------ //
+            { Path.Combine(shooterGamePath, "WeaponLasso"), new[] {
+                   "T_Lasso_Layered.uasset",
+                   "T_Lasso_N.uasset",
+                   "T_Lasso_D.uasset",
+                   "SM_Lasso_thrown.uasset",
+                   "SM_Lasso_spinning.uasset",
+                   "MM_Lasso.uasset"
+            } },
+            // ------------WEAPON TORCH------------ //
+            { Path.Combine(shooterGamePath, "WeaponTorch"), new[] {
+                   "Torch_DroppedItem_SM.uasset",
+                   "Torch_SM.uasset"
+            } },
+            // ------------WEAPON TORCH------------ //
+            { Path.Combine(shooterGamePath, "WeaponTorch", "Textures"), new[] {
+                   "Torch_layered.uasset",
+                   "torch_N.uasset"
+            } },
+            // ------------WEAPON TORCH------------ //
+            { Path.Combine(shooterGamePath, "WeaponTorch", "colorization"), new[] {
+                   "Torch_colorize_d.uasset",
+                   "Torch_colorize_m.uasset"
+            } }
+        };
+
+            foreach (var folder in filesToDelete)
+            {
+                string folderPath = folder.Key;
+                if (!Directory.Exists(folderPath))
+                    continue;
+
+                foreach (string fileName in folder.Value)
+                {
+                    string filePath = Path.Combine(folderPath, fileName);
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                        deletedCount++;
+                    }
+                }
+            }
+
+            statusMessage = $"Successfully deleted {deletedCount} texture files";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error deleting texture files: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void OpenSteamGameProperties()
+    {
+        try
+        {
+            string steamUrl = "steam://nav/games/details/346110";
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = steamUrl,
+                UseShellExecute = true
+            });
+
+            statusMessage = "Opening Steam ARK properties. Navigate to 'Local Files' tab and click 'Verify integrity of game files'";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error opening Steam properties: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void OpenArkGameFolder()
+    {
+        try
+        {
+            string? arkGamePath = ArkUtilities.FindArkPath();
+
+            if (string.IsNullOrEmpty(arkGamePath) || !Directory.Exists(arkGamePath))
+            {
+                statusMessage = "ARK game folder not found!";
+                StateHasChanged();
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = arkGamePath,
+                UseShellExecute = true
+            });
+
+            statusMessage = "Opened ARK game folder";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error opening ARK folder: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private string GetStatusBackgroundColor()
+    {
+        if (statusMessage.Contains("Error") || statusMessage.Contains("not found"))
+            return "rgba(239, 68, 68, 0.1)";
+        else if (statusMessage.Contains("deleted") || statusMessage.Contains("Opened"))
+            return "rgba(16, 185, 129, 0.1)";
+        else
+            return "rgba(245, 158, 11, 0.1)";
+    }
+
+    private string GetStatusBorderColor()
+    {
+        if (statusMessage.Contains("Error") || statusMessage.Contains("not found"))
+            return "var(--accent-red)";
+        else if (statusMessage.Contains("deleted") || statusMessage.Contains("Opened"))
+            return "var(--accent-green)";
+        else
+            return "#f59e0b";
+    }
+
+    private string GetStatusTextColor()
+    {
+        if (statusMessage.Contains("Error") || statusMessage.Contains("not found"))
+            return "var(--accent-red)";
+        else if (statusMessage.Contains("deleted") || statusMessage.Contains("Opened"))
+            return "var(--accent-green)";
+        else
+            return "#f59e0b";
+    }
+}
