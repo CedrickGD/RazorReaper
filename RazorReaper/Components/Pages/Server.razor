@@ -3,7 +3,6 @@
 @using System.Net.NetworkInformation
 @using System.Net.Sockets
 @using System.Text.Json
-@using System.Text.RegularExpressions
 @using Microsoft.Win32
 @inject IJSRuntime JSRuntime
 
@@ -388,7 +387,7 @@
         }
     }
 
-    private async Task<ServerQueryResult> QuerySourceServer(string ip, int port)
+    private async Task<ServerQueryResult?> QuerySourceServer(string ip, int port)
     {
         try
         {
@@ -497,9 +496,10 @@
 
     private async Task AddToFavorites()
     {
+#if WINDOWS
         try
         {
-            string steamPath = GetSteamInstallPath();
+            string? steamPath = GetSteamInstallPath();
             if (steamPath == null)
             {
                 statusMessage = "❌ Steam installation not found";
@@ -513,6 +513,9 @@
         {
             statusMessage = $"❌ Failed to add to favorites: {ex.Message}";
         }
+#else
+        statusMessage = "⚠️ Adding favorites is only supported on Windows.";
+#endif
         StateHasChanged();
     }
 
@@ -548,16 +551,26 @@
         showTroubleshooting = !showTroubleshooting;
     }
 
-    private string GetSteamInstallPath()
+    private string? GetSteamInstallPath()
     {
+#if WINDOWS
         try
         {
-            object steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null);
+            object? steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null);
             if (steamPath == null)
+            {
                 steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null);
+            }
+            steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null);
             return steamPath as string;
         }
-        catch { return null; }
+        catch
+        {
+            return null;
+        }
+#else
+        return null;
+#endif
     }
 
     private string GetStatusBg()
