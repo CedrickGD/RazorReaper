@@ -192,12 +192,13 @@
     private string statusMessage = "";
     private string arkPath = "";
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        await CheckArkInstallation();
+        CheckArkInstallation();
+        return Task.CompletedTask;
     }
 
-    private async Task CheckArkInstallation()
+    private void CheckArkInstallation()
     {
         try
         {
@@ -217,7 +218,7 @@
         }
     }
 
-    private async Task DeleteTextureFiles()
+    private void DeleteTextureFiles()
     {
         try
         {
