@@ -310,12 +310,13 @@
     private int fileCount = 0;
     private bool showArkInfo = false;
 
-    protected override async Task OnInitializedAsync()
+protected override Task OnInitializedAsync()
     {
-        await CheckFolderStatus();
+        CheckFolderStatus();
+        return Task.CompletedTask;
     }
 
-    private async Task OpenMyPaintingsFolder()
+    private void OpenMyPaintingsFolder()
     {
         try
         {
@@ -347,7 +348,7 @@
             }
 
             folderExists = true;
-            await CountFiles();
+            CountFiles();
 
             Process.Start(new ProcessStartInfo
             {
@@ -366,7 +367,7 @@
         }
     }
 
-    private async Task CreateMyPaintingsFolder()
+    private void CreateMyPaintingsFolder()
     {
         try
         {
@@ -399,7 +400,7 @@
             {
                 statusMessage = "MyPaintings folder already exists!";
                 folderExists = true;
-                await CountFiles();
+                CountFiles();
             }
             else
             {
@@ -419,7 +420,7 @@
     }
 
 
-    private async Task CheckFolderStatus()
+    private void CheckFolderStatus()
     {
         try
         {
@@ -434,7 +435,7 @@
 
                 if (folderExists)
                 {
-                    await CountFiles();
+                    CountFiles();
                 }
                 else
                 {
@@ -458,7 +459,7 @@
         }
     }
 
-    private async Task CountFiles()
+    private void CountFiles()
     {
         try
         {
