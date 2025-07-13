@@ -1,0 +1,409 @@
+﻿@page "/credits"
+@using System.Diagnostics
+
+<div class="app-container">
+    <nav class="sidebar">
+        <div class="brand">
+            <h1>RazorReaper</h1>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/home" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    </svg>
+                    Home
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/server" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+                    </svg>
+                    Server
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/ini-changer" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    INI Changer
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/pixel" class="nav-link">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="10.8,1.7 2.5,11.7 10,11.7 9.2,18.3 17.5,8.3 10,8.3 10.8,1.7"></polygon>
+                    </svg>
+                    Pixel Glitch
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/paintings" class="nav-link">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Paintings
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/game" class="nav-link">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1.5" y="3" width="17" height="14" rx="2" />
+                        <path d="M6 8l3 2-3 2" />
+                        <path d="M10.5 12h4" />
+                    </svg>
+                    Game
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/credits" class="nav-link active">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    Credits
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Credits</h1>
+            <p class="page-subtitle">Developer Information & Contact</p>
+        </header>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; height: calc(100vh - 200px);">
+
+            <!-- Developer Info -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <!-- Developer -->
+                <div class="content-card">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="developer-avatar">
+                            <svg style="width: 60px; height: 60px; color: var(--primary-purple);" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 style="color: var(--accent-green); margin-bottom: 0.5rem;">RazorReaper Developer</h2>
+                            <p style="color: var(--text-secondary); margin: 0;">ARK: Survival Evolved Tools Developer</p>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 1.5rem;">
+                        <h3 style="color: var(--primary-purple); margin-bottom: 1rem;">Built With</h3>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <span class="tech-badge">C# Blazor</span>
+                            <span class="tech-badge">ASP.NET Core</span>
+                            <span class="tech-badge">JavaScript</span>
+                            <span class="tech-badge">CSS3</span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Support -->
+                <div class="content-card">
+                    <h3 style="color: var(--accent-red); margin-bottom: 1rem;">Support</h3>
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                            <svg style="width: 24px; height: 24px; color: var(--accent-red);" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            <h4 style="color: var(--accent-red); margin: 0;">Need Help?</h4>
+                        </div>
+                        <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                            Found a bug or need support? Join our Discord server or reach out through any social media channel.
+                        </p>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <span class="support-tag">Bug Reports</span>
+                            <span class="support-tag">Feature Requests</span>
+                            <span class="support-tag">General Support</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Social Links & Contact -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <!-- Social Media Links -->
+                <div class="content-card">
+                    <h3 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Connect</h3>
+                    <div style="display: grid; gap: 1rem;">
+
+                        <button class="social-button discord" @onclick="OpenDiscord">
+                            <div class="social-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419-.0002 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9554 2.4189-2.1568 2.4189Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">Discord</div>
+                                <div style="font-size: 0.85rem; opacity: 0.8;">Community & support</div>
+                            </div>
+                        </button>
+
+                        <button class="social-button youtube" @onclick="OpenYouTube">
+                            <div class="social-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">YouTube</div>
+                                <div style="font-size: 0.85rem; opacity: 0.8;">Tutorials & videos</div>
+                            </div>
+                        </button>
+
+                        <button class="social-button telegram" @onclick="OpenTelegram">
+                            <div class="social-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">Telegram</div>
+                                <div style="font-size: 0.85rem; opacity: 0.8;">Direct contact</div>
+                            </div>
+                        </button>
+
+                        <button class="social-button github" @onclick="OpenGitHub">
+                            <div class="social-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">GitHub</div>
+                                <div style="font-size: 0.85rem; opacity: 0.8;">Source code</div>
+                            </div>
+                        </button>
+
+                        <button class="social-button steam" @onclick="OpenSteam">
+                            <div class="social-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.62 20.51 6.363 24 11.979 24c6.624 0 11.99-5.366 11.99-11.99C23.97 5.384 18.603.001 11.979.001zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.958-1.497 1.411-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">Steam</div>
+                                <div style="font-size: 0.85rem; opacity: 0.8;">Gaming profile</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .developer-avatar {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary-purple), var(--accent-green));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+    }
+
+    .tech-badge {
+        background: rgba(139, 92, 246, 0.2);
+        color: var(--primary-purple);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .support-tag {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--accent-red);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .social-button {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--background-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: left;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .social-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .social-button:hover::before {
+            left: 100%;
+        }
+
+        .social-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .social-button.discord {
+            border-color: #5865f2;
+            color: #5865f2;
+        }
+
+            .social-button.discord:hover {
+                background: rgba(88, 101, 242, 0.1);
+                box-shadow: 0 8px 25px rgba(88, 101, 242, 0.3);
+            }
+
+        .social-button.youtube {
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+
+            .social-button.youtube:hover {
+                background: rgba(255, 0, 0, 0.1);
+                box-shadow: 0 8px 25px rgba(255, 0, 0, 0.3);
+            }
+
+        .social-button.telegram {
+            border-color: #0088cc;
+            color: #0088cc;
+        }
+
+            .social-button.telegram:hover {
+                background: rgba(0, 136, 204, 0.1);
+                box-shadow: 0 8px 25px rgba(0, 136, 204, 0.3);
+            }
+
+        .social-button.github {
+            border-color: #f0f6fc;
+            color: #f0f6fc;
+        }
+
+            .social-button.github:hover {
+                background: rgba(240, 246, 252, 0.1);
+                box-shadow: 0 8px 25px rgba(240, 246, 252, 0.2);
+            }
+
+        .social-button.steam {
+            border-color: #66c0f4;
+            color: #66c0f4;
+        }
+
+            .social-button.steam:hover {
+                background: rgba(102, 192, 244, 0.1);
+                box-shadow: 0 8px 25px rgba(102, 192, 244, 0.3);
+            }
+
+    .social-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .social-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+</style>
+
+@code {
+    private void OpenDiscord()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://discord.gg/BmgxnjqDfE",
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    private void OpenYouTube()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://youtube.com/@ISG_3332",
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    private void OpenTelegram()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://t.me/isg3332",
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    private void OpenGitHub()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/CedrickGD",
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    private void OpenSteam()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://steamcommunity.com/profiles/76561199154511879/",
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+}
