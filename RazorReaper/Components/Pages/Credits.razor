@@ -1,8 +1,8 @@
 ﻿@page "/credits"
 @using System.Diagnostics
+@using RazorReaper.Components.Shared
 
 <div class="app-container">
-    <!-- Replace the entire navbar with shared component -->
     <RazorReaper.Components.Shared.SharedNavbar />
 
     <main class="main-content">
@@ -13,10 +13,8 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; height: calc(100vh - 200px);">
 
-            <!-- Developer Info -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
 
-                <!-- Developer -->
                 <div class="content-card">
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
                         <div class="developer-avatar">
@@ -41,7 +39,6 @@
                     </div>
                 </div>
 
-                <!-- Support -->
                 <div class="content-card">
                     <h3 style="color: var(--accent-red); margin-bottom: 1rem;">Support</h3>
                     <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1.5rem;">
@@ -64,10 +61,8 @@
 
             </div>
 
-            <!-- Social Links & Contact -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
 
-                <!-- Social Media Links -->
                 <div class="content-card">
                     <h3 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Connect</h3>
                     <div style="display: grid; gap: 1rem;">

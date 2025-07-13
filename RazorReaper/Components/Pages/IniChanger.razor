@@ -1,6 +1,6 @@
 ﻿@page "/ini-changer"
 @using Microsoft.Win32
-
+@using RazorReaper.Components.Shared
 
 <div class="app-container">
     <RazorReaper.Components.Shared.SharedNavbar />
@@ -13,7 +13,6 @@
 
         <div style="display: grid; grid-template-columns: 300px 1fr; gap: 2rem; height: calc(100vh - 200px);">
 
-            <!-- Left Side - Control Buttons -->
             <div class="content-card" style="height: fit-content;">
                 <h3 class="mb-3 text-purple">File Operations</h3>
 
@@ -68,10 +67,8 @@
                 }
             </div>
 
-            <!-- Right Side - INI Content and Presets -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
 
-                <!-- Preset INI Options -->
                 <div class="content-card">
                     <h3 class="mb-3 text-green">Preset INI Configurations</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -86,7 +83,6 @@
                     </div>
                 </div>
 
-                <!-- INI Content Display -->
                 <div class="content-card" style="flex: 1; display: flex; flex-direction: column;">
                     <h3 class="mb-3">INI File Content</h3>
                     <textarea @bind="currentIniContent"

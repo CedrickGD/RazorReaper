@@ -65,7 +65,6 @@
             </li>
         </ul>
 
-        <!-- Credits at the bottom -->
         <ul class="nav-menu nav-bottom">
             <li class="nav-item">
                 <a href="/credits" class="nav-link @GetActiveClass("/credits")">
@@ -82,14 +81,11 @@
 @code {
     private string GetActiveClass(string href)
     {
-        // Get current path from URL
         var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
 
-        // Handle root path
         if (string.IsNullOrEmpty(currentPath) && href == "/home")
             return "active";
 
-        // Handle other paths
         if (currentPath.StartsWith(href.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
             return "active";
 
