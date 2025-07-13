@@ -53,7 +53,7 @@
 
 - [.NET SDK 9.0.300 (Windows x64)](https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.300/dotnet-sdk-9.0.300-win-x64.exe) **(required)**
 
-### 💾 [Download Latest Release](https://github.com/CedrickGD/RazorReaper/releases/tag/v1.0.0)
+### 💾 [Download Latest Release](https://github.com/CedrickGD/RazorReaper/releases/tag/v1.1.0)
 
 1. Download the `.zip` from the release page  
 2. Extract it with Windows 11 built-in tool or [WinRAR](https://www.win-rar.com/start.html?&L=0)  
