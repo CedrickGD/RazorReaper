@@ -1,0 +1,123 @@
+﻿/* Enhanced Navbar Styles - Based on Credits page design */
+
+/* Override existing sidebar to match Credits styling */
+.sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    width: 250px !important;
+    background: var(--background-sidebar) !important;
+    border-right: 1px solid var(--border-color) !important;
+    padding: 0 !important;
+}
+
+.brand {
+    padding: 1.5rem !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    flex-shrink: 0 !important;
+}
+
+.nav-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+    padding: 1rem 0;
+}
+
+.nav-menu {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+}
+
+.nav-bottom {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.nav-item {
+    padding: 0 1rem !important;
+}
+
+.nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+    color: var(--text-secondary) !important;
+    text-decoration: none !important;
+    border-radius: 8px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+    .nav-link::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: -100% !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent) !important;
+        transition: left 0.3s ease !important;
+    }
+
+    .nav-link:hover::before {
+        left: 100% !important;
+    }
+
+    .nav-link:hover {
+        color: var(--text-primary) !important;
+        background: rgba(139, 92, 246, 0.1) !important;
+        transform: translateX(2px) !important;
+    }
+
+    .nav-link.active {
+        color: var(--primary-purple) !important;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05)) !important;
+        border-left: 3px solid var(--primary-purple) !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2) !important;
+    }
+
+.nav-icon {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Remove any conflicting styles */
+.nav-link.active::after {
+    display: none !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .nav-content {
+        height: auto;
+    }
+
+    .nav-bottom {
+        margin-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+    }
+
+    .nav-link {
+        justify-content: flex-start !important;
+        text-align: left !important;
+    }
+
+    .nav-icon {
+        margin-right: 0.75rem !important;
+        margin-bottom: 0 !important;
+    }
+}
