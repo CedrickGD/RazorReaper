@@ -23,7 +23,7 @@
                     <div class="stat-label">ARK Installation</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value text-purple">@configFilesFound</div>
+                    <div class="stat-value text-white">@configFilesFound</div>
                     <div class="stat-label">Config Files Found</div>
                 </div>
                 <div class="stat-card">
@@ -182,7 +182,7 @@
                 <div class="path-item">
                     <label>Config Directory:</label>
                     <span class="path-value">@configPath</span>
-                    <button class="btn-icon text-purple" title="Open in Explorer">
+                    <button class="btn-icon text-white" title="Open in Explorer">
                         <svg fill="currentColor" viewBox="0 0 20 20" width="16" height="16">
                             <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
                         </svg>
@@ -220,10 +220,17 @@
     .stat-card {
         text-align: center;
         padding: 1rem;
-        background: rgba(139, 92, 246, 0.1);
+        background: rgba(255, 255, 255, 0.05);
         border-radius: 8px;
-        border: 1px solid rgba(139, 92, 246, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
     }
+
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
 
     .stat-value {
         font-size: 1.5rem;
@@ -238,21 +245,21 @@
 
     .action-card {
         padding: 1.5rem;
-        background: rgba(139, 92, 246, 0.05);
+        background: rgba(255, 255, 255, 0.05);
         border-radius: 12px;
-        border: 1px solid rgba(139, 92, 246, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         text-align: center;
         transition: all 0.3s ease;
     }
 
         .action-card:hover {
-            background: rgba(139, 92, 246, 0.1);
-            border-color: rgba(139, 92, 246, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
         }
 
     .action-icon {
-        color: var(--primary-purple);
+        color: var(--text-primary);
         margin-bottom: 1rem;
         display: flex;
         justify-content: center;
@@ -274,7 +281,14 @@
         background: rgba(16, 185, 129, 0.05);
         border-radius: 8px;
         border: 1px solid rgba(16, 185, 129, 0.1);
+        transition: all 0.3s ease;
     }
+
+        .preset-card:hover {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.2);
+            transform: translateY(-2px);
+        }
 
     .preset-name {
         color: var(--accent-green);
@@ -295,12 +309,13 @@
     }
 
     .tag {
-        background: rgba(139, 92, 246, 0.2);
-        color: var(--primary-purple);
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 500;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .activity-feed {
@@ -316,21 +331,19 @@
         padding: 1rem;
         border-radius: 8px;
         border-left: 3px solid;
+        background: rgba(255, 255, 255, 0.03);
     }
 
         .activity-item.success {
-            background: rgba(16, 185, 129, 0.1);
             border-left-color: var(--accent-green);
         }
 
         .activity-item.warning {
-            background: rgba(245, 158, 11, 0.1);
             border-left-color: #f59e0b;
         }
 
         .activity-item.info {
-            background: rgba(139, 92, 246, 0.1);
-            border-left-color: var(--primary-purple);
+            border-left-color: var(--text-primary);
         }
 
     .activity-icon {
@@ -345,6 +358,7 @@
     .activity-title {
         font-weight: 600;
         margin-bottom: 0.25rem;
+        color: var(--text-primary);
     }
 
     .activity-time {
@@ -363,8 +377,9 @@
         align-items: center;
         gap: 1rem;
         padding: 0.75rem;
-        background: rgba(139, 92, 246, 0.05);
+        background: rgba(255, 255, 255, 0.05);
         border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
         .path-item label {
@@ -391,7 +406,7 @@
     }
 
         .btn-icon:hover {
-            background: rgba(139, 92, 246, 0.1);
+            background: rgba(255, 255, 255, 0.1);
         }
 
     .text-warning {

@@ -1,27 +1,25 @@
 ﻿:root {
-    /* Color Variables */
-    --primary-purple: #8b5cf6;
-    --dark-purple: #6d28d9;
-    --light-purple: #a78bfa;
+    /* NEW Black/White Color Variables */
+    --primary-color: #ffffff;
+    --secondary-color: #000000;
+    --background-dark: #0a0a0a;
+    --background-card: rgba(26, 26, 26, 0.9);
+    --background-sidebar: rgba(17, 17, 17, 0.95);
+    --background-hover: #222222;
+    /* Text Colors */
+    --text-primary: #ffffff;
+    --text-secondary: #888888;
+    /* Border & Effects */
+    --border-color: #333333;
+    --shadow-dark: rgba(0, 0, 0, 0.5);
+    /* Keep your existing functional colors */
     --accent-green: #10b981;
     --dark-green: #059669;
     --light-green: #34d399;
     --accent-red: #ef4444;
     --accent-blue: #3b82f6;
     --accent-orange: #f59e0b;
-    /* Background Colors */
-    --background-dark: #0f0f23;
-    --background-card: #1a1a2e;
-    --background-sidebar: #16213e;
-    --background-hover: #16213e;
-    /* Text Colors */
-    --text-primary: #ffffff;
-    --text-secondary: #a1a1aa;
-    /* Border & Effects */
-    --border-color: #374151;
-    --glow-purple: rgba(139, 92, 246, 0.5);
     --glow-green: rgba(16, 185, 129, 0.5);
-    --shadow-dark: rgba(0, 0, 0, 0.5);
 }
 
 /* ===== GLOBAL RESET ===== */
@@ -45,11 +43,22 @@ html {
     overflow: hidden;
 }
 
+/* ===== NETWORK BACKGROUND CANVAS ===== */
+#network-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
 /* ===== MAIN LAYOUT ===== */
 .app-container {
     display: flex;
     height: 100vh;
-    background: linear-gradient(135deg, var(--background-dark) 0%, #1a1a2e 100%);
+    background: linear-gradient(135deg, var(--background-dark) 0%, #1a1a1a 100%);
     overflow: hidden;
 }
 
@@ -60,6 +69,7 @@ html {
     height: 100vh !important;
     width: 250px !important;
     background: var(--background-sidebar) !important;
+    backdrop-filter: blur(10px) !important;
     border-right: 1px solid var(--border-color) !important;
     padding: 0 !important;
     position: fixed;
@@ -80,7 +90,7 @@ html {
     .brand h1 {
         font-size: 1.75rem !important;
         font-weight: 700 !important;
-        background: linear-gradient(135deg, var(--primary-purple), var(--accent-green)) !important;
+        background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)) !important;
         background-clip: text !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
@@ -141,7 +151,7 @@ html {
         left: -100% !important;
         width: 100% !important;
         height: 100% !important;
-        background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent) !important;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent) !important;
         transition: left 0.5s ease !important;
     }
 
@@ -151,22 +161,23 @@ html {
 
     .nav-link:hover {
         color: var(--text-primary) !important;
-        background: rgba(139, 92, 246, 0.15) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
         transform: translateX(4px) !important;
-        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3) !important;
-        border-left-color: rgba(139, 92, 246, 0.5) !important;
+        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1) !important;
+        border-left-color: rgba(255, 255, 255, 0.3) !important;
     }
 
-    /* ENHANCED ACTIVE STATE */
+    /* ENHANCED ACTIVE STATE WITH YOUR GREEN DOT */
     .nav-link.active {
-        color: var(--primary-purple) !important;
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1)) !important;
-        border-left: 3px solid var(--primary-purple) !important;
+        color: var(--text-primary) !important;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)) !important;
+        border-left: 3px solid var(--text-primary) !important;
         font-weight: 600 !important;
-        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3) !important;
+        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2) !important;
         transform: translateX(4px) !important;
     }
 
+        /* YOUR GREEN DOT - KEEPING IT! */
         .nav-link.active::after {
             content: '' !important;
             position: absolute !important;
@@ -201,6 +212,7 @@ html {
     position: relative !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    z-index: 10 !important;
 }
 
     .main-content::before {
@@ -210,9 +222,9 @@ html {
         left: 250px;
         right: 0;
         bottom: 0;
-        background: radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+        background: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
         pointer-events: none;
-        z-index: -1;
+        z-index: 2;
     }
 
 /* ===== PAGE CONTENT ===== */
@@ -241,6 +253,7 @@ html {
 
 .content-card {
     background: var(--background-card);
+    backdrop-filter: blur(10px);
     border-radius: 16px;
     padding: 2rem;
     margin-bottom: 2rem;
@@ -258,15 +271,15 @@ html {
         left: 0;
         right: 0;
         height: 2px;
-        background: linear-gradient(90deg, var(--primary-purple), var(--accent-green));
+        background: linear-gradient(90deg, var(--text-primary), var(--text-secondary));
         opacity: 0;
         transition: opacity 0.3s ease;
     }
 
     .content-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(139, 92, 246, 0.1);
-        border-color: var(--primary-purple);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.1);
+        border-color: var(--text-primary);
     }
 
         .content-card:hover::before {
@@ -290,15 +303,15 @@ html {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-purple), var(--dark-purple));
-    color: white;
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    background: linear-gradient(135deg, var(--text-primary), #cccccc);
+    color: var(--background-dark);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
 }
 
     .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
-        background: linear-gradient(135deg, var(--light-purple), var(--primary-purple));
+        box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+        background: linear-gradient(135deg, #cccccc, var(--text-primary));
     }
 
 .btn-secondary {
@@ -338,8 +351,8 @@ html {
     text-align: center;
 }
 
-.text-purple {
-    color: var(--primary-purple);
+.text-white {
+    color: var(--text-primary);
 }
 
 .text-green {
@@ -394,12 +407,6 @@ html {
 }
 
 /* ===== SCROLLBAR FIXES ===== */
-/* Allow scrolling but prevent horizontal overflow */
-.main-content {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
-
 /* Only show scrollbar on sidebar */
 .sidebar::-webkit-scrollbar {
     width: 6px;
@@ -410,12 +417,12 @@ html {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--primary-purple), var(--accent-green));
+    background: linear-gradient(180deg, var(--text-primary), var(--text-secondary));
     border-radius: 3px;
 }
 
     .sidebar::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, var(--light-purple), var(--light-green));
+        background: linear-gradient(180deg, #cccccc, var(--text-primary));
     }
 
 /* Main content scrollbar */
@@ -428,12 +435,12 @@ html {
 }
 
 .main-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--primary-purple), var(--accent-green));
+    background: linear-gradient(180deg, var(--text-primary), var(--text-secondary));
     border-radius: 4px;
 }
 
     .main-content::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, var(--light-purple), var(--light-green));
+        background: linear-gradient(180deg, #cccccc, var(--text-primary));
     }
 
 /* Hide global scrollbar */
@@ -562,7 +569,7 @@ html {
     font-size: 0.9rem;
 }
 
-/* Game Actions - Small, compact buttons */
+/* Game Actions */
 .game-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -617,14 +624,14 @@ html {
     }
 
     .game-btn.primary {
-        border-color: var(--primary-purple);
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+        border-color: var(--text-primary);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
     }
 
         .game-btn.primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
-            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
-            color: var(--primary-purple);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
         }
 
     .game-btn.success {

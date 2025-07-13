@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>RazorReaper</title>
     <base href="/" />
-    <!-- ONLY load theme.css - no more navbar.css -->
+    <!-- Load your updated theme.css -->
     <link href="css/theme.css" rel="stylesheet" />
     <link rel="icon" href="data:," />
 </head>
 
 <body>
     <div class="status-bar-safe-area"></div>
+
+    <!-- Network Background Canvas - ADD THIS -->
+    <canvas id="network-canvas"></canvas>
 
     <div id="app">Loading...</div>
 
@@ -22,5 +25,8 @@
     </div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
+
+    <!-- Load External Network Animation Script - ADD THIS -->
+    <script src="js/network-animation.js"></script>
 </body>
 </html>
