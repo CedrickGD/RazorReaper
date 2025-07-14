@@ -60,6 +60,13 @@
                     </svg>
                     Disconnect
                 </button>
+
+                <button class="game-btn info" @onclick="ExecuteDebugStructures" disabled="@(!isGameRunning)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    debugstructures
+                </button>
             </div>
         </div>
 
@@ -67,74 +74,6 @@
 </div>
 
 <style>
-    /* Game Status Section */
-    .game-status {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 0;
-    }
-
-    .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    .status-dot {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        position: relative;
-        flex-shrink: 0;
-    }
-
-        .status-dot.online {
-            background: var(--accent-green);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
-        }
-
-        .status-dot.offline {
-            background: var(--accent-red);
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-        }
-
-        .status-dot::after {
-            content: '';
-            position: absolute;
-            top: -6px;
-            left: -6px;
-            right: -6px;
-            bottom: -6px;
-            border-radius: 50%;
-            border: 2px solid currentColor;
-            opacity: 0;
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.online::after {
-            color: var(--accent-green);
-        }
-
-        .status-dot.offline::after {
-            color: var(--accent-red);
-        }
-
-    .status-info h3 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 0.5rem 0;
-    }
-
-    .status-text {
-        color: var(--text-secondary);
-        font-size: 1rem;
-        font-weight: 500;
-    }
-
-
-    <style >
     /* Game Status Section */
     .game-status {
         display: flex;
@@ -300,6 +239,18 @@
                 color: var(--accent-red);
             }
 
+        .game-btn.info {
+            border-color: rgba(59, 130, 246, 0.3);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+        }
+
+            .game-btn.info:hover:not(:disabled) {
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+                border-color: var(--accent-blue);
+                box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+                color: var(--accent-blue);
+            }
+
         .game-btn svg {
             width: 20px;
             height: 20px;
@@ -309,7 +260,6 @@
         .game-btn:hover:not(:disabled) svg {
             transform: scale(1.1);
         }
-</style>
 </style>
 
 @code {
@@ -357,6 +307,11 @@
     private async Task ExecuteDisconnect()
     {
         await ExecuteGameCommand("disconnect");
+    }
+
+    private async Task ExecuteDebugStructures()
+    {
+        await ExecuteGameCommand("debugstructures");
     }
 
     private async Task ExecuteGameCommand(string command)
