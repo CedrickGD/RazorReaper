@@ -18,17 +18,17 @@
                 <div class="content-card">
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
                         <div class="developer-avatar">
-                            <svg style="width: 60px; height: 60px; color: var(--text-primary);" fill="currentColor" viewBox="0 0 20 20">
+                            <svg style="width: 60px; height: 60px; color: var(--background-dark);" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                             </svg>
                         </div>
                         <div>
-                            <h2 style="color: var(--accent-green); margin-bottom: 0.5rem;">RazorReaper Developer</h2>
+                            <h2 style="color: var(--text-primary); margin-bottom: 0.5rem;">RazorReaper Developer</h2>
                             <p style="color: var(--text-secondary); margin: 0;">ARK: Survival Evolved Tools Developer</p>
                         </div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem;">
+                    <div class="tech-section">
                         <h3 style="color: var(--text-primary); margin-bottom: 1rem;">Built With</h3>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                             <span class="tech-badge">C# Blazor</span>
@@ -41,7 +41,7 @@
 
                 <div class="content-card">
                     <h3 style="color: var(--accent-red); margin-bottom: 1rem;">Support</h3>
-                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1.5rem;">
+                    <div class="support-section">
                         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
                             <svg style="width: 24px; height: 24px; color: var(--accent-red);" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
@@ -64,7 +64,7 @@
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
 
                 <div class="content-card">
-                    <h3 style="color: var(--accent-blue); margin-bottom: 1.5rem;">Connect</h3>
+                    <h3 style="color: var(--text-primary); margin-bottom: 1.5rem;">Connect</h3>
                     <div style="display: grid; gap: 1rem;">
 
                         <button class="social-button discord" @onclick="OpenDiscord">
@@ -137,7 +137,7 @@
     .developer-avatar {
         width: 80px;
         height: 80px;
-        background: linear-gradient(135deg, var(--text-primary), var(--accent-green));
+        background: linear-gradient(135deg, var(--text-primary), #cccccc);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -145,14 +145,35 @@
         box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
     }
 
+    .tech-section {
+        background: var(--background-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
     .tech-badge {
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--background-hover);
         color: var(--text-primary);
         padding: 0.25rem 0.75rem;
         border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 600;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+
+        .tech-badge:hover {
+            background: var(--background-card);
+            border-color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+    .support-section {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 12px;
+        padding: 1.5rem;
     }
 
     .support-tag {
@@ -179,6 +200,7 @@
         width: 100%;
         position: relative;
         overflow: hidden;
+        color: var(--text-primary);
     }
 
         .social-button::before {
@@ -203,52 +225,62 @@
 
         .social-button.discord {
             border-color: #5865f2;
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.1), rgba(88, 101, 242, 0.05));
             color: #5865f2;
         }
 
             .social-button.discord:hover {
-                background: rgba(88, 101, 242, 0.1);
-                box-shadow: 0 8px 25px rgba(88, 101, 242, 0.3);
+                background: linear-gradient(135deg, rgba(88, 101, 242, 0.2), rgba(88, 101, 242, 0.1));
+                box-shadow: 0 8px 25px rgba(88, 101, 242, 0.4);
+                border-color: #7289da;
             }
 
         .social-button.youtube {
             border-color: #ff0000;
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.1), rgba(255, 0, 0, 0.05));
             color: #ff0000;
         }
 
             .social-button.youtube:hover {
-                background: rgba(255, 0, 0, 0.1);
-                box-shadow: 0 8px 25px rgba(255, 0, 0, 0.3);
+                background: linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(255, 0, 0, 0.1));
+                box-shadow: 0 8px 25px rgba(255, 0, 0, 0.4);
+                border-color: #ff4444;
             }
 
         .social-button.telegram {
             border-color: #0088cc;
+            background: linear-gradient(135deg, rgba(0, 136, 204, 0.1), rgba(0, 136, 204, 0.05));
             color: #0088cc;
         }
 
             .social-button.telegram:hover {
-                background: rgba(0, 136, 204, 0.1);
-                box-shadow: 0 8px 25px rgba(0, 136, 204, 0.3);
+                background: linear-gradient(135deg, rgba(0, 136, 204, 0.2), rgba(0, 136, 204, 0.1));
+                box-shadow: 0 8px 25px rgba(0, 136, 204, 0.4);
+                border-color: #00a8ff;
             }
 
         .social-button.github {
-            border-color: var(--text-primary);
-            color: var(--text-primary);
+            border-color: #6e40c9;
+            background: linear-gradient(135deg, rgba(110, 64, 201, 0.1), rgba(110, 64, 201, 0.05));
+            color: #6e40c9;
         }
 
             .social-button.github:hover {
-                background: rgba(255, 255, 255, 0.1);
-                box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
+                background: linear-gradient(135deg, rgba(110, 64, 201, 0.2), rgba(110, 64, 201, 0.1));
+                box-shadow: 0 8px 25px rgba(110, 64, 201, 0.4);
+                border-color: #8b5cf6;
             }
 
         .social-button.steam {
             border-color: #66c0f4;
+            background: linear-gradient(135deg, rgba(102, 192, 244, 0.1), rgba(102, 192, 244, 0.05));
             color: #66c0f4;
         }
 
             .social-button.steam:hover {
-                background: rgba(102, 192, 244, 0.1);
-                box-shadow: 0 8px 25px rgba(102, 192, 244, 0.3);
+                background: linear-gradient(135deg, rgba(102, 192, 244, 0.2), rgba(102, 192, 244, 0.1));
+                box-shadow: 0 8px 25px rgba(102, 192, 244, 0.4);
+                border-color: #74d3f4;
             }
 
     .social-icon {

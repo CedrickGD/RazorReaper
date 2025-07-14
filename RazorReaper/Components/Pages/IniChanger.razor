@@ -14,7 +14,7 @@
         <div style="display: grid; grid-template-columns: 300px 1fr; gap: 2rem; height: calc(100vh - 200px);">
 
             <div class="content-card" style="height: fit-content;">
-                <h3 class="mb-3 text-purple">File Operations</h3>
+                <h3 class="mb-3 text-white">File Operations</h3>
 
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <button class="btn btn-primary" @onclick="OpenIniFile" style="width: 100%; justify-content: flex-start;">
@@ -24,7 +24,7 @@
                         Open INI File
                     </button>
 
-                    <button class="btn" @onclick="ClearFile" style="width: 100%; justify-content: flex-start; background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                    <button class="btn btn-danger" @onclick="ClearFile" style="width: 100%; justify-content: flex-start;">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
@@ -39,7 +39,7 @@
                         Create New
                     </button>
 
-                    <button class="btn" @onclick="CheckIniFileExists" style="width: 100%; justify-content: flex-start; background: linear-gradient(135deg, #ff5722, #ff5722); color: white;">
+                    <button class="btn btn-warning" @onclick="CheckIniFileExists" style="width: 100%; justify-content: flex-start;">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                         </svg>
@@ -54,7 +54,7 @@
                             @if (isPathStatus && !string.IsNullOrEmpty(currentPath))
                             {
                                 <div style="font-weight: 600; margin-bottom: 0.5rem;">@GetStatusTitle()</div>
-                                <div style="font-size: 0.85rem; word-break: break-all; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; font-family: monospace;">
+                                <div style="font-size: 0.85rem; word-break: break-all; background: var(--background-dark); padding: 0.5rem; border-radius: 4px; font-family: monospace;">
                                     @currentPath
                                 </div>
                             }
@@ -124,7 +124,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
             transition: left 0.5s ease;
         }
 
@@ -133,16 +133,16 @@
         }
 
         .preset-button:hover {
-            background: rgba(139, 92, 246, 0.1);
-            border-color: var(--primary-purple);
-            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+            background: var(--background-hover);
+            border-color: var(--text-primary);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
             transform: translateY(-2px);
         }
 
         .preset-button.active {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(16, 185, 129, 0.1));
+            background: linear-gradient(135deg, var(--background-hover), var(--background-card));
             border-color: var(--accent-green);
-            box-shadow: 0 0 25px var(--glow-green);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
         }
 
             .preset-button.active::after {
@@ -169,23 +169,22 @@
 
     .status-error {
         background: rgba(239, 68, 68, 0.1);
-        border-color: #ef4444;
-        color: #ef4444;
+        border-color: var(--accent-red);
+        color: var(--accent-red);
     }
 
     .status-warning {
         background: rgba(245, 158, 11, 0.1);
-        border-color: #f59e0b;
-        color: #f59e0b;
+        border-color: var(--accent-orange);
+        color: var(--accent-orange);
     }
 
     .status-info {
         background: rgba(59, 130, 246, 0.1);
-        border-color: #3b82f6;
-        color: #3b82f6;
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
     }
 </style>
-
 
 @code {
     private string currentIniContent = "";
@@ -438,11 +437,11 @@ BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
         },
-new IniPreset
-{
-    Name = "Farming",
-    Description = "Gen2 Optimized",
-    Content = @"[DeviceProfiles]
+        new IniPreset
+        {
+            Name = "Farming",
+            Description = "Gen2 Optimized",
+            Content = @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -993,12 +992,12 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
-new IniPreset
-{
-    Name = "Black Super Hard",
-    Description = "Nigga Config",
-    Content = @"[DeviceProfiles]
+        },
+        new IniPreset
+        {
+            Name = "Black Super Hard",
+            Description = "Nigga Config",
+            Content = @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -1304,12 +1303,12 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
-new IniPreset
-{
-    Name = "Bloodstalker",
-    Description = "Awesome Spyglass On",
-    Content = @"[DeviceProfiles]
+        },
+        new IniPreset
+        {
+            Name = "Bloodstalker",
+            Description = "Awesome Spyglass On",
+            Content = @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -1488,12 +1487,12 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
-new IniPreset
-{
-    Name = "Super Hard",
-    Description = "No Visals, No Water",
-    Content = @"[DeviceProfiles]
+        },
+        new IniPreset
+        {
+            Name = "Super Hard",
+            Description = "No Visals, No Water",
+            Content = @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -1592,12 +1591,12 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
-new IniPreset
-{
-    Name = "PVP Water",
-    Description = "No Water Surface",
-    Content = @"[DeviceProfiles]
+        },
+        new IniPreset
+        {
+            Name = "PVP Water",
+            Description = "No Water Surface",
+            Content = @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -1695,12 +1694,12 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
-new IniPreset
-{
-    Name = "PVP Soft",
-    Description = "Standard Pvp Config",
-    Content = @"[DeviceProfiles]
+        },
+        new IniPreset
+        {
+            Name = "PVP Soft",
+            Description = "Standard Pvp Config",
+            Content = @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -1849,12 +1848,12 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
-new IniPreset
-{
-    Name = "PVP Hard",
-    Description = "Minimal Visuals, Fogless",
-    Content = @"[DeviceProfiles]
+        },
+        new IniPreset
+        {
+            Name = "PVP Hard",
+            Description = "Minimal Visuals, Fogless",
+            Content =  @"[DeviceProfiles]
 +DeviceProfileNameAndTypes=Windows,Windows
 +DeviceProfileNameAndTypes=WindowsNoEditor,WindowsNoEditor
 +DeviceProfileNameAndTypes=WindowsServer,WindowsServer
@@ -2006,9 +2005,8 @@ DeviceType=LinuxServer
 BaseProfileName=Linux
 MeshLODSettings=
 TextureLODSettings="
-},
+        }
     };
-
 
     private string GetStatusClass()
     {

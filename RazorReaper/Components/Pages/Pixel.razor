@@ -19,7 +19,7 @@
 
                 <div style="margin-bottom: 2rem;">
                     <p style="color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
-                        Remove custom texture files from your ARK installation. This will delete weapon harpoon textures and related pixel modifications.
+                        Remove Ark's default texture files to achieve a visually bugged black appearance for Tools, Armor, and Weapons. (Some Saddles as well.)
                     </p>
 
                     <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
@@ -36,7 +36,7 @@
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <button class="btn" @onclick="DeleteTextureFiles" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                    <button class="btn btn-danger" @onclick="DeleteTextureFiles">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                         </svg>
@@ -80,32 +80,32 @@
                     <div style="display: grid; gap: 1rem;">
                         <div style="display: flex; align-items: center;">
                             <div style="width: 24px; height: 24px; background: var(--accent-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.8rem; font-weight: bold; color: white;">1</div>
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Opens Steam ARK properties</span>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Click "Start Verify Integrity" button</span>
                         </div>
                         <div style="display: flex; align-items: center;">
                             <div style="width: 24px; height: 24px; background: var(--accent-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.8rem; font-weight: bold; color: white;">2</div>
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Navigate to "Local Files" tab</span>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Steam will automatically verify ARK files</span>
                         </div>
                         <div style="display: flex; align-items: center;">
                             <div style="width: 24px; height: 24px; background: var(--accent-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 0.8rem; font-weight: bold; color: white;">3</div>
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Click "Verify integrity of game files"</span>
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Deleted files will be redownloaded</span>
                         </div>
                     </div>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <button class="btn btn-primary" @onclick="OpenSteamGameProperties">
+                    <button class="btn btn-primary" @onclick="StartSteamVerifyIntegrity">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                         </svg>
-                        Open Steam Properties
+                        Start Verify Integrity
                     </button>
 
-                    <button class="btn btn-secondary" @onclick="OpenArkGameFolder">
+                    <button class="btn btn-secondary" @onclick="OpenSteamLibrary">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
-                        Open ARK Game Folder
+                        Open Steam Library
                     </button>
                 </div>
             </div>
@@ -115,13 +115,13 @@
 
 <style>
     .feature-tag {
-        background: rgba(139, 92, 246, 0.1);
-        color: var(--primary-purple);
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
         padding: 0.25rem 0.75rem;
         border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 600;
-        border: 1px solid rgba(139, 92, 246, 0.3);
+        border: 1px solid var(--border-color);
     }
 
     .text-red {
@@ -737,7 +737,7 @@
                    "Male_Metal_Pants_skin_m.uasset",
                    "Male_Metal_Shirt_D.uasset",
                    "Male_Metal_Shirt_Layered.uasset",
-                   "Male_Metal_Shirt_N.uasset", 
+                   "Male_Metal_Shirt_N.uasset",
                    "Male_Metal_Shirt_skin_m.uasset"
             } },
             { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Metal"), new[] {
@@ -796,53 +796,46 @@
         }
     }
 
-    private void OpenSteamGameProperties()
+    private void StartSteamVerifyIntegrity()
     {
         try
         {
-            string steamUrl = "steam://nav/games/details/346110";
+            // Use Steam's console command to verify ARK files directly
+            string steamVerifyUrl = "steam://validate/346110";
             Process.Start(new ProcessStartInfo
             {
-                FileName = steamUrl,
+                FileName = steamVerifyUrl,
                 UseShellExecute = true
             });
 
-            statusMessage = "Opening Steam ARK properties. Navigate to 'Local Files' tab and click 'Verify integrity of game files'";
+            statusMessage = "🔄 Starting Steam file verification for ARK: Survival Evolved...";
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            statusMessage = $"Error opening Steam properties: {ex.Message}";
+            statusMessage = $"❌ Error starting verification: {ex.Message}";
             StateHasChanged();
         }
     }
 
-    private void OpenArkGameFolder()
+    private void OpenSteamLibrary()
     {
         try
         {
-            string? arkGamePath = ArkUtilities.FindArkPath();
-
-            if (string.IsNullOrEmpty(arkGamePath) || !Directory.Exists(arkGamePath))
-            {
-                statusMessage = "ARK game folder not found!";
-                StateHasChanged();
-                return;
-            }
-
+            // Open Steam library directly to ARK
+            string steamLibraryUrl = "steam://nav/games/details/346110";
             Process.Start(new ProcessStartInfo
             {
-                FileName = "explorer.exe",
-                Arguments = arkGamePath,
+                FileName = steamLibraryUrl,
                 UseShellExecute = true
             });
 
-            statusMessage = "Opened ARK game folder";
+            statusMessage = "📚 Opening ARK in Steam Library - right-click for properties menu";
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            statusMessage = $"Error opening ARK folder: {ex.Message}";
+            statusMessage = $"❌ Error opening Steam library: {ex.Message}";
             StateHasChanged();
         }
     }
@@ -864,7 +857,7 @@
         else if (statusMessage.Contains("deleted") || statusMessage.Contains("Opened"))
             return "var(--accent-green)";
         else
-            return "#f59e0b";
+            return "var(--accent-orange)";
     }
 
     private string GetStatusTextColor()
@@ -874,6 +867,6 @@
         else if (statusMessage.Contains("deleted") || statusMessage.Contains("Opened"))
             return "var(--accent-green)";
         else
-            return "#f59e0b";
+            return "var(--accent-orange)";
     }
 }
