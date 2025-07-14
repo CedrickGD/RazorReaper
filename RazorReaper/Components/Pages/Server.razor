@@ -55,7 +55,7 @@
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                            <button class="btn btn-secondary" @onclick="AddToFavorites" style="font-size: 0.85rem;">
+                            <button class="btn btn-secondary" @onclick="AddToFavorites" disabled="@(currentServer == null)" style="font-size: 0.85rem;">
                                 ⭐ Add Fav
                             </button>
                             <button class="btn btn-info" @onclick="OpenSteamBrowser" style="font-size: 0.85rem;">
@@ -428,7 +428,7 @@
 
     .btn-warning {
         background: linear-gradient(135deg, var(--accent-orange), #d97706);
-        color: var(--background-dark);
+        color: white;
         border: 1px solid var(--accent-orange);
         font-weight: 600;
     }
@@ -437,6 +437,18 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
             background: linear-gradient(135deg, #fbbf24, var(--accent-orange));
+        }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, var(--accent-green), var(--dark-green));
+        color: white;
+        border: 1px solid var(--accent-green);
+    }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+            background: linear-gradient(135deg, var(--light-green), var(--accent-green));
         }
 </style>
 
@@ -453,29 +465,66 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadServers();
+        StateHasChanged();
     }
 
     private async Task LoadServers()
     {
         try
         {
-            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "savedServers");
+            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "razorReaperSavedServers");
             if (!string.IsNullOrEmpty(json))
             {
                 servers = JsonSerializer.Deserialize<List<GameServer>>(json) ?? new();
+                // Update online status for existing servers
+                foreach (var server in servers)
+                {
+                    _ = UpdateServerStatus(server);
+                }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading servers: {ex.Message}");
+        }
     }
 
     private async Task SaveServersToStorage()
     {
         try
         {
-            var json = JsonSerializer.Serialize(servers);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "savedServers", json);
+            var json = JsonSerializer.Serialize(servers, new JsonSerializerOptions { WriteIndented = true });
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "razorReaperSavedServers", json);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving servers: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateServerStatus(GameServer server)
+    {
+        try
+        {
+            var serverInfo = await QuerySourceServer(server.IpAddress, server.QueryPort);
+            if (serverInfo != null)
+            {
+                server.IsOnline = true;
+                server.CurrentPlayers = serverInfo.Players;
+                server.MaxPlayers = serverInfo.MaxPlayers;
+                server.CurrentMap = serverInfo.Map;
+                server.Version = serverInfo.Version;
+            }
+            else
+            {
+                server.IsOnline = false;
+            }
+            StateHasChanged();
+        }
+        catch
+        {
+            server.IsOnline = false;
+        }
     }
 
     private string GetSteamUrl()
@@ -483,7 +532,12 @@
         if (string.IsNullOrWhiteSpace(serverInput)) return "";
         var parts = serverInput.Split(':');
         if (parts.Length != 2 || !int.TryParse(parts[1], out int port)) return "";
-        return $"steam://run/346110//+connect {parts[0]}:{port}";
+
+        // For ARK, the game port is typically query port - 12288
+        int gamePort = port - 12288;
+        if (gamePort <= 0) gamePort = port; // Fallback if calculation doesn't work
+
+        return $"steam://run/346110//+connect {parts[0]}:{gamePort}";
     }
 
     private async Task CopySteamUrl()
@@ -515,38 +569,41 @@
         try
         {
             var parts = serverInput.Split(':');
-            if (parts.Length != 2 || !int.TryParse(parts[1], out int port))
+            if (parts.Length != 2 || !int.TryParse(parts[1], out int queryPort))
             {
-                statusMessage = "Invalid format. Use IP:PORT (e.g., 192.168.1.1:27015)";
+                statusMessage = "Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)";
                 return;
             }
 
             string ip = parts[0];
-            int gamePort = port - 12288;
-            if (gamePort <= 0) gamePort = port;
+
+            // Calculate game port (ARK uses query port - 12288)
+            int gamePort = queryPort - 12288;
+            if (gamePort <= 0) gamePort = queryPort; // Fallback
 
             var server = new GameServer
             {
                 IpAddress = ip,
                 Port = gamePort,
-                QueryPort = port,
+                QueryPort = queryPort,
                 Name = $"ARK Server {ip}:{gamePort}"
             };
 
-            var serverInfo = await QuerySourceServer(ip, port);
+            var serverInfo = await QuerySourceServer(ip, queryPort);
 
             if (serverInfo != null)
             {
                 server.IsOnline = true;
-                server.Name = serverInfo.Name;
+                server.Name = string.IsNullOrEmpty(serverInfo.Name) ? server.Name : serverInfo.Name;
                 server.CurrentPlayers = serverInfo.Players;
                 server.MaxPlayers = serverInfo.MaxPlayers;
-                server.CurrentMap = serverInfo.Map;
-                server.Version = serverInfo.Version;
+                server.CurrentMap = string.IsNullOrEmpty(serverInfo.Map) ? "Unknown" : serverInfo.Map;
+                server.Version = string.IsNullOrEmpty(serverInfo.Version) ? "Unknown" : serverInfo.Version;
                 statusMessage = $"✅ Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers}";
             }
             else
             {
+                // Try ping as fallback
                 using var ping = new Ping();
                 var pingReply = await ping.SendPingAsync(ip, 3000);
 
@@ -581,40 +638,54 @@
         {
             using var client = new UdpClient();
             client.Client.ReceiveTimeout = 5000;
+            client.Client.SendTimeout = 3000;
 
             var endpoint = new IPEndPoint(IPAddress.Parse(ip), port);
-            var challenge = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00 };
 
-            await client.SendAsync(challenge, challenge.Length, endpoint);
+            // A2S_INFO query for Source engine
+            var infoQuery = new byte[] {
+                0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
+                0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00
+            };
+
+            await client.SendAsync(infoQuery, infoQuery.Length, endpoint);
             var response = await client.ReceiveAsync();
 
             if (response.Buffer.Length > 6)
             {
                 var data = response.Buffer;
-                int offset = 6;
+                int offset = 5; // Skip header
 
-                var name = ReadString(data, ref offset);
-                var map = ReadString(data, ref offset);
-                ReadString(data, ref offset);
-                ReadString(data, ref offset);
-
-                if (offset + 2 < data.Length)
+                if (data[4] == 0x49) // A2S_INFO response
                 {
-                    var players = data[offset];
-                    var maxPlayers = data[offset + 1];
+                    offset++; // Skip protocol version
 
-                    return new ServerQueryResult
+                    var name = ReadString(data, ref offset);
+                    var map = ReadString(data, ref offset);
+                    var folder = ReadString(data, ref offset);
+                    var game = ReadString(data, ref offset);
+
+                    if (offset + 2 < data.Length)
                     {
-                        Name = name,
-                        Map = map,
-                        Players = players,
-                        MaxPlayers = maxPlayers,
-                        Version = "Unknown"
-                    };
+                        var players = data[offset];
+                        var maxPlayers = data[offset + 1];
+
+                        return new ServerQueryResult
+                        {
+                            Name = name,
+                            Map = map,
+                            Players = players,
+                            MaxPlayers = maxPlayers,
+                            Version = game
+                        };
+                    }
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Query error: {ex.Message}");
+        }
         return null;
     }
 
@@ -623,7 +694,7 @@
         var start = offset;
         while (offset < data.Length && data[offset] != 0) offset++;
         var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
-        offset++;
+        offset++; // Skip null terminator
         return result;
     }
 
@@ -631,15 +702,25 @@
     {
         if (currentServer == null) return;
 
-        var existing = servers.FirstOrDefault(s => s.IpAddress == currentServer.IpAddress && s.Port == currentServer.Port);
+        var existing = servers.FirstOrDefault(s => s.IpAddress == currentServer.IpAddress && s.QueryPort == currentServer.QueryPort);
         if (existing != null)
         {
-            servers.Remove(existing);
+            // Update existing server
+            existing.Name = currentServer.Name;
+            existing.IsOnline = currentServer.IsOnline;
+            existing.CurrentPlayers = currentServer.CurrentPlayers;
+            existing.MaxPlayers = currentServer.MaxPlayers;
+            existing.CurrentMap = currentServer.CurrentMap;
+            existing.Version = currentServer.Version;
+            statusMessage = "💾 Server updated in list!";
+        }
+        else
+        {
+            servers.Add(currentServer);
+            statusMessage = "💾 Server saved to list!";
         }
 
-        servers.Add(currentServer);
         await SaveServersToStorage();
-        statusMessage = "💾 Server saved to list!";
         currentServer = null;
         StateHasChanged();
     }
@@ -662,15 +743,12 @@
 
         try
         {
-            var parts = serverInput.Split(':');
-            if (parts.Length != 2 || !int.TryParse(parts[1], out int port))
+            var steamUrl = GetSteamUrl();
+            if (string.IsNullOrEmpty(steamUrl))
             {
-                statusMessage = "Invalid format for connection";
+                statusMessage = "Invalid server format for connection";
                 return;
             }
-
-            string ip = parts[0];
-            string steamUrl = $"steam://run/346110//+connect {ip}:{port}";
 
             await JSRuntime.InvokeVoidAsync("window.open", steamUrl);
             statusMessage = $"🚀 Launching ARK via Steam...";
@@ -684,26 +762,24 @@
 
     private async Task AddToFavorites()
     {
-#if WINDOWS
+        if (currentServer == null)
+        {
+            statusMessage = "❌ No server to add to favorites";
+            return;
+        }
+
         try
         {
-            string? steamPath = GetSteamInstallPath();
-            if (steamPath == null)
-            {
-                statusMessage = "❌ Steam installation not found";
-                return;
-            }
+            // Create steam://addfav URL
+            string steamFavUrl = $"steam://friends/add/{currentServer.IpAddress}:{currentServer.Port}";
 
-            await Task.Delay(500);
-            statusMessage = $"✅ Server successfully added to Steam favorites!";
+            await JSRuntime.InvokeVoidAsync("window.open", steamFavUrl);
+            statusMessage = $"⭐ Added server to Steam favorites!";
         }
         catch (Exception ex)
         {
             statusMessage = $"❌ Failed to add to favorites: {ex.Message}";
         }
-#else
-        statusMessage = "⚠️ Adding favorites is only supported on Windows.";
-#endif
         StateHasChanged();
     }
 
@@ -726,6 +802,7 @@
         selectedServer = server;
         showServerInfo = true;
         serverInput = $"{server.IpAddress}:{server.QueryPort}";
+        currentServer = server; // Set as current for operations
     }
 
     private void HideServerInfo()
@@ -737,28 +814,6 @@
     private void ToggleTroubleshooting()
     {
         showTroubleshooting = !showTroubleshooting;
-    }
-
-    private string? GetSteamInstallPath()
-    {
-#if WINDOWS
-        try
-        {
-            object? steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null);
-            if (steamPath == null)
-            {
-                steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null);
-            }
-            steamPath = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null);
-            return steamPath as string;
-        }
-        catch
-        {
-            return null;
-        }
-#else
-        return null;
-#endif
     }
 
     private string GetStatusClass()
@@ -787,6 +842,6 @@
         public int CurrentPlayers { get; set; }
         public int MaxPlayers { get; set; } = 70;
         public string CurrentMap { get; set; } = "Unknown";
-        public string Version { get; set; } = "1.0.0";
+        public string Version { get; set; } = "Unknown";
     }
 }
