@@ -1,18 +1,14 @@
 ﻿:root {
-    /* NEW Black/White Color Variables */
     --primary-color: #ffffff;
     --secondary-color: #000000;
     --background-dark: #0a0a0a;
     --background-card: rgba(26, 26, 26, 0.9);
     --background-sidebar: rgba(17, 17, 17, 0.95);
     --background-hover: #222222;
-    /* Text Colors */
     --text-primary: #ffffff;
     --text-secondary: #888888;
-    /* Border & Effects */
     --border-color: #333333;
     --shadow-dark: rgba(0, 0, 0, 0.5);
-    /* Keep your existing functional colors */
     --accent-green: #10b981;
     --dark-green: #059669;
     --light-green: #34d399;
@@ -22,16 +18,13 @@
     --glow-green: rgba(16, 185, 129, 0.5);
 }
 
-/* === DISABLE DRAG AND DROP === */
 * {
     -webkit-user-drag: none;
-    -khtml-user-drag: none;
-    -moz-user-drag: none;
-    -o-user-drag: none;
-    user-drag: none;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-/* Disable selection on UI elements */
 .sidebar, .nav-link, .btn, .content-card, .page-header {
     user-select: none;
     -webkit-user-select: none;
@@ -40,7 +33,6 @@
     -webkit-touch-callout: none;
 }
 
-/* Allow text selection only in specific areas */
 input, textarea, .selectable-text, p, span, div.text-content {
     user-select: text;
     -webkit-user-select: text;
@@ -48,26 +40,13 @@ input, textarea, .selectable-text, p, span, div.text-content {
     -ms-user-select: text;
 }
 
-/* Prevent image dragging specifically */
 img {
     pointer-events: none;
     -webkit-user-drag: none;
-    -moz-user-drag: none;
-    user-drag: none;
 }
 
-/* Make sure links don't become draggable */
 a {
     -webkit-user-drag: none;
-    -moz-user-drag: none;
-    user-drag: none;
-}
-
-/* ===== GLOBAL RESET ===== */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
 body {
@@ -84,7 +63,6 @@ html {
     overflow: hidden;
 }
 
-/* ===== NETWORK BACKGROUND CANVAS ===== */
 #network-canvas {
     position: fixed;
     top: 0;
@@ -95,7 +73,6 @@ html {
     pointer-events: none;
 }
 
-/* ===== MAIN LAYOUT ===== */
 .app-container {
     display: flex;
     height: 100vh;
@@ -103,7 +80,6 @@ html {
     overflow: hidden;
 }
 
-/* ===== SIDEBAR NAVIGATION ===== */
 .sidebar {
     display: flex !important;
     flex-direction: column !important;
@@ -121,7 +97,6 @@ html {
     box-shadow: 4px 0 20px var(--shadow-dark);
 }
 
-/* Brand Section */
 .brand {
     padding: 1.5rem !important;
     border-bottom: 1px solid var(--border-color) !important;
@@ -132,7 +107,6 @@ html {
         font-size: 1.75rem !important;
         font-weight: 700 !important;
         background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)) !important;
-        background-clip: text !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
         text-align: center !important;
@@ -140,7 +114,6 @@ html {
         margin: 0 !important;
     }
 
-/* Navigation Content */
 .nav-content {
     display: flex !important;
     flex-direction: column !important;
@@ -184,7 +157,6 @@ html {
     border-left: 3px solid transparent !important;
 }
 
-    /* ENHANCED HOVER ANIMATION */
     .nav-link::before {
         content: '' !important;
         position: absolute !important;
@@ -208,7 +180,6 @@ html {
         border-left-color: rgba(255, 255, 255, 0.3) !important;
     }
 
-    /* ENHANCED ACTIVE STATE WITH YOUR GREEN DOT */
     .nav-link.active {
         color: var(--text-primary) !important;
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05)) !important;
@@ -218,7 +189,6 @@ html {
         transform: translateX(4px) !important;
     }
 
-        /* YOUR GREEN DOT - KEEPING IT! */
         .nav-link.active::after {
             content: '' !important;
             position: absolute !important;
@@ -243,7 +213,6 @@ html {
     transform: scale(1.1) !important;
 }
 
-/* ===== MAIN CONTENT ===== */
 .main-content {
     margin-left: 250px !important;
     flex: 1 !important;
@@ -268,7 +237,6 @@ html {
         z-index: 2;
     }
 
-/* ===== PAGE CONTENT ===== */
 .page-header {
     margin-bottom: 3rem;
     padding-bottom: 1.5rem;
@@ -279,7 +247,6 @@ html {
     font-size: 2.5rem;
     font-weight: 700;
     background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
@@ -327,7 +294,6 @@ html {
             opacity: 1;
         }
 
-/* ===== BUTTONS ===== */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -387,7 +353,6 @@ html {
     color: white;
 }
 
-/* ===== UTILITY CLASSES ===== */
 .text-center {
     text-align: center;
 }
@@ -432,7 +397,6 @@ html {
     margin-top: 1.5rem;
 }
 
-/* ===== ANIMATIONS ===== */
 @keyframes glow-pulse {
     0%, 100% {
         opacity: 1;
@@ -447,8 +411,6 @@ html {
     animation: glow-pulse 2s ease-in-out infinite;
 }
 
-/* ===== SCROLLBAR FIXES ===== */
-/* Only show scrollbar on sidebar */
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -466,7 +428,6 @@ html {
         background: linear-gradient(180deg, #cccccc, var(--text-primary));
     }
 
-/* Main content scrollbar */
 .main-content::-webkit-scrollbar {
     width: 8px;
 }
@@ -484,13 +445,11 @@ html {
         background: linear-gradient(180deg, #cccccc, var(--text-primary));
     }
 
-/* Hide global scrollbar */
 ::-webkit-scrollbar {
     width: 0px;
     background: transparent;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
     .sidebar {
         width: 100%;
@@ -522,14 +481,10 @@ html {
     }
 }
 
-/* ===== ERROR UI ===== */
 #blazor-error-ui {
     display: none !important;
 }
 
-/* ===== GAME PAGE STYLES ===== */
-
-/* Game Status */
 .game-status {
     display: flex;
     align-items: center;
@@ -610,7 +565,6 @@ html {
     font-size: 0.9rem;
 }
 
-/* Game Actions */
 .game-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -721,11 +675,9 @@ html {
         opacity: 1;
     }
 
-/* Responsive */
 @media (max-width: 768px) {
     .game-actions {
         grid-template-columns: 1fr;
         gap: 0.5rem;
     }
 }
-
