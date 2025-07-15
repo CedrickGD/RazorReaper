@@ -22,6 +22,47 @@
     --glow-green: rgba(16, 185, 129, 0.5);
 }
 
+/* === DISABLE DRAG AND DROP === */
+* {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+/* Disable selection on UI elements */
+.sidebar, .nav-link, .btn, .content-card, .page-header {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Allow text selection only in specific areas */
+input, textarea, .selectable-text, p, span, div.text-content {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+}
+
+/* Prevent image dragging specifically */
+img {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    -moz-user-drag: none;
+    user-drag: none;
+}
+
+/* Make sure links don't become draggable */
+a {
+    -webkit-user-drag: none;
+    -moz-user-drag: none;
+    user-drag: none;
+}
+
 /* ===== GLOBAL RESET ===== */
 * {
     box-sizing: border-box;
@@ -687,3 +728,4 @@ html {
         gap: 0.5rem;
     }
 }
+
