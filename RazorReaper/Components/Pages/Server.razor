@@ -17,7 +17,6 @@
         </header>
 
         <div class="server-layout">
-
             <div class="content-card server-connection-panel">
                 <h3 class="mb-3 text-white">Server Connection</h3>
 
@@ -65,13 +64,19 @@
                         </button>
                         
                         <button class="server-btn" @onclick="AddToFavorites" disabled="@(currentServer == null)">
-                            ⭐ Favorite
+                            ⭐ Add to Steam
                         </button>
                     </div>
 
-                    <button class="server-btn full-width" @onclick="OpenSteamBrowser">
-                        🎮 Steam Browser
-                    </button>
+                    <div class="button-grid">
+                        <button class="server-btn" @onclick="ShowSteamProof">
+                            🔍 View Steam Favorites
+                        </button>
+                        
+                        <button class="server-btn" @onclick="OpenSteamBrowser">
+                            🎮 Steam Browser
+                        </button>
+                    </div>
                 </div>
 
                 @if (!string.IsNullOrEmpty(statusMessage))
@@ -83,7 +88,6 @@
             </div>
 
             <div class="main-column">
-
                 @if (showServerInfo && selectedServer != null)
                 {
                     <div class="content-card">
@@ -468,28 +472,40 @@
 
     private async Task SaveServer()
     {
-        if (currentServer == null) return;
-
-        var existing = servers.FirstOrDefault(s => s.IpAddress == currentServer.IpAddress && s.QueryPort == currentServer.QueryPort);
-        if (existing != null)
+        if (currentServer == null) 
         {
-            existing.Name = currentServer.Name;
-            existing.IsOnline = currentServer.IsOnline;
-            existing.CurrentPlayers = currentServer.CurrentPlayers;
-            existing.MaxPlayers = currentServer.MaxPlayers;
-            existing.CurrentMap = currentServer.CurrentMap;
-            existing.Version = currentServer.Version;
-            statusMessage = "💾 Server updated in saved list!";
-        }
-        else
-        {
-            servers.Add(currentServer);
-            statusMessage = "💾 Server saved to list!";
+            statusMessage = "❌ No server to save - please query a server first";
+            StateHasChanged();
+            return;
         }
 
-        await SaveServersToStorage();
-        currentServer = null;
-        StateHasChanged();
+        try
+        {
+            var existing = servers.FirstOrDefault(s => s.IpAddress == currentServer.IpAddress && s.QueryPort == currentServer.QueryPort);
+            if (existing != null)
+            {
+                existing.Name = currentServer.Name;
+                existing.IsOnline = currentServer.IsOnline;
+                existing.CurrentPlayers = currentServer.CurrentPlayers;
+                existing.MaxPlayers = currentServer.MaxPlayers;
+                existing.CurrentMap = currentServer.CurrentMap;
+                existing.Version = currentServer.Version;
+                statusMessage = $"💾 Server '{currentServer.Name}' updated in local list!";
+            }
+            else
+            {
+                servers.Add(currentServer);
+                statusMessage = $"💾 Server '{currentServer.Name}' saved to local list! Total servers: {servers.Count}";
+            }
+
+            await SaveServersToStorage();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Failed to save server: {ex.Message}";
+            StateHasChanged();
+        }
     }
 
     private async Task RemoveServer(GameServer server)
@@ -539,16 +555,34 @@
         {
             await SaveServer();
             
+            string steamServerUrl = $"steam://connect/{currentServer.IpAddress}:{currentServer.Port}";
+            
+            await JSRuntime.InvokeVoidAsync("window.open", steamServerUrl, "_blank");
+            
             if (currentServer != null)
             {
                 await UpdateServerStatus(currentServer);
             }
             
-            statusMessage = $"⭐ Server added to favorites and status refreshed!";
+            statusMessage = $"⭐ Server added to local favorites! Steam opened to add server - check your Steam Server Browser > Favorites tab";
         }
         catch (Exception ex)
         {
             statusMessage = $"❌ Failed to add to favorites: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private async Task ShowSteamProof()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers", "_blank");
+            statusMessage = "🎮 Steam Server Browser opened! Check the 'Favorites' tab to see your saved servers";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Failed to open Steam browser: {ex.Message}";
         }
         StateHasChanged();
     }
