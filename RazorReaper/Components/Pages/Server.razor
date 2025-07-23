@@ -16,117 +16,170 @@
             <p class="page-subtitle">Connect and manage ARK servers</p>
         </header>
 
-        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem; height: calc(100vh - 200px);">
+        <div class="server-layout">
 
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="content-card server-connection-panel">
+                <h3 class="mb-3 text-white">Server Connection</h3>
 
-                <div class="content-card">
-                    <h3 class="mb-3 text-white">Server Connection</h3>
-
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div>
-                            <label style="display: block; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem;">Server IP Address</label>
-                            <input @bind="serverInput" @onkeypress="@(async (e) => { if (e.Key == "Enter") await QueryServer(); })"
-                                   placeholder="141.98.157.224:27015"
-                                   class="server-input" />
-                        </div>
-
-                        @if (!string.IsNullOrWhiteSpace(serverInput))
-                        {
-                            <div>
-                                <label style="display: block; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem;">Steam Connect URL</label>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <input value="@GetSteamUrl()" readonly class="server-input readonly" />
-                                    <button class="btn btn-secondary" @onclick="CopySteamUrl" style="font-size: 0.8rem; padding: 0.5rem;">📋</button>
-                                </div>
-                            </div>
-                        }
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
-                            <button class="btn btn-primary" @onclick="QueryServer" disabled="@isQuerying" style="font-size: 0.85rem;">
-                                @(isQuerying ? "⏳" : "🔍") Query
-                            </button>
-                            <button class="btn btn-warning" @onclick="SaveServer" disabled="@(currentServer == null)" style="font-size: 0.85rem;">
-                                💾 Save
-                            </button>
-                            <button class="btn btn-success" @onclick="ConnectToServer" style="font-size: 0.85rem;">
-                                🔗 Connect
-                            </button>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                            <button class="btn btn-secondary" @onclick="AddToFavorites" disabled="@(currentServer == null)" style="font-size: 0.85rem;">
-                                ⭐ Add Fav
-                            </button>
-                            <button class="btn btn-info" @onclick="OpenSteamBrowser" style="font-size: 0.85rem;">
-                                🎮 Browser
-                            </button>
-                        </div>
+                <div class="connection-form">
+                    <div>
+                        <label class="input-label">Server IP Address</label>
+                        <input @bind="serverInput" 
+                               @onkeypress="@(async (e) => { if (e.Key == "Enter") await QueryServer(); })"
+                               placeholder="141.98.157.224:27015"
+                               class="server-input" />
                     </div>
 
-                    @if (!string.IsNullOrEmpty(statusMessage))
+                    @if (!string.IsNullOrWhiteSpace(serverInput))
                     {
-                        <div class="mt-3 server-status-message @GetStatusClass()">
-                            <div style="font-weight: 600; font-size: 0.85rem;">@statusMessage</div>
+                        <div>
+                            <label class="input-label">Steam Connect URL</label>
+                            <div class="url-input-group">
+                                <input value="@GetSteamUrl()" readonly class="server-input readonly" />
+                                <button class="server-btn copy-btn" @onclick="CopySteamUrl">📋</button>
+                            </div>
                         </div>
                     }
+
+                    <div class="button-grid">
+                        <button class="server-btn" @onclick="QueryServer" disabled="@isQuerying">
+                            @if (isQuerying)
+                            {
+                                <div class="server-spinner"></div>
+                                <span>Query</span>
+                            }
+                            else
+                            {
+                                <span>🔍 Query</span>
+                            }
+                        </button>
+                        
+                        <button class="server-btn" @onclick="ConnectToServer">
+                            🔗 Connect
+                        </button>
+                    </div>
+
+                    <div class="button-grid">
+                        <button class="server-btn" @onclick="SaveServer" disabled="@(currentServer == null)">
+                            💾 Save
+                        </button>
+                        
+                        <button class="server-btn" @onclick="AddToFavorites" disabled="@(currentServer == null)">
+                            ⭐ Favorite
+                        </button>
+                    </div>
+
+                    <button class="server-btn full-width" @onclick="OpenSteamBrowser">
+                        🎮 Steam Browser
+                    </button>
                 </div>
+
+                @if (!string.IsNullOrEmpty(statusMessage))
+                {
+                    <div class="server-status-message @GetStatusClass()">
+                        <div>@statusMessage</div>
+                    </div>
+                }
+            </div>
+
+            <div class="main-column">
 
                 @if (showServerInfo && selectedServer != null)
                 {
                     <div class="content-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="color: var(--text-primary);">@selectedServer.Name</h3>
-                            <button @onclick="HideServerInfo" class="btn btn-danger" style="font-size: 0.8rem;">✕</button>
+                        <div class="server-info-header">
+                            <h3 class="text-green">@selectedServer.Name</h3>
+                            <button class="server-btn close-btn" @onclick="HideServerInfo">✕</button>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; font-size: 0.85rem;">
-                            <div class="server-info-section">
-                                <div class="server-info-item">
-                                    <span class="info-label">Status:</span>
-                                    <span class="info-value @(selectedServer.IsOnline ? "online" : "offline")">
+                        <div class="server-details-grid">
+                            <div class="detail-column">
+                                <div class="detail-row">
+                                    <span class="text-secondary">Status:</span>
+                                    <span class="@(selectedServer.IsOnline ? "text-green" : "text-red")">
                                         @(selectedServer.IsOnline ? "Online" : "Offline")
                                     </span>
                                 </div>
-                                <div class="server-info-item">
-                                    <span class="info-label">IP:</span>
-                                    <span class="info-value">@selectedServer.IpAddress:@selectedServer.Port</span>
+                                <div class="detail-row">
+                                    <span class="text-secondary">Address:</span>
+                                    <span class="text-white">@selectedServer.IpAddress:@selectedServer.Port</span>
                                 </div>
-                                <div class="server-info-item">
-                                    <span class="info-label">Players:</span>
-                                    <span class="info-value online">@selectedServer.CurrentPlayers/@selectedServer.MaxPlayers</span>
+                                <div class="detail-row">
+                                    <span class="text-secondary">Players:</span>
+                                    <span class="text-green">@selectedServer.CurrentPlayers/@selectedServer.MaxPlayers</span>
                                 </div>
                             </div>
-                            <div class="server-info-section">
-                                <div class="server-info-item">
-                                    <span class="info-label">Map:</span>
-                                    <span class="info-value">@selectedServer.CurrentMap</span>
+                            <div class="detail-column">
+                                <div class="detail-row">
+                                    <span class="text-secondary">Map:</span>
+                                    <span class="text-white">@selectedServer.CurrentMap</span>
                                 </div>
-                                <div class="server-info-item">
-                                    <span class="info-label">Version:</span>
-                                    <span class="info-value">@selectedServer.Version</span>
+                                <div class="detail-row">
+                                    <span class="text-secondary">Version:</span>
+                                    <span class="text-white">@selectedServer.Version</span>
                                 </div>
-                                <div class="server-info-item">
-                                    <span class="info-label">Query:</span>
-                                    <span class="info-value">@selectedServer.QueryPort</span>
+                                <div class="detail-row">
+                                    <span class="text-secondary">Query:</span>
+                                    <span class="text-white">@selectedServer.QueryPort</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 }
 
-                <div class="content-card" style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="color: var(--accent-blue);">Troubleshooting</h3>
-                        <button @onclick="ToggleTroubleshooting" class="btn btn-secondary" style="font-size: 0.85rem;">
-                            @(showTroubleshooting ? "▼" : "▶") @(showTroubleshooting ? "Hide" : "Show")
+                <div class="content-card saved-servers-section">
+                    <div class="section-header">
+                        <h3 class="text-green">Saved Servers</h3>
+                        <span class="text-secondary">@servers.Count servers</span>
+                    </div>
+
+                    <div class="servers-grid">
+                        @if (servers.Any())
+                        {
+                            @foreach (var server in servers)
+                            {
+                                <div class="server-item @(selectedServer == server ? "selected" : "")" @onclick="() => SelectServer(server)">
+                                    <div class="server-item-content">
+                                        <div class="server-status-dot @(server.IsOnline ? "online" : "offline")"></div>
+                                        <div class="server-item-info">
+                                            <div class="text-white server-name">@server.Name</div>
+                                            <div class="text-secondary server-address">@server.IpAddress:@server.Port</div>
+                                            @if (server.IsOnline)
+                                            {
+                                                <div class="text-green server-players">@server.CurrentPlayers/@server.MaxPlayers players</div>
+                                            }
+                                        </div>
+                                        <div class="server-actions">
+                                            <button class="server-action-btn" @onclick:stopPropagation="true" @onclick="() => SelectServer(server)">Info</button>
+                                            <button class="server-action-btn remove" @onclick:stopPropagation="true" @onclick="() => RemoveServer(server)">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-servers-state">
+                                <div class="empty-icon">📂</div>
+                                <div>No servers saved yet</div>
+                                <div class="empty-subtitle">Query and save servers to see them here</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="content-card troubleshooting-section">
+                    <div class="section-header">
+                        <h3 class="text-blue">Troubleshooting</h3>
+                        <button class="server-btn toggle-btn" @onclick="ToggleTroubleshooting">
+                            @(showTroubleshooting ? "▼ Hide" : "▶ Show")
                         </button>
                     </div>
 
                     @if (showTroubleshooting)
                     {
                         <div class="troubleshooting-grid">
-                            <div class="troubleshooting-section connection">
+                            <div class="troubleshooting-item">
                                 <h4>🔧 Connection</h4>
                                 <ul>
                                     <li>Check IP and port</li>
@@ -136,7 +189,7 @@
                                 </ul>
                             </div>
 
-                            <div class="troubleshooting-section game">
+                            <div class="troubleshooting-item">
                                 <h4>🎮 Game Launch</h4>
                                 <ul>
                                     <li>Restart Steam</li>
@@ -146,17 +199,17 @@
                                 </ul>
                             </div>
 
-                            <div class="troubleshooting-section query">
+                            <div class="troubleshooting-item">
                                 <h4>⚠️ Query Issues</h4>
                                 <ul>
                                     <li>Server offline</li>
-                                    <li>Query port blocked</li>
+                                    <li>Port blocked</li>
                                     <li>Try +1 port</li>
-                                    <li>No query response</li>
+                                    <li>No response</li>
                                 </ul>
                             </div>
 
-                            <div class="troubleshooting-section ports">
+                            <div class="troubleshooting-item">
                                 <h4>🔍 Ports</h4>
                                 <ul>
                                     <li>Game: 7777-7784</li>
@@ -169,287 +222,9 @@
                     }
                 </div>
             </div>
-
-            <div class="content-card" style="display: flex; flex-direction: column;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 class="text-green">Saved Servers</h3>
-                    <span style="color: var(--text-secondary); font-size: 0.8rem;">@servers.Count servers</span>
-                </div>
-
-                <div class="servers-list">
-                    @if (servers.Any())
-                    {
-                        @foreach (var server in servers)
-                        {
-                            <div class="server-card @(selectedServer == server ? "selected" : "")">
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <div class="server-status-dot @(server.IsOnline ? "online" : "offline")"></div>
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div class="server-name">@server.Name</div>
-                                        <div class="server-address">@server.IpAddress:@server.Port</div>
-                                        @if (server.IsOnline)
-                                        {
-                                            <div class="server-players">@server.CurrentPlayers/@server.MaxPlayers players</div>
-                                        }
-                                    </div>
-                                </div>
-                                <div class="server-actions">
-                                    <button @onclick="() => SelectServer(server)" class="btn btn-info server-btn">Info</button>
-                                    <button @onclick="() => RemoveServer(server)" class="btn btn-danger server-btn">Remove</button>
-                                </div>
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <div class="empty-servers">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">📂</div>
-                            <div>No servers saved yet</div>
-                            <div style="font-size: 0.8rem; margin-top: 0.5rem;">Query and save servers to see them here</div>
-                        </div>
-                    }
-                </div>
-            </div>
         </div>
     </main>
 </div>
-
-<style>
-    .server-input {
-        width: 100%;
-        padding: 0.75rem;
-        background: var(--background-dark);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-
-        .server-input:focus {
-            outline: none;
-            border-color: var(--text-primary);
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
-        }
-
-        .server-input.readonly {
-            background: var(--background-card);
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-
-        .server-input::placeholder {
-            color: var(--text-secondary);
-        }
-
-    .server-status-message {
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 3px solid;
-    }
-
-    .status-success {
-        background: rgba(16, 185, 129, 0.1);
-        border-color: var(--accent-green);
-        color: var(--accent-green);
-    }
-
-    .status-error {
-        background: rgba(239, 68, 68, 0.1);
-        border-color: var(--accent-red);
-        color: var(--accent-red);
-    }
-
-    .status-warning {
-        background: rgba(245, 158, 11, 0.1);
-        border-color: var(--accent-orange);
-        color: var(--accent-orange);
-    }
-
-    .status-info {
-        background: rgba(59, 130, 246, 0.1);
-        border-color: var(--accent-blue);
-        color: var(--accent-blue);
-    }
-
-    .server-info-section {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .server-info-item {
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .info-label {
-        color: var(--text-secondary);
-    }
-
-    .info-value {
-        color: var(--text-primary);
-    }
-
-        .info-value.online {
-            color: var(--accent-green);
-        }
-
-        .info-value.offline {
-            color: var(--accent-red);
-        }
-
-    .troubleshooting-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-
-    .troubleshooting-section {
-        background: var(--background-dark);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 0.75rem;
-    }
-
-        .troubleshooting-section h4 {
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-primary);
-        }
-
-        .troubleshooting-section ul {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            line-height: 1.4;
-            margin: 0;
-            padding-left: 1rem;
-        }
-
-    .servers-list {
-        flex: 1;
-        overflow-y: auto;
-        max-height: calc(100vh - 350px);
-        margin: -0.5rem;
-        padding: 0.5rem;
-    }
-
-    .server-card {
-        padding: 0.75rem;
-        margin: 0.25rem 0;
-        background: var(--background-dark);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        transition: all 0.2s ease;
-    }
-
-        .server-card:hover {
-            background: var(--background-hover);
-            border-color: var(--text-primary);
-        }
-
-        .server-card.selected {
-            background: var(--background-hover);
-            border-color: var(--accent-green);
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
-        }
-
-    .server-status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-
-        .server-status-dot.online {
-            background-color: var(--accent-green);
-            box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-        }
-
-        .server-status-dot.offline {
-            background-color: var(--accent-red);
-            box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
-        }
-
-    .server-name {
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 0.8rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .server-address {
-        color: var(--text-secondary);
-        font-size: 0.7rem;
-    }
-
-    .server-players {
-        color: var(--accent-green);
-        font-size: 0.7rem;
-    }
-
-    .server-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-    }
-
-    .server-btn {
-        font-size: 0.7rem;
-        padding: 0.3rem 0.6rem;
-        flex: 1;
-    }
-
-    .empty-servers {
-        text-align: center;
-        color: var(--text-secondary);
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-    }
-
-    .btn-info {
-        background: linear-gradient(135deg, var(--accent-blue), #2563eb);
-        color: white;
-        border: 1px solid var(--accent-blue);
-    }
-
-        .btn-info:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-            background: linear-gradient(135deg, #60a5fa, var(--accent-blue));
-        }
-
-    .btn-warning {
-        background: linear-gradient(135deg, var(--accent-orange), #d97706);
-        color: white;
-        border: 1px solid var(--accent-orange);
-        font-weight: 600;
-    }
-
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-            background: linear-gradient(135deg, #fbbf24, var(--accent-orange));
-        }
-
-    .btn-secondary {
-        background: linear-gradient(135deg, var(--accent-green), var(--dark-green));
-        color: white;
-        border: 1px solid var(--accent-green);
-    }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-            background: linear-gradient(135deg, var(--light-green), var(--accent-green));
-        }
-</style>
 
 @code {
     private string serverInput = "";
@@ -532,7 +307,7 @@
         if (parts.Length != 2 || !int.TryParse(parts[1], out int port)) return "";
 
         int gamePort = port - 12288;
-        if (gamePort <= 0) gamePort = port; 
+        if (gamePort <= 0) gamePort = port;
 
         return $"steam://run/346110//+connect {parts[0]}:{gamePort}";
     }
@@ -549,7 +324,7 @@
         }
         catch
         {
-            statusMessage = "❌ Failed to copy URL";
+            statusMessage = "❌ Failed to copy URL to clipboard";
         }
         StateHasChanged();
     }
@@ -568,14 +343,13 @@
             var parts = serverInput.Split(':');
             if (parts.Length != 2 || !int.TryParse(parts[1], out int queryPort))
             {
-                statusMessage = "Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)";
+                statusMessage = "❌ Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)";
                 return;
             }
 
             string ip = parts[0];
-
             int gamePort = queryPort - 12288;
-            if (gamePort <= 0) gamePort = queryPort; 
+            if (gamePort <= 0) gamePort = queryPort;
 
             var server = new GameServer
             {
@@ -595,12 +369,12 @@
                 server.MaxPlayers = serverInfo.MaxPlayers;
                 server.CurrentMap = string.IsNullOrEmpty(serverInfo.Map) ? "Unknown" : serverInfo.Map;
                 server.Version = string.IsNullOrEmpty(serverInfo.Version) ? "Unknown" : serverInfo.Version;
-                statusMessage = $"✅ Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers}";
+                statusMessage = $"✅ Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers} | Map: {serverInfo.Map}";
             }
             else
             {
                 using var ping = new Ping();
-                var pingReply = await ping.SendPingAsync(ip, 3000);
+                var pingReply = await ping.SendPingAsync(ip, 5000);
 
                 if (pingReply.Status == IPStatus.Success)
                 {
@@ -648,11 +422,11 @@
             if (response.Buffer.Length > 6)
             {
                 var data = response.Buffer;
-                int offset = 5; 
+                int offset = 5;
 
                 if (data[4] == 0x49)
                 {
-                    offset++; 
+                    offset++;
 
                     var name = ReadString(data, ref offset);
                     var map = ReadString(data, ref offset);
@@ -688,7 +462,7 @@
         var start = offset;
         while (offset < data.Length && data[offset] != 0) offset++;
         var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
-        offset++; 
+        offset++;
         return result;
     }
 
@@ -705,7 +479,7 @@
             existing.MaxPlayers = currentServer.MaxPlayers;
             existing.CurrentMap = currentServer.CurrentMap;
             existing.Version = currentServer.Version;
-            statusMessage = "💾 Server updated in list!";
+            statusMessage = "💾 Server updated in saved list!";
         }
         else
         {
@@ -739,11 +513,11 @@
             var steamUrl = GetSteamUrl();
             if (string.IsNullOrEmpty(steamUrl))
             {
-                statusMessage = "Invalid server format for connection";
+                statusMessage = "❌ Invalid server format for connection";
                 return;
             }
 
-            await JSRuntime.InvokeVoidAsync("window.open", steamUrl);
+            await JSRuntime.InvokeVoidAsync("window.open", steamUrl, "_blank");
             statusMessage = $"🚀 Launching ARK via Steam...";
         }
         catch (Exception ex)
@@ -763,10 +537,14 @@
 
         try
         {
-            string steamFavUrl = $"steam://friends/add/{currentServer.IpAddress}:{currentServer.Port}";
-
-            await JSRuntime.InvokeVoidAsync("window.open", steamFavUrl);
-            statusMessage = $"⭐ Added server to Steam favorites!";
+            await SaveServer();
+            
+            if (currentServer != null)
+            {
+                await UpdateServerStatus(currentServer);
+            }
+            
+            statusMessage = $"⭐ Server added to favorites and status refreshed!";
         }
         catch (Exception ex)
         {
@@ -779,7 +557,7 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers");
+            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers", "_blank");
             statusMessage = "🎮 Opening Steam server browser...";
         }
         catch (Exception ex)
@@ -794,7 +572,9 @@
         selectedServer = server;
         showServerInfo = true;
         serverInput = $"{server.IpAddress}:{server.QueryPort}";
-        currentServer = server; 
+        currentServer = server;
+        
+        _ = UpdateServerStatus(server);
     }
 
     private void HideServerInfo()
@@ -810,9 +590,9 @@
 
     private string GetStatusClass()
     {
-        if (statusMessage.Contains("❌")) return "status-error";
-        if (statusMessage.Contains("⚠️")) return "status-warning";
-        return "status-success";
+        if (statusMessage.Contains("❌")) return "server-status-error";
+        if (statusMessage.Contains("⚠️")) return "server-status-warning";
+        return "server-status-success";
     }
 
     public class ServerQueryResult
