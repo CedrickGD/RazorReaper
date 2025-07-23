@@ -74,7 +74,6 @@
 </div>
 
 <style>
-    /* Game Status Section */
     .game-status {
         display: flex;
         align-items: center;
@@ -140,7 +139,6 @@
         font-weight: 500;
     }
 
-    /* Game Action Buttons */
     .game-actions {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -263,7 +261,6 @@
 </style>
 
 @code {
-    // Windows API imports
     private const int SW_RESTORE = 9;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint VK_TAB = 0x09;
@@ -278,14 +275,13 @@
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
-    // Component state
     private bool isGameRunning = false;
     private Timer? statusTimer;
 
     protected override void OnInitialized()
     {
         CheckGameStatus();
-        // Check game status every 5 seconds
+
         statusTimer = new Timer(async _ =>
         {
             CheckGameStatus();
@@ -323,19 +319,16 @@
             {
                 IntPtr gameWindowHandle = processes[0].MainWindowHandle;
 
-                // Bring window to foreground
-                ShowWindow(gameWindowHandle, SW_RESTORE);
+             ShowWindow(gameWindowHandle, SW_RESTORE);
                 await Task.Delay(100);
                 SetForegroundWindow(gameWindowHandle);
                 await Task.Delay(500);
 
-                // Press TAB to open console
                 keybd_event((byte)VK_TAB, 0, 0, UIntPtr.Zero);
                 await Task.Delay(50);
                 keybd_event((byte)VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
                 await Task.Delay(300);
 
-                // Send each character of the command
                 foreach (char c in command.ToLower())
                 {
                     SendChar(c);
@@ -344,7 +337,6 @@
 
                 await Task.Delay(200);
 
-                // Press Enter
                 keybd_event((byte)VK_RETURN, 0, 0, UIntPtr.Zero);
                 await Task.Delay(50);
                 keybd_event((byte)VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);

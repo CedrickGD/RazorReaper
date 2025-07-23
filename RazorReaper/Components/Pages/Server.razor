@@ -413,7 +413,6 @@
         height: 100%;
     }
 
-    /* Enhanced button styles for better visibility */
     .btn-info {
         background: linear-gradient(135deg, var(--accent-blue), #2563eb);
         color: white;
@@ -476,7 +475,6 @@
             if (!string.IsNullOrEmpty(json))
             {
                 servers = JsonSerializer.Deserialize<List<GameServer>>(json) ?? new();
-                // Update online status for existing servers
                 foreach (var server in servers)
                 {
                     _ = UpdateServerStatus(server);
@@ -533,9 +531,8 @@
         var parts = serverInput.Split(':');
         if (parts.Length != 2 || !int.TryParse(parts[1], out int port)) return "";
 
-        // For ARK, the game port is typically query port - 12288
         int gamePort = port - 12288;
-        if (gamePort <= 0) gamePort = port; // Fallback if calculation doesn't work
+        if (gamePort <= 0) gamePort = port; 
 
         return $"steam://run/346110//+connect {parts[0]}:{gamePort}";
     }
@@ -577,9 +574,8 @@
 
             string ip = parts[0];
 
-            // Calculate game port (ARK uses query port - 12288)
             int gamePort = queryPort - 12288;
-            if (gamePort <= 0) gamePort = queryPort; // Fallback
+            if (gamePort <= 0) gamePort = queryPort; 
 
             var server = new GameServer
             {
@@ -603,7 +599,6 @@
             }
             else
             {
-                // Try ping as fallback
                 using var ping = new Ping();
                 var pingReply = await ping.SendPingAsync(ip, 3000);
 
@@ -642,7 +637,6 @@
 
             var endpoint = new IPEndPoint(IPAddress.Parse(ip), port);
 
-            // A2S_INFO query for Source engine
             var infoQuery = new byte[] {
                 0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
                 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00
@@ -654,11 +648,11 @@
             if (response.Buffer.Length > 6)
             {
                 var data = response.Buffer;
-                int offset = 5; // Skip header
+                int offset = 5; 
 
-                if (data[4] == 0x49) // A2S_INFO response
+                if (data[4] == 0x49)
                 {
-                    offset++; // Skip protocol version
+                    offset++; 
 
                     var name = ReadString(data, ref offset);
                     var map = ReadString(data, ref offset);
@@ -694,7 +688,7 @@
         var start = offset;
         while (offset < data.Length && data[offset] != 0) offset++;
         var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
-        offset++; // Skip null terminator
+        offset++; 
         return result;
     }
 
@@ -705,7 +699,6 @@
         var existing = servers.FirstOrDefault(s => s.IpAddress == currentServer.IpAddress && s.QueryPort == currentServer.QueryPort);
         if (existing != null)
         {
-            // Update existing server
             existing.Name = currentServer.Name;
             existing.IsOnline = currentServer.IsOnline;
             existing.CurrentPlayers = currentServer.CurrentPlayers;
@@ -770,7 +763,6 @@
 
         try
         {
-            // Create steam://addfav URL
             string steamFavUrl = $"steam://friends/add/{currentServer.IpAddress}:{currentServer.Port}";
 
             await JSRuntime.InvokeVoidAsync("window.open", steamFavUrl);
@@ -802,7 +794,7 @@
         selectedServer = server;
         showServerInfo = true;
         serverInput = $"{server.IpAddress}:{server.QueryPort}";
-        currentServer = server; // Set as current for operations
+        currentServer = server; 
     }
 
     private void HideServerInfo()
