@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Discord notification
-        uses: Ilshidur/action-discord@v1
+        uses: peter-evans/discord-webhook@v1
         with:
-          webhook: https://discord.com/api/webhooks/1397890934825549915/Eh1u3-rWAhp9fwkdCwvzpUMdNQNm0cH5B6I-yC0tM9jsunj3bPtYNPF6o7EnitbqENh6
-          content: |
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          message: |
             🎉 New Version Live ! **${{ github.event.release.tag_name }}** 
             Take a look here ${{ github.event.release.html_url }}
