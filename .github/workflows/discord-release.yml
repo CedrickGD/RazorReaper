@@ -9,33 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Discord Notification
+        uses: Ilshidur/action-discord@master
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d '{
-                 "embeds": [{
-                   "title": "🚀 New Release: ${{ github.event.release.tag_name }}",
-                   "description": "${{ github.event.release.name }}\n\n${{ github.event.release.body }}",
-                   "url": "${{ github.event.release.html_url }}",
-                   "color": 3066993,
-                   "fields": [
-                     {
-                       "name": "Version",
-                       "value": "${{ github.event.release.tag_name }}",
-                       "inline": true
-                     },
-                     {
-                       "name": "Repository",
-                       "value": "${{ github.repository }}",
-                       "inline": true
-                     }
-                   ],
-                   "timestamp": "${{ github.event.release.published_at }}",
-                   "footer": {
-                     "text": "GitHub Release"
-                   }
-                 }]
-               }' \
-               $DISCORD_WEBHOOK_URL
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          args: |
+            🚀 **New Release**: ${{ github.event.release.tag_name }}
+            
+            **${{ github.event.release.name }}**
+            
+            ${{ github.event.release.body }}
+            
+            [Download here](${{ github.event.release.html_url }})
