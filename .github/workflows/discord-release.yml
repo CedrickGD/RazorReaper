@@ -1,15 +1,10 @@
-name: Discord Release
+name: Basic Test
 
 on:
-  release:
-    types: [published]
+  push:
 
 jobs:
-  notify:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Send to Discord
-        run: |
-          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{"content": "🚀 **New Release:** ${{ github.event.release.tag_name }}\n\n${{ github.event.release.name }}\n\n${{ github.event.release.html_url }}"}'
+      - run: echo "This workflow ran"
