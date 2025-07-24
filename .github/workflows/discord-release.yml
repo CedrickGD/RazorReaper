@@ -13,12 +13,10 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          # Use event data directly - it's reliable
           TAG_NAME="${{ github.event.release.tag_name }}"
           RELEASE_NAME="${{ github.event.release.name }}"
           RELEASE_URL="${{ github.event.release.html_url }}"
           
-          # Escape any quotes in the name for JSON
           SAFE_NAME=$(echo "$RELEASE_NAME" | sed 's/"/\\"/g')
           
           echo "Sending Discord notification for: $TAG_NAME"
