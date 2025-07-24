@@ -1,17 +1,17 @@
-name: Notify Discord on Release
+name: Discord Release Notification
 
 on:
   release:
     types: [published]
 
 jobs:
-  discord_notification:
-    runs-on: ubuntu-latest
+  notify:
+    runs-on: ubuntu-latest  
     steps:
-      - name: Send Discord notification
-        uses: peter-evans/discord-webhook@v1
+      - name: Nachricht an Discord senden
+        uses: ilshidur/action-discord@v1
         with:
-          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-          message: |
+          webhook: https://discord.com/api/webhooks/https://discord.com/api/webhooks/1397890934825549915/Eh1u3-rWAhp9fwkdCwvzpUMdNQNm0cH5B6I-yC0tM9jsunj3bPtYNPF6o7EnitbqENh6
+          content: |
             🎉 New Version Live ! **${{ github.event.release.tag_name }}** 
             Take a look here ${{ github.event.release.html_url }}
