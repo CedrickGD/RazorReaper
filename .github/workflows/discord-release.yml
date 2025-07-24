@@ -1,12 +1,13 @@
-name: Release Test
+name: All Release Events
 
 on:
   release:
-    types: [published]
+    types: [published, unpublished, created, edited, deleted, prereleased, released]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Release workflow triggered!"
+      - run: echo "Release event triggered!"
+      - run: echo "Event type was ${{ github.event.action }}"
       - run: echo "Tag is ${{ github.event.release.tag_name }}"
