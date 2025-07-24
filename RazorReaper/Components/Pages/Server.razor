@@ -23,7 +23,7 @@
                 <div class="connection-form">
                     <div>
                         <label class="input-label">Server IP Address</label>
-                        <input @bind="serverInput" 
+                        <input @bind="serverInput"
                                @onkeypress="@(async (e) => { if (e.Key == "Enter") await QueryServer(); })"
                                placeholder="141.98.157.224:27015"
                                class="server-input" />
@@ -52,7 +52,7 @@
                                 <span>🔍 Query</span>
                             }
                         </button>
-                        
+
                         <button class="server-btn" @onclick="ConnectToServer">
                             🔗 Connect
                         </button>
@@ -62,19 +62,19 @@
                         <button class="server-btn" @onclick="SaveServer" disabled="@(currentServer == null)">
                             💾 Save
                         </button>
-                        
-                        <button class="server-btn" @onclick="AddToFavorites" disabled="@(currentServer == null)">
+
+                        <button class="server-btn" @onclick="AddToSteamFavorites" disabled="@(currentServer == null)">
                             ⭐ Add to Steam
                         </button>
                     </div>
 
                     <div class="button-grid">
-                        <button class="server-btn" @onclick="ShowSteamProof">
-                            🔍 View Steam Favorites
-                        </button>
-                        
                         <button class="server-btn" @onclick="OpenSteamBrowser">
                             🎮 Steam Browser
+                        </button>
+
+                        <button class="server-btn" @onclick="OpenSteamGameDirectory" disabled="@(currentServer == null)">
+                            📁 Game Favorites
                         </button>
                     </div>
                 </div>
@@ -85,6 +85,14 @@
                         <div>@statusMessage</div>
                     </div>
                 }
+
+                @if (showFavoritesSuccess)
+                {
+                    <div class="favorites-success">
+                        ✅ Server successfully added to Steam favorites!<br />
+                        <small>Check Steam → View → Servers → Favorites tab</small>
+                    </div>
+                }
             </div>
 
             <div class="main-column">
@@ -92,7 +100,7 @@
                 {
                     <div class="content-card">
                         <div class="server-info-header">
-                            <h3 class="text-green">@selectedServer.Name</h3>
+                            <h3 class="text-white">@selectedServer.Name</h3>
                             <button class="server-btn close-btn" @onclick="HideServerInfo">✕</button>
                         </div>
 
@@ -133,7 +141,7 @@
 
                 <div class="content-card saved-servers-section">
                     <div class="section-header">
-                        <h3 class="text-green">Saved Servers</h3>
+                        <h3>Saved Servers</h3>
                         <span class="text-secondary">@servers.Count servers</span>
                     </div>
 
@@ -174,7 +182,7 @@
 
                 <div class="content-card troubleshooting-section">
                     <div class="section-header">
-                        <h3 class="text-blue">Troubleshooting</h3>
+                        <h3>Troubleshooting</h3>
                         <button class="server-btn toggle-btn" @onclick="ToggleTroubleshooting">
                             @(showTroubleshooting ? "▼ Hide" : "▶ Show")
                         </button>
@@ -236,6 +244,7 @@
     private bool isQuerying = false;
     private bool showTroubleshooting = false;
     private bool showServerInfo = false;
+    private bool showFavoritesSuccess = false;
     private List<GameServer> servers = new();
     private GameServer? selectedServer;
     private GameServer? currentServer;
@@ -340,6 +349,7 @@
         isQuerying = true;
         statusMessage = "";
         currentServer = null;
+        showFavoritesSuccess = false;
         StateHasChanged();
 
         try
@@ -472,7 +482,7 @@
 
     private async Task SaveServer()
     {
-        if (currentServer == null) 
+        if (currentServer == null)
         {
             statusMessage = "❌ No server to save - please query a server first";
             StateHasChanged();
@@ -543,7 +553,7 @@
         StateHasChanged();
     }
 
-    private async Task AddToFavorites()
+    private async Task AddToSteamFavorites()
     {
         if (currentServer == null)
         {
@@ -553,36 +563,35 @@
 
         try
         {
+            // Save server locally first
             await SaveServer();
-            
-            string steamServerUrl = $"steam://connect/{currentServer.IpAddress}:{currentServer.Port}";
-            
-            await JSRuntime.InvokeVoidAsync("window.open", steamServerUrl, "_blank");
-            
+
+            // Create the Steam favorite URL
+            string steamFavoriteUrl = $"steam://connect/{currentServer.IpAddress}:{currentServer.Port}";
+
+            // Open Steam with the connect URL - this adds it to favorites automatically
+            await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
+
+            // Show success message
+            showFavoritesSuccess = true;
+            statusMessage = $"⭐ Server '{currentServer.Name}' added to Steam favorites!";
+
+            // Hide success message after 5 seconds
+            _ = Task.Delay(5000).ContinueWith(_ =>
+            {
+                showFavoritesSuccess = false;
+                StateHasChanged();
+            });
+
+            // Update server status
             if (currentServer != null)
             {
                 await UpdateServerStatus(currentServer);
             }
-            
-            statusMessage = $"⭐ Server added to local favorites! Steam opened to add server - check your Steam Server Browser > Favorites tab";
         }
         catch (Exception ex)
         {
-            statusMessage = $"❌ Failed to add to favorites: {ex.Message}";
-        }
-        StateHasChanged();
-    }
-
-    private async Task ShowSteamProof()
-    {
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers", "_blank");
-            statusMessage = "🎮 Steam Server Browser opened! Check the 'Favorites' tab to see your saved servers";
-        }
-        catch (Exception ex)
-        {
-            statusMessage = $"❌ Failed to open Steam browser: {ex.Message}";
+            statusMessage = $"❌ Failed to add to Steam favorites: {ex.Message}";
         }
         StateHasChanged();
     }
@@ -601,13 +610,34 @@
         StateHasChanged();
     }
 
+    private async Task OpenSteamGameDirectory()
+    {
+        if (currentServer == null)
+        {
+            statusMessage = "❌ No server selected";
+            return;
+        }
+
+        try
+        {
+            // Open Steam server browser and show favorites
+            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers/favorites", "_blank");
+            statusMessage = $"📁 Opening Steam favorites - look for '{currentServer.Name}'";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Failed to open Steam favorites: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
     private void SelectServer(GameServer server)
     {
         selectedServer = server;
         showServerInfo = true;
         serverInput = $"{server.IpAddress}:{server.QueryPort}";
         currentServer = server;
-        
+
         _ = UpdateServerStatus(server);
     }
 

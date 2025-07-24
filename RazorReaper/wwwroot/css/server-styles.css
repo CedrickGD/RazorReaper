@@ -180,6 +180,13 @@
     flex: 1;
 }
 
+/* Updated section header styling for consistency */
+.section-header h3 {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
 .servers-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -302,6 +309,11 @@
     flex-shrink: 0;
 }
 
+    /* Updated troubleshooting header to be white */
+    .troubleshooting-section .section-header h3 {
+        color: var(--text-primary) !important;
+    }
+
 .troubleshooting-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -346,6 +358,18 @@
     100% {
         transform: rotate(360deg);
     }
+}
+
+/* Success notification styling */
+.favorites-success {
+    padding: 1rem;
+    border-radius: 8px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--accent-green);
+    color: var(--accent-green);
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
 }
 
 @media (max-width: 768px) {
