@@ -1,45 +1,15 @@
-name: Discord Release Notification
+name: Discord Release
 
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord notification
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - name: Send to Discord
         run: |
-          TAG_NAME="${{ github.event.release.tag_name }}"
-          RELEASE_NAME="${{ github.event.release.name }}"
-          RELEASE_URL="${{ github.event.release.html_url }}"
-          
-          SAFE_NAME=$(echo "$RELEASE_NAME" | sed 's/"/\\"/g')
-          
-          echo "Sending Discord notification for: $TAG_NAME"
-          
-          curl -X POST "$DISCORD_WEBHOOK_URL" \
-               -H "Content-Type: application/json" \
-               -d "{
-                 \"embeds\": [{
-                   \"title\": \"🚀 New Release: $TAG_NAME\",
-                   \"description\": \"**$SAFE_NAME**\",
-                   \"url\": \"$RELEASE_URL\",
-                   \"color\": 3066993,
-                   \"fields\": [
-                     {
-                       \"name\": \"Version\",
-                       \"value\": \"$TAG_NAME\",
-                       \"inline\": true
-                     },
-                     {
-                       \"name\": \"Repository\",
-                       \"value\": \"${{ github.repository }}\",
-                       \"inline\": true
-                     }
-                   ]
-                 }]
-               }"
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{"content": "🚀 **New Release:** ${{ github.event.release.tag_name }}\n\n${{ github.event.release.name }}\n\n${{ github.event.release.html_url }}"}'
