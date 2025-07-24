@@ -6,6 +6,7 @@
 @using Microsoft.Win32
 @using RazorReaper.Components.Shared
 @inject IJSRuntime JSRuntime
+@implements IDisposable
 
 <div class="app-container">
     <RazorReaper.Components.Shared.SharedNavbar />
@@ -41,7 +42,7 @@
                     }
 
                     <div class="button-grid">
-                        <button class="server-btn" @onclick="QueryServer" disabled="@isQuerying">
+                        <button class="server-btn query" @onclick="QueryServer" disabled="@isQuerying">
                             @if (isQuerying)
                             {
                                 <div class="server-spinner"></div>
@@ -49,32 +50,32 @@
                             }
                             else
                             {
-                                <span>🔍 Query</span>
+                                <span>Query</span>
                             }
                         </button>
 
-                        <button class="server-btn" @onclick="ConnectToServer">
-                            🔗 Connect
+                        <button class="server-btn connect" @onclick="ConnectToServer">
+                            Connect
                         </button>
                     </div>
 
                     <div class="button-grid">
-                        <button class="server-btn" @onclick="SaveServer" disabled="@(currentServer == null)">
-                            💾 Save
+                        <button class="server-btn save" @onclick="SaveServer" disabled="@(currentServer == null)">
+                            Save
                         </button>
 
-                        <button class="server-btn" @onclick="AddToSteamFavorites" disabled="@(currentServer == null)">
-                            ⭐ Add to Steam
+                        <button class="server-btn favorite" @onclick="AddToSteamFavorites" disabled="@(currentServer == null)">
+                            Add to Steam
                         </button>
                     </div>
 
                     <div class="button-grid">
-                        <button class="server-btn" @onclick="OpenSteamBrowser">
-                            🎮 Steam Browser
+                        <button class="server-btn browser" @onclick="OpenSteamBrowser">
+                            Steam Browser
                         </button>
 
-                        <button class="server-btn" @onclick="OpenSteamGameDirectory" disabled="@(currentServer == null)">
-                            📁 Game Favorites
+                        <button class="server-btn folder" @onclick="OpenSteamGameDirectory" disabled="@(currentServer == null)">
+                            Game Favorites
                         </button>
                     </div>
                 </div>
@@ -248,11 +249,66 @@
     private List<GameServer> servers = new();
     private GameServer? selectedServer;
     private GameServer? currentServer;
+    private Timer? refreshTimer;
+    private bool isPageActive = true;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadServers();
+        StartAutoRefresh();
         StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        DotNet.invokeMethodAsync('RazorReaper', 'OnPageHidden');
+                    } else {
+                        DotNet.invokeMethodAsync('RazorReaper', 'OnPageVisible');
+                    }
+                });
+            ");
+        }
+    }
+
+    [JSInvokable]
+    public static void OnPageHidden()
+    {
+        
+    }
+
+    [JSInvokable]
+    public static void OnPageVisible()
+    {
+        
+    }
+
+    private void StartAutoRefresh()
+    {
+        
+        refreshTimer = new Timer(async _ =>
+        {
+            if (isPageActive && servers.Any())
+            {
+                await InvokeAsync(async () =>
+                {
+                    foreach (var server in servers)
+                    {
+                        await UpdateServerStatus(server);
+                    }
+                    StateHasChanged();
+                });
+            }
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
     }
 
     private async Task LoadServers()
@@ -263,6 +319,7 @@
             if (!string.IsNullOrEmpty(json))
             {
                 servers = JsonSerializer.Deserialize<List<GameServer>>(json) ?? new();
+                
                 foreach (var server in servers)
                 {
                     _ = UpdateServerStatus(server);
@@ -300,16 +357,22 @@
                 server.MaxPlayers = serverInfo.MaxPlayers;
                 server.CurrentMap = serverInfo.Map;
                 server.Version = serverInfo.Version;
+                
+                if (!string.IsNullOrEmpty(serverInfo.Name) && serverInfo.Name != server.Name)
+                {
+                    server.Name = serverInfo.Name;
+                }
             }
             else
             {
                 server.IsOnline = false;
+                server.CurrentPlayers = 0;
             }
-            StateHasChanged();
         }
         catch
         {
             server.IsOnline = false;
+            server.CurrentPlayers = 0;
         }
     }
 
@@ -420,37 +483,58 @@
         try
         {
             using var client = new UdpClient();
-            client.Client.ReceiveTimeout = 5000;
-            client.Client.SendTimeout = 3000;
+            client.Client.ReceiveTimeout = 10000; 
+            client.Client.SendTimeout = 5000;
 
             var endpoint = new IPEndPoint(IPAddress.Parse(ip), port);
 
             var infoQuery = new byte[] {
-                0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
-                0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00
+                0xFF, 0xFF, 0xFF, 0xFF,
+                0x54, 
+                0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 
+                0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 
+                0x51, 0x75, 0x65, 0x72, 0x79, 0x00        
             };
 
             await client.SendAsync(infoQuery, infoQuery.Length, endpoint);
             var response = await client.ReceiveAsync();
 
+            Console.WriteLine($"Query response length: {response.Buffer.Length} bytes");
+
             if (response.Buffer.Length > 6)
             {
                 var data = response.Buffer;
-                int offset = 5;
+                int offset = 4; 
 
-                if (data[4] == 0x49)
+                if (data[4] == 0x49) 
                 {
-                    offset++;
+                    offset = 5;
+                    var protocol = data[offset++];
+                    Console.WriteLine($"Protocol version: {protocol}");
 
                     var name = ReadString(data, ref offset);
                     var map = ReadString(data, ref offset);
                     var folder = ReadString(data, ref offset);
                     var game = ReadString(data, ref offset);
 
+                    Console.WriteLine($"Server: {name}, Map: {map}, Game: {game}");
+
                     if (offset + 2 < data.Length)
                     {
-                        var players = data[offset];
-                        var maxPlayers = data[offset + 1];
+                        offset += 2;
+
+                        var players = data[offset++];
+                        var maxPlayers = data[offset++];
+                        var bots = data[offset++];
+
+                        Console.WriteLine($"Players: {players}/{maxPlayers}, Bots: {bots}");
+
+                        offset += 2;
+
+                        offset += 2;
+
+                        var version = ReadString(data, ref offset);
+                        Console.WriteLine($"Version: {version}");
 
                         return new ServerQueryResult
                         {
@@ -458,26 +542,106 @@
                             Map = map,
                             Players = players,
                             MaxPlayers = maxPlayers,
-                            Version = game
+                            Version = version
                         };
                     }
+                }
+                else if (data[4] == 0x41)
+                {
+                    Console.WriteLine("Received challenge response, sending challenge query...");
+
+                    var challenge = new byte[4];
+                    Array.Copy(data, 5, challenge, 0, 4);
+
+                    var challengeQuery = new byte[infoQuery.Length + 4];
+                    Array.Copy(infoQuery, challengeQuery, infoQuery.Length);
+                    Array.Copy(challenge, 0, challengeQuery, infoQuery.Length, 4);
+
+                    await client.SendAsync(challengeQuery, challengeQuery.Length, endpoint);
+                    var challengeResponse = await client.ReceiveAsync();
+
+                    return ProcessInfoResponse(challengeResponse.Buffer);
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Query error: {ex.Message}");
+            Console.WriteLine($"Query error for {ip}:{port} - {ex.Message}");
+        }
+        return null;
+    }
+
+    private ServerQueryResult? ProcessInfoResponse(byte[] data)
+    {
+        try
+        {
+            if (data.Length > 6 && data[4] == 0x49)
+            {
+                int offset = 5;
+                var protocol = data[offset++];
+
+                var name = ReadString(data, ref offset);
+                var map = ReadString(data, ref offset);
+                var folder = ReadString(data, ref offset);
+                var game = ReadString(data, ref offset);
+
+                if (offset + 2 < data.Length)
+                {
+                    offset += 2;
+                    var players = data[offset++];
+                    var maxPlayers = data[offset++];
+                    var bots = data[offset++];
+                    offset += 2; 
+                    offset += 2;
+
+                    var version = ReadString(data, ref offset);
+
+                    return new ServerQueryResult
+                    {
+                        Name = name,
+                        Map = map,
+                        Players = players,
+                        MaxPlayers = maxPlayers,
+                        Version = version
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing info response: {ex.Message}");
         }
         return null;
     }
 
     private string ReadString(byte[] data, ref int offset)
     {
+        if (offset >= data.Length) return "";
+
         var start = offset;
-        while (offset < data.Length && data[offset] != 0) offset++;
-        var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
-        offset++;
-        return result;
+        while (offset < data.Length && data[offset] != 0)
+        {
+            offset++;
+        }
+
+        if (offset > start)
+        {
+            try
+            {
+                var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
+                offset++;
+                return result;
+            }
+            catch
+            {  
+                var result = System.Text.Encoding.ASCII.GetString(data, start, offset - start);
+                offset++; 
+                return result;
+            }
+        }
+
+        if (offset < data.Length) offset++; 
+        return "";
     }
 
     private async Task SaveServer()
@@ -563,27 +727,21 @@
 
         try
         {
-            // Save server locally first
             await SaveServer();
 
-            // Create the Steam favorite URL
             string steamFavoriteUrl = $"steam://connect/{currentServer.IpAddress}:{currentServer.Port}";
 
-            // Open Steam with the connect URL - this adds it to favorites automatically
             await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
 
-            // Show success message
             showFavoritesSuccess = true;
             statusMessage = $"⭐ Server '{currentServer.Name}' added to Steam favorites!";
 
-            // Hide success message after 5 seconds
             _ = Task.Delay(5000).ContinueWith(_ =>
             {
                 showFavoritesSuccess = false;
                 StateHasChanged();
             });
 
-            // Update server status
             if (currentServer != null)
             {
                 await UpdateServerStatus(currentServer);
@@ -620,7 +778,6 @@
 
         try
         {
-            // Open Steam server browser and show favorites
             await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers/favorites", "_blank");
             statusMessage = $"📁 Opening Steam favorites - look for '{currentServer.Name}'";
         }
