@@ -2,11 +2,12 @@ name: Discord Release Notification
 
 on:
   release:
+    types: [published]
 
 jobs:
   notify:
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event.action == 'published'
     steps:
       - name: Send Discord notification
         run: |
