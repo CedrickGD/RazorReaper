@@ -5,37 +5,30 @@ on:
     types: [published]
 
 jobs:
-  notify-discord:
+  notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord Notification
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - name: Get latest release
+        id: release
         run: |
-          curl -H "Content-Type: application/json" \
-               -X POST \
+          LATEST_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+          
+          echo "tag_name=$(echo $LATEST_RELEASE | jq -r '.tag_name')" >> $GITHUB_OUTPUT
+          echo "name=$(echo $LATEST_RELEASE | jq -r '.name')" >> $GITHUB_OUTPUT
+          echo "body=$(echo $LATEST_RELEASE | jq -r '.body')" >> $GITHUB_OUTPUT
+          echo "html_url=$(echo $LATEST_RELEASE | jq -r '.html_url')" >> $GITHUB_OUTPUT
+
+      - name: Send Discord message
+        run: |
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+               -H "Content-Type: application/json" \
                -d '{
                  "embeds": [{
-                   "title": "🚀 New Release: ${{ github.event.release.tag_name }}",
-                   "description": "${{ github.event.release.name }}\n\n${{ github.event.release.body }}",
-                   "url": "${{ github.event.release.html_url }}",
+                   "title": "🚀 New Release: ${{ steps.release.outputs.tag_name }}",
+                   "description": "${{ steps.release.outputs.name }}\n\n${{ steps.release.outputs.body }}",
+                   "url": "${{ steps.release.outputs.html_url }}",
                    "color": 3066993,
-                   "fields": [
-                     {
-                       "name": "Version",
-                       "value": "${{ github.event.release.tag_name }}",
-                       "inline": true
-                     },
-                     {
-                       "name": "Repository",
-                       "value": "${{ github.repository }}",
-                       "inline": true
-                     }
-                   ],
-                   "timestamp": "${{ github.event.release.published_at }}",
-                   "footer": {
-                     "text": "GitHub Release"
-                   }
+                   "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"
                  }]
-               }' \
-               $DISCORD_WEBHOOK_URL
+               }'
