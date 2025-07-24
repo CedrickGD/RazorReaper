@@ -2,33 +2,36 @@ name: Discord Release Notification
 
 on:
   release:
-    types: [published, edited, prereleased, released]
+    types: [published, edited, released, prereleased]  # Covers all scenarios
+  workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest release
-        id: release
+      - name: Get latest release info
+        id: latest_release
         run: |
-          LATEST_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          # Fetch the latest release from GitHub API
+          RELEASE_DATA=$(curl -s -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/releases/latest")
           
-          echo "tag_name=$(echo $LATEST_RELEASE | jq -r '.tag_name')" >> $GITHUB_OUTPUT
-          echo "name=$(echo $LATEST_RELEASE | jq -r '.name')" >> $GITHUB_OUTPUT
-          echo "body=$(echo $LATEST_RELEASE | jq -r '.body')" >> $GITHUB_OUTPUT
-          echo "html_url=$(echo $LATEST_RELEASE | jq -r '.html_url')" >> $GITHUB_OUTPUT
+          # Extract the data we need
+          TAG_NAME=$(echo "$RELEASE_DATA" | grep '"tag_name"' | cut -d'"' -f4)
+          RELEASE_NAME=$(echo "$RELEASE_DATA" | grep '"name"' | cut -d'"' -f4)
+          RELEASE_URL=$(echo "$RELEASE_DATA" | grep '"html_url"' | cut -d'"' -f4)
+          RELEASE_BODY=$(echo "$RELEASE_DATA" | grep -A1 '"body"' | tail -1 | cut -d'"' -f2)
+          
+          # Set outputs for next step
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "name=$RELEASE_NAME" >> $GITHUB_OUTPUT  
+          echo "url=$RELEASE_URL" >> $GITHUB_OUTPUT
+          echo "body=$RELEASE_BODY" >> $GITHUB_OUTPUT
 
       - name: Send Discord message
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+          curl -X POST "$DISCORD_WEBHOOK_URL" \
                -H "Content-Type: application/json" \
-               -d '{
-                 "embeds": [{
-                   "title": "🚀 New Release: ${{ steps.release.outputs.tag_name }}",
-                   "description": "${{ steps.release.outputs.name }}\n\n${{ steps.release.outputs.body }}",
-                   "url": "${{ steps.release.outputs.html_url }}",
-                   "color": 3066993,
-                   "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"
-                 }]
-               }'
+               -d "{\"content\": \"🚀 **New Release: ${{ steps.latest_release.outputs.tag_name }}**\\n\\n${{ steps.latest_release.outputs.name }}\\n\\n${{ steps.latest_release.outputs.url }}\"}"
