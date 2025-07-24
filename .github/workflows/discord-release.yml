@@ -1,10 +1,12 @@
-name: Basic Test
+name: Release Test
 
 on:
-  push:
+  release:
+    types: [published]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "This workflow ran"
+      - run: echo "Release workflow triggered!"
+      - run: echo "Tag is ${{ github.event.release.tag_name }}"
