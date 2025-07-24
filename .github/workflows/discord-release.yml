@@ -1,15 +1,15 @@
-name: Final Debug
+name: Discord Release Notification
 
 on:
   release:
-  push:
-    tags:
-      - '*'
 
 jobs:
-  debug:
+  notify:
     runs-on: ubuntu-latest
+    if: github.event_name == 'release'
     steps:
-      - run: echo "Something triggered this workflow"
-      - run: echo "Event was ${{ github.event_name }}"
-      - run: echo "Ref is ${{ github.ref }}"
+      - name: Send Discord notification
+        run: |
+          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"🚀 **New Release:** ${{ github.event.release.tag_name }}\\n\\n**${{ github.event.release.name }}**\\n\\n${{ github.event.release.html_url }}\"}"
