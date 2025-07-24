@@ -2,36 +2,46 @@ name: Discord Release Notification
 
 on:
   release:
-    types: [published, edited, released, prereleased]  # Covers all scenarios
+    types: [published, edited, released, prereleased]
   workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest release info
-        id: latest_release
-        run: |
-          # Fetch the latest release from GitHub API
-          RELEASE_DATA=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
-          
-          # Extract the data we need
-          TAG_NAME=$(echo "$RELEASE_DATA" | grep '"tag_name"' | cut -d'"' -f4)
-          RELEASE_NAME=$(echo "$RELEASE_DATA" | grep '"name"' | cut -d'"' -f4)
-          RELEASE_URL=$(echo "$RELEASE_DATA" | grep '"html_url"' | cut -d'"' -f4)
-          RELEASE_BODY=$(echo "$RELEASE_DATA" | grep -A1 '"body"' | tail -1 | cut -d'"' -f2)
-          
-          # Set outputs for next step
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "name=$RELEASE_NAME" >> $GITHUB_OUTPUT  
-          echo "url=$RELEASE_URL" >> $GITHUB_OUTPUT
-          echo "body=$RELEASE_BODY" >> $GITHUB_OUTPUT
-
-      - name: Send Discord message
+      - name: Send Discord notification
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          # Use event data directly - it's reliable
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          RELEASE_NAME="${{ github.event.release.name }}"
+          RELEASE_URL="${{ github.event.release.html_url }}"
+          
+          # Escape any quotes in the name for JSON
+          SAFE_NAME=$(echo "$RELEASE_NAME" | sed 's/"/\\"/g')
+          
+          echo "Sending Discord notification for: $TAG_NAME"
+          
           curl -X POST "$DISCORD_WEBHOOK_URL" \
                -H "Content-Type: application/json" \
-               -d "{\"content\": \"🚀 **New Release: ${{ steps.latest_release.outputs.tag_name }}**\\n\\n${{ steps.latest_release.outputs.name }}\\n\\n${{ steps.latest_release.outputs.url }}\"}"
+               -d "{
+                 \"embeds\": [{
+                   \"title\": \"🚀 New Release: $TAG_NAME\",
+                   \"description\": \"**$SAFE_NAME**\",
+                   \"url\": \"$RELEASE_URL\",
+                   \"color\": 3066993,
+                   \"fields\": [
+                     {
+                       \"name\": \"Version\",
+                       \"value\": \"$TAG_NAME\",
+                       \"inline\": true
+                     },
+                     {
+                       \"name\": \"Repository\",
+                       \"value\": \"${{ github.repository }}\",
+                       \"inline\": true
+                     }
+                   ]
+                 }]
+               }"
