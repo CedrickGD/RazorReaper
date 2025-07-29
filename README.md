@@ -72,4 +72,4 @@
 
 ## 📄 License
 
-This project is open source under the MIT License.
+This project is licensed under a proprietary license.  
