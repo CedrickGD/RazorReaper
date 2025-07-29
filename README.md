@@ -66,7 +66,6 @@
 - 🔐 Steam favorites integration
 - 🌐 Multi-language support
 - 🧠 Smart config optimizer
-- 📁 Backup & restore manager
 - ⚙️ `.ini` diffing tool
 
 ---
