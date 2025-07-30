@@ -66,11 +66,10 @@
 - 🔐 Steam favorites integration
 - 🌐 Multi-language support
 - 🧠 Smart config optimizer
-- 📁 Backup & restore manager
 - ⚙️ `.ini` diffing tool
 
 ---
 
 ## 📄 License
 
-This project is open source under the MIT License.
+This project is licensed under a proprietary license.  
