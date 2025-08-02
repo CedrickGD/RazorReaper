@@ -1,4 +1,4 @@
-﻿/* INI Changer Page Styles - Properly scoped to only affect INI Changer page */
+﻿/* INI Changer Page Styles - Enhanced Design */
 
 /* Layout - only on pages with ini-layout class */
 .ini-layout {
@@ -9,17 +9,29 @@
     min-height: calc(100vh - 300px);
 }
 
-    .ini-layout .ini-operations-panel {
-        height: fit-content;
-        position: sticky;
-        top: 2rem;
-    }
-
+    /* Move preset configurations below INI content */
     .ini-layout .ini-main-column {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
-        min-height: 0;
+    }
+
+    .ini-layout .ini-content-area {
+        order: 2;
+        position: sticky;
+        top: 2rem;
+        z-index: 100;
+    }
+
+    .ini-layout .presets-section {
+        order: 1;
+    }
+
+    .ini-layout .ini-operations-panel {
+        height: fit-content;
+        position: sticky;
+        top: 2rem;
+        z-index: 100;
     }
 
     .ini-layout .file-operations {
@@ -28,14 +40,14 @@
         gap: 1rem;
     }
 
-    /* INI Buttons - scoped to ini-layout pages only */
+    /* INI Buttons - styled like paintings page buttons */
     .ini-layout .ini-btn {
         display: flex;
         align-items: center;
         justify-content: flex-start;
         gap: 0.75rem;
         padding: 0.75rem 1rem;
-        background: var(--background-dark);
+        background: var(--background-card);
         border: 1px solid var(--border-color);
         border-radius: 12px;
         color: var(--text-primary);
@@ -47,6 +59,7 @@
         position: relative;
         overflow: hidden;
         width: 100%;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
         .ini-layout .ini-btn::before {
@@ -67,6 +80,8 @@
         .ini-layout .ini-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            background: var(--background-hover);
+            border-color: #ffffff;
         }
 
         .ini-layout .ini-btn:disabled {
@@ -75,64 +90,71 @@
             transform: none !important;
         }
 
-        /* Button variants - scoped */
+        /* Button variants - Logical and consistent color order */
         .ini-layout .ini-btn.primary {
-            border-color: rgba(255, 255, 255, 0.3);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            background: linear-gradient(135deg, #ffffff, #f3f4f6);
+            color: var(--background-dark);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            border: none;
         }
 
             .ini-layout .ini-btn.primary:hover:not(:disabled) {
-                background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-                border-color: rgba(255, 255, 255, 0.5);
-                box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+                background: linear-gradient(135deg, #f3f4f6, #ffffff);
             }
 
         .ini-layout .ini-btn.secondary {
-            border-color: rgba(16, 185, 129, 0.3);
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            background: linear-gradient(135deg, #ffffff, #f3f4f6);
+            color: var(--background-dark);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            border: none;
         }
 
             .ini-layout .ini-btn.secondary:hover:not(:disabled) {
-                background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-                border-color: var(--accent-green);
-                box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-                color: var(--accent-green);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+                background: linear-gradient(135deg, #f3f4f6, #ffffff);
             }
 
         .ini-layout .ini-btn.warning {
-            border-color: rgba(245, 158, 11, 0.3);
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            background: linear-gradient(135deg, #ffffff, #f3f4f6);
+            color: var(--background-dark);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+            border: none;
         }
 
             .ini-layout .ini-btn.warning:hover:not(:disabled) {
-                background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
-                border-color: var(--accent-orange);
-                box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-                color: var(--accent-orange);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+                background: linear-gradient(135deg, #f3f4f6, #ffffff);
+                color: var(--background-dark);
             }
 
         .ini-layout .ini-btn.danger {
-            border-color: rgba(239, 68, 68, 0.3);
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            border: none;
         }
 
             .ini-layout .ini-btn.danger:hover:not(:disabled) {
-                background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
-                border-color: var(--accent-red);
+                transform: translateY(-2px);
                 box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
-                color: var(--accent-red);
+                background: linear-gradient(135deg, #dc2626, var(--accent-red));
             }
 
         .ini-layout .ini-btn.success {
-            border-color: rgba(16, 185, 129, 0.3);
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            background: linear-gradient(135deg, var(--accent-green), var(--dark-green));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            border: none;
         }
 
             .ini-layout .ini-btn.success:hover:not(:disabled) {
-                background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-                border-color: var(--accent-green);
+                transform: translateY(-2px);
                 box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-                color: var(--accent-green);
+                background: linear-gradient(135deg, var(--light-green), var(--accent-green));
             }
 
         .ini-layout .ini-btn svg {
@@ -146,18 +168,22 @@
             transform: scale(1.1);
         }
 
-    /* Preset buttons - scoped */
+    /* Preset buttons - scoped - Made thinner and better aligned */
     .ini-layout .preset-button {
         background: var(--background-card);
         border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1rem;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
         color: var(--text-primary);
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-align: left;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        min-height: 60px;
     }
 
         .ini-layout .preset-button::before {
@@ -177,57 +203,66 @@
 
         .ini-layout .preset-button:hover {
             background: var(--background-hover);
-            border-color: var(--text-primary);
-            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+            border-color: #ffffff;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
+            filter: brightness(1.3);
         }
 
         .ini-layout .preset-button.active {
             background: linear-gradient(135deg, var(--background-hover), var(--background-card));
-            border-color: var(--accent-green);
-            box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+            border-color: #34d399;
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+            filter: brightness(1.4);
         }
 
             .ini-layout .preset-button.active::after {
                 content: '✓';
                 position: absolute;
-                top: 0.5rem;
-                right: 0.5rem;
-                color: var(--accent-green);
+                top: 0.25rem;
+                right: 0.25rem;
+                color: #34d399;
                 font-weight: bold;
-                font-size: 1.2rem;
+                font-size: 1rem;
             }
 
-    /* Status messages - scoped */
+    /* Status messages - scoped - Fixed positioning and vibrant colors */
     .ini-layout .ini-status-message {
         padding: 1rem;
         border-radius: 8px;
         border-left: 3px solid;
         margin-top: 1rem;
+        position: relative;
+        z-index: 101;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
 
     .ini-layout .status-success {
-        background: rgba(16, 185, 129, 0.1);
+        background: rgba(16, 185, 129, 0.25);
         border-color: var(--accent-green);
-        color: var(--accent-green);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.5);
     }
 
     .ini-layout .status-error {
-        background: rgba(239, 68, 68, 0.1);
+        background: rgba(239, 68, 68, 0.25);
         border-color: var(--accent-red);
-        color: var(--accent-red);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.5);
     }
 
     .ini-layout .status-warning {
-        background: rgba(245, 158, 11, 0.1);
+        background: rgba(245, 158, 11, 0.25);
         border-color: var(--accent-orange);
-        color: var(--accent-orange);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.5);
     }
 
     .ini-layout .status-info {
-        background: rgba(59, 130, 246, 0.1);
+        background: rgba(59, 130, 246, 0.25);
         border-color: var(--accent-blue);
-        color: var(--accent-blue);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.5);
     }
 
     .ini-layout .status-content {
@@ -244,7 +279,7 @@
     .ini-layout .ini-textarea {
         flex: 1;
         background: var(--background-dark);
-        color: var(--text-primary);
+        color: #ffffff;
         border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 1rem;
@@ -257,8 +292,8 @@
 
         .ini-layout .ini-textarea:focus {
             outline: none;
-            border-color: var(--text-primary);
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+            border-color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
         }
 
         .ini-layout .ini-textarea::placeholder {
@@ -266,67 +301,103 @@
             font-style: italic;
         }
 
-    /* Action buttons - scoped */
-    .ini-layout .ini-actions {
+    /* Image section */
+    .ini-layout .images-header {
         display: flex;
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-
-    .ini-layout .ini-action-btn {
-        display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: var(--background-dark);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        text-decoration: none;
+        margin-bottom: 1rem;
     }
 
-        .ini-layout .ini-action-btn.primary {
-            border-color: rgba(16, 185, 129, 0.3);
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+    .ini-layout .images-toggle-btn {
+        padding: 0.5rem 1rem;
+        background: var(--background-hover);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+        .ini-layout .images-toggle-btn:hover {
+            background: var(--background-card);
+            border-color: #ffffff;
+            transform: translateY(-1px);
         }
 
-            .ini-layout .ini-action-btn.primary:hover {
-                background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-                border-color: var(--accent-green);
-                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-                color: var(--accent-green);
-                transform: translateY(-2px);
+    .ini-layout .images-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+    }
+
+    .ini-layout .image-item {
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+        .ini-layout .image-item:hover {
+            transform: translateY(-2px);
+        }
+
+    .ini-layout .image-preview {
+        width: 100%;
+        height: 120px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+    }
+
+        .ini-layout .image-preview:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-color: #ffffff;
+        }
+
+        .ini-layout .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+            .ini-layout .image-preview img:hover {
+                transform: scale(1.05);
             }
 
-        .ini-layout .ini-action-btn svg {
-            width: 16px;
-            height: 16px;
-        }
+    .ini-layout .image-name {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #ffffff;
+        font-weight: 600;
+    }
 
-    /* Preset grid - scoped */
     .ini-layout .presets-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
     }
 
     .ini-layout .preset-info {
-        margin-bottom: 0.5rem;
+        text-align: left;
+        width: 100%;
     }
 
     .ini-layout .preset-name {
         font-weight: 600;
         margin-bottom: 0.25rem;
-        color: var(--text-primary);
+        color: #ffffff;
+        font-size: 0.85rem;
     }
 
     .ini-layout .preset-description {
-        font-size: 0.8rem;
-        opacity: 0.8;
+        font-size: 0.7rem;
+        opacity: 0.9;
         color: var(--text-secondary);
+        line-height: 1.3;
     }
 
     /* Path information display - scoped */
@@ -339,7 +410,39 @@
         font-size: 0.85rem;
         word-break: break-all;
         margin-top: 0.5rem;
+        color: #ffffff;
     }
+
+    /* Enhanced header styling */
+    .ini-layout .content-card h3 {
+        color: #ffffff !important;
+        font-weight: 600;
+        font-size: 1.125rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Better text colors throughout */
+    .ini-layout .text-white {
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+
+    .ini-layout .text-secondary {
+        color: #cccccc !important;
+    }
+
+    /* Enhance content card styling */
+    .ini-layout .content-card {
+        background: rgba(26, 26, 26, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+        .ini-layout .content-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
 
 /* Responsive design - scoped */
 @media (max-width: 768px) {
@@ -353,12 +456,18 @@
             top: 0;
         }
 
-        .ini-layout .presets-grid {
-            grid-template-columns: 1fr;
+        .ini-layout .ini-content-area {
+            position: relative;
+            top: 0;
+            order: 1;
         }
 
-        .ini-layout .ini-actions {
-            flex-direction: column;
+        .ini-layout .presets-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .ini-layout .images-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         }
 
         .ini-layout .ini-btn {
@@ -373,10 +482,19 @@
     }
 
     .ini-layout .preset-button {
-        padding: 0.75rem;
+        padding: 0.5rem;
+        min-height: 50px;
     }
 
     .ini-layout .ini-textarea {
         font-size: 0.8rem;
+    }
+
+    .ini-layout .presets-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ini-layout .images-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     }
 }
