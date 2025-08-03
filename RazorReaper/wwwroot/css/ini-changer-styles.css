@@ -1,4 +1,4 @@
-﻿/* INI Changer Page Styles - Enhanced Design */
+﻿/* INI Changer Page Styles - Clean Design */
 
 /* Layout - only on pages with ini-layout class */
 .ini-layout {
@@ -40,7 +40,7 @@
         gap: 1rem;
     }
 
-    /* INI Buttons - styled like paintings page buttons */
+    /* INI Buttons - Clean white design like paintings page */
     .ini-layout .ini-btn {
         display: flex;
         align-items: center;
@@ -90,7 +90,7 @@
             transform: none !important;
         }
 
-        /* Button variants - Logical and consistent color order */
+        /* All buttons are now primary (white) for clean design */
         .ini-layout .ini-btn.primary {
             background: linear-gradient(135deg, #ffffff, #f3f4f6);
             color: var(--background-dark);
@@ -443,6 +443,47 @@
             border-color: rgba(255, 255, 255, 0.2);
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
         }
+
+/* Water Surface Removal Section - Clean Design Like Paintings Page */
+.water-surface-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.water-info-clean {
+    background: var(--background-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+    .water-info-clean p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0;
+        line-height: 1.6;
+    }
+
+.restore-info-clean {
+    background: var(--background-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+    .restore-info-clean p {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    .restore-info-clean strong {
+        color: var(--text-primary);
+    }
 
 /* Responsive design - scoped */
 @media (max-width: 768px) {
