@@ -682,8 +682,6 @@ html {
     }
 }
 
-/* Game Page Fixes - Better spacing and sizing */
-
 .game-page-container .page-header {
     margin-bottom: 2rem !important;
     padding-bottom: 1rem !important;
@@ -704,7 +702,6 @@ html {
     padding: 1.5rem !important;
 }
 
-/* Fix game status spacing */
 .game-page-container .game-status {
     padding: 1.5rem 0 !important;
 }
@@ -722,7 +719,6 @@ html {
     font-size: 0.95rem !important;
 }
 
-/* Game actions grid - better spacing */
 .game-page-container .game-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -740,7 +736,6 @@ html {
         height: 18px !important;
     }
 
-/* Responsive fixes */
 @media (max-width: 768px) {
     .game-page-container .page-title {
         font-size: 1.75rem !important;

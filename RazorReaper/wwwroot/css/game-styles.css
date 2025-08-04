@@ -1,0 +1,214 @@
+﻿.game-page-container .content-card {
+    background: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.game-page-container .game-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+.game-page-container .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    justify-content: center;
+    text-align: center;
+}
+
+.game-page-container .status-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+}
+
+    .game-page-container .status-dot.online {
+        background: var(--accent-green);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+    }
+
+    .game-page-container .status-dot.offline {
+        background: var(--accent-red);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    }
+
+    .game-page-container .status-dot::after {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        right: -6px;
+        bottom: -6px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        opacity: 0;
+        animation: pulse 2s infinite;
+    }
+
+    .game-page-container .status-dot.online::after {
+        color: var(--accent-green);
+    }
+
+    .game-page-container .status-dot.offline::after {
+        color: var(--accent-red);
+    }
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.4);
+    }
+}
+
+.game-page-container .status-info {
+    text-align: center;
+}
+
+    .game-page-container .status-info h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+        white-space: nowrap;
+    }
+
+.game-page-container .status-text {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.game-page-container .game-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.game-page-container .game-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 600;
+    font-size: 0.9rem;
+    position: relative;
+    overflow: hidden;
+}
+
+    .game-page-container .game-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .game-page-container .game-btn:hover::before {
+        left: 100%;
+    }
+
+    .game-page-container .game-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .game-page-container .game-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .game-page-container .game-btn.primary {
+        border-color: rgba(255, 255, 255, 0.3);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    }
+
+        .game-page-container .game-btn.primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
+        }
+
+    .game-page-container .game-btn.success {
+        border-color: rgba(16, 185, 129, 0.3);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+    }
+
+        .game-page-container .game-btn.success:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+            border-color: var(--accent-green);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+            color: var(--accent-green);
+        }
+
+    .game-page-container .game-btn.warning {
+        border-color: rgba(245, 158, 11, 0.3);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+    }
+
+        .game-page-container .game-btn.warning:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
+            border-color: var(--accent-orange);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+            color: var(--accent-orange);
+        }
+
+    .game-page-container .game-btn.danger {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+    }
+
+        .game-page-container .game-btn.danger:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+            border-color: var(--accent-red);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+            color: var(--accent-red);
+        }
+
+    .game-page-container .game-btn.info {
+        border-color: rgba(59, 130, 246, 0.3);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+    }
+
+        .game-page-container .game-btn.info:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+            border-color: var(--accent-blue);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+            color: var(--accent-blue);
+        }
+
+    .game-page-container .game-btn svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.3s ease;
+    }
+
+    .game-page-container .game-btn:hover:not(:disabled) svg {
+        transform: scale(1.1);
+    }
