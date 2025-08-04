@@ -19,7 +19,7 @@
 
         <div class="server-layout">
             <div class="content-card server-connection-panel">
-                <h3 class="mb-3 text-white">Server Connection</h3>
+                <h3>Server Connection</h3>
 
                 <div class="connection-form">
                     <div>
@@ -54,7 +54,7 @@
                             }
                         </button>
 
-                        <button class="server-btn connect" @onclick="ConnectToServer">
+                        <button class="server-btn connect" @onclick="ConnectToServer" disabled="@(currentServer == null)">
                             Connect
                         </button>
                     </div>
@@ -69,15 +69,9 @@
                         </button>
                     </div>
 
-                    <div class="button-grid">
-                        <button class="server-btn browser" @onclick="OpenSteamBrowser">
-                            Steam Browser
-                        </button>
-
-                        <button class="server-btn folder" @onclick="OpenSteamGameDirectory" disabled="@(currentServer == null)">
-                            Game Favorites
-                        </button>
-                    </div>
+                    <button class="server-btn browser" @onclick="OpenSteamBrowser">
+                        Steam Browser
+                    </button>
                 </div>
 
                 @if (!string.IsNullOrEmpty(statusMessage))
@@ -97,11 +91,48 @@
             </div>
 
             <div class="main-column">
+                @if (currentServer != null && currentServer.IsOnline)
+                {
+                    <div class="content-card">
+                        <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">@currentServer.Name</h4>
+                        <div class="server-details-grid">
+                            <div class="detail-column">
+                                <div class="detail-row">
+                                    <span class="detail-label">Status:</span>
+                                    <span class="text-green detail-value">Online</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Address:</span>
+                                    <span class="detail-value">@currentServer.IpAddress:@currentServer.Port</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Players:</span>
+                                    <span class="text-green detail-value">@currentServer.CurrentPlayers/@currentServer.MaxPlayers</span>
+                                </div>
+                            </div>
+                            <div class="detail-column">
+                                <div class="detail-row">
+                                    <span class="detail-label">Map:</span>
+                                    <span class="detail-value">@currentServer.CurrentMap</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Version:</span>
+                                    <span class="detail-value">@currentServer.Version</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Query Port:</span>
+                                    <span class="detail-value">@currentServer.QueryPort</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 @if (showServerInfo && selectedServer != null)
                 {
                     <div class="content-card">
                         <div class="server-info-header">
-                            <h3 class="text-white">@selectedServer.Name</h3>
+                            <h3>@selectedServer.Name</h3>
                             <button class="server-btn close-btn" @onclick="HideServerInfo">✕</button>
                         </div>
 
@@ -184,7 +215,7 @@
                 <div class="content-card troubleshooting-section">
                     <div class="section-header">
                         <h3>Troubleshooting</h3>
-                        <button class="server-btn toggle-btn" @onclick="ToggleTroubleshooting">
+                        <button class="toggle-btn" @onclick="ToggleTroubleshooting">
                             @(showTroubleshooting ? "▼ Hide" : "▶ Show")
                         </button>
                     </div>
@@ -264,33 +295,40 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("eval", @"
-            // Fix input field clickability
-            document.addEventListener('DOMContentLoaded', function() {
-                const inputs = document.querySelectorAll('.server-input');
+            function fixServerInputs() {
+                const inputs = document.querySelectorAll('.server-input, input');
                 inputs.forEach(input => {
-                    input.style.pointerEvents = 'auto';
-                    input.style.zIndex = '10';
+                    if (input.classList.contains('server-input') || input.placeholder?.includes('141.98')) {
+                        input.style.pointerEvents = 'auto';
+                        input.style.zIndex = '99999';
+                        input.style.position = 'relative';
+                        input.style.userSelect = 'text';
+                        input.style.webkitUserSelect = 'text';
+                        input.style.cursor = 'text';
+                        input.disabled = false;
+                        input.readOnly = false;
+
+                        input.addEventListener('mousedown', function(e) {
+                            e.stopPropagation();
+                        });
+
+                        input.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            this.focus();
+                        });
+                    }
                 });
-            });
-
-            // Update button states based on input
-            function updateButtons() {
-                const input = document.querySelector('input[placeholder*=""141.98""]');
-                const buttons = document.querySelectorAll('.server-btn:not(.browser)');
-
-                if (input) {
-                    const hasText = input.value.trim() !== '';
-                    buttons.forEach(btn => {
-                        if (!btn.classList.contains('browser')) {
-                            btn.disabled = !hasText;
-                        }
-                    });
-                }
             }
 
-            // Monitor input changes
-            document.addEventListener('input', updateButtons);
-            setTimeout(updateButtons, 100);
+            fixServerInputs();
+            setTimeout(fixServerInputs, 100);
+            setTimeout(fixServerInputs, 500);
+
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    setTimeout(fixServerInputs, 100);
+                }
+            });
         ");
         }
     }
@@ -298,18 +336,18 @@
     [JSInvokable]
     public static void OnPageHidden()
     {
-        
+
     }
 
     [JSInvokable]
     public static void OnPageVisible()
     {
-        
+
     }
 
     private void StartAutoRefresh()
     {
-        
+
         refreshTimer = new Timer(async _ =>
         {
             if (isPageActive && servers.Any())
@@ -339,7 +377,7 @@
             if (!string.IsNullOrEmpty(json))
             {
                 servers = JsonSerializer.Deserialize<List<GameServer>>(json) ?? new();
-                
+
                 foreach (var server in servers)
                 {
                     _ = UpdateServerStatus(server);
@@ -377,7 +415,7 @@
                 server.MaxPlayers = serverInfo.MaxPlayers;
                 server.CurrentMap = serverInfo.Map;
                 server.Version = serverInfo.Version;
-                
+
                 if (!string.IsNullOrEmpty(serverInfo.Name) && serverInfo.Name != server.Name)
                 {
                     server.Name = serverInfo.Name;
@@ -431,7 +469,6 @@
 
         isQuerying = true;
         statusMessage = "";
-        currentServer = null;
         showFavoritesSuccess = false;
         StateHasChanged();
 
@@ -441,6 +478,8 @@
             if (parts.Length != 2 || !int.TryParse(parts[1], out int queryPort))
             {
                 statusMessage = "❌ Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)";
+                isQuerying = false;
+                StateHasChanged();
                 return;
             }
 
@@ -448,24 +487,30 @@
             int gamePort = queryPort - 12288;
             if (gamePort <= 0) gamePort = queryPort;
 
-            var server = new GameServer
+            // Create and set currentServer immediately to enable buttons
+            currentServer = new GameServer
             {
                 IpAddress = ip,
                 Port = gamePort,
                 QueryPort = queryPort,
-                Name = $"ARK Server {ip}:{gamePort}"
+                Name = $"ARK Server {ip}:{gamePort}",
+                IsOnline = false,
+                CurrentPlayers = 0,
+                MaxPlayers = 70,
+                CurrentMap = "Unknown",
+                Version = "Unknown"
             };
 
             var serverInfo = await QuerySourceServer(ip, queryPort);
 
             if (serverInfo != null)
             {
-                server.IsOnline = true;
-                server.Name = string.IsNullOrEmpty(serverInfo.Name) ? server.Name : serverInfo.Name;
-                server.CurrentPlayers = serverInfo.Players;
-                server.MaxPlayers = serverInfo.MaxPlayers;
-                server.CurrentMap = string.IsNullOrEmpty(serverInfo.Map) ? "Unknown" : serverInfo.Map;
-                server.Version = string.IsNullOrEmpty(serverInfo.Version) ? "Unknown" : serverInfo.Version;
+                currentServer.IsOnline = true;
+                currentServer.Name = string.IsNullOrEmpty(serverInfo.Name) ? currentServer.Name : serverInfo.Name;
+                currentServer.CurrentPlayers = serverInfo.Players;
+                currentServer.MaxPlayers = serverInfo.MaxPlayers;
+                currentServer.CurrentMap = string.IsNullOrEmpty(serverInfo.Map) ? "Unknown" : serverInfo.Map;
+                currentServer.Version = string.IsNullOrEmpty(serverInfo.Version) ? "Unknown" : serverInfo.Version;
                 statusMessage = $"✅ Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers} | Map: {serverInfo.Map}";
             }
             else
@@ -475,17 +520,14 @@
 
                 if (pingReply.Status == IPStatus.Success)
                 {
-                    server.IsOnline = true;
+                    currentServer.IsOnline = true;
                     statusMessage = $"✅ Server reachable! Ping: {pingReply.RoundtripTime}ms (Query failed)";
                 }
                 else
                 {
-                    server.IsOnline = false;
                     statusMessage = "❌ Server is offline or unreachable";
                 }
             }
-
-            currentServer = server;
         }
         catch (Exception ex)
         {
@@ -503,17 +545,17 @@
         try
         {
             using var client = new UdpClient();
-            client.Client.ReceiveTimeout = 10000; 
+            client.Client.ReceiveTimeout = 10000;
             client.Client.SendTimeout = 5000;
 
             var endpoint = new IPEndPoint(IPAddress.Parse(ip), port);
 
             var infoQuery = new byte[] {
                 0xFF, 0xFF, 0xFF, 0xFF,
-                0x54, 
-                0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 
-                0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 
-                0x51, 0x75, 0x65, 0x72, 0x79, 0x00        
+                0x54,
+                0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
+                0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20,
+                0x51, 0x75, 0x65, 0x72, 0x79, 0x00
             };
 
             await client.SendAsync(infoQuery, infoQuery.Length, endpoint);
@@ -524,9 +566,9 @@
             if (response.Buffer.Length > 6)
             {
                 var data = response.Buffer;
-                int offset = 4; 
+                int offset = 4;
 
-                if (data[4] == 0x49) 
+                if (data[4] == 0x49)
                 {
                     offset = 5;
                     var protocol = data[offset++];
@@ -611,7 +653,7 @@
                     var players = data[offset++];
                     var maxPlayers = data[offset++];
                     var bots = data[offset++];
-                    offset += 2; 
+                    offset += 2;
                     offset += 2;
 
                     var version = ReadString(data, ref offset);
@@ -653,14 +695,14 @@
                 return result;
             }
             catch
-            {  
+            {
                 var result = System.Text.Encoding.ASCII.GetString(data, start, offset - start);
-                offset++; 
+                offset++;
                 return result;
             }
         }
 
-        if (offset < data.Length) offset++; 
+        if (offset < data.Length) offset++;
         return "";
     }
 
@@ -716,17 +758,11 @@
 
     private async Task ConnectToServer()
     {
-        if (string.IsNullOrWhiteSpace(serverInput)) return;
+        if (currentServer == null) return;
 
         try
         {
-            var steamUrl = GetSteamUrl();
-            if (string.IsNullOrEmpty(steamUrl))
-            {
-                statusMessage = "❌ Invalid server format for connection";
-                return;
-            }
-
+            var steamUrl = $"steam://run/346110//+connect {currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamUrl, "_blank");
             statusMessage = $"🚀 Launching ARK via Steam...";
         }
@@ -749,7 +785,6 @@
         {
             await SaveServer();
 
-            // Different Steam URL for adding to favorites
             string steamFavoriteUrl = $"steam://friends/joingame/{currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
 
@@ -779,27 +814,6 @@
         catch (Exception ex)
         {
             statusMessage = $"❌ Failed to open Steam browser: {ex.Message}";
-        }
-        StateHasChanged();
-    }
-
-    private async Task OpenSteamGameDirectory()
-    {
-        if (currentServer == null)
-        {
-            statusMessage = "❌ No server selected";
-            return;
-        }
-
-        try
-        {
-            // Opens ARK game page in Steam
-            await JSRuntime.InvokeVoidAsync("window.open", "steam://nav/games/details/346110", "_blank");
-            statusMessage = $"🎮 Opening ARK game page in Steam";
-        }
-        catch (Exception ex)
-        {
-            statusMessage = $"❌ Failed to open game page: {ex.Message}";
         }
         StateHasChanged();
     }
