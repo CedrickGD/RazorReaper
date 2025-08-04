@@ -1,4 +1,4 @@
-﻿/* Server Page Styles - Crystal Clear Transparency */
+﻿/* Server Page Fixes - Input field, button states, and layout issues */
 
 /* Override main content-card class to be transparent */
 .content-card {
@@ -15,10 +15,22 @@
 }
 
 .server-connection-panel {
-    height: fit-content;
-    position: sticky;
-    top: 2rem;
+    height: fit-content !important;
+    position: sticky !important;
+    top: 2rem !important;
+    background: rgba(26, 26, 26, 0.6) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 2rem !important;
+    border-radius: 16px !important;
 }
+
+    .server-connection-panel h3 {
+        color: var(--text-primary) !important;
+        margin-bottom: 1.5rem !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+    }
 
 .main-column {
     display: flex;
@@ -35,10 +47,15 @@
 }
 
 .connection-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
 }
+
+    .connection-form > div {
+        position: relative !important;
+        z-index: 10 !important;
+    }
 
 .input-group {
     display: flex;
@@ -47,72 +64,83 @@
 }
 
 .input-label {
-    display: block;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
+    display: block !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    margin-bottom: 0.5rem !important;
 }
 
+/* Fix input field clickability and visibility */
 .server-input {
-    width: 100%;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2); /* Transparent input */
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    backdrop-filter: none;
+    width: 100% !important;
+    padding: 0.75rem !important;
+    background: rgba(26, 26, 26, 0.8) !important; /* More visible background */
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary) !important;
+    font-size: 0.9rem !important;
+    transition: all 0.3s ease !important;
+    backdrop-filter: blur(5px) !important;
+    z-index: 10 !important;
+    position: relative !important;
+    pointer-events: auto !important; /* Ensure clickability */
 }
 
     .server-input:focus {
-        outline: none;
-        border-color: var(--text-primary);
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.3);
+        outline: none !important;
+        border-color: var(--text-primary) !important;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2) !important;
+        background: rgba(26, 26, 26, 0.9) !important;
     }
 
     .server-input::placeholder {
-        color: var(--text-secondary);
+        color: var(--text-secondary) !important;
+        opacity: 0.8 !important;
     }
 
     .server-input.readonly {
-        background: rgba(0, 0, 0, 0.1);
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        flex: 1;
+        background: rgba(20, 20, 20, 0.8) !important;
+        color: var(--text-secondary) !important;
+        font-size: 0.8rem !important;
+        flex: 1 !important;
+        cursor: default !important;
     }
 
 .url-input-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: stretch;
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+    position: relative !important;
+    z-index: 10 !important;
 }
 
 .button-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important;
 }
 
+/* Fix button states - buttons should be enabled when input has content */
 .server-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: rgba(0, 0, 0, 0.1); /* Transparent buttons */
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: none;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1rem !important;
+    background: rgba(26, 26, 26, 0.6) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    backdrop-filter: blur(5px) !important;
+    pointer-events: auto !important;
 }
 
     .server-btn::before {
@@ -130,34 +158,109 @@
         left: 100%;
     }
 
-    .server-btn:hover:not(:disabled) {
-        background: rgba(0, 0, 0, 0.2);
-        border-color: var(--text-primary);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    .server-btn:not(:disabled):hover {
+        background: rgba(26, 26, 26, 0.8) !important;
+        border-color: var(--text-primary) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
     }
 
     .server-btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none;
+        opacity: 0.4 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        pointer-events: none !important;
     }
 
     .server-btn svg {
-        width: 16px;
-        height: 16px;
-        transition: transform 0.3s ease;
+        width: 16px !important;
+        height: 16px !important;
+        transition: transform 0.3s ease !important;
     }
 
     .server-btn:hover:not(:disabled) svg {
-        transform: scale(1.1);
+        transform: scale(1.1) !important;
     }
 
+    /* Fix specific button types */
+    .server-btn.query:not(:disabled) {
+        background: rgba(59, 130, 246, 0.2) !important;
+        border-color: var(--accent-blue) !important;
+        color: var(--accent-blue) !important;
+    }
+
+        .server-btn.query:not(:disabled):hover {
+            background: rgba(59, 130, 246, 0.3) !important;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important;
+        }
+
+    .server-btn.connect:not(:disabled) {
+        background: rgba(16, 185, 129, 0.2) !important;
+        border-color: var(--accent-green) !important;
+        color: var(--accent-green) !important;
+    }
+
+        .server-btn.connect:not(:disabled):hover {
+            background: rgba(16, 185, 129, 0.3) !important;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important;
+        }
+
+    .server-btn.save:not(:disabled) {
+        background: rgba(245, 158, 11, 0.2) !important;
+        border-color: var(--accent-orange) !important;
+        color: var(--accent-orange) !important;
+    }
+
+        .server-btn.save:not(:disabled):hover {
+            background: rgba(245, 158, 11, 0.3) !important;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4) !important;
+        }
+
+    .server-btn.favorite:not(:disabled) {
+        background: rgba(139, 92, 246, 0.2) !important;
+        border-color: #8b5cf6 !important;
+        color: #8b5cf6 !important;
+    }
+
+        .server-btn.favorite:not(:disabled):hover {
+            background: rgba(139, 92, 246, 0.3) !important;
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
+        }
+
+    .server-btn.browser:not(:disabled) {
+        background: rgba(102, 192, 244, 0.2) !important;
+        border-color: #66c0f4 !important;
+        color: #66c0f4 !important;
+    }
+
+        .server-btn.browser:not(:disabled):hover {
+            background: rgba(102, 192, 244, 0.3) !important;
+            box-shadow: 0 8px 25px rgba(102, 192, 244, 0.4) !important;
+        }
+
+    .server-btn.folder:not(:disabled) {
+        background: rgba(236, 72, 153, 0.2) !important;
+        border-color: #ec4899 !important;
+        color: #ec4899 !important;
+    }
+
+        .server-btn.folder:not(:disabled):hover {
+            background: rgba(236, 72, 153, 0.3) !important;
+            box-shadow: 0 8px 25px rgba(236, 72, 153, 0.4) !important;
+        }
+
 .copy-btn {
-    min-width: 48px;
-    flex-shrink: 0;
-    padding: 0.75rem;
+    min-width: 48px !important;
+    flex-shrink: 0 !important;
+    padding: 0.75rem !important;
+    background: rgba(26, 26, 26, 0.6) !important;
+    border: 1px solid var(--border-color) !important;
 }
+
+    .copy-btn:hover {
+        background: rgba(26, 26, 26, 0.8) !important;
+        border-color: var(--text-primary) !important;
+    }
 
 .toggle-btn {
     padding: 0.5rem 1rem;
@@ -171,12 +274,14 @@
 
 /* Status Messages */
 .server-status-message {
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 3px solid;
-    margin-top: 1rem;
-    background: rgba(0, 0, 0, 0.1);
-    backdrop-filter: none;
+    padding: 1rem !important;
+    border-radius: 8px !important;
+    border-left: 3px solid !important;
+    margin-top: 1rem !important;
+    background: rgba(26, 26, 26, 0.4) !important;
+    backdrop-filter: blur(5px) !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
 }
 
 .server-status-success {
@@ -195,15 +300,15 @@
 }
 
 .favorites-success {
-    padding: 1rem;
-    border-radius: 8px;
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid var(--accent-green);
-    color: var(--accent-green);
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    text-align: center;
-    backdrop-filter: none;
+    padding: 1rem !important;
+    border-radius: 8px !important;
+    background: rgba(34, 197, 94, 0.15) !important;
+    border: 1px solid var(--accent-green) !important;
+    color: var(--accent-green) !important;
+    margin-top: 1rem !important;
+    font-size: 0.9rem !important;
+    text-align: center !important;
+    backdrop-filter: blur(5px) !important;
 }
 
 /* Server Info Card */
@@ -282,7 +387,7 @@
 }
 
 .server-item {
-    background: rgba(0, 0, 0, 0.08); /* Very transparent */
+    background: rgba(0, 0, 0, 0.08);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1rem;
@@ -433,50 +538,40 @@
     color: var(--text-secondary);
 }
 
-/* Troubleshooting */
+/* Fix troubleshooting section layout */
 .troubleshooting-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.5rem;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 1.5rem !important;
 }
 
 .troubleshooting-item {
-    background: rgba(0, 0, 0, 0.08); /* Transparent */
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 1.5rem;
-    backdrop-filter: none;
+    background: rgba(26, 26, 26, 0.4) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    backdrop-filter: blur(5px) !important;
 }
 
-.troubleshooting-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.troubleshooting-icon {
-    font-size: 1.5rem;
-}
-
-.troubleshooting-header h4 {
-    color: var(--text-primary);
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.troubleshooting-list {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    margin: 0;
-    padding-left: 1.25rem;
-}
-
-    .troubleshooting-list li {
-        margin-bottom: 0.5rem;
+    .troubleshooting-item h4 {
+        color: var(--text-primary) !important;
+        margin: 0 0 1rem 0 !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
     }
+
+    .troubleshooting-item ul {
+        color: var(--text-secondary) !important;
+        font-size: 0.875rem !important;
+        line-height: 1.6 !important;
+        margin: 0 !important;
+        padding-left: 1.25rem !important;
+        list-style-type: disc !important;
+    }
+
+        .troubleshooting-item ul li {
+            margin-bottom: 0.5rem !important;
+        }
 
 /* Loading Spinner */
 .server-spinner {
@@ -501,35 +596,50 @@
 /* Responsive Design */
 @media (max-width: 768px) {
     .server-layout {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .server-connection-panel {
+        position: relative !important;
+        top: 0 !important;
     }
 
     .button-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 
     .server-details-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
     }
 
     .servers-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 
     .troubleshooting-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 
     .server-item-content {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem !important;
     }
 
     .server-actions {
-        width: 100%;
-        justify-content: space-between;
+        width: 100% !important;
+        justify-content: space-between !important;
     }
 }
+
+.server-input {
+    pointer-events: auto !important;
+    z-index: 10 !important;
+    position: relative !important;
+}
+
+    .server-input:focus {
+        background: rgba(0, 0, 0, 0.3) !important;
+    }

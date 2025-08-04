@@ -264,14 +264,34 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("eval", @"
-                document.addEventListener('visibilitychange', function() {
-                    if (document.hidden) {
-                        DotNet.invokeMethodAsync('RazorReaper', 'OnPageHidden');
-                    } else {
-                        DotNet.invokeMethodAsync('RazorReaper', 'OnPageVisible');
-                    }
+            // Fix input field clickability
+            document.addEventListener('DOMContentLoaded', function() {
+                const inputs = document.querySelectorAll('.server-input');
+                inputs.forEach(input => {
+                    input.style.pointerEvents = 'auto';
+                    input.style.zIndex = '10';
                 });
-            ");
+            });
+
+            // Update button states based on input
+            function updateButtons() {
+                const input = document.querySelector('input[placeholder*=""141.98""]');
+                const buttons = document.querySelectorAll('.server-btn:not(.browser)');
+
+                if (input) {
+                    const hasText = input.value.trim() !== '';
+                    buttons.forEach(btn => {
+                        if (!btn.classList.contains('browser')) {
+                            btn.disabled = !hasText;
+                        }
+                    });
+                }
+            }
+
+            // Monitor input changes
+            document.addEventListener('input', updateButtons);
+            setTimeout(updateButtons, 100);
+        ");
         }
     }
 
@@ -721,7 +741,7 @@
     {
         if (currentServer == null)
         {
-            statusMessage = "❌ No server to add to favorites";
+            statusMessage = "❌ No server to add to favorites - query a server first";
             return;
         }
 
@@ -729,27 +749,22 @@
         {
             await SaveServer();
 
-            string steamFavoriteUrl = $"steam://connect/{currentServer.IpAddress}:{currentServer.Port}";
-
+            // Different Steam URL for adding to favorites
+            string steamFavoriteUrl = $"steam://friends/joingame/{currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
 
             showFavoritesSuccess = true;
-            statusMessage = $"⭐ Server '{currentServer.Name}' added to Steam favorites!";
+            statusMessage = $"⭐ Adding '{currentServer.Name}' to Steam favorites!";
 
             _ = Task.Delay(5000).ContinueWith(_ =>
             {
                 showFavoritesSuccess = false;
                 StateHasChanged();
             });
-
-            if (currentServer != null)
-            {
-                await UpdateServerStatus(currentServer);
-            }
         }
         catch (Exception ex)
         {
-            statusMessage = $"❌ Failed to add to Steam favorites: {ex.Message}";
+            statusMessage = $"❌ Failed to add to favorites: {ex.Message}";
         }
         StateHasChanged();
     }
@@ -778,12 +793,13 @@
 
         try
         {
-            await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers/favorites", "_blank");
-            statusMessage = $"📁 Opening Steam favorites - look for '{currentServer.Name}'";
+            // Opens ARK game page in Steam
+            await JSRuntime.InvokeVoidAsync("window.open", "steam://nav/games/details/346110", "_blank");
+            statusMessage = $"🎮 Opening ARK game page in Steam";
         }
         catch (Exception ex)
         {
-            statusMessage = $"❌ Failed to open Steam favorites: {ex.Message}";
+            statusMessage = $"❌ Failed to open game page: {ex.Message}";
         }
         StateHasChanged();
     }
