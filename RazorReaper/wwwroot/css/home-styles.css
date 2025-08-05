@@ -1,12 +1,8 @@
-﻿/* Home Page Specific Styles - Using Unified Theme */
-
-/* Override main content-card class to be transparent */
-.content-card {
-    background: rgba(0, 0, 0, 0.15) !important; /* VERY transparent black */
-    backdrop-filter: none !important; /* No blur = crystal clear */
+﻿.content-card {
+    background: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: none !important;
 }
 
-/* System Status Header */
 .system-status-header {
     display: flex;
     align-items: center;
@@ -31,7 +27,6 @@
         box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
     }
 
-/* Stats Grid */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -43,11 +38,11 @@
     align-items: center;
     gap: 1rem;
     padding: 1.5rem;
-    background: rgba(0, 0, 0, 0.15) !important; /* VERY transparent black */
+    background: rgba(0, 0, 0, 0.15) !important;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: none; /* No blur = crystal clear */
+    backdrop-filter: none;
 }
 
     .stat-card:hover {
@@ -103,7 +98,6 @@
     color: var(--text-secondary);
 }
 
-/* Actions Grid */
 .actions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -114,13 +108,13 @@
     display: flex;
     gap: 1.5rem;
     padding: 2rem;
-    background: rgba(0, 0, 0, 0.1) !important; /* VERY transparent black */
+    background: rgba(0, 0, 0, 0.1) !important; 
     border: 1px solid var(--border-color);
     border-radius: 16px;
     text-decoration: none;
     color: inherit;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: none; /* No blur = crystal clear */
+    backdrop-filter: none;
     position: relative;
     overflow: hidden;
 }
@@ -219,7 +213,6 @@
     border-color: var(--text-primary);
 }
 
-/* Presets Grid */
 .presets-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -229,7 +222,7 @@
 
 .preset-card {
     padding: 1.5rem;
-    background: rgba(0, 0, 0, 0.1) !important; /* VERY transparent black */
+    background: rgba(0, 0, 0, 0.1) !important;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -296,7 +289,6 @@
     text-align: center;
 }
 
-/* Activity Feed */
 .activity-card {
     background: var(--background-card);
 }
@@ -319,7 +311,7 @@
     padding: 1rem;
     border-radius: 12px;
     border-left: 3px solid;
-    background: rgba(0, 0, 0, 0.08) !important; /* VERY transparent black */
+    background: rgba(0, 0, 0, 0.08) !important;
     backdrop-filter: blur(3px);
 }
 
@@ -381,7 +373,6 @@
     font-size: 0.8rem;
 }
 
-/* System Paths */
 .paths-list {
     display: flex;
     flex-direction: column;
@@ -393,7 +384,7 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: rgba(0, 0, 0, 0.08) !important; /* VERY transparent black */
+    background: rgba(0, 0, 0, 0.08) !important;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     backdrop-filter: blur(3px);
@@ -434,7 +425,6 @@
         height: 16px;
     }
 
-/* Responsive Design */
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: 1fr;

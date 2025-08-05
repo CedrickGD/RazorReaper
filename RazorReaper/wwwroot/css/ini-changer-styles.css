@@ -1,7 +1,4 @@
-﻿/* Beautiful INI Changer Page Styles - Properly Scoped */
-
-/* Only apply to pages with ini-layout class */
-.ini-layout {
+﻿.ini-layout {
     display: grid;
     grid-template-columns: 280px 1fr;
     gap: 1.5rem;
