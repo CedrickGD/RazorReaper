@@ -1,6 +1,6 @@
 # RazorReaper 🪢
 
-**RazorReaper** is the next-generation, modern replacement for [ReaperV2](https://github.com/CedrickGD/ReaperV2), built entirely with **Blazor Hybrid (.NET MAUI)**. This tool is designed to streamline and enhance the way users interact with ARK: Survival Evolved configuration files and Steam server utilities — all in a sleek, dark-themed interface with a black and purple aesthetic.
+**RazorReaper** is the next-generation, modern replacement for [ReaperV2](https://github.com/CedrickGD/ReaperV2), built entirely with **Blazor Hybrid (.NET MAUI)**. This tool is designed to streamline and enhance the way users interact with ARK: Survival Evolved configuration files and Steam server utilities — all in a sleek, dark-themed interface with a black and white aesthetic.
 
 > 🆕 This is the new and actively maintained successor to my previous WinForms-based tool [ReaperV2](https://github.com/CedrickGD/ReaperV2).
 
