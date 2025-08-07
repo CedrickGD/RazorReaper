@@ -30,6 +30,63 @@
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
+    <script>
+        window.startLocationPicker = function (dotNetRef) {
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+            overlay.style.cursor = 'crosshair';
+            overlay.style.zIndex = '9999';
+            overlay.style.userSelect = 'none';
+
+            const instruction = document.createElement('div');
+            instruction.style.position = 'fixed';
+            instruction.style.top = '20px';
+            instruction.style.left = '50%';
+            instruction.style.transform = 'translateX(-50%)';
+            instruction.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            instruction.style.color = 'white';
+            instruction.style.padding = '10px 20px';
+            instruction.style.borderRadius = '5px';
+            instruction.style.zIndex = '10000';
+            instruction.style.fontFamily = 'Arial, sans-serif';
+            instruction.textContent = 'Click anywhere to select position (ESC to cancel)';
+
+            document.body.appendChild(overlay);
+            document.body.appendChild(instruction);
+
+            const cleanup = () => {
+                document.body.removeChild(overlay);
+                document.body.removeChild(instruction);
+                document.removeEventListener('keydown', keyHandler);
+            };
+
+            const keyHandler = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                }
+            };
+
+            document.addEventListener('keydown', keyHandler);
+
+            overlay.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const x = e.clientX;
+                const y = e.clientY;
+
+                cleanup();
+
+                dotNetRef.invokeMethodAsync('SetPickedLocation', x, y);
+            });
+        };
+    </script>
+
     <script src="js/network-animation.js"></script>
 </body>
 </html>
