@@ -1,5 +1,4 @@
-﻿/* Autoclicker specific styles - scoped to prevent conflicts */
-.autoclicker-layout {
+﻿.autoclicker-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
@@ -320,7 +319,6 @@
         font-weight: 500;
     }
 
-/* Autoclicker specific status card to avoid conflicts */
 .autoclicker-status-card {
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
@@ -345,7 +343,6 @@
         color: var(--text-primary);
     }
 
-/* Autoclicker specific status indicator */
 .autoclicker-status-indicator {
     width: 12px;
     height: 12px;
@@ -426,19 +423,94 @@
 
 .autoclicker-layout .control-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    margin-top: 1.5rem;
 }
+
+    .autoclicker-layout .control-buttons .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        min-height: 50px;
+        backdrop-filter: blur(10px);
+        text-transform: none;
+    }
+
+        .autoclicker-layout .control-buttons .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .autoclicker-layout .control-buttons .btn:hover::before {
+            left: 100%;
+        }
+
+        .autoclicker-layout .control-buttons .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
 
 .autoclicker-layout .btn-start {
-    background: linear-gradient(135deg, var(--accent-green), var(--dark-green));
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+    color: #ffffff;
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+    .autoclicker-layout .btn-start:hover:not(:disabled) {
+        background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%);
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 12px 40px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        border-color: rgba(52, 211, 153, 0.5);
+    }
+
 .autoclicker-layout .btn-stop {
-    background: linear-gradient(135deg, var(--accent-red), #dc2626);
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+    color: #ffffff;
+    border: 2px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
+
+    .autoclicker-layout .btn-stop:hover:not(:disabled) {
+        background: linear-gradient(135deg, #f87171 0%, #ef4444 50%, #dc2626 100%);
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 12px 40px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        border-color: rgba(248, 113, 113, 0.5);
+    }
+
+.autoclicker-layout .btn-secondary {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    color: var(--text-primary);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 1rem 1.5rem;
+    min-width: 120px;
+}
+
+    .autoclicker-layout .btn-secondary:hover:not(:disabled) {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 0 10px 35px rgba(255, 255, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
 
 @media (max-width: 1024px) {
     .autoclicker-layout {

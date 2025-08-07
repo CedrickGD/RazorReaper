@@ -15,7 +15,6 @@
         </header>
 
         <div class="autoclicker-layout">
-            <!-- Left Panel - Main Controls -->
             <div class="control-panel">
                 <div class="content-card">
                     <h3>Click Settings</h3>
@@ -114,7 +113,6 @@
                     </div>
                 </div>
 
-                <!-- Control Buttons -->
                 <div class="control-buttons">
                     <button class="btn btn-primary @(isRunning ? "btn-stop" : "btn-start")"
                             @onclick="ToggleClicking" disabled="@(!IsValidInterval())">
@@ -126,7 +124,6 @@
                 </div>
             </div>
 
-            <!-- Right Panel - Position & Status -->
             <div class="status-panel">
                 <div class="content-card">
                     <h3>Click Position</h3>
@@ -219,45 +216,38 @@
 </div>
 
 @code {
-    // Enums
     public enum MouseButton { Left, Middle, Right }
     public enum ClickType { Single, Double }
     public enum RepeatMode { Infinite, Count }
     public enum PositionMode { Current, Fixed }
 
-    // Timing fields
     private int hours = 0;
     private int minutes = 0;
     private int seconds = 1;
     private int milliseconds = 0;
 
-    // Settings fields
     private MouseButton mouseButton = MouseButton.Left;
     private ClickType clickType = ClickType.Single;
     private RepeatMode repeatMode = RepeatMode.Infinite;
     private int repeatCount = 10;
     private PositionMode positionMode = PositionMode.Current;
 
-    // Position fields
     private int fixedX = 0;
     private int fixedY = 0;
     private int currentMouseX = 0;
     private int currentMouseY = 0;
     private bool pickingLocation = false;
 
-    // Status fields
     private bool isRunning = false;
     private int clickCount = 0;
     private Timer? clickTimer;
     private Timer? mouseTrackingTimer;
     private DateTime? nextClickTime;
 
-    // Hotkey fields
     private string hotkey = "F6";
     private bool recordingKey = false;
     private bool hotkeyRegistered = false;
 
-    // Windows API imports
     [DllImport("user32.dll")]
     private static extern void mouse_event(uint dwFlags, int dx, int dy, uint cButtons, uint dwExtraInfo);
 
@@ -283,7 +273,6 @@
         public int Y;
     }
 
-    // Mouse event constants
     private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     private const uint MOUSEEVENTF_LEFTUP = 0x0004;
     private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -293,17 +282,14 @@
     private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
     private const uint MOUSEEVENTF_MOVE = 0x0001;
 
-    // Virtual key codes
     private const int VK_F6 = 0x75;
 
     protected override async Task OnInitializedAsync()
     {
-        // Initialize mouse tracking timer
-        mouseTrackingTimer = new Timer(100); // Update every 100ms
+        mouseTrackingTimer = new Timer(100); 
         mouseTrackingTimer.Elapsed += UpdateMousePosition;
         mouseTrackingTimer.Start();
 
-        // Start hotkey monitoring
         _ = Task.Run(MonitorHotkey);
 
         await base.OnInitializedAsync();
@@ -327,17 +313,15 @@
         {
             try
             {
-                // Check if F6 is pressed
                 bool isPressed = (GetAsyncKeyState(VK_F6) & 0x8000) != 0;
 
                 if (isPressed && !wasPressed)
                 {
-                    // Key was just pressed
                     await InvokeAsync(() => ToggleClicking());
                 }
 
                 wasPressed = isPressed;
-                await Task.Delay(50); // Check every 50ms
+                await Task.Delay(50);
             }
             catch
             {
@@ -396,7 +380,7 @@
         if (!IsValidInterval()) return;
 
         isRunning = true;
-        clickCount = 0; // Reset click count when starting
+        clickCount = 0;
 
         var interval = GetTotalMilliseconds();
         clickTimer = new Timer(interval);
@@ -404,10 +388,8 @@
         clickTimer.AutoReset = true;
         clickTimer.Start();
 
-        // Set next click time
         nextClickTime = DateTime.Now.AddMilliseconds(interval);
 
-        // Perform first click immediately
         await PerformClick();
 
         await InvokeAsync(StateHasChanged);
@@ -427,7 +409,6 @@
     {
         if (!isRunning) return;
 
-        // Check if we've reached the repeat count
         if (repeatMode == RepeatMode.Count && clickCount >= repeatCount)
         {
             await InvokeAsync(() =>
@@ -441,35 +422,29 @@
         {
             try
             {
-                // Get current cursor position
                 POINT currentPos = new POINT();
                 GetCursorPos(out currentPos);
 
-                // If using fixed position, move cursor there
                 if (positionMode == PositionMode.Fixed)
                 {
                     SetCursorPos(fixedX, fixedY);
-                    await Task.Delay(10); // Small delay to ensure cursor is positioned
+                    await Task.Delay(10);
                 }
 
-                // Get the appropriate mouse button flags
                 var (downFlag, upFlag) = GetMouseEventFlags();
 
-                // Perform the click at the current position (0,0 means current position)
                 mouse_event(downFlag, 0, 0, 0, 0);
-                await Task.Delay(50); // Delay between down and up
+                await Task.Delay(50);
                 mouse_event(upFlag, 0, 0, 0, 0);
 
-                // Handle double click
                 if (clickType == ClickType.Double)
                 {
                     await Task.Delay(50);
                     mouse_event(downFlag, 0, 0, 0, 0);
                     await Task.Delay(50);
                     mouse_event(upFlag, 0, 0, 0, 0);
-                }
+               }
 
-                // Restore cursor position if we moved it
                 if (positionMode == PositionMode.Fixed)
                 {
                     SetCursorPos(currentPos.X, currentPos.Y);
@@ -477,13 +452,11 @@
 
                 clickCount++;
 
-                // Update next click time
                 if (isRunning)
                 {
                     nextClickTime = DateTime.Now.AddMilliseconds(GetTotalMilliseconds());
                 }
 
-                // Check if we should stop (for count mode)
                 if (repeatMode == RepeatMode.Count && clickCount >= repeatCount)
                 {
                     StopClicking();
@@ -514,7 +487,6 @@
         pickingLocation = true;
         StateHasChanged();
 
-        // Use JavaScript to capture the next click
         await JSRuntime.InvokeVoidAsync("eval", @"
             window.pickLocationHandler = function(e) {
                 e.preventDefault();
@@ -532,8 +504,6 @@
     [JSInvokable]
     public static Task SetPickedLocation(int x, int y)
     {
-        // This would need to be improved to properly set the instance values
-        // For now, we'll use the GetCursorPos approach
         return Task.CompletedTask;
     }
 
@@ -542,11 +512,10 @@
         recordingKey = true;
         StateHasChanged();
 
-        // Simulate key recording for 2 seconds
         await Task.Delay(2000);
 
         recordingKey = false;
-        hotkey = "F6"; // Always use F6 for simplicity
+        hotkey = "F6";
         StateHasChanged();
     }
 
