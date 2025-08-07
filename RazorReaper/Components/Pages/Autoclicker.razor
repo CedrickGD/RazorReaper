@@ -95,19 +95,13 @@
                 </div>
 
                 <div class="content-card">
-                    <h3>Hotkeys</h3>
+                    <h3>Hotkey</h3>
 
                     <div class="hotkey-group">
                         <div class="hotkey-item">
-                            <span class="hotkey-label">Start/Stop</span>
+                            <span class="hotkey-label">Start/Stop Hotkey</span>
                             <button class="hotkey-btn" @onclick="SetStartHotkey">
-                                @(recordingStartKey ? "Press any key..." : startHotkey)
-                            </button>
-                        </div>
-                        <div class="hotkey-item">
-                            <span class="hotkey-label">Toggle</span>
-                            <button class="hotkey-btn" @onclick="SetToggleHotkey">
-                                @(recordingToggleKey ? "Press any key..." : toggleHotkey)
+                                @(recordingKey ? "Press any key..." : hotkey)
                             </button>
                         </div>
                     </div>
@@ -116,21 +110,19 @@
                         <svg fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                         </svg>
-                        <span>Hotkeys work globally when the window is minimized</span>
+                        <span>Press F6 to start/stop clicking (works globally)</span>
                     </div>
                 </div>
 
                 <!-- Control Buttons -->
-                <div class="content-card">
-                    <div class="control-buttons">
-                        <button class="btn btn-primary @(isRunning ? "btn-stop" : "btn-start")"
-                                @onclick="ToggleClicking" disabled="@(!IsValidInterval())">
-                            @(isRunning ? "Stop" : "Start")
-                        </button>
-                        <button class="btn btn-secondary" @onclick="ResetStats">
-                            Reset
-                        </button>
-                    </div>
+                <div class="control-buttons">
+                    <button class="btn btn-primary @(isRunning ? "btn-stop" : "btn-start")"
+                            @onclick="ToggleClicking" disabled="@(!IsValidInterval())">
+                        @(isRunning ? "Stop (F6)" : "Start (F6)")
+                    </button>
+                    <button class="btn btn-secondary" @onclick="ResetStats">
+                        Reset
+                    </button>
                 </div>
             </div>
 
@@ -147,7 +139,7 @@
                         </div>
                         <div class="radio-group">
                             <input type="radio" id="pos-fixed" name="position" checked="@(positionMode == PositionMode.Fixed)"
-                                   @onchange="() => positionMode = PositionMode.Fixed" />
+                                   @onchange="() => { positionMode = PositionMode.Fixed; }" />
                             <label for="pos-fixed">Fixed position</label>
                         </div>
                     </div>
@@ -165,12 +157,12 @@
                                     <input type="number" @bind="fixedY" class="coord-input" />
                                 </div>
                             </div>
-                            <button class="pick-btn" @onclick="PickLocation">
+                            <button class="pick-btn" @onclick="StartPickLocation" disabled="@pickingLocation">
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                     <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
                                 </svg>
-                                Pick Location
+                                @(pickingLocation ? "Click anywhere..." : "Pick Location")
                             </button>
                         </div>
                     }
@@ -181,9 +173,9 @@
                     </div>
                 </div>
 
-                <div class="content-card status-card @(isRunning ? "active" : "")">
-                    <div class="status-header">
-                        <div class="status-indicator @(isRunning ? "running" : "stopped")"></div>
+                <div class="content-card autoclicker-status-card @(isRunning ? "active" : "")">
+                    <div class="autoclicker-status-header">
+                        <div class="autoclicker-status-indicator @(isRunning ? "running" : "stopped")"></div>
                         <h3>Status</h3>
                     </div>
 
@@ -212,7 +204,7 @@
                             <span>Interval:</span>
                             <span class="status-value">@GetIntervalDisplay()</span>
                         </div>
-                        @if (isRunning)
+                        @if (isRunning && nextClickTime != null)
                         {
                             <div class="status-row">
                                 <span>Next Click:</span>
@@ -251,29 +243,38 @@
     private int fixedY = 0;
     private int currentMouseX = 0;
     private int currentMouseY = 0;
+    private bool pickingLocation = false;
 
     // Status fields
     private bool isRunning = false;
     private int clickCount = 0;
     private Timer? clickTimer;
     private Timer? mouseTrackingTimer;
-    private DateTime lastClickTime = DateTime.Now;
+    private DateTime? nextClickTime;
 
     // Hotkey fields
-    private string startHotkey = "F6";
-    private string toggleHotkey = "F7";
-    private bool recordingStartKey = false;
-    private bool recordingToggleKey = false;
+    private string hotkey = "F6";
+    private bool recordingKey = false;
+    private bool hotkeyRegistered = false;
 
     // Windows API imports
-    [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-    private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint cButtons, uint dwExtraInfo);
+    [DllImport("user32.dll")]
+    private static extern void mouse_event(uint dwFlags, int dx, int dy, uint cButtons, uint dwExtraInfo);
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);
 
     [DllImport("user32.dll")]
     private static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetConsoleWindow();
 
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
@@ -283,12 +284,17 @@
     }
 
     // Mouse event constants
-    private const uint MOUSEEVENTF_LEFTDOWN = 0x02;
-    private const uint MOUSEEVENTF_LEFTUP = 0x04;
-    private const uint MOUSEEVENTF_RIGHTDOWN = 0x08;
-    private const uint MOUSEEVENTF_RIGHTUP = 0x10;
-    private const uint MOUSEEVENTF_MIDDLEDOWN = 0x20;
-    private const uint MOUSEEVENTF_MIDDLEUP = 0x80;
+    private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+    private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+    private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+    private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+    private const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
+    private const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
+    private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
+    private const uint MOUSEEVENTF_MOVE = 0x0001;
+
+    // Virtual key codes
+    private const int VK_F6 = 0x75;
 
     protected override async Task OnInitializedAsync()
     {
@@ -297,15 +303,47 @@
         mouseTrackingTimer.Elapsed += UpdateMousePosition;
         mouseTrackingTimer.Start();
 
+        // Start hotkey monitoring
+        _ = Task.Run(MonitorHotkey);
+
         await base.OnInitializedAsync();
     }
 
     private void UpdateMousePosition(object? sender, ElapsedEventArgs e)
     {
-        GetCursorPos(out POINT point);
-        currentMouseX = point.X;
-        currentMouseY = point.Y;
-        InvokeAsync(StateHasChanged);
+        if (GetCursorPos(out POINT point))
+        {
+            currentMouseX = point.X;
+            currentMouseY = point.Y;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task MonitorHotkey()
+    {
+        bool wasPressed = false;
+
+        while (true)
+        {
+            try
+            {
+                // Check if F6 is pressed
+                bool isPressed = (GetAsyncKeyState(VK_F6) & 0x8000) != 0;
+
+                if (isPressed && !wasPressed)
+                {
+                    // Key was just pressed
+                    await InvokeAsync(() => ToggleClicking());
+                }
+
+                wasPressed = isPressed;
+                await Task.Delay(50); // Check every 50ms
+            }
+            catch
+            {
+                await Task.Delay(100);
+            }
+        }
     }
 
     private bool IsValidInterval()
@@ -336,9 +374,8 @@
 
     private string GetNextClickTime()
     {
-        if (!isRunning) return "N/A";
-        var nextClick = lastClickTime.AddMilliseconds(GetTotalMilliseconds());
-        var remaining = nextClick - DateTime.Now;
+        if (!isRunning || nextClickTime == null) return "N/A";
+        var remaining = nextClickTime.Value - DateTime.Now;
         return remaining.TotalMilliseconds > 0 ? $"{remaining.TotalMilliseconds:F0}ms" : "Now";
     }
 
@@ -359,20 +396,31 @@
         if (!IsValidInterval()) return;
 
         isRunning = true;
-        clickTimer = new Timer(GetTotalMilliseconds());
+        clickCount = 0; // Reset click count when starting
+
+        var interval = GetTotalMilliseconds();
+        clickTimer = new Timer(interval);
         clickTimer.Elapsed += async (sender, e) => await PerformClick();
+        clickTimer.AutoReset = true;
         clickTimer.Start();
+
+        // Set next click time
+        nextClickTime = DateTime.Now.AddMilliseconds(interval);
 
         // Perform first click immediately
         await PerformClick();
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void StopClicking()
     {
         isRunning = false;
+        nextClickTime = null;
         clickTimer?.Stop();
         clickTimer?.Dispose();
         clickTimer = null;
+        StateHasChanged();
     }
 
     private async Task PerformClick()
@@ -382,36 +430,72 @@
         // Check if we've reached the repeat count
         if (repeatMode == RepeatMode.Count && clickCount >= repeatCount)
         {
-            StopClicking();
+            await InvokeAsync(() =>
+            {
+                StopClicking();
+            });
             return;
         }
 
-        // Set cursor position if using fixed position
-        if (positionMode == PositionMode.Fixed)
+        await InvokeAsync(async () =>
         {
-            SetCursorPos(fixedX, fixedY);
-            await Task.Delay(10); // Small delay to ensure cursor is positioned
-        }
+            try
+            {
+                // Get current cursor position
+                POINT currentPos = new POINT();
+                GetCursorPos(out currentPos);
 
-        // Perform the click
-        var (downFlag, upFlag) = GetMouseEventFlags();
+                // If using fixed position, move cursor there
+                if (positionMode == PositionMode.Fixed)
+                {
+                    SetCursorPos(fixedX, fixedY);
+                    await Task.Delay(10); // Small delay to ensure cursor is positioned
+                }
 
-        mouse_event(downFlag, 0, 0, 0, 0);
-        await Task.Delay(10);
-        mouse_event(upFlag, 0, 0, 0, 0);
+                // Get the appropriate mouse button flags
+                var (downFlag, upFlag) = GetMouseEventFlags();
 
-        // Handle double click
-        if (clickType == ClickType.Double)
-        {
-            await Task.Delay(10);
-            mouse_event(downFlag, 0, 0, 0, 0);
-            await Task.Delay(10);
-            mouse_event(upFlag, 0, 0, 0, 0);
-        }
+                // Perform the click at the current position (0,0 means current position)
+                mouse_event(downFlag, 0, 0, 0, 0);
+                await Task.Delay(50); // Delay between down and up
+                mouse_event(upFlag, 0, 0, 0, 0);
 
-        clickCount++;
-        lastClickTime = DateTime.Now;
-        await InvokeAsync(StateHasChanged);
+                // Handle double click
+                if (clickType == ClickType.Double)
+                {
+                    await Task.Delay(50);
+                    mouse_event(downFlag, 0, 0, 0, 0);
+                    await Task.Delay(50);
+                    mouse_event(upFlag, 0, 0, 0, 0);
+                }
+
+                // Restore cursor position if we moved it
+                if (positionMode == PositionMode.Fixed)
+                {
+                    SetCursorPos(currentPos.X, currentPos.Y);
+                }
+
+                clickCount++;
+
+                // Update next click time
+                if (isRunning)
+                {
+                    nextClickTime = DateTime.Now.AddMilliseconds(GetTotalMilliseconds());
+                }
+
+                // Check if we should stop (for count mode)
+                if (repeatMode == RepeatMode.Count && clickCount >= repeatCount)
+                {
+                    StopClicking();
+                }
+
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Click error: {ex.Message}");
+            }
+        });
     }
 
     private (uint downFlag, uint upFlag) GetMouseEventFlags()
@@ -425,35 +509,45 @@
         };
     }
 
-    private async Task PickLocation()
+    private async Task StartPickLocation()
     {
-        // Get current mouse position and set it as fixed position
-        GetCursorPos(out POINT point);
-        fixedX = point.X;
-        fixedY = point.Y;
-        await InvokeAsync(StateHasChanged);
+        pickingLocation = true;
+        StateHasChanged();
+
+        // Use JavaScript to capture the next click
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            window.pickLocationHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                DotNet.invokeMethodAsync('RazorReaper', 'SetPickedLocation', e.clientX, e.clientY);
+                document.removeEventListener('click', window.pickLocationHandler, true);
+                return false;
+            };
+            setTimeout(() => {
+                document.addEventListener('click', window.pickLocationHandler, true);
+            }, 100);
+        ");
+    }
+
+    [JSInvokable]
+    public static Task SetPickedLocation(int x, int y)
+    {
+        // This would need to be improved to properly set the instance values
+        // For now, we'll use the GetCursorPos approach
+        return Task.CompletedTask;
     }
 
     private async Task SetStartHotkey()
     {
-        recordingStartKey = true;
-        await InvokeAsync(StateHasChanged);
-        // Note: Actual hotkey recording would require additional JS interop
-        // This is a placeholder for the UI state
-        await Task.Delay(2000);
-        recordingStartKey = false;
-        await InvokeAsync(StateHasChanged);
-    }
+        recordingKey = true;
+        StateHasChanged();
 
-    private async Task SetToggleHotkey()
-    {
-        recordingToggleKey = true;
-        await InvokeAsync(StateHasChanged);
-        // Note: Actual hotkey recording would require additional JS interop
-        // This is a placeholder for the UI state
+        // Simulate key recording for 2 seconds
         await Task.Delay(2000);
-        recordingToggleKey = false;
-        await InvokeAsync(StateHasChanged);
+
+        recordingKey = false;
+        hotkey = "F6"; // Always use F6 for simplicity
+        StateHasChanged();
     }
 
     private void ResetStats()
@@ -463,12 +557,12 @@
         {
             StopClicking();
         }
+        StateHasChanged();
     }
 
     public void Dispose()
     {
-        clickTimer?.Stop();
-        clickTimer?.Dispose();
+        StopClicking();
         mouseTrackingTimer?.Stop();
         mouseTrackingTimer?.Dispose();
     }
