@@ -1,0 +1,372 @@
+﻿@page "/suitfov"
+@using System.IO
+@using System.Text.RegularExpressions
+@using RazorReaper.Components.Shared
+
+<div class="app-container">
+    <RazorReaper.Components.Shared.SharedNavbar />
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Suit FOV Configuration</h1>
+            <p class="page-subtitle">Enable third person camera trace for TEK suit visibility</p>
+        </header>
+
+        <div class="suitfov-layout">
+            <div class="suitfov-main-panel">
+                <div class="content-card">
+                    <div class="section-header-fov">
+                        <div class="icon-circle-fov">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>Camera Trace Settings</h3>
+                            <p class="section-description-fov">Quick toggle for better TEK suit visibility</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-status-card">
+                        <h4>Current Status</h4>
+                        <div class="settings-display">
+                            <div class="setting-item @(bUseOldThirdPersonCameraTrace ? "enabled" : "disabled")">
+                                <div class="setting-status-dot"></div>
+                                <div class="setting-info">
+                                    <div class="setting-name">bUseOldThirdPersonCameraTrace</div>
+                                    <div class="setting-value">@(bUseOldThirdPersonCameraTrace ? "True" : "False")</div>
+                                </div>
+                            </div>
+                            <div class="setting-item @(bUseOldThirdPersonCameraOffset ? "enabled" : "disabled")">
+                                <div class="setting-status-dot"></div>
+                                <div class="setting-info">
+                                    <div class="setting-name">bUseOldThirdPersonCameraOffset</div>
+                                    <div class="setting-value">@(bUseOldThirdPersonCameraOffset ? "True" : "False")</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fov-main-actions">
+                        @if (!bUseOldThirdPersonCameraTrace || !bUseOldThirdPersonCameraOffset)
+                        {
+                            <button class="fov-btn-large enable" @onclick="EnableCameraTrace">
+                                <div class="btn-icon-large">
+                                    <svg fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="btn-content-large">
+                                    <span class="btn-title">Enable Camera Trace</span>
+                                    <span class="btn-subtitle">Click to improve TEK suit visibility</span>
+                                </div>
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="fov-btn-large disable" @onclick="DisableCameraTrace">
+                                <div class="btn-icon-large">
+                                    <svg fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414 1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="btn-content-large">
+                                    <span class="btn-title">Disable Camera Trace</span>
+                                    <span class="btn-subtitle">Click to restore default settings</span>
+                                </div>
+                            </button>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(statusMessage))
+                    {
+                        <div class="fov-status-message @GetStatusClass()">
+                            <div class="status-content-fov">
+                                @statusMessage
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="content-card">
+                    <div class="fov-info">
+                        <div class="info-header">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            <h4>What does this do?</h4>
+                        </div>
+                        <p>Enabling Camera Trace settings improves third-person visibility when wearing TEK suit armor. This prevents the camera from clipping through your character and provides a better field of view during gameplay.</p>
+                        <div class="feature-tags-fov">
+                            <span class="feature-tag-fov">👁️ Better Visibility</span>
+                            <span class="feature-tag-fov">🎮 TEK Suit Optimized</span>
+                            <span class="feature-tag-fov">📸 Camera Fix</span>
+                            <span class="feature-tag-fov">⚡ One-Click Setup</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="suitfov-side-panel">
+                <div class="content-card">
+                    <h3>How It Works</h3>
+                    <div class="guide-steps">
+                        <div class="guide-step">
+                            <div class="step-icon">🎯</div>
+                            <div class="step-content">
+                                <h5>Automatic Detection</h5>
+                                <p>Finds your GameUserSettings.ini file automatically</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="step-icon">⚡</div>
+                            <div class="step-content">
+                                <h5>One-Click Toggle</h5>
+                                <p>Enable or disable with a single button press</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="step-icon">🔄</div>
+                            <div class="step-content">
+                                <h5>Instant Apply</h5>
+                                <p>Changes both settings automatically - restart game to see effect</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h3>File Location</h3>
+                    <div class="path-info-box">
+                        <div class="path-icon">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                            </svg>
+                        </div>
+                        <div class="path-text">
+                            @if (!string.IsNullOrEmpty(gameUserSettingsPath))
+                            {
+                                <strong>GameUserSettings.ini</strong>
+                                <span class="path-value">@gameUserSettingsPath</span>
+                            }
+                            else
+                            {
+                                <strong>Searching...</strong>
+                                <span class="path-value">Looking for ARK installation</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card restart-notice">
+                    <div class="notice-header">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                        </svg>
+                        <h4>Important</h4>
+                    </div>
+                    <p>Remember to restart ARK after changing settings for them to take effect.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private string statusMessage = "";
+    private string gameUserSettingsPath = "";
+    private bool bUseOldThirdPersonCameraTrace = false;
+    private bool bUseOldThirdPersonCameraOffset = false;
+    private StatusType currentStatusType = StatusType.Info;
+
+    private enum StatusType
+    {
+        Success,
+        Error,
+        Warning,
+        Info
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        CheckFileAndReadSettings();
+        await Task.CompletedTask;
+    }
+
+    private void CheckFileAndReadSettings()
+    {
+        try
+        {
+            string? arkPath = ArkUtilities.FindArkPath();
+            if (string.IsNullOrEmpty(arkPath))
+            {
+                SetStatus("❌ ARK installation not found. Please ensure ARK is installed.", StatusType.Error);
+                return;
+            }
+
+            gameUserSettingsPath = Path.Combine(arkPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor", "GameUserSettings.ini");
+
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                SetStatus("⚠️ GameUserSettings.ini not found. Launch ARK once to create it.", StatusType.Warning);
+                return;
+            }
+
+            ReadCurrentSettings();
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"❌ Error: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void ReadCurrentSettings()
+    {
+        try
+        {
+            if (!File.Exists(gameUserSettingsPath)) return;
+
+            string content = File.ReadAllText(gameUserSettingsPath);
+            
+            var traceMatch = Regex.Match(content, @"bUseOldThirdPersonCameraTrace=(\w+)", RegexOptions.IgnoreCase);
+            if (traceMatch.Success)
+            {
+                bUseOldThirdPersonCameraTrace = traceMatch.Groups[1].Value.Equals("True", StringComparison.OrdinalIgnoreCase);
+            }
+
+            var offsetMatch = Regex.Match(content, @"bUseOldThirdPersonCameraOffset=(\w+)", RegexOptions.IgnoreCase);
+            if (offsetMatch.Success)
+            {
+                bUseOldThirdPersonCameraOffset = offsetMatch.Groups[1].Value.Equals("True", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading settings: {ex.Message}");
+        }
+    }
+
+    private void EnableCameraTrace()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(gameUserSettingsPath))
+            {
+                CheckFileAndReadSettings();
+            }
+
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                SetStatus("❌ GameUserSettings.ini file not found.", StatusType.Error);
+                return;
+            }
+
+            string content = File.ReadAllText(gameUserSettingsPath);
+            bool modified = false;
+
+            var tracePattern = @"bUseOldThirdPersonCameraTrace=\w+";
+            if (Regex.IsMatch(content, tracePattern, RegexOptions.IgnoreCase))
+            {
+                content = Regex.Replace(content, tracePattern, "bUseOldThirdPersonCameraTrace=True", RegexOptions.IgnoreCase);
+                modified = true;
+            }
+            else
+            {
+                if (content.Contains("[/Script/ShooterGame.ShooterGameUserSettings]"))
+                {
+                    content = content.Replace("[/Script/ShooterGame.ShooterGameUserSettings]",
+                        "[/Script/ShooterGame.ShooterGameUserSettings]\r\nbUseOldThirdPersonCameraTrace=True");
+                    modified = true;
+                }
+            }
+
+            var offsetPattern = @"bUseOldThirdPersonCameraOffset=\w+";
+            if (Regex.IsMatch(content, offsetPattern, RegexOptions.IgnoreCase))
+            {
+                content = Regex.Replace(content, offsetPattern, "bUseOldThirdPersonCameraOffset=True", RegexOptions.IgnoreCase);
+                modified = true;
+            }
+            else
+            {
+                if (content.Contains("[/Script/ShooterGame.ShooterGameUserSettings]"))
+                {
+                    if (content.Contains("bUseOldThirdPersonCameraTrace=True") && !content.Contains("bUseOldThirdPersonCameraOffset"))
+                    {
+                        content = content.Replace("bUseOldThirdPersonCameraTrace=True",
+                            "bUseOldThirdPersonCameraTrace=True\r\nbUseOldThirdPersonCameraOffset=True");
+                        modified = true;
+                    }
+                }
+            }
+
+            if (modified)
+            {
+                File.WriteAllText(gameUserSettingsPath, content);
+                bUseOldThirdPersonCameraTrace = true;
+                bUseOldThirdPersonCameraOffset = true;
+                SetStatus("✅ Camera Trace enabled! Restart ARK to apply changes.", StatusType.Success);
+            }
+            else
+            {
+                SetStatus("⚠️ Could not find settings section. Please verify your GameUserSettings.ini file.", StatusType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"❌ Error: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void DisableCameraTrace()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(gameUserSettingsPath))
+            {
+                CheckFileAndReadSettings();
+            }
+
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                SetStatus("❌ GameUserSettings.ini file not found.", StatusType.Error);
+                return;
+            }
+
+            string content = File.ReadAllText(gameUserSettingsPath);
+            
+            content = Regex.Replace(content, @"bUseOldThirdPersonCameraTrace=\w+", 
+                                   "bUseOldThirdPersonCameraTrace=False", RegexOptions.IgnoreCase);
+            content = Regex.Replace(content, @"bUseOldThirdPersonCameraOffset=\w+", 
+                                   "bUseOldThirdPersonCameraOffset=False", RegexOptions.IgnoreCase);
+
+            File.WriteAllText(gameUserSettingsPath, content);
+            bUseOldThirdPersonCameraTrace = false;
+            bUseOldThirdPersonCameraOffset = false;
+            SetStatus("❌ Camera Trace disabled. Restart ARK to apply changes.", StatusType.Warning);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"❌ Error: {ex.Message}", StatusType.Error);
+        }
+    }
+
+    private void SetStatus(string message, StatusType type)
+    {
+        statusMessage = message;
+        currentStatusType = type;
+        StateHasChanged();
+    }
+
+    private string GetStatusClass()
+    {
+        return currentStatusType switch
+        {
+            StatusType.Success => "status-success-fov",
+            StatusType.Error => "status-error-fov",
+            StatusType.Warning => "status-warning-fov",
+            StatusType.Info => "status-info-fov",
+            _ => "status-info-fov"
+        };
+    }
+}
