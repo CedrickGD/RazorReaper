@@ -1,0 +1,397 @@
+﻿.building-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 2rem;
+    height: auto;
+    min-height: calc(100vh - 200px);
+}
+
+.building-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.building-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+}
+
+.building-tutorial-card {
+    background: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    padding: 2rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+    .building-tutorial-card:hover {
+        transform: translateY(-4px) !important;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+.tutorial-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.tutorial-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+    .tutorial-icon.raising {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: var(--accent-green);
+    }
+
+    .tutorial-icon.lowering {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: var(--accent-blue);
+    }
+
+    .tutorial-icon svg {
+        width: 30px;
+        height: 30px;
+        transition: transform 0.3s ease;
+    }
+
+.building-tutorial-card:hover .tutorial-icon svg {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.tutorial-info {
+    flex: 1;
+}
+
+    .tutorial-info h3 {
+        color: var(--text-primary);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .tutorial-info p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+.video-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.tutorial-video {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 400px;
+    object-fit: contain;
+    background: #000000;
+}
+
+    .tutorial-video::-webkit-media-controls-panel {
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6));
+    }
+
+.tutorial-features {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.feature-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+    .feature-badge:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+.building-sidebar .content-card {
+    background: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+}
+
+    .building-sidebar .content-card h3 {
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+.tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}
+
+    .tip-item:hover {
+        background: rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateX(4px);
+    }
+
+.tip-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tip-content {
+    flex: 1;
+}
+
+    .tip-content h5 {
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .tip-content p {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin: 0;
+    }
+
+.prerequisites-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.prerequisite-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}
+
+    .prerequisite-item:hover {
+        background: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+.prerequisite-check {
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, var(--accent-green), var(--dark-green));
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.prerequisite-item span {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.building-info-card {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.info-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+    .info-header svg {
+        width: 20px;
+        height: 20px;
+        color: var(--accent-orange);
+        flex-shrink: 0;
+    }
+
+    .info-header h4 {
+        color: var(--accent-orange);
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+.building-info-card p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+@media (max-width: 1200px) {
+    .building-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .building-sidebar {
+        position: relative;
+        top: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .building-layout {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .building-main-content {
+        gap: 1.5rem;
+    }
+
+    .building-sidebar {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .tutorial-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .tutorial-icon {
+        margin: 0 auto;
+    }
+
+    .tutorial-features {
+        justify-content: center;
+    }
+
+    .feature-badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    .building-tutorial-card {
+        padding: 1.5rem !important;
+    }
+
+    .building-sidebar .content-card {
+        padding: 1.25rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .tutorial-header {
+        gap: 0.75rem;
+    }
+
+    .tutorial-icon {
+        width: 50px;
+        height: 50px;
+    }
+
+        .tutorial-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+    .tutorial-info h3 {
+        font-size: 1.25rem;
+    }
+
+    .tutorial-info p {
+        font-size: 0.85rem;
+    }
+
+    .feature-badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.7rem;
+    }
+
+    .tip-item {
+        padding: 0.75rem;
+    }
+
+    .tip-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1.25rem;
+    }
+
+    .building-tutorial-card {
+        padding: 1.25rem !important;
+    }
+
+    .building-sidebar .content-card {
+        padding: 1rem !important;
+    }
+}

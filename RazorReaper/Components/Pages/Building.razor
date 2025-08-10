@@ -1,0 +1,103 @@
+﻿@page "/building"
+@using RazorReaper.Components.Shared
+
+<div class="app-container">
+    <RazorReaper.Components.Shared.SharedNavbar />
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1 class="page-title">Building Techniques</h1>
+            <p class="page-subtitle">Foundation raising and lowering video tutorials</p>
+        </header>
+
+        <div class="building-layout">
+            <div class="building-main-content">
+
+                <div class="content-card building-tutorial-card">
+                    <div class="tutorial-header">
+                        <div class="tutorial-icon raising">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="tutorial-info">
+                            <h3>Foundation Raising</h3>
+                            <p>Learn how to raise foundations for better building alignment and design</p>
+                        </div>
+                    </div>
+
+                    <div class="video-container">
+                        <video controls preload="metadata" class="tutorial-video">
+                            <source src="videos/raising.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+
+                    <div class="tutorial-features">
+                        <span class="feature-badge">📐 Precision Building</span>
+                        <span class="feature-badge">🏗️ Advanced Techniques</span>
+                        <span class="feature-badge">⚡ Quick Method</span>
+                    </div>
+                </div>
+
+                <div class="content-card building-tutorial-card">
+                    <div class="tutorial-header">
+                        <div class="tutorial-icon lowering">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 112 0v11.586l4.293-4.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="tutorial-info">
+                            <h3>Foundation Lowering</h3>
+                            <p>Master the technique of lowering foundations for seamless construction</p>
+                        </div>
+                    </div>
+
+                    <div class="video-container">
+                        <video controls preload="metadata" class="tutorial-video">
+                            <source src="videos/lowering.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+
+                    <div class="tutorial-features">
+                        <span class="feature-badge">🔧 Essential Skill</span>
+                        <span class="feature-badge">🎯 Accuracy Focus</span>
+                        <span class="feature-badge">📚 Step-by-Step</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="building-sidebar">
+
+                <div class="content-card">
+                    <h3>Building Tips</h3>
+                    <div class="tips-list">
+                        <div class="tip-item">
+                            <div class="tip-icon">💡</div>
+                            <div class="tip-content">
+                                <h5>Practice Mode</h5>
+                                <p>Use single player to practice these techniques without resource loss</p>
+                            </div>
+                        </div>
+                        <div class="tip-item">
+                            <div class="tip-icon">⚙️</div>
+                            <div class="tip-content">
+                                <h5>Snap Settings</h5>
+                                <p>Adjust structure snap settings for better precision control</p>
+                            </div>
+                        </div>
+                        <div class="tip-item">
+                            <div class="tip-icon">🎮</div>
+                            <div class="tip-content">
+                                <h5>Key Bindings</h5>
+                                <p>Learn the default building hotkeys for faster construction</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
