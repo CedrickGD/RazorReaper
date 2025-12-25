@@ -18,10 +18,7 @@
 @inject INotificationService NotificationService
 @implements IAsyncDisposable
 
-<div class="app-container">
-    <RazorReaper.Components.Shared.SharedNavbar/>
 
-    <main class="main-content">
         <header class="page-header">
             <h1 class="page-title">Welcome, @userName</h1>
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
@@ -425,8 +422,7 @@
                 </div>
             </div>
         </div>
-    </main>
-</div>
+
 
 @code {
     private SystemStatus systemStatus = new SystemStatus { IsHealthy = true };

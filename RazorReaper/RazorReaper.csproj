@@ -25,6 +25,10 @@
 		<WindowsPackageType>None</WindowsPackageType>
 		<SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+
+		<!-- Disable SourceLink -->
+		<EnableSourceLink>false</EnableSourceLink>
+		<EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
 	</PropertyGroup>
 
 	<ItemGroup>
