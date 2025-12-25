@@ -6,11 +6,6 @@ namespace RazorReaper.Configuration;
 public class AppConfiguration
 {
     /// <summary>
-    /// Weather service configuration.
-    /// </summary>
-    public WeatherSettings Weather { get; set; } = new();
-
-    /// <summary>
     /// System monitoring configuration.
     /// </summary>
     public MonitoringSettings Monitoring { get; set; } = new();
@@ -24,32 +19,6 @@ public class AppConfiguration
     /// Autoclicker configuration.
     /// </summary>
     public AutoclickerSettings Autoclicker { get; set; } = new();
-}
-
-/// <summary>
-/// Weather service settings.
-/// </summary>
-public class WeatherSettings
-{
-    /// <summary>
-    /// Weather data refresh interval in milliseconds. Default: 30 minutes (1800000ms).
-    /// </summary>
-    public int RefreshInterval { get; set; } = 1800000;
-
-    /// <summary>
-    /// Primary weather API endpoint.
-    /// </summary>
-    public string PrimaryApiUrl { get; set; } = "https://api.openweathermap.org/data/2.5/weather";
-
-    /// <summary>
-    /// Secondary weather API endpoint (fallback).
-    /// </summary>
-    public string SecondaryApiUrl { get; set; } = "https://wttr.in";
-
-    /// <summary>
-    /// Default city for weather information.
-    /// </summary>
-    public string DefaultCity { get; set; } = "London";
 }
 
 /// <summary>

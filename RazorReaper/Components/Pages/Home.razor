@@ -6,9 +6,9 @@
 @using Microsoft.Extensions.Options
 @using RazorReaper.Configuration
 @using System.Diagnostics
+@using System.IO
 @using System.Management
 @using System.Runtime.InteropServices
-@inject IWeatherService WeatherService
 @inject IActivityService ActivityService
 @inject IArkPathProvider ArkPathProvider
 @inject ILogger<Home> Logger
@@ -51,73 +51,84 @@
                 </div>
             </div>
 
-            <div class="content-card widget-card weather-widget">
+            <div class="content-card widget-card uptime-widget">
                 <div class="widget-header">
                     <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path fill-rule="evenodd" d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3a1 1 0 00.293.707l1.5 1.5a1 1 0 101.414-1.414L11 9.586V7z" clip-rule="evenodd" />
                     </svg>
-                    <h3>Weather</h3>
+                    <h3>Uptime</h3>
                 </div>
-                @if (weatherLoading)
-                {
-                    <div class="weather-loading">
-                        <div class="spinner"></div>
-                        <p>Loading weather...</p>
+                <div class="uptime-details">
+                    <div class="system-item">
+                        <div class="system-label">System</div>
+                        <div class="system-value">@systemUptime</div>
                     </div>
-                }
-                else if (weather != null)
-                {
-                    <div class="weather-display">
-                        <div class="weather-icon-container">
-                            @GetWeatherIcon(weather.Condition)
-                        </div>
-                        <div class="weather-main">
-                            <div class="weather-temp">@weather.Temperature°C</div>
-                            <div class="weather-condition">@weather.Condition</div>
-                        </div>
-                        <div class="weather-details">
-                            <div class="weather-detail">
-                                <span>Feels like:</span>
-                                <span>@weather.FeelsLike°C</span>
-                            </div>
-                            <div class="weather-detail">
-                                <span>Location:</span>
-                                <span>@weather.City, @weather.Country</span>
-                            </div>
-                        </div>
+                    <div class="system-item">
+                        <div class="system-label">App Session</div>
+                        <div class="system-value">@appSessionDuration</div>
                     </div>
-                }
-                else
-                {
-                    <div class="weather-error-simple">
-                        <p>Weather unavailable</p>
-                        <button class="btn-small btn-retry" @onclick="LoadWeatherData">
-                            Retry
-                        </button>
-                    </div>
-                }
+                </div>
             </div>
 
-            <div class="content-card widget-card stats-widget">
+            <div class="content-card widget-card system-info-widget">
                 <div class="widget-header">
                     <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                        <path d="M4 5a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2h-1v2h1a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 012-2h1V9H6a2 2 0 01-2-2V5zm6 4V7H8v2h2zm0 6v-2H8v2h2z" />
                     </svg>
-                    <h3>Quick Stats</h3>
+                    <h3>Network</h3>
                 </div>
-                <div class="quick-stats">
-                    <div class="stat-item">
-                        <div class="stat-value">@totalLifetimeClicks.ToString("N0")</div>
-                        <div class="stat-label">Total Clicks</div>
+                <div class="system-info-list">
+                    <div class="system-item">
+                        <div class="system-label">Connected Network</div>
+                        <div class="system-value">@wifiName</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-value">@totalSessionTime</div>
-                        <div class="stat-label">Session Time</div>
+                    <div class="system-item">
+                        <div class="system-label">Signal Strength</div>
+                        <div class="system-value">@wifiSignalStrength</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-value">@configChanges</div>
-                        <div class="stat-label">Config Changes</div>
-                    </div>
+                </div>
+            </div>
+
+            <div class="content-card widget-card storage-widget">
+                <div class="widget-header">
+                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
+                        <path d="M4 4a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm0 6a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm0 6a2 2 0 012-2h8a2 2 0 012 2v1a2 2 0 01-2 2H6a2 2 0 01-2-2v-1z" />
+                    </svg>
+                    <h3>Storage</h3>
+                </div>
+                <div class="storage-summary">
+                    <span class="storage-label">Installed Drives</span>
+                    <span class="storage-value">@driveCount</span>
+                </div>
+                <div class="drive-list">
+                    @if (driveInfos.Count == 0)
+                    {
+                        <div class="drive-empty">Drive info unavailable</div>
+                    }
+                    else
+                    {
+                        var visibleDrives = driveInfos.Take(MaxDriveCards).ToList();
+                        foreach (var drive in visibleDrives)
+                        {
+                            <div class="drive-item">
+                                <div class="drive-header">
+                                    <span class="drive-name">@drive.Name</span>
+                                    <span class="drive-format">@drive.FileSystem</span>
+                                </div>
+                                <div class="drive-meta">
+                                    <span>@drive.UsedPercent% used</span>
+                                    <span>@FormatBytes(drive.UsedBytes) / @FormatBytes(drive.TotalBytes)</span>
+                                </div>
+                                <div class="drive-bar">
+                                    <div class="drive-fill" style="width: @Math.Min(drive.UsedPercent, 100)%"></div>
+                                </div>
+                            </div>
+                        }
+                        if (driveInfos.Count > MaxDriveCards)
+                        {
+                            <div class="drive-more">+@(driveInfos.Count - MaxDriveCards) more drives</div>
+                        }
+                    }
                 </div>
             </div>
 
@@ -128,79 +139,63 @@
                     </svg>
                     <h3>System Resources</h3>
                 </div>
-                @if (resourceMonitoringInitialized)
-                {
-                    <div class="resource-stats">
-                        <div class="resource-item">
-                            <div class="resource-header">
-                                <span class="resource-label">CPU Usage</span>
-                                <span class="resource-value">@cpuUsage%</span>
-                            </div>
-                            <div class="resource-bar">
-                                <div class="resource-fill cpu" style="width: @Math.Min(cpuUsage, 100)%"></div>
-                            </div>
-                        </div>
-                        @if (hasGpuCounter)
-                        {
+                <div class="resource-stats">
+                    @if (resourceMonitoringInitialized)
+                    {
+                        <div class="resource-usage">
                             <div class="resource-item">
                                 <div class="resource-header">
-                                    <span class="resource-label">GPU Usage</span>
-                                    <span class="resource-value">@gpuUsage%</span>
+                                    <span class="resource-label">CPU Usage</span>
+                                    <span class="resource-value">@cpuUsage%</span>
                                 </div>
                                 <div class="resource-bar">
-                                    <div class="resource-fill gpu" style="width: @Math.Min(gpuUsage, 100)%"></div>
+                                    <div class="resource-fill cpu" style="width: @Math.Min(cpuUsage, 100)%"></div>
                                 </div>
                             </div>
-                        }
-                        <div class="resource-item">
-                            <div class="resource-header">
-                                <span class="resource-label">RAM Usage</span>
-                                <span class="resource-value">@ramUsage%</span>
+                            @if (hasGpuCounter)
+                            {
+                                <div class="resource-item">
+                                    <div class="resource-header">
+                                        <span class="resource-label">GPU Usage</span>
+                                        <span class="resource-value">@gpuUsage%</span>
+                                    </div>
+                                    <div class="resource-bar">
+                                        <div class="resource-fill gpu" style="width: @Math.Min(gpuUsage, 100)%"></div>
+                                    </div>
+                                </div>
+                            }
+                            <div class="resource-item">
+                                <div class="resource-header">
+                                    <span class="resource-label">RAM Usage</span>
+                                    <span class="resource-value">@ramUsage%</span>
+                                </div>
+                                <div class="resource-bar">
+                                    <div class="resource-fill ram" style="width: @Math.Min(ramUsage, 100)%"></div>
+                                </div>
                             </div>
-                            <div class="resource-bar">
-                                <div class="resource-fill ram" style="width: @Math.Min(ramUsage, 100)%"></div>
+                            <div class="resource-info">
+                                <div class="resource-detail">
+                                    <span>Total Memory:</span>
+                                    <span>@ramUsedGB GB / @ramTotalGB GB</span>
+                                </div>
+                                <div class="resource-detail">
+                                    <span>App Usage:</span>
+                                    <span>@processMemoryMB MB</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="resource-info">
-                            <div class="resource-detail">
-                                <span>Total Memory:</span>
-                                <span>@ramUsedGB GB / @ramTotalGB GB</span>
-                            </div>
-                            <div class="resource-detail">
-                                <span>App Usage:</span>
-                                <span>@processMemoryMB MB</span>
+                    }
+                    else
+                    {
+                        <div class="resource-usage">
+                            <div class="resource-loading">
+                                <svg fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                </svg>
+                                <p>Initializing system monitoring...</p>
                             </div>
                         </div>
-                    </div>
-                }
-                else
-                {
-                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                        <svg fill="currentColor" viewBox="0 0 20 20" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;">
-                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-                        </svg>
-                        <p>Initializing system monitoring...</p>
-                    </div>
-                }
-            </div>
-
-            <div class="content-card widget-card wifi-widget">
-                <div class="widget-header">
-                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                        <path fill-rule="evenodd" d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8-6a6 6 0 100 12 6 6 0 000-12z" clip-rule="evenodd" />
-                    </svg>
-                    <h3>Network</h3>
-                </div>
-                <div class="wifi-info">
-                    <div class="wifi-detail">
-                        <div class="wifi-label">Connection</div>
-                        <div class="wifi-value">@wifiName</div>
-                    </div>
-                    <div class="wifi-detail">
-                        <div class="wifi-label">Signal Strength</div>
-                        <div class="wifi-value">@wifiSignalStrength</div>
-                    </div>
+                    }
                 </div>
             </div>
 
@@ -226,52 +221,7 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="content-card">
-            <h2>Quick Actions</h2>
-            <div class="actions-grid">
-
-                <a href="/server" class="action-card">
-                    <div class="action-icon server">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div class="action-content">
-                        <h3>Connect to Server</h3>
-                        <p>Quick connect to ARK servers via Battle Matrix connection method</p>
-                        <div class="action-button">Connect Now</div>
-                    </div>
-                </a>
-
-                <a href="/ini-changer" class="action-card">
-                    <div class="action-icon config">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div class="action-content">
-                        <h3>BaseDeviceProfiles Editor</h3>
-                        <p>Load, modify, and apply optimized configuration presets</p>
-                        <div class="action-button">Edit Configs</div>
-                    </div>
-                </a>
-
-                <a href="/game" class="action-card">
-                    <div class="action-icon game">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div class="action-content">
-                        <h3>Game Management</h3>
-                        <p>Manage game settings, backups, and advanced configurations</p>
-                        <div class="action-button">Manage Game</div>
-                    </div>
-                </a>
-
-            </div>
         </div>
 
         <div class="content-card activity-card">
@@ -431,18 +381,13 @@
     private string timeZoneInfo = "";
     private string utcOffset = "";
     private int weekNumber = 0;
+    private readonly DateTime appStartTime = DateTime.Now;
+    private string systemUptime = "0m";
+    private string appSessionDuration = "0m";
 
-    private WeatherData? weather = null;
-    private bool weatherLoading = true;
-
-    private long totalLifetimeClicks = 0;
-    private string totalSessionTime = "0h 0m";
-    private int configChanges = 0;
-    private DateTime sessionStartTime = DateTime.Now;
-
-    private const string CLICKS_STORAGE_KEY = "TotalLifetimeClicks";
-    private const string CONFIG_CHANGES_STORAGE_KEY = "ConfigChanges";
-    private const string SESSION_START_TIME_KEY = "SessionStartTime";
+    private int driveCount = 0;
+    private List<DriveUsageInfo> driveInfos = new();
+    private const int MaxDriveCards = 4;
 
     // System resources
     private int cpuUsage = 0;
@@ -459,7 +404,7 @@
     private bool resourceMonitoringInitialized = false;
     private Process? currentProcess; // Cache current process to avoid creating new ones
 
-    // WiFi and System Info
+    // WiFi and hardware info
     private string wifiName = "Not Connected";
     private string wifiSignalStrength = "N/A";
     private string cpuName = "Unknown";
@@ -481,9 +426,8 @@
         // Keep initial render lightweight to reduce navigation lag.
         userName = Environment.UserName;
 
-        var localTimeZone = TimeZoneInfo.Local;
-        timeZoneInfo = localTimeZone.DisplayName;
         UpdateTimeZoneInfo();
+        UpdateUptimeInfo();
 
         return Task.CompletedTask;
     }
@@ -505,13 +449,7 @@
         if (_isDisposed)
             return;
 
-        // Load or create session start time
-        await LoadSessionStartTime();
-
-        if (_isDisposed)
-            return;
-
-        // Start consolidated update timer (updates clock and session time together)
+        // Start consolidated update timer (updates clock)
         // Set to 1 second for smooth clock updates without excessive overhead
         updateTimer = new System.Timers.Timer(1000);
         updateTimer.Elapsed += (s, e) =>
@@ -520,22 +458,13 @@
                 return;
 
             currentTime = DateTime.Now;
-            UpdateSessionTime();
             UpdateTimeZoneInfo();
+            UpdateUptimeInfo();
 
             if (!_isDisposed)
                 InvokeAsync(StateHasChanged);
         };
         updateTimer.Start();
-
-        // Load weather data asynchronously (don't block page load)
-        _ = LoadWeatherData();
-
-        // Load statistics from storage
-        await LoadStatistics();
-
-        if (_isDisposed)
-            return;
 
         // Add initial activity
         ActivityService.AddActivity("Dashboard loaded", "success");
@@ -548,6 +477,7 @@
         {
             LoadWiFiInfo();
             LoadSystemHardwareInfo();
+            LoadSystemComponentsInfo();
             InvokeAsync(StateHasChanged);
         });
 
@@ -591,6 +521,15 @@
         public float UtilizationVideo { get; set; }
         public float DedicatedMemoryUsedMB { get; set; }
         public float DedicatedMemoryTotalMB { get; set; }
+    }
+
+    private class DriveUsageInfo
+    {
+        public string Name { get; set; } = "";
+        public string FileSystem { get; set; } = "";
+        public long TotalBytes { get; set; }
+        public long UsedBytes { get; set; }
+        public int UsedPercent { get; set; }
     }
 
     private void StartResourceMonitoring()
@@ -888,30 +827,10 @@
         }
     }
 
-    private void UpdateSessionTime()
-    {
-        var elapsed = DateTime.Now - sessionStartTime;
-        var hours = (int)elapsed.TotalHours;
-        var minutes = elapsed.Minutes;
-        var seconds = elapsed.Seconds;
-
-        if (hours > 0)
-        {
-            totalSessionTime = $"{hours}h {minutes}m";
-        }
-        else if (minutes > 0)
-        {
-            totalSessionTime = $"{minutes}m {seconds}s";
-        }
-        else
-        {
-            totalSessionTime = $"{seconds}s";
-        }
-    }
-
     private void UpdateTimeZoneInfo()
     {
         var localTimeZone = TimeZoneInfo.Local;
+        timeZoneInfo = FormatTimeZoneDisplayName(localTimeZone.DisplayName);
         var offset = localTimeZone.GetUtcOffset(currentTime);
 
         // Format UTC offset (e.g., UTC+01:00 or UTC-05:00)
@@ -928,6 +847,44 @@
             culture.DateTimeFormat.CalendarWeekRule,
             culture.DateTimeFormat.FirstDayOfWeek
         );
+    }
+
+    private void UpdateUptimeInfo()
+    {
+        var uptimeSpan = TimeSpan.FromMilliseconds(Environment.TickCount64);
+        systemUptime = FormatDuration(uptimeSpan);
+        appSessionDuration = FormatDuration(DateTime.Now - appStartTime);
+    }
+
+    private string FormatDuration(TimeSpan span)
+    {
+        if (span.Days > 0)
+            return $"{span.Days}d {span.Hours}h";
+
+        if (span.Hours > 0)
+            return $"{span.Hours}h {span.Minutes}m";
+
+        if (span.Minutes > 0)
+            return $"{span.Minutes}m {span.Seconds}s";
+
+        return $"{span.Seconds}s";
+    }
+
+    private string FormatTimeZoneDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            return displayName;
+
+        if (displayName.StartsWith("(", StringComparison.Ordinal))
+        {
+            var endIndex = displayName.IndexOf(')');
+            if (endIndex >= 0 && endIndex + 1 < displayName.Length)
+            {
+                return displayName.Substring(endIndex + 1).Trim();
+            }
+        }
+
+        return displayName.Trim();
     }
 
     private void LoadWiFiInfo()
@@ -1101,103 +1058,67 @@
         }
     }
 
-    private async Task LoadWeatherData()
+    private void LoadSystemComponentsInfo()
     {
-        weatherLoading = true;
-
         try
         {
-            Logger.LogInformation("Loading weather data");
-            weather = await WeatherService.GetWeatherAsync();
+            var drives = new List<DriveUsageInfo>();
 
-            if (weather != null)
+            foreach (var drive in DriveInfo.GetDrives())
             {
-                Logger.LogInformation("Weather loaded successfully: {Temperature}°C, {Condition} in {City}",
-                    weather.Temperature, weather.Condition, weather.City);
+                if (!drive.IsReady || drive.DriveType != DriveType.Fixed)
+                    continue;
+
+                try
+                {
+                    var totalBytes = drive.TotalSize;
+                    var usedBytes = Math.Max(totalBytes - drive.TotalFreeSpace, 0);
+                    var usedPercent = totalBytes > 0
+                        ? (int)Math.Round(usedBytes * 100.0 / totalBytes)
+                        : 0;
+
+                    drives.Add(new DriveUsageInfo
+                    {
+                        Name = drive.Name.TrimEnd('\\'),
+                        FileSystem = string.IsNullOrWhiteSpace(drive.DriveFormat) ? "Unknown" : drive.DriveFormat,
+                        TotalBytes = totalBytes,
+                        UsedBytes = usedBytes,
+                        UsedPercent = usedPercent
+                    });
+                }
+                catch (Exception driveEx)
+                {
+                    Logger.LogDebug(driveEx, "Could not read drive info for {DriveName}", drive.Name);
+                }
             }
-            else
-            {
-                Logger.LogWarning("Weather data could not be loaded");
-            }
+
+            driveInfos = drives.OrderBy(drive => drive.Name).ToList();
+            driveCount = driveInfos.Count;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading weather data");
-            weather = null;
-        }
-        finally
-        {
-            weatherLoading = false;
-            await InvokeAsync(StateHasChanged);
+            Logger.LogDebug(ex, "Could not detect drive information");
+            driveInfos = new List<DriveUsageInfo>();
+            driveCount = 0;
         }
     }
 
-
-    private async Task LoadSessionStartTime()
+    private string FormatBytes(long bytes)
     {
-        try
-        {
-            // Use sessionStorage instead of localStorage - clears when app closes!
-            var sessionStartStr = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", SESSION_START_TIME_KEY);
+        if (bytes <= 0)
+            return "0 B";
 
-            if (!string.IsNullOrEmpty(sessionStartStr) && long.TryParse(sessionStartStr, out long ticks))
-            {
-                sessionStartTime = new DateTime(ticks);
-                Logger.LogInformation("Session resumed: Started at {Time}, elapsed {Elapsed}",
-                    sessionStartTime, DateTime.Now - sessionStartTime);
-            }
-            else
-            {
-                // New session - set fresh start time
-                sessionStartTime = DateTime.Now;
-                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", SESSION_START_TIME_KEY, sessionStartTime.Ticks.ToString());
-                Logger.LogInformation("New session started at {Time}", sessionStartTime);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading session start time, using current time");
-            sessionStartTime = DateTime.Now;
-        }
-    }
+        var size = (double)bytes;
+        var units = new[] { "B", "KB", "MB", "GB", "TB" };
+        var unitIndex = 0;
 
-    private async Task LoadStatistics()
-    {
-        try
+        while (size >= 1024 && unitIndex < units.Length - 1)
         {
-            var clicksStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", CLICKS_STORAGE_KEY);
-            var configStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", CONFIG_CHANGES_STORAGE_KEY);
-
-            if (!string.IsNullOrEmpty(clicksStr) && long.TryParse(clicksStr, out long clicks))
-            {
-                totalLifetimeClicks = clicks;
-            }
-
-            if (!string.IsNullOrEmpty(configStr) && int.TryParse(configStr, out int configs))
-            {
-                configChanges = configs;
-            }
-
-            Logger.LogDebug("Statistics loaded: {Clicks} clicks, {Configs} config changes", totalLifetimeClicks, configChanges);
+            size /= 1024;
+            unitIndex++;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading statistics");
-        }
-    }
 
-    private async Task SaveStatistics()
-    {
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", CLICKS_STORAGE_KEY, totalLifetimeClicks.ToString());
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", CONFIG_CHANGES_STORAGE_KEY, configChanges.ToString());
-            Logger.LogDebug("Statistics saved");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error saving statistics");
-        }
+        return $"{size:0.#} {units[unitIndex]}";
     }
 
     private void ClearActivity()
@@ -1205,96 +1126,6 @@
         Logger.LogInformation("Clearing all activities");
         ActivityService.ClearActivities();
         StateHasChanged();
-    }
-
-    private RenderFragment GetWeatherIcon(string condition)
-    {
-        var conditionLower = condition.ToLower();
-
-        if (conditionLower.Contains("clear") || conditionLower.Contains("sunny"))
-        {
-            return @<svg class="weather-icon sunny" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <circle class="sun" cx="100" cy="100" r="35" fill="#fbbf24"/>
-                <g class="sun-rays">
-                    @for (int i = 0; i < 8; i++)
-                    {
-                        var angle = i * 45;
-                        <line x1="100" y1="40" x2="100" y2="20" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"
-                              transform="rotate(@angle 100 100)" style="animation-delay: @(i * 0.1)s"/>
-                    }
-                </g>
-            </svg>;
-        }
-        else if (conditionLower.Contains("cloud") || conditionLower.Contains("overcast"))
-        {
-            return @<svg class="weather-icon cloudy" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <ellipse class="cloud cloud-1" cx="80" cy="100" rx="35" ry="25" fill="#e5e7eb"/>
-                <ellipse class="cloud cloud-2" cx="110" cy="95" rx="40" ry="30" fill="#d1d5db"/>
-                <ellipse class="cloud cloud-3" cx="100" cy="110" rx="45" ry="28" fill="#f3f4f6"/>
-            </svg>;
-        }
-        else if (conditionLower.Contains("rain") || conditionLower.Contains("drizzle") || conditionLower.Contains("shower"))
-        {
-            return @<svg class="weather-icon rainy" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="80" cy="80" rx="35" ry="25" fill="#9ca3af"/>
-                <ellipse cx="110" cy="75" rx="40" ry="30" fill="#6b7280"/>
-                <ellipse cx="100" cy="90" rx="45" ry="28" fill="#9ca3af"/>
-                <g class="rain-drops">
-                    @for (int i = 0; i < 5; i++)
-                    {
-                        var x = 70 + (i * 15);
-                        <line class="rain-drop" x1="@x" y1="120" x2="@x" y2="150" stroke="#60a5fa" stroke-width="3"
-                              stroke-linecap="round" style="animation-delay: @(i * 0.2)s"/>
-                    }
-                </g>
-            </svg>;
-        }
-        else if (conditionLower.Contains("snow"))
-        {
-            return @<svg class="weather-icon snowy" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="80" cy="80" rx="35" ry="25" fill="#cbd5e1"/>
-                <ellipse cx="110" cy="75" rx="40" ry="30" fill="#94a3b8"/>
-                <ellipse cx="100" cy="90" rx="45" ry="28" fill="#e2e8f0"/>
-                <g class="snow-flakes">
-                    @for (int i = 0; i < 6; i++)
-                    {
-                        var x = 60 + (i * 16);
-                        var y = 120 + ((i % 2) * 20);
-                        <circle class="snowflake" cx="@x" cy="@y" r="3" fill="#93c5fd" style="animation-delay: @(i * 0.3)s"/>
-                    }
-                </g>
-            </svg>;
-        }
-        else if (conditionLower.Contains("thunder") || conditionLower.Contains("storm"))
-        {
-            return @<svg class="weather-icon stormy" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="80" cy="80" rx="35" ry="25" fill="#4b5563"/>
-                <ellipse cx="110" cy="75" rx="40" ry="30" fill="#374151"/>
-                <ellipse cx="100" cy="90" rx="45" ry="28" fill="#6b7280"/>
-                <path class="lightning" d="M 100 110 L 95 130 L 105 130 L 100 150" fill="#fbbf24" stroke="#f59e0b" stroke-width="1"/>
-            </svg>;
-        }
-        else if (conditionLower.Contains("fog") || conditionLower.Contains("mist") || conditionLower.Contains("haze"))
-        {
-            return @<svg class="weather-icon foggy" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <g class="fog-lines">
-                    @for (int i = 0; i < 5; i++)
-                    {
-                        var y = 80 + (i * 15);
-                        var opacity = 0.3 + (i * 0.1);
-                        <line class="fog-line" x1="50" y1="@y" x2="150" y2="@y" stroke="#9ca3af"
-                              stroke-width="8" stroke-linecap="round" opacity="@opacity" style="animation-delay: @(i * 0.2)s"/>
-                    }
-                </g>
-            </svg>;
-        }
-        else
-        {
-            // Default icon
-            return @<svg class="weather-icon default" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="100" r="35" fill="#8b5cf6" opacity="0.6"/>
-            </svg>;
-        }
     }
 
     // ARK Path Management Methods

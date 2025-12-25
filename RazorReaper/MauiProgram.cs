@@ -90,7 +90,6 @@ namespace RazorReaper
             services.AddSingleton<IArkPathProvider, ArkPathProvider>();
             services.AddSingleton<IFileSystemService, FileSystemService>();
             services.AddSingleton<IProcessService, ProcessService>();
-            services.AddSingleton<IWeatherService, WeatherService>();
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
             services.AddSingleton<INotificationService, NotificationService>();
