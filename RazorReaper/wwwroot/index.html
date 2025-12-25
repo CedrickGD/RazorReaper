@@ -35,12 +35,29 @@
         <a class="dismiss">🗙</a>
     </div>
 
+    <audio id="notify-audio" src="assets/sounds/notify.mp3" preload="auto"></audio>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
     <script>
         window.startLocationPicker = function (dotNetRef) {
             // Just notify C# to start picking - it will handle everything
             dotNetRef.invokeMethodAsync('StartGlobalLocationPicker');
+        };
+
+        window.playNotificationSound = function () {
+            try {
+                const audio = document.getElementById('notify-audio');
+                if (!audio) return;
+
+                audio.volume = 0.35;
+                audio.currentTime = 0;
+                const playPromise = audio.play();
+                if (playPromise && playPromise.catch) {
+                    playPromise.catch(() => { });
+                }
+            } catch (e) {
+                // Ignore audio errors.
+            }
         };
 
         window.renderHeatmap = function (clickData) {

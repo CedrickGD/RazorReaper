@@ -1,6 +1,8 @@
 @using RazorReaper.Models
 @using RazorReaper.Services
+@using Microsoft.JSInterop
 @inject INotificationService NotificationService
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <div class="notification-container">
@@ -46,6 +48,7 @@
 </div>
 
 @code {
+    private const int MaxNotifications = 4;
     private List<NotificationMessage> notifications = new();
     private CancellationTokenSource? _autoRemoveCts;
 
@@ -58,8 +61,14 @@
 
     private async void HandleNotificationAdded(NotificationMessage notification)
     {
+        if (notifications.Count >= MaxNotifications)
+        {
+            NotificationService.RemoveNotification(notifications[0].Id);
+        }
+
         notifications.Add(notification);
         await InvokeAsync(StateHasChanged);
+        await PlayNotificationSoundAsync();
 
         // Auto-remove after duration - run on background thread to avoid UI blocking
         _ = Task.Run(async () =>
@@ -96,6 +105,18 @@
     private void RemoveNotification(string id)
     {
         NotificationService.RemoveNotification(id);
+    }
+
+    private async Task PlayNotificationSoundAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("playNotificationSound");
+        }
+        catch
+        {
+            // Ignore sound playback errors.
+        }
     }
 
     public void Dispose()

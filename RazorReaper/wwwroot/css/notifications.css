@@ -7,7 +7,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-width: 400px;
+    max-width: min(420px, calc(100vw - 40px));
+    width: min(420px, calc(100vw - 40px));
     pointer-events: none;
 }
 
@@ -22,8 +23,9 @@
     border: 1px solid var(--border-color);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
     pointer-events: auto;
-    min-width: 320px;
-    max-width: 400px;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
     animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -101,6 +103,8 @@
     font-size: 0.9rem;
     line-height: 1.5;
     font-weight: 500;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .notification-close {
@@ -136,6 +140,7 @@
         right: 12px;
         left: 12px;
         max-width: none;
+        width: auto;
     }
 
     .notification {

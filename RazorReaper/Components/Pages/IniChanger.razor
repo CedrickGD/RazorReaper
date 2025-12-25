@@ -259,7 +259,6 @@
         selectedPreset = preset.Name;
         showImages = false;
         currentIniContent = preset.Content;
-        NotificationService.ShowSuccess($"Selected preset: {preset.Name}");
         ActivityService.AddActivity($"Preset selected: {preset.Name}", "info");
         Logger.LogInformation("Preset selected: {PresetName}", preset.Name);
     }
