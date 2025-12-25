@@ -180,11 +180,17 @@
         font-weight: 600;
     }
 
-        .autoclicker-layout .hotkey-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
-        }
+    .autoclicker-layout .hotkey-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+    }
+
+    .autoclicker-layout .hotkey-btn.recording {
+        background: rgba(139, 92, 246, 0.12);
+        border-color: rgba(139, 92, 246, 0.5);
+        color: var(--text-primary);
+    }
 
     .autoclicker-layout .hotkey-info {
         display: flex;
@@ -428,89 +434,63 @@
     margin-top: 1.5rem;
 }
 
-    .autoclicker-layout .control-buttons .btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        padding: 1rem 2rem;
-        border: none;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-        min-height: 50px;
-        backdrop-filter: blur(10px);
-        text-transform: none;
-    }
+.autoclicker-layout .control-buttons .btn {
+    padding: 0.85rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    min-height: 44px;
+    text-transform: none;
+}
 
-        .autoclicker-layout .control-buttons .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.6s ease;
-        }
-
-        .autoclicker-layout .control-buttons .btn:hover::before {
-            left: 100%;
-        }
-
-        .autoclicker-layout .control-buttons .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
+.autoclicker-layout .control-buttons .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
 
 .autoclicker-layout .btn-start {
-    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 50%, #5b21b6 100%);
-    color: #ffffff;
-    border: 2px solid rgba(139, 92, 246, 0.3);
-    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.08));
+    color: var(--text-primary);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    box-shadow: none;
 }
 
-    .autoclicker-layout .btn-start:hover:not(:disabled) {
-        background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #6d28d9 100%);
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 12px 40px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        border-color: rgba(167, 139, 250, 0.5);
-    }
+.autoclicker-layout .btn-start:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.15));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(139, 92, 246, 0.25);
+    border-color: var(--accent-purple);
+}
 
 .autoclicker-layout .btn-stop {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
-    color: #ffffff;
-    border: 2px solid rgba(239, 68, 68, 0.3);
-    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.08));
+    color: var(--text-primary);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    box-shadow: none;
 }
 
-    .autoclicker-layout .btn-stop:hover:not(:disabled) {
-        background: linear-gradient(135deg, #f87171 0%, #ef4444 50%, #dc2626 100%);
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 12px 40px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        border-color: rgba(248, 113, 113, 0.5);
-    }
+.autoclicker-layout .btn-stop:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(239, 68, 68, 0.15));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.25);
+    border-color: var(--accent-red);
+}
 
 .autoclicker-layout .btn-secondary {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--text-primary);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    padding: 1rem 1.5rem;
-    min-width: 120px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    padding: 0.85rem 1.1rem;
+    min-width: 110px;
 }
 
-    .autoclicker-layout .btn-secondary:hover:not(:disabled) {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 10px 35px rgba(255, 255, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
-    }
+.autoclicker-layout .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 255, 255, 0.3);
+}
 
 @media (max-width: 1024px) {
     .autoclicker-layout {
@@ -910,133 +890,4 @@
     background: var(--accent-purple);
     cursor: pointer;
     border: none;
-}
-
-/* Enhanced button styles */
-.btn-start {
-    background: var(--gradient-purple) !important;
-    border: none !important;
-    box-shadow: 0 4px 15px var(--glow-purple);
-    font-weight: 600;
-}
-
-.btn-start:hover {
-    box-shadow: 0 6px 25px var(--glow-purple);
-    transform: translateY(-2px);
-}
-
-.btn-stop {
-    background: var(--gradient-danger) !important;
-    animation: pulse 2s ease-in-out infinite;
-}
-
-.pick-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.pick-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-}
-
-.pick-btn svg {
-    width: 20px;
-    height: 20px;
-}
-
-/* Enhanced select buttons */
-.select-btn {
-    position: relative;
-    overflow: hidden;
-}
-
-.select-btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-.select-btn:active::before {
-    width: 300px;
-    height: 300px;
-}
-
-.select-btn.active {
-    background: var(--gradient-purple);
-    border-color: var(--accent-purple);
-    box-shadow: 0 0 20px var(--glow-purple);
-}
-
-/* Status card enhancements */
-.autoclicker-status-card {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.autoclicker-status-card.active {
-    border-color: var(--accent-purple);
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
-    animation: fadeInUp 0.4s ease-out;
-}
-
-.autoclicker-status-indicator {
-    animation: pulse 2s ease-in-out infinite;
-}
-
-.autoclicker-status-indicator.running {
-    box-shadow: 0 0 20px var(--glow-purple);
-}
-
-/* Progress bar animation */
-.progress-fill {
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--gradient-purple);
-    box-shadow: 0 0 10px var(--glow-purple);
-}
-
-/* Input focus states */
-.time-input:focus,
-.coord-input:focus,
-.repeat-input:focus,
-.burst-input:focus,
-.profile-input:focus {
-    outline: none;
-    border-color: var(--accent-purple);
-    box-shadow: 0 0 0 3px var(--glow-purple);
-}
-
-/* Radio and checkbox enhancements */
-input[type="radio"]:checked + label,
-.radio-group input[type="radio"]:checked ~ label {
-    color: var(--accent-purple);
-    font-weight: 600;
-}
-
-/* Hotkey button enhancement */
-.hotkey-btn {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-}
-
-.hotkey-btn.recording {
-    background: var(--gradient-purple);
-    border-color: var(--accent-purple);
-    animation: pulse 1.5s ease-in-out infinite;
-    box-shadow: 0 0 25px var(--glow-purple);
-}
-
-.hotkey-btn:not(.recording):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }

@@ -177,10 +177,10 @@
     .server-btn.save:not(:disabled),
     .server-btn.favorite:not(:disabled),
     .server-btn.browser:not(:disabled) {
-        background: var(--gradient-purple) !important;
-        border-color: rgba(139, 92, 246, 0.5) !important;
-        color: white !important;
-        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3) !important;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.08)) !important;
+        border-color: rgba(139, 92, 246, 0.4) !important;
+        color: var(--text-primary) !important;
+        box-shadow: none !important;
     }
 
         .server-btn.query:not(:disabled):hover,
@@ -188,7 +188,10 @@
         .server-btn.save:not(:disabled):hover,
         .server-btn.favorite:not(:disabled):hover,
         .server-btn.browser:not(:disabled):hover {
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5) !important;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.15)) !important;
+            border-color: var(--accent-purple) !important;
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.35) !important;
+            color: var(--accent-purple-light) !important;
         }
 
 .copy-btn {
@@ -209,18 +212,36 @@
     font-size: 0.8rem !important;
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     color: var(--text-primary) !important;
     cursor: pointer !important;
     transition: all 0.3s ease !important;
     pointer-events: auto !important;
     opacity: 1 !important;
+    position: relative !important;
+    overflow: hidden !important;
 }
+
+    .toggle-btn::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: -100% !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent) !important;
+        transition: left 0.5s ease !important;
+    }
+
+    .toggle-btn:hover::before {
+        left: 100% !important;
+    }
 
     .toggle-btn:hover {
         background: rgba(255, 255, 255, 0.1) !important;
         border-color: rgba(255, 255, 255, 0.3) !important;
-        transform: translateY(-1px) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
     }
 
 .close-btn {
@@ -425,21 +446,39 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.5rem 0.75rem;
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
+    border-radius: 8px;
     color: var(--text-primary);
     cursor: pointer;
     font-size: 0.7rem;
     font-weight: 500;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
+    position: relative;
+    overflow: hidden;
 }
 
+    .server-action-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .server-action-btn:hover::before {
+        left: 100%;
+    }
+
     .server-action-btn:hover {
-        background: rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.3);
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
 
     .server-action-btn.remove {

@@ -3,77 +3,30 @@
 
         <header class="page-header">
             <h1 class="page-title">Gen2 Mutagen Dino Prices</h1>
-            <p class="page-subtitle">Browse creature mutation values and filter by tier</p>
+            <p class="page-subtitle">Browse creature mutation values and search by name</p>
         </header>
 
         <div class="dino-layout">
-            <!-- Sidebar Filters -->
-            <div class="dino-sidebar">
-                <div class="filter-card">
-                    <div class="card-header">
-                        <div class="icon-badge">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3>Filters</h3>
-                            <p>Sort by value tier</p>
-                        </div>
+            <div class="dino-toolbar">
+                <div class="search-block">
+                    <label class="filter-label">Search by Name</label>
+                    <div class="search-wrapper">
+                        <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        <input type="text"
+                               class="search-input"
+                               placeholder="Search dinos..."
+                               @bind="searchQuery"
+                               @bind:event="oninput" />
                     </div>
-
-                    <div class="filter-content">
-                        <div class="filter-section">
-                            <label class="filter-label">Search by Name</label>
-                            <div class="search-wrapper">
-                                <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                                </svg>
-                                <input type="text"
-                                       class="search-input"
-                                       placeholder="Search dinos..."
-                                       @bind="searchQuery"
-                                       @bind:event="oninput" />
-                            </div>
-                        </div>
-
-                        <div class="filter-section">
-                            <label class="filter-label">Value Tiers</label>
-                            <div class="tier-buttons">
-                                <button class="tier-btn @(selectedTier == "all" ? "active" : "")"
-                                        @onclick='() => SetTier("all")'>
-                                    All
-                                </button>
-                                <button class="tier-btn elite @(selectedTier == "elite" ? "active" : "")"
-                                        @onclick='() => SetTier("elite")'>
-                                    Elite (90+)
-                                </button>
-                                <button class="tier-btn high @(selectedTier == "high" ? "active" : "")"
-                                        @onclick='() => SetTier("high")'>
-                                    High (70-89)
-                                </button>
-                                <button class="tier-btn medium @(selectedTier == "medium" ? "active" : "")"
-                                        @onclick='() => SetTier("medium")'>
-                                    Medium (40-69)
-                                </button>
-                                <button class="tier-btn low @(selectedTier == "low" ? "active" : "")"
-                                        @onclick='() => SetTier("low")'>
-                                    Low (&lt;40)
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="filter-stats">
-                            <div class="stat-row">
-                                <span>Showing:</span>
-                                <span class="stat-value">@GetFilteredDinos().Count() / @allDinos.Count</span>
-                            </div>
-                        </div>
-                    </div>
+                </div>
+                <div class="dino-count">
+                    <span>Showing:</span>
+                    <span class="stat-value">@GetFilteredDinos().Count() / @allDinos.Count</span>
                 </div>
             </div>
 
-            <!-- Main Content Area -->
             <div class="dino-main">
                 <div class="dino-list-card">
                     @if (GetFilteredDinos().Any())
@@ -83,7 +36,6 @@
                                 <div class="th-rank">#</div>
                                 <div class="th-name">Creature Name</div>
                                 <div class="th-value">Mutagen Value</div>
-                                <div class="th-tier">Tier</div>
                             </div>
                             <div class="table-body">
                                 @{
@@ -97,9 +49,6 @@
                                             </div>
                                             <div class="td-value">
                                                 <span class="value-badge">@dino.Value</span>
-                                            </div>
-                                            <div class="td-tier">
-                                                <span class="tier-badge">@GetTierName(dino.Value)</span>
                                             </div>
                                         </div>
                                         rank++;
@@ -115,7 +64,7 @@
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                             </svg>
                             <h3>No creatures found</h3>
-                            <p>Try adjusting your filters or search query</p>
+                            <p>Try adjusting your search query</p>
                         </div>
                     }
                 </div>
@@ -125,7 +74,6 @@
 
 @code {
     private string searchQuery = "";
-    private string selectedTier = "all";
     private List<DinoPrice> allDinos = new List<DinoPrice>();
 
     protected override void OnInitialized()
@@ -214,11 +162,6 @@
         allDinos = allDinos.OrderByDescending(d => d.Value).ThenBy(d => d.Name).ToList();
     }
 
-    private void SetTier(string tier)
-    {
-        selectedTier = tier;
-    }
-
     private IEnumerable<DinoPrice> GetFilteredDinos()
     {
         var filtered = allDinos.AsEnumerable();
@@ -229,52 +172,7 @@
             filtered = filtered.Where(d => d.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        // Apply tier filter
-        if (selectedTier != "all")
-        {
-            filtered = selectedTier switch
-            {
-                "elite" => filtered.Where(d => d.Value >= 90),
-                "high" => filtered.Where(d => d.Value >= 70 && d.Value < 90),
-                "medium" => filtered.Where(d => d.Value >= 40 && d.Value < 70),
-                "low" => filtered.Where(d => d.Value < 40),
-                _ => filtered
-            };
-        }
-
         return filtered;
-    }
-
-    private string GetValueClass(int value)
-    {
-        if (value >= 90) return "elite";
-        if (value >= 70) return "high";
-        if (value >= 40) return "medium";
-        return "low";
-    }
-
-    private string GetTierClass(int value)
-    {
-        if (value >= 90) return "tier-elite";
-        if (value >= 70) return "tier-high";
-        if (value >= 40) return "tier-medium";
-        return "tier-low";
-    }
-
-    private string GetTierName(int value)
-    {
-        if (value >= 90) return "Elite";
-        if (value >= 70) return "High";
-        if (value >= 40) return "Medium";
-        return "Low";
-    }
-
-    private string GetDinoIcon(int value)
-    {
-        if (value >= 90) return "👑";
-        if (value >= 70) return "⭐";
-        if (value >= 40) return "🦖";
-        return "🦴";
     }
 
     private class DinoPrice

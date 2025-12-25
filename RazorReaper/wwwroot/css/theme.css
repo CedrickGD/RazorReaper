@@ -161,17 +161,21 @@ html {
 .btn {
     display: inline-flex;
     align-items: center;
-    padding: 0.75rem 1.5rem;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.9rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.85rem;
     text-decoration: none;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(5px);
 }
 
     .btn::before {
@@ -191,67 +195,86 @@ html {
 
     .btn:hover {
         transform: translateY(-2px);
-        border-color: rgba(255, 255, 255, 0.2) !important;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none !important;
     }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--text-primary), #cccccc) !important;
-    color: var(--background-dark) !important;
-    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2) !important;
-    border: 1px solid var(--text-primary) !important;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.08)) !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(139, 92, 246, 0.4) !important;
 }
 
     .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3) !important;
-        background: linear-gradient(135deg, #cccccc, var(--text-primary)) !important;
+        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.35) !important;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.15)) !important;
+        border-color: var(--accent-purple) !important;
+        color: var(--accent-purple-light) !important;
     }
 
 .btn-secondary {
-    background: linear-gradient(135deg, var(--accent-purple), var(--accent-purple-dark)) !important;
-    color: white !important;
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3) !important;
-    border: 1px solid var(--accent-purple) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
     .btn-secondary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
-        background: linear-gradient(135deg, var(--accent-purple-light), var(--accent-purple)) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
     }
 
 .btn-success {
-    background: linear-gradient(135deg, var(--accent-purple), var(--accent-purple-dark)) !important;
-    color: white !important;
-    border: 1px solid var(--accent-purple) !important;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.08)) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid rgba(139, 92, 246, 0.4) !important;
 }
 
     .btn-success:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
+        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.35) !important;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.15)) !important;
+        border-color: var(--accent-purple) !important;
+        color: var(--accent-purple-light) !important;
     }
 
 .btn-warning {
-    background: linear-gradient(135deg, #fbbf24, var(--accent-orange)) !important;
-    color: #1f2937 !important;
-    border: 1px solid var(--accent-orange) !important;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.08)) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
 }
 
     .btn-warning:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4) !important;
+        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35) !important;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.15)) !important;
+        border-color: var(--accent-orange) !important;
+        color: var(--accent-orange) !important;
     }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--accent-red), #dc2626) !important;
-    color: white !important;
-    border: 1px solid var(--accent-red) !important;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.08)) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
 }
 
     .btn-danger:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4) !important;
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35) !important;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(239, 68, 68, 0.15)) !important;
+        border-color: var(--accent-red) !important;
+        color: #fecaca !important;
     }
 
 /* Global Input Styles */

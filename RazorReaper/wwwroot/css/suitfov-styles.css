@@ -1,9 +1,8 @@
 ﻿.suitfov-layout {
     display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 2rem;
-    height: calc(100vh - 200px);
-    min-height: 600px;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 1.5rem;
+    align-items: start;
 }
 
 .suitfov-main-panel {
@@ -26,26 +25,26 @@
 .section-header-fov {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 1.5rem;
+    gap: 1rem;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .icon-circle-fov {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
     border: 1px solid rgba(139, 92, 246, 0.3);
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+    box-shadow: 0 3px 10px rgba(139, 92, 246, 0.18);
 }
 
     .icon-circle-fov svg {
-        width: 30px;
-        height: 30px;
+        width: 24px;
+        height: 24px;
         color: var(--accent-purple);
     }
 
@@ -59,8 +58,8 @@
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
 }
 
     .settings-status-card h4 {
@@ -80,7 +79,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
+    padding: 0.85rem;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -154,22 +153,22 @@
 .fov-main-actions {
     display: flex;
     justify-content: center;
-    margin: 2rem 0;
+    margin: 1.5rem 0;
 }
 
 .fov-btn-large {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    padding: 1.5rem 2.5rem;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
     background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-    min-width: 320px;
+    min-width: 240px;
 }
 
     .fov-btn-large::before {
@@ -188,8 +187,8 @@
     }
 
     .fov-btn-large:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
     }
 
     .fov-btn-large.enable {
@@ -225,9 +224,9 @@
         }
 
 .btn-icon-large {
-    width: 50px;
-    height: 50px;
-    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -236,12 +235,12 @@
 }
 
     .btn-icon-large svg {
-        width: 28px;
-        height: 28px;
+        width: 22px;
+        height: 22px;
     }
 
 .fov-btn-large:hover .btn-icon-large {
-    transform: scale(1.1) rotate(5deg);
+    transform: scale(1.05);
 }
 
 .btn-content-large {
@@ -252,14 +251,14 @@
 
 .btn-title {
     color: var(--text-primary);
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
 }
 
 .btn-subtitle {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
 }
 
 .fov-status-message {
@@ -524,26 +523,26 @@
     .fov-btn-large {
         min-width: unset;
         width: 100%;
-        padding: 1.25rem 1.5rem;
-        gap: 1rem;
+        padding: 1rem 1.25rem;
+        gap: 0.85rem;
     }
 
     .btn-icon-large {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
     }
 
         .btn-icon-large svg {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
         }
 
     .btn-title {
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
 
     .btn-subtitle {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
     }
 
     .section-header-fov {
