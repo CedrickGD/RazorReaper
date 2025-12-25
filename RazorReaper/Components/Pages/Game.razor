@@ -1,16 +1,12 @@
 ﻿@page "/game"
 @using System.Diagnostics
-@using System.IO
 @using System.Runtime.InteropServices
-@using Microsoft.JSInterop
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using RazorReaper.Services
 @using RazorReaper.Configuration
 
-@inject IJSRuntime JSRuntime
 @inject IProcessService ProcessService
-@inject IArkPathProvider ArkPathProvider
 @inject IOptions<AppConfiguration> Configuration
 @inject ILogger<Game> Logger
 @inject INotificationService NotificationService
@@ -40,15 +36,15 @@
             <div class="content-card">
                 <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Game Controls</h3>
                 <div class="game-actions">
-                    <button class="game-btn primary" @onclick="LaunchGame" disabled="@isGameRunning">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn btn-primary" @onclick="LaunchGame" disabled="@isGameRunning">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="5 3 19 12 5 21 5 3" />
                         </svg>
                         Launch Game
                     </button>
 
-                    <button class="game-btn danger" @onclick="CloseGame" disabled="@IsGameNotRunning()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn btn-danger" @onclick="CloseGame" disabled="@IsGameNotRunning()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                             <line x1="9" y1="9" x2="15" y2="15" />
                             <line x1="15" y1="9" x2="9" y2="15" />
@@ -56,40 +52,27 @@
                         Close Game
                     </button>
 
-                    <button class="game-btn success" @onclick="ExecuteReconnect" disabled="@IsGameNotRunning()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn btn-success" @onclick="ExecuteReconnect" disabled="@IsGameNotRunning()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.35 0 4.48.9 6.07 2.38" />
                             <polyline points="21 4 21 12 13 12" />
                         </svg>
                         Reconnect
                     </button>
 
-                    <button class="game-btn warning" @onclick="ExecuteDisconnect" disabled="@IsGameNotRunning()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn btn-warning" @onclick="ExecuteDisconnect" disabled="@IsGameNotRunning()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
                             <line x1="12" y1="2" x2="12" y2="12" />
                         </svg>
                         Disconnect
                     </button>
 
-                    <button class="game-btn info" @onclick="ExecuteDebugStructures" disabled="@IsGameNotRunning()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn btn-secondary" @onclick="ExecuteDebugStructures" disabled="@IsGameNotRunning()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         </svg>
                         debugstructures
-                    </button>
-                </div>
-            </div>
-
-            <div class="content-card">
-                <h3 style="margin-bottom: 1rem; color: var(--text-primary);">ARK Installation</h3>
-                <div class="game-actions">
-                    <button class="game-btn info" @onclick="CheckPaths">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 11l3 3L22 4" />
-                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-                        </svg>
-                        Check Paths
                     </button>
                 </div>
             </div>
@@ -117,45 +100,6 @@
 
     // Helper method for boolean attributes
     private bool IsGameNotRunning() => !isGameRunning;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                document.onselectstart = function() { return false; };
-                document.onmousedown = function(e) {
-                    if (!e.target.closest('button')) {
-                        e.preventDefault();
-                        return false;
-                    }
-                };
-                document.ondragstart = function() { return false; };
-                document.oncontextmenu = function() { return false; };
-
-                if (window.getSelection) {
-                    window.getSelection().removeAllRanges();
-                }
-
-                document.addEventListener('selectstart', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }, true);
-
-                document.addEventListener('mousedown', function(e) {
-                    if (!e.target.closest('button')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                }, true);
-
-                var style = document.createElement('style');
-                style.innerHTML = '* { user-select: none !important; -webkit-user-select: none !important; }';
-                document.head.appendChild(style);
-            ");
-        }
-    }
 
     protected override void OnInitialized()
     {
@@ -323,58 +267,6 @@
 
         StateHasChanged();
         return Task.CompletedTask;
-    }
-
-    private async Task CheckPaths()
-    {
-        try
-        {
-            Logger.LogInformation("Checking ARK installation paths");
-
-            // Run path checking on background thread to prevent UI freezing/crashing
-            await Task.Run(() =>
-            {
-                try
-                {
-                    var arkPath = ArkPathProvider.FindArkPath();
-                    var configPath = ArkPathProvider.GetBaseDeviceProfilesPath();
-
-                    bool arkExists = !string.IsNullOrEmpty(arkPath) && Directory.Exists(arkPath);
-                    bool configExists = !string.IsNullOrEmpty(configPath) && File.Exists(configPath);
-
-                    if (arkExists && configExists)
-                    {
-                        InvokeAsync(() => NotificationService.ShowSuccess($"ARK paths verified successfully!\nInstall: {arkPath}\nConfig: {configPath}"));
-                        Logger.LogInformation("ARK paths verified: Install={ArkPath}, Config={ConfigPath}", arkPath, configPath);
-                    }
-                    else
-                    {
-                        var issues = new List<string>();
-                        if (!arkExists)
-                        {
-                            issues.Add($"Installation path not found: {arkPath ?? "null"}");
-                        }
-                        if (!configExists)
-                        {
-                            issues.Add($"Config file not found: {configPath ?? "null"}");
-                        }
-
-                        InvokeAsync(() => NotificationService.ShowError($"ARK path verification failed:\n{string.Join("\n", issues)}"));
-                        Logger.LogWarning("ARK paths verification failed: {Issues}", string.Join(", ", issues));
-                    }
-                }
-                catch (Exception innerEx)
-                {
-                    Logger.LogError(innerEx, "Error in path checking background task");
-                    InvokeAsync(() => NotificationService.ShowError($"Error checking paths: {innerEx.Message}"));
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error checking ARK paths");
-            NotificationService.ShowError($"Error checking paths: {ex.Message}");
-        }
     }
 
     public async ValueTask DisposeAsync()
