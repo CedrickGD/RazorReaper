@@ -1,75 +1,60 @@
-# RazorReaper 🪢
+# RazorReaper
 
-**RazorReaper** is the next-generation, modern replacement for [ReaperV2](https://github.com/CedrickGD/ReaperV2), built entirely with **Blazor Hybrid (.NET MAUI)**. This tool is designed to streamline and enhance the way users interact with ARK: Survival Evolved configuration files and Steam server utilities — all in a sleek, dark-themed interface with a black and white aesthetic.
+RazorReaper is the modern successor to [ReaperV2](https://github.com/CedrickGD/ReaperV2), built with Blazor Hybrid (.NET MAUI). It focuses on ARK: Survival Evolved configuration, utilities, and quick actions in a clean, consistent desktop UI.
 
-> 🆕 This is the new and actively maintained successor to my previous WinForms-based tool [ReaperV2](https://github.com/CedrickGD/ReaperV2).
+## Features
 
----
+- Home dashboard with time, uptime, network, storage, hardware, resources, recent activity, and ARK paths
+- Server management: query servers, connect via Steam, save servers, add to Steam favorites, open Steam server browser
+- Game management: launch/close ARK and run quick in-game commands (reconnect, disconnect, debugstructures)
+- INI configuration: BaseDeviceProfiles editor with a preset library, load/save/reset tools
+- Suit FOV: toggle camera trace settings with automatic file detection
+- Game fonts: switch fonts, auto-install options, and quick access to Steam
+- Pixel textures: delete or restore texture files by category
+- Paintings: manage the MyPaintings folder and access canvas tools/resources
+- Mutagen prices: searchable Gen2 dino list
+- Building techniques: tutorial videos for foundation raising/lowering
+- Auto clicker: advanced timing, randomization/burst options, and a click heatmap
+- Notification system with sound and activity feed
 
-## ✨ Features (v1.0.0)
+## Tech Stack
 
-- 🔍 **Server Connect Tool**  
-  Instantly connect to ARK servers via **Battle Matrix** connection method using IP:Port input.
+- Blazor Hybrid (.NET MAUI)
+- .NET 9 on Windows
 
-- 🧭 **Dynamic Path Finder**  
-  Automatically finds the correct paths for ARK installations and config files (e.g., `BaseDeviceProfiles.ini`).
+## Download and Run
 
-- ⚙️ **BaseDeviceProfiles Editor**  
-  - Load, Default, clear, modify or apply one of 10 optimized presets:
-    - Bloodstalker
-    - Gen2 Farming
-    - Ultra Minimal FPS/Visibility Mode
-    - Hard & Black
-    - Explore it urself
+Requirements:
+- Windows 10/11
+- .NET SDK 9.0.306
+- Steam and ARK: Survival Evolved (for game-dependent features)
 
-- 🧼 **File Tools**  
-  Open, reset, and generate `BaseDeviceProfiles.ini` files without touching Explorer manually.
+Download the latest release:
+https://github.com/CedrickGD/RazorReaper/releases/latest
 
-- 💡 **Modern UI/UX**  
-  - Built using **Blazor Hybrid + .NET MAUI**
-  - Black & purple color theme
-  - Custom notification system
-  - Responsive layout with animations and themed icons
-
----
-
-## 🆚 ReaperV2 vs RazorReaper
-
-| Feature                       | ReaperV2 (WinForms) | RazorReaper (Blazor Hybrid) |
-|------------------------------|---------------------|------------------------------|
-| Modern UI/UX                 | ❌                  | ✅                           |
-| Cross-platform Support       | ❌ Windows only      | ✅ (Win, Android, etc. via MAUI) |
-| Auto Path Finder             | ⚠️ Manual setup      | ✅                           |
-| Config Presets               | ❌                  | ✅ 10 Presets Built-in       |
-| Server Tools                 | ✅ Basic             | ✅ Improved (Battle Matrix)  |
-| Notification System          | ❌                  | ✅                           |
-| Ongoing Updates              | ❌ Archived          | ✅ Active                    |
-
----
-
-## 🚀 Download & Run
-
-### 📦 Requirements
-
-- [.NET SDK 9.0.300 (Windows x64)](https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.300/dotnet-sdk-9.0.300-win-x64.exe) **(required)**
-
-### 💾 [Download Latest Release](https://github.com/CedrickGD/RazorReaper/releases/tag/v1.1.0)
-
-1. Download the `.zip` from the release page  
-2. Extract it with Windows 11 built-in tool or [WinRAR](https://www.win-rar.com/start.html?&L=0)  
+1. Download the zip from the release page
+2. Extract it
 3. Run `RazorReaper.exe`
 
----
+## Build From Source
 
-## 📌 Roadmap
+```powershell
+dotnet build RazorReaper.sln
+dotnet run --project RazorReaper/RazorReaper.csproj -f net9.0-windows10.0.19041.0
+```
 
-- 🔐 Steam favorites integration
-- 🌐 Multi-language support
-- 🧠 Smart config optimizer
-- ⚙️ `.ini` diffing tool
+## ReaperV2 vs RazorReaper
 
----
+| Feature                 | ReaperV2 (WinForms) | RazorReaper (Blazor Hybrid) |
+|------------------------|---------------------|------------------------------|
+| UI/UX                  | Basic               | Modern, consistent UI        |
+| Platform               | Windows only        | Windows (MAUI base)          |
+| Path detection         | Manual setup        | Auto-detect + override       |
+| Config presets         | Limited             | Preset library               |
+| Server tools           | Basic               | Query + Steam integration    |
+| Notifications/activity | No                  | Yes                          |
+| Ongoing updates        | Archived            | Active                       |
 
-## 📄 License
+## License
 
-This project is licensed under a proprietary license.  
+This project is licensed under a proprietary license.

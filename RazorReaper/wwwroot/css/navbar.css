@@ -24,18 +24,17 @@
     padding: 1.5rem !important;
     border-bottom: 1px solid var(--border-color) !important;
     flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
-    .brand h1 {
-        font-size: 1.75rem !important;
-        font-weight: 700 !important;
-        background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        text-align: center !important;
-        letter-spacing: -0.02em !important;
-        margin: 0 !important;
-    }
+.brand-logo {
+    width: 44px !important;
+    height: 44px !important;
+    object-fit: contain !important;
+    display: block !important;
+}
 
 .nav-content {
     display: flex !important;

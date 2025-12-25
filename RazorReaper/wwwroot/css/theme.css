@@ -133,6 +133,14 @@ html {
     letter-spacing: -0.03em;
 }
 
+.page-header:focus,
+.page-header:focus-visible,
+.page-title:focus,
+.page-title:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .page-subtitle {
     color: var(--text-secondary);
     font-size: 1.1rem;
