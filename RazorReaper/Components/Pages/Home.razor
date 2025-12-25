@@ -1,6 +1,5 @@
 ﻿@page "/"
 @page "/home"
-@using RazorReaper.Components.Shared
 @using RazorReaper.Services
 @using RazorReaper.Models
 @using Microsoft.Extensions.Logging
@@ -475,22 +474,42 @@
     private const string CustomPathPreferenceKey = "CustomArkInstallPath";
 
     private bool _isDisposed = false;
+    private bool _hasInitialized = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        // Get Windows account username
+        // Keep initial render lightweight to reduce navigation lag.
         userName = Environment.UserName;
 
-        // Initialize timezone information
         var localTimeZone = TimeZoneInfo.Local;
         timeZoneInfo = localTimeZone.DisplayName;
         UpdateTimeZoneInfo();
 
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _hasInitialized || _isDisposed)
+            return;
+
+        _hasInitialized = true;
+        await InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
         // Load ARK paths
         LoadArkPaths();
 
+        if (_isDisposed)
+            return;
+
         // Load or create session start time
         await LoadSessionStartTime();
+
+        if (_isDisposed)
+            return;
 
         // Start consolidated update timer (updates clock and session time together)
         // Set to 1 second for smooth clock updates without excessive overhead
@@ -515,6 +534,9 @@
         // Load statistics from storage
         await LoadStatistics();
 
+        if (_isDisposed)
+            return;
+
         // Add initial activity
         ActivityService.AddActivity("Dashboard loaded", "success");
 
@@ -529,7 +551,7 @@
             InvokeAsync(StateHasChanged);
         });
 
-        await base.OnInitializedAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     [DllImport("kernel32.dll")]

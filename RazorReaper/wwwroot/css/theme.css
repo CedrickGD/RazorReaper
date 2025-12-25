@@ -93,7 +93,7 @@ html {
 }
 
 .main-content {
-    margin-left: 250px !important;
+    margin-left: 240px !important;
     flex: 1 !important;
     padding: 2rem !important;
     min-height: 100vh !important;
@@ -108,7 +108,7 @@ html {
         content: '';
         position: fixed;
         top: 0;
-        left: 250px;
+        left: 240px;
         right: 0;
         bottom: 0;
         background: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
@@ -457,23 +457,6 @@ h3 {
     .status-dot.offline::after {
         color: var(--accent-red);
     }
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
-        transform: scale(0.8);
-    }
-
-    50% {
-        opacity: 0.5;
-        transform: scale(1.2);
-    }
-
-    100% {
-        opacity: 0;
-        transform: scale(1.4);
-    }
-}
 
 .status-info h3 {
     font-size: 1.25rem;

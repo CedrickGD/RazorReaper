@@ -487,6 +487,7 @@
     private const int HOTKEY_COOLDOWN_MS = 2000; // 2 seconds
 
     private CancellationTokenSource? _hotkeyMonitorCts;
+    private bool _hasInitialized = false;
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);
@@ -601,7 +602,22 @@
     private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
     private const uint MOUSEEVENTF_MOVE = 0x0001;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
+    {
+        // Defer heavy setup until after the first render.
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _hasInitialized)
+            return;
+
+        _hasInitialized = true;
+        await InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
     {
         // Load saved hotkey from localStorage
         await LoadSavedHotkey();
@@ -616,7 +632,7 @@
         _hotkeyMonitorCts = new CancellationTokenSource();
         _ = Task.Run(() => MonitorHotkey(_hotkeyMonitorCts.Token));
 
-        await base.OnInitializedAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadSavedHotkey()
