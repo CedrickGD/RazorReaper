@@ -43,11 +43,6 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-    .content-card:hover {
-        border-color: rgba(139, 92, 246, 0.3) !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
-    }
 
 .connection-form {
     display: flex !important;

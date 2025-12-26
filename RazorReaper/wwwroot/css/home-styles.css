@@ -69,9 +69,9 @@
 }
 
 .widget-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.2);
-    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: none;
+    border-color: var(--widget-highlight-border);
 }
 
 .widget-header {
