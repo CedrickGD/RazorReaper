@@ -87,7 +87,7 @@
     color: var(--accent-purple);
     display: block;
     flex-shrink: 0;
-    transform: translateY(-1px);
+    transform: translateY(-8px);
 }
 
 .widget-header h3 {
