@@ -1,60 +1,80 @@
-# RazorReaper
+# RazorReaper ⚔️
 
-RazorReaper is the modern successor to [ReaperV2](https://github.com/CedrickGD/ReaperV2), built with Blazor Hybrid (.NET MAUI). It focuses on ARK: Survival Evolved configuration, utilities, and quick actions in a clean, consistent desktop UI.
+**RazorReaper** is the modern successor to [ReaperV2](https://github.com/CedrickGD/ReaperV2), built with **Blazor Hybrid (.NET MAUI)**.  
+It’s a fast, clean toolkit for **ARK: Survival Evolved** configuration, utilities, and quick actions.
 
-## Features
+> ✅ Active project, sleek desktop UI, and focused on real ARK workflows.
 
-- Home dashboard with time, uptime, network, storage, hardware, resources, recent activity, and ARK paths
-- Server management: query servers, connect via Steam, save servers, add to Steam favorites, open Steam server browser
-- Game management: launch/close ARK and run quick in-game commands (reconnect, disconnect, debugstructures)
-- INI configuration: BaseDeviceProfiles editor with a preset library, load/save/reset tools
-- Suit FOV: toggle camera trace settings with automatic file detection
-- Game fonts: switch fonts, auto-install options, and quick access to Steam
-- Pixel textures: delete or restore texture files by category
-- Paintings: manage the MyPaintings folder and access canvas tools/resources
-- Mutagen prices: searchable Gen2 dino list
-- Building techniques: tutorial videos for foundation raising/lowering
-- Auto clicker: advanced timing, randomization/burst options, and a click heatmap
-- Notification system with sound and activity feed
+---
 
-## Tech Stack
+## ✨ Highlights
 
-- Blazor Hybrid (.NET MAUI)
-- .NET 9 on Windows
+- 🏠 **Home Dashboard** — time, uptime, network, storage, hardware, resources, activity, and ARK paths
+- 🌐 **Server Manager** — query servers, connect via Steam, save favorites, open Steam browser
+- 🎮 **Game Management** — launch/close ARK + quick in-game commands (reconnect, disconnect, debugstructures)
+- 🧰 **INI Tools** — BaseDeviceProfiles editor + preset library, load/save/reset
+- 👁️ **Suit FOV** — one-click camera trace toggle with auto file detection
+- 🔤 **Game Fonts** — switch fonts, auto install, and open ARK in Steam
+- 🧩 **Pixel Textures** — delete/restore textures by category
+- 🎨 **Paintings** — manage MyPaintings + access canvas tools/resources
+- 🧬 **Mutagen Prices** — searchable Gen2 dino list
+- 🏗️ **Building Techniques** — foundation raising/lowering video guides
+- 🖱️ **Auto Clicker** — advanced timing, randomization, burst mode + click heatmap
+- 🔔 **Notifications** — clean toast system with sound + activity log
 
-## Download and Run
+---
 
-Requirements:
-- Windows 10/11
-- .NET SDK 9.0.306
-- Steam and ARK: Survival Evolved (for game-dependent features)
+## 🧠 ReaperV2 vs RazorReaper
 
-Download the latest release:
+| Feature                 | ReaperV2 (WinForms) | RazorReaper (Blazor Hybrid) |
+|------------------------|---------------------|------------------------------|
+| UI/UX                  | 😐 Basic            | ✅ Modern & consistent        |
+| Platform               | 🪟 Windows only     | ✅ Windows (MAUI base)        |
+| Path detection         | ⚙️ Manual setup     | ✅ Auto-detect + override     |
+| Config presets         | ⚠️ Limited          | ✅ Preset library             |
+| Server tools           | ⚙️ Basic            | ✅ Query + Steam integration  |
+| Notifications/activity | ❌ No               | ✅ Yes                        |
+| Ongoing updates        | 🗃️ Archived         | ✅ Active                     |
+
+---
+
+## ⬇️ Download & Run
+
+### ✅ Requirements
+
+- **Windows 10/11**
+- **.NET SDK 9.0.306 (Windows x64)**  
+  https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.306/dotnet-sdk-9.0.306-win-x64.exe
+- **Steam + ARK: Survival Evolved** (for game features)
+
+### 📦 Latest Release
+
 https://github.com/CedrickGD/RazorReaper/releases/latest
 
-1. Download the zip from the release page
+1. Download the `.zip`
 2. Extract it
 3. Run `RazorReaper.exe`
 
-## Build From Source
+---
+
+## 🛠️ Build From Source
 
 ```powershell
 dotnet build RazorReaper.sln
 dotnet run --project RazorReaper/RazorReaper.csproj -f net9.0-windows10.0.19041.0
 ```
 
-## ReaperV2 vs RazorReaper
+---
 
-| Feature                 | ReaperV2 (WinForms) | RazorReaper (Blazor Hybrid) |
-|------------------------|---------------------|------------------------------|
-| UI/UX                  | Basic               | Modern, consistent UI        |
-| Platform               | Windows only        | Windows (MAUI base)          |
-| Path detection         | Manual setup        | Auto-detect + override       |
-| Config presets         | Limited             | Preset library               |
-| Server tools           | Basic               | Query + Steam integration    |
-| Notifications/activity | No                  | Yes                          |
-| Ongoing updates        | Archived            | Active                       |
+## 📌 Roadmap
 
-## License
+- ⭐ Steam favorites integration
+- 🌍 Multi-language support
+- 🧪 Smart config optimizer
+- 🧾 `.ini` diffing tools
+
+---
+
+## 📄 License
 
 This project is licensed under a proprietary license.
