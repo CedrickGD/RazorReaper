@@ -1,0 +1,132 @@
+@page "/oc-bps"
+
+<header class="page-header">
+    <h1 class="page-title">OC BPs</h1>
+    <p class="page-subtitle">Genesis 2 mission rewards for overcapped blueprints.</p>
+</header>
+
+<div class="ocbps-layout">
+    <div class="content-card ocbps-intro">
+        <div class="ocbps-intro-header">
+            <div class="ocbps-intro-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0011.586 3H6z" />
+                    <path d="M13 8H7m6 4H7m6 4H7" />
+                </svg>
+            </div>
+            <div>
+                <h3>How to get them</h3>
+                <p>Run the listed Gen2 missions on the shown difficulty to roll overcapped blueprints.</p>
+            </div>
+        </div>
+        <div class="ocbps-legend">
+            <span class="ocbps-tag alpha">Alpha</span>
+            <span class="ocbps-tag beta">Beta</span>
+            <span class="ocbps-tag gamma">Gamma</span>
+            <span class="ocbps-legend-note">Alpha has the best rolls, Beta is solid, Gamma is the lowest.</span>
+        </div>
+    </div>
+
+    <div class="ocbps-grid">
+        @foreach (var category in categories)
+        {
+            <section class="content-card ocbps-card">
+                <div class="ocbps-card-header">
+                    <h2>@category.Title</h2>
+                    <span class="ocbps-count">@category.Entries.Count items</span>
+                </div>
+                <div class="ocbps-table">
+                    <div class="ocbps-row ocbps-row-header">
+                        <span>Item</span>
+                        <span>Mission</span>
+                        <span>Difficulty</span>
+                    </div>
+                    @foreach (var entry in category.Entries)
+                    {
+                        <div class="ocbps-row">
+                            <div class="ocbps-item">@entry.Item</div>
+                            <div class="ocbps-mission">
+                                @entry.Mission
+                                @if (!string.IsNullOrWhiteSpace(entry.Note))
+                                {
+                                    <span class="ocbps-note">(@entry.Note)</span>
+                                }
+                            </div>
+                            <div>
+                                <span class="ocbps-tag @entry.Difficulty.ToLowerInvariant()">@entry.Difficulty</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly List<BpCategory> categories = new()
+    {
+        new BpCategory
+        {
+            Title = "Armor",
+            Entries = new List<BpEntry>
+            {
+                new BpEntry { Item = "Flak Helmet", Mission = "Maewing Poach", Difficulty = "Beta" },
+                new BpEntry { Item = "Flak Chest", Mission = "Maewing Poach", Difficulty = "Beta" },
+                new BpEntry { Item = "Flak Gaunts", Mission = "Ferox Cull", Difficulty = "Beta" },
+                new BpEntry { Item = "Flak Legs", Mission = "Bulbdog Fetch", Difficulty = "Beta" },
+                new BpEntry { Item = "Flak Boots", Mission = "Ferox Cull", Difficulty = "Beta" },
+                new BpEntry { Item = "Hazard Helmet", Mission = "Survive the Ark", Difficulty = "Beta" }
+            }
+        },
+        new BpCategory
+        {
+            Title = "Weapons",
+            Entries = new List<BpEntry>
+            {
+                new BpEntry { Item = "Fabby BP", Mission = "Bulbdog Fetch / Ferox Cull", Difficulty = "Beta", Note = "both" },
+                new BpEntry { Item = "Comp BP", Mission = "Shadowmane Prowl", Difficulty = "Beta" },
+                new BpEntry { Item = "Crossbow", Mission = "Velonasaur Stalk", Difficulty = "Beta" },
+                new BpEntry { Item = "Metal Hatchet", Mission = "Code Red", Difficulty = "Beta" },
+                new BpEntry { Item = "Mantelrow", Mission = "Choose Your Own Adventure", Difficulty = "Beta" },
+                new BpEntry { Item = "Tek Rifle", Mission = "Velonasaur Stalk", Difficulty = "Alpha" },
+                new BpEntry { Item = "Riot Shield", Mission = "Velonasaur Stalk", Difficulty = "Beta" }
+            }
+        },
+        new BpCategory
+        {
+            Title = "Saddles",
+            Entries = new List<BpEntry>
+            {
+                new BpEntry { Item = "Giga", Mission = "Shadowmane Prowl", Difficulty = "Alpha" },
+                new BpEntry { Item = "Thylacoleo", Mission = "Maewing Poach", Difficulty = "Beta" },
+                new BpEntry { Item = "Racer", Mission = "Paracer Roundup", Difficulty = "Alpha" },
+                new BpEntry { Item = "Yuti", Mission = "Ferox Cull", Difficulty = "Alpha" },
+                new BpEntry { Item = "Carbo", Mission = "Velonasaur Stalk", Difficulty = "Gamma" },
+                new BpEntry { Item = "Stego", Mission = "Paracer Roundup", Difficulty = "Gamma" },
+                new BpEntry { Item = "Deinonychus", Mission = "Bulbdog Fetch", Difficulty = "Beta" },
+                new BpEntry { Item = "Racer", Mission = "Shadowmane Prowl", Difficulty = "Beta" },
+                new BpEntry { Item = "Owl", Mission = "Maewing Poach", Difficulty = "Beta" },
+                new BpEntry { Item = "Ptero", Mission = "Shadowmane Prowl", Difficulty = "Beta" },
+                new BpEntry { Item = "Daedon", Mission = "Velonasaur Stalk", Difficulty = "Beta" },
+                new BpEntry { Item = "Karkinos", Mission = "Velonasaur Stalk", Difficulty = "Alpha" },
+                new BpEntry { Item = "Basilisk", Mission = "Ferox Cull", Difficulty = "Alpha" },
+                new BpEntry { Item = "Tek Tape", Mission = "Shadowmane Prowl", Difficulty = "Alpha" }
+            }
+        }
+    };
+
+    private sealed class BpEntry
+    {
+        public string Item { get; init; } = "";
+        public string Mission { get; init; } = "";
+        public string Difficulty { get; init; } = "";
+        public string Note { get; init; } = "";
+    }
+
+    private sealed class BpCategory
+    {
+        public string Title { get; init; } = "";
+        public List<BpEntry> Entries { get; init; } = new();
+    }
+}
