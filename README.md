@@ -25,20 +25,6 @@ in-game workflows, configuration management, and utility features.
 
 ---
 
-## 🧠 ReaperV2 vs RazorReaper
-
-| Feature            | ReaperV2 | RazorReaper |
-|--------------------|----------|-------------|
-| UI / UX            | Basic    | Modern      |
-| Technology         | WinForms | Blazor Hybrid |
-| Path detection     | Manual   | Automatic   |
-| Presets            | Limited  | Built-in    |
-| Server tools       | Basic    | Steam-based |
-| Notifications      | No       | Yes         |
-| Status             | Archived | Active      |
-
----
-
 ## ⬇️ Download
 
 ### ✅ Requirements
