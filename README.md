@@ -10,19 +10,21 @@ in-game workflows, configuration management, and utility features.
 
 ## 🌐 Features
 
- **Dashboard** — System Status & Game Paths
- **Server Manager** — Server Query & Connect
- **Game Controls** — Tab Commands
+• **Dashboard** — system status & game paths  
+• **Server Manager** — server query & Steam tools  
+• **Game Controls** — quick in-game commands  
 
- **INI Manager** — Presets & More
- **Suit FOV** — Camera Trace Toggle
- **Fonts** — Font Switching 
- **Textures** — Texture Management
- **Paintings** — Preset Canvas + Tool 
+• **INI Manager** — presets & configuration  
+• **Suit FOV** — camera trace toggle  
+• **Fonts** — font switching  
+• **Textures** — texture management  
+• **Paintings** — preset canvas & tools  
 
- **Mutagen Prices** — List of Prices
- **Building Guides** — Tutorial Video
- **Auto Clicker** — Integrated Auto Clicker
+• **Mutagen Prices** — Genesis Part 2 prices  
+• **Building Guides** — tutorial references  
+• **Auto Clicker** — integrated auto clicker
+
+
 
 ---
 
