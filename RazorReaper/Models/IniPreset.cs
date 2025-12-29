@@ -19,4 +19,9 @@ public class IniPreset
     /// Gets or sets the full INI file content for this preset.
     /// </summary>
     public string Content { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets whether this preset was created by the user.
+    /// </summary>
+    public bool IsCustom { get; set; }
 }

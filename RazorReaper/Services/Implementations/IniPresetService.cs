@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RazorReaper.Models;
+using System.Text.Json;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -10,11 +11,18 @@ public class IniPresetService : IIniPresetService
 {
     private readonly ILogger<IniPresetService> _logger;
     private readonly List<IniPreset> _presets;
+    private readonly List<IniPreset> _customPresets = new();
+    private readonly string _customPresetsPath;
+    private readonly object _presetLock = new();
+
+    private const string CustomPresetsFileName = "custom-ini-presets.json";
 
     public IniPresetService(ILogger<IniPresetService> logger)
     {
         _logger = logger;
         _presets = InitializePresets();
+        _customPresetsPath = GetCustomPresetsPath();
+        LoadCustomPresets();
     }
 
     /// <inheritdoc/>
@@ -23,7 +31,10 @@ public class IniPresetService : IIniPresetService
         try
         {
             _logger.LogDebug("Getting all INI presets");
-            return new List<IniPreset>(_presets);
+            lock (_presetLock)
+            {
+                return new List<IniPreset>(_presets);
+            }
         }
         catch (Exception ex)
         {
@@ -38,7 +49,10 @@ public class IniPresetService : IIniPresetService
         try
         {
             _logger.LogDebug("Getting preset by name: {Name}", name);
-            return _presets.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            lock (_presetLock)
+            {
+                return _presets.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            }
         }
         catch (Exception ex)
         {
@@ -52,14 +66,208 @@ public class IniPresetService : IIniPresetService
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(presetName))
+            {
+                return "/images/presets/default.jpg";
+            }
+
             var imageName = presetName.ToLowerInvariant().Replace(" ", "-");
-            return $"/images/presets/{imageName}.jpg";
+            var relativePath = $"/images/presets/{imageName}.jpg";
+            var physicalPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "presets", $"{imageName}.jpg");
+
+            return File.Exists(physicalPath) ? relativePath : "/images/presets/default.jpg";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting image path for preset: {PresetName}", presetName);
             return "/images/presets/default.jpg";
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> AddCustomPresetAsync(IniPreset preset)
+    {
+        try
+        {
+            if (!TryNormalizePreset(preset, out var normalized))
+            {
+                _logger.LogWarning("Custom preset rejected due to invalid data.");
+                return false;
+            }
+
+            normalized.IsCustom = true;
+
+            lock (_presetLock)
+            {
+                if (_presets.Any(p => p.Name.Equals(normalized.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _logger.LogWarning("Preset name already exists: {Name}", normalized.Name);
+                    return false;
+                }
+
+                _customPresets.Add(normalized);
+                _presets.Add(normalized);
+            }
+
+            var saved = await SaveCustomPresetsAsync();
+            if (!saved)
+            {
+                lock (_presetLock)
+                {
+                    _customPresets.Remove(normalized);
+                    _presets.Remove(normalized);
+                }
+            }
+
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding custom preset");
+            return false;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RemoveCustomPresetAsync(string name)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return false;
+            }
+
+            IniPreset? target = null;
+
+            lock (_presetLock)
+            {
+                target = _customPresets.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                if (target == null)
+                {
+                    return false;
+                }
+
+                _customPresets.Remove(target);
+                _presets.RemoveAll(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var saved = await SaveCustomPresetsAsync();
+            if (!saved && target != null)
+            {
+                lock (_presetLock)
+                {
+                    _customPresets.Add(target);
+                    _presets.Add(target);
+                }
+            }
+
+            return saved;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing custom preset");
+            return false;
+        }
+    }
+
+    private string GetCustomPresetsPath()
+    {
+        var basePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(basePath, "RazorReaper", "Presets", CustomPresetsFileName);
+    }
+
+    private void LoadCustomPresets()
+    {
+        try
+        {
+            if (!File.Exists(_customPresetsPath))
+            {
+                return;
+            }
+
+            var json = File.ReadAllText(_customPresetsPath);
+            var presets = JsonSerializer.Deserialize<List<IniPreset>>(json) ?? new List<IniPreset>();
+
+            lock (_presetLock)
+            {
+                foreach (var preset in presets)
+                {
+                    if (!TryNormalizePreset(preset, out var normalized))
+                    {
+                        continue;
+                    }
+
+                    normalized.IsCustom = true;
+
+                    if (_presets.Any(p => p.Name.Equals(normalized.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
+                    _customPresets.Add(normalized);
+                    _presets.Add(normalized);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading custom presets");
+        }
+    }
+
+    private async Task<bool> SaveCustomPresetsAsync()
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(_customPresetsPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            List<IniPreset> snapshot;
+            lock (_presetLock)
+            {
+                snapshot = new List<IniPreset>(_customPresets);
+            }
+
+            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(_customPresetsPath, json);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving custom presets");
+            return false;
+        }
+    }
+
+    private static bool TryNormalizePreset(IniPreset? preset, out IniPreset normalized)
+    {
+        normalized = new IniPreset();
+
+        if (preset == null)
+        {
+            return false;
+        }
+
+        var name = preset.Name?.Trim() ?? string.Empty;
+        var content = preset.Content ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(content))
+        {
+            return false;
+        }
+
+        normalized = new IniPreset
+        {
+            Name = name,
+            Description = preset.Description?.Trim() ?? string.Empty,
+            Content = content
+        };
+
+        return true;
     }
 
     private List<IniPreset> InitializePresets()

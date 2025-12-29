@@ -1,10 +1,13 @@
 ﻿@page "/ini-changer"
 @using Microsoft.Win32
 @using System.IO
+@using System.IO.Compression
 @using Microsoft.Extensions.Logging
+@using Microsoft.Maui.Storage
 @using RazorReaper.Services
 @using RazorReaper.Models
 
+@inject IJSRuntime JSRuntime
 @inject IIniPresetService PresetService
 @inject IArkPathProvider ArkPathProvider
 @inject IFileSystemService FileSystem
@@ -18,7 +21,7 @@
             <p class="page-subtitle">Manage & optimize ARK configuration presets</p>
         </header>
 
-        <div class="ini-layout">
+        <div class="ini-layout @(isDeleteMode ? "delete-mode" : "")">
             <div class="ini-operations-panel">
                 <div class="content-card">
                     <div class="section-info">
@@ -61,6 +64,20 @@
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                             </svg>
                             Clear File
+                        </button>
+
+                        <button class="ini-btn" @onclick="ToggleDeleteMode">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            Remove Preset
+                        </button>
+
+                        <button class="ini-btn" @onclick="DownloadAllPresets">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            Download INI's
                         </button>
                     </div>
                 </div>
@@ -120,13 +137,17 @@
                         @foreach (var preset in PresetService.GetAllPresets())
                         {
                             <button class="preset-button @(selectedPreset == preset.Name ? "active" : "")"
-                                    @onclick="() => SelectPreset(preset)">
+                                    @onclick="() => HandlePresetClick(preset)">
                                 <div class="preset-info">
                                     <div class="preset-name">@preset.Name</div>
                                     <div class="preset-description">@preset.Description</div>
                                 </div>
                             </button>
                         }
+                        <button class="preset-button preset-add-button" @onclick="OpenAddPresetDialog">
+                            <div class="preset-add-icon">+</div>
+                            <div class="preset-add-text">Add Preset</div>
+                        </button>
                     </div>
                 </div>
 
@@ -167,14 +188,254 @@
         </div>
 
 
+@if (showAddPresetDialog)
+{
+    <div class="modal-overlay ini-modal-overlay" @onclick="CloseAddPresetDialog">
+        <div class="modal-content ini-preset-modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2>Create Preset</h2>
+                <button class="modal-close" @onclick="CloseAddPresetDialog">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="ini-preset-form">
+                    <div class="ini-preset-field">
+                        <label class="ini-preset-label" for="preset-name">Preset name</label>
+                        <input id="preset-name" class="ini-preset-input" @bind="newPresetName" placeholder="Enter preset name" />
+                    </div>
+
+                    <div class="ini-preset-field">
+                        <label class="ini-preset-label" for="preset-description">Description</label>
+                        <input id="preset-description" class="ini-preset-input" @bind="newPresetDescription" placeholder="Short description" />
+                    </div>
+
+                    <div class="ini-preset-field">
+                        <label class="ini-preset-label" for="preset-content">INI content</label>
+                        <textarea id="preset-content" class="ini-preset-textarea" @bind="newPresetContent" rows="8"
+                                  placeholder="Paste INI content or import a file..."></textarea>
+                    </div>
+
+                    <div class="ini-preset-actions">
+                        <button class="btn btn-secondary" @onclick="UseCurrentIniContent">Use Current Editor</button>
+                        <button class="btn btn-secondary" @onclick="ImportPresetFile">Import INI File</button>
+                    </div>
+
+                    <p class="ini-preset-note">Custom presets are saved locally and appear in your preset list.</p>
+                </div>
+
+                <div class="ini-preset-footer">
+                    <button class="btn btn-primary" @onclick="SaveCustomPreset" disabled="@IsSavePresetDisabled()">Save Preset</button>
+                    <button class="btn btn-secondary" @onclick="CloseAddPresetDialog">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
 @code {
     private string currentIniContent = "";
     private string selectedPreset = "";
     private bool showImages = false;
+    private bool showAddPresetDialog = false;
+    private string newPresetName = "";
+    private string newPresetDescription = "";
+    private string newPresetContent = "";
+    private bool isSavingPreset = false;
+    private bool isDeleteMode = false;
 
     private void ToggleImages()
     {
         showImages = !showImages;
+    }
+
+    private void OpenAddPresetDialog()
+    {
+        showAddPresetDialog = true;
+        newPresetName = "";
+        newPresetDescription = "";
+        newPresetContent = currentIniContent;
+        isDeleteMode = false;
+    }
+
+    private void CloseAddPresetDialog()
+    {
+        showAddPresetDialog = false;
+    }
+
+    private void UseCurrentIniContent()
+    {
+        newPresetContent = currentIniContent;
+
+        if (string.IsNullOrWhiteSpace(newPresetContent))
+        {
+            NotificationService.ShowWarning("Current INI content is empty.");
+        }
+    }
+
+    private async Task ImportPresetFile()
+    {
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".ini", ".txt" } }
+            });
+
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Select an INI file",
+                FileTypes = fileTypes
+            });
+
+            if (result == null)
+            {
+                return;
+            }
+
+            await using var stream = await result.OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            newPresetContent = await reader.ReadToEndAsync();
+
+            if (string.IsNullOrWhiteSpace(newPresetName))
+            {
+                newPresetName = Path.GetFileNameWithoutExtension(result.FileName);
+            }
+
+            NotificationService.ShowSuccess("INI file imported.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error importing INI file");
+            NotificationService.ShowError($"Import failed: {ex.Message}");
+        }
+    }
+
+    private async Task SaveCustomPreset()
+    {
+        var name = newPresetName?.Trim() ?? string.Empty;
+        var description = newPresetDescription?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            NotificationService.ShowWarning("Preset name is required.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newPresetContent))
+        {
+            NotificationService.ShowWarning("Preset content is required.");
+            return;
+        }
+
+        if (PresetService.GetPresetByName(name) != null)
+        {
+            NotificationService.ShowWarning("A preset with this name already exists.");
+            return;
+        }
+
+        try
+        {
+            isSavingPreset = true;
+
+            var preset = new IniPreset
+            {
+                Name = name,
+                Description = description,
+                Content = newPresetContent
+            };
+
+            var saved = await PresetService.AddCustomPresetAsync(preset);
+            if (!saved)
+            {
+                NotificationService.ShowError("Failed to save preset.");
+                return;
+            }
+
+            selectedPreset = preset.Name;
+            currentIniContent = preset.Content;
+            showAddPresetDialog = false;
+            showImages = false;
+
+            NotificationService.ShowSuccess("Preset saved successfully.");
+            ActivityService.AddActivity($"Custom preset saved: {preset.Name}", "success");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving custom preset");
+            NotificationService.ShowError($"Save failed: {ex.Message}");
+        }
+        finally
+        {
+            isSavingPreset = false;
+        }
+    }
+
+    private void ToggleDeleteMode()
+    {
+        isDeleteMode = !isDeleteMode;
+
+        if (isDeleteMode)
+        {
+            NotificationService.ShowInfo("Select a custom preset to delete.");
+        }
+    }
+
+    private async Task HandlePresetClick(IniPreset preset)
+    {
+        if (!isDeleteMode)
+        {
+            SelectPreset(preset);
+            return;
+        }
+
+        isDeleteMode = false;
+        await InvokeAsync(StateHasChanged);
+
+        if (!preset.IsCustom)
+        {
+            NotificationService.ShowWarning("Only custom presets can be deleted.");
+            return;
+        }
+
+        var confirm = await JSRuntime.InvokeAsync<bool>("confirm", $"Delete custom preset '{preset.Name}'?");
+        if (!confirm)
+        {
+            return;
+        }
+
+        try
+        {
+            var removed = await PresetService.RemoveCustomPresetAsync(preset.Name);
+            if (!removed)
+            {
+                NotificationService.ShowWarning("Unable to remove this preset.");
+                return;
+            }
+
+            if (string.Equals(selectedPreset, preset.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                selectedPreset = "";
+            }
+
+            showImages = false;
+            NotificationService.ShowSuccess("Custom preset removed.");
+            ActivityService.AddActivity($"Custom preset removed: {preset.Name}", "warning");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error removing custom preset");
+            NotificationService.ShowError($"Remove failed: {ex.Message}");
+        }
+    }
+
+    private bool IsSavePresetDisabled()
+    {
+        return isSavingPreset || string.IsNullOrWhiteSpace(newPresetName) || string.IsNullOrWhiteSpace(newPresetContent);
     }
 
     private async Task OpenIniFile()
@@ -307,6 +568,87 @@
             Logger.LogError(ex, "Error saving INI file");
             NotificationService.ShowError($"Error saving INI file: {ex.Message}");
         }
+    }
+
+    private async Task DownloadAllPresets()
+    {
+        try
+        {
+            var presets = PresetService.GetAllPresets();
+            if (presets.Count == 0)
+            {
+                NotificationService.ShowWarning("No presets available to download.");
+                return;
+            }
+
+            await Task.Run(() =>
+            {
+                var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                var zipName = $"RazorReaper_INI_Presets_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
+                var zipPath = Path.Combine(downloadsPath, zipName);
+
+                if (!Directory.Exists(downloadsPath))
+                {
+                    Directory.CreateDirectory(downloadsPath);
+                }
+
+                if (File.Exists(zipPath))
+                {
+                    File.Delete(zipPath);
+                }
+
+                using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+                var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var preset in presets)
+                {
+                    var baseName = GetSafePresetFileName(preset.Name);
+                    var entryName = GetUniquePresetFileName(baseName, usedNames);
+
+                    var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+                    using var writer = new StreamWriter(entry.Open());
+                    writer.Write(preset.Content ?? string.Empty);
+                }
+
+                InvokeAsync(() =>
+                {
+                    NotificationService.ShowSuccess($"Presets downloaded to {zipPath}");
+                    ActivityService.AddActivity("INI presets downloaded", "success");
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error downloading presets");
+            NotificationService.ShowError($"Download failed: {ex.Message}");
+        }
+    }
+
+    private static string GetSafePresetFileName(string name)
+    {
+        var safeName = string.IsNullOrWhiteSpace(name) ? "Preset" : name.Trim();
+
+        foreach (var invalidChar in Path.GetInvalidFileNameChars())
+        {
+            safeName = safeName.Replace(invalidChar, '_');
+        }
+
+        return string.IsNullOrWhiteSpace(safeName) ? "Preset" : safeName;
+    }
+
+    private static string GetUniquePresetFileName(string baseName, HashSet<string> usedNames)
+    {
+        var entryName = $"{baseName}.ini";
+        var index = 1;
+
+        while (usedNames.Contains(entryName))
+        {
+            entryName = $"{baseName}_{index}.ini";
+            index++;
+        }
+
+        usedNames.Add(entryName);
+        return entryName;
     }
 
     private async Task CheckIniFileExists()

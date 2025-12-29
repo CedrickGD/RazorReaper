@@ -269,6 +269,120 @@
         line-height: 1.3;
     }
 
+    .ini-layout .preset-add-button {
+        justify-content: center;
+        text-align: center;
+        flex-direction: column;
+        gap: 0.35rem;
+        border: 1px dashed rgba(255, 255, 255, 0.25);
+        background: rgba(0, 0, 0, 0.12);
+    }
+
+        .ini-layout .preset-add-button:hover {
+            border-color: rgba(139, 92, 246, 0.5);
+            background: rgba(139, 92, 246, 0.08);
+        }
+
+    .ini-layout .preset-add-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(139, 92, 246, 0.6);
+        color: var(--accent-purple);
+        font-weight: 700;
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+
+    .ini-layout .preset-add-text {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    .ini-layout.delete-mode .presets-grid,
+    .ini-layout.delete-mode .preset-button {
+        cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><line x1='4' y1='4' x2='20' y2='20' stroke='red' stroke-width='3' stroke-linecap='round'/><line x1='20' y1='4' x2='4' y2='20' stroke='red' stroke-width='3' stroke-linecap='round'/></svg>") 12 12, pointer;
+    }
+
+    .ini-modal-overlay {
+        position: absolute;
+        inset: 0;
+        padding: 1.5rem;
+    }
+
+    .ini-preset-modal {
+        width: min(720px, 100%);
+        max-width: 100%;
+    }
+
+    .ini-preset-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .ini-preset-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .ini-preset-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .ini-preset-input,
+    .ini-preset-textarea {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: var(--text-primary);
+        padding: 0.75rem;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+
+    .ini-preset-input:focus,
+    .ini-preset-textarea:focus {
+        outline: none;
+        border-color: rgba(255, 255, 255, 0.35);
+        background: rgba(0, 0, 0, 0.35);
+        box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    }
+
+    .ini-preset-textarea {
+        font-family: 'Courier New', monospace;
+        min-height: 160px;
+        resize: vertical;
+    }
+
+    .ini-preset-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .ini-preset-note {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    .ini-preset-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
     .ini-layout .ini-content-area {
         order: 2;
         flex: 1;
@@ -483,11 +597,20 @@
             padding: 0.6rem;
         }
 
-        .ini-layout .ini-textarea {
-            min-height: 250px;
-            padding: 0.8rem;
-            font-size: 0.75rem;
-        }
+    .ini-layout .ini-textarea {
+        min-height: 250px;
+        padding: 0.8rem;
+        font-size: 0.75rem;
+    }
+
+    .ini-preset-actions {
+        flex-direction: column;
+    }
+
+    .ini-preset-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
 
 @media (max-width: 480px) {
