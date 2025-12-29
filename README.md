@@ -10,18 +10,19 @@ in-game workflows, configuration management, and utility features.
 
 ## 🌐 Features
 
-- **Dashboard** — system uptime, resources, storage, network status, and ARK path detection
-- **Server Manager** — query ARK servers, connect via Steam, manage favorites, open Steam browser
-- **Game Controls** — launch/close ARK, reconnect, disconnect, debug commands
-- **INI Tools** — BaseDeviceProfiles.ini editor with preset library (load, save, reset)
-- **Suit FOV** — one-click camera trace toggle with automatic detection
-- **Fonts** — switch ARK fonts, auto install, open ARK in Steam
-- **Textures** — delete or restore pixel textures by category
-- **Paintings** — manage MyPaintings and related resources
-- **Mutagen Prices** — searchable Genesis Part 2 dino list
-- **Building Guides** — foundation height technique references
-- **Auto Clicker** — advanced timing, randomization, burst mode, click heatmap
-- **Notifications** — clean toast system with sound and activity log
+ **Dashboard** — System Status & Game Paths
+ **Server Manager** — Server Query & Connect
+ **Game Controls** — Tab Commands
+
+ **INI Manager** — Presets & More
+ **Suit FOV** — Camera Trace Toggle
+ **Fonts** — Font Switching 
+ **Textures** — Texture Management
+ **Paintings** — Preset Canvas + Tool 
+
+ **Mutagen Prices** — List of Prices
+ **Building Guides** — Tutorial Video
+ **Auto Clicker** — Integrated Auto Clicker
 
 ---
 
