@@ -19,12 +19,6 @@
                 <p>Run the listed Gen2 missions on the shown difficulty to roll overcapped blueprints.</p>
             </div>
         </div>
-        <div class="ocbps-legend">
-            <span class="ocbps-tag alpha">Alpha</span>
-            <span class="ocbps-tag beta">Beta</span>
-            <span class="ocbps-tag gamma">Gamma</span>
-            <span class="ocbps-legend-note">Alpha has the best rolls, Beta is solid, Gamma is the lowest.</span>
-        </div>
     </div>
 
     <div class="ocbps-grid">
@@ -66,7 +60,7 @@
                                 }
                             </div>
                             <div>
-                                <span class="ocbps-tag @entry.Difficulty.ToLowerInvariant()">@entry.Difficulty</span>
+                                <span class="ocbps-tag @entry.Difficulty.ToLowerInvariant()" title="@GetDifficultyHint(entry.Difficulty)">@entry.Difficulty</span>
                             </div>
                         </div>
                     }
@@ -141,5 +135,16 @@
     {
         public string Title { get; init; } = "";
         public List<BpEntry> Entries { get; init; } = new();
+    }
+
+    private static string GetDifficultyHint(string difficulty)
+    {
+        return difficulty switch
+        {
+            "Alpha" => "Best rolls",
+            "Beta" => "Solid rolls",
+            "Gamma" => "Lowest rolls",
+            _ => ""
+        };
     }
 }

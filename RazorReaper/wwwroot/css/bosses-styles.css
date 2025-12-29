@@ -47,51 +47,6 @@
     font-size: 0.95rem;
 }
 
-.bosses-legend {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 1rem;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.bosses-legend-note {
-    margin-left: 0.4rem;
-}
-
-.boss-tier-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    border: 1px solid transparent;
-}
-
-.boss-tier-pill.tier-alpha {
-    background: rgba(239, 68, 68, 0.18);
-    color: var(--accent-red);
-    border-color: rgba(239, 68, 68, 0.45);
-}
-
-.boss-tier-pill.tier-beta {
-    background: rgba(59, 130, 246, 0.18);
-    color: #3b82f6;
-    border-color: rgba(59, 130, 246, 0.4);
-}
-
-.boss-tier-pill.tier-gamma {
-    background: rgba(34, 197, 94, 0.18);
-    color: #22c55e;
-    border-color: rgba(34, 197, 94, 0.4);
-}
-
 .bosses-map-card {
     padding: 1.5rem !important;
     margin-bottom: 0 !important;
