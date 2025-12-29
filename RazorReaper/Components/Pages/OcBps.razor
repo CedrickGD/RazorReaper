@@ -44,7 +44,20 @@
                     @foreach (var entry in category.Entries)
                     {
                         <div class="ocbps-row">
-                            <div class="ocbps-item">@entry.Item</div>
+                            <div class="ocbps-item">
+                @if (entry.Item == "Flamethrower")
+                {
+                    <text>Flame<wbr />thrower</text>
+                }
+                else if (entry.Item == "Deinonychus")
+                {
+                    <text>Deino<wbr />nychus</text>
+                }
+                else
+                {
+                    @entry.Item
+                }
+            </div>
                             <div class="ocbps-mission">
                                 @entry.Mission
                                 @if (!string.IsNullOrWhiteSpace(entry.Note))
@@ -88,7 +101,7 @@
                 new BpEntry { Item = "Comp BP", Mission = "Shadowmane Prowl", Difficulty = "Beta" },
                 new BpEntry { Item = "Crossbow", Mission = "Velonasaur Stalk", Difficulty = "Beta" },
                 new BpEntry { Item = "Metal Hatchet", Mission = "Code Red", Difficulty = "Beta" },
-                new BpEntry { Item = "Mantelrow", Mission = "Choose Your Own Adventure", Difficulty = "Beta" },
+                new BpEntry { Item = "Flamethrower", Mission = "Choose Your Own Adventure", Difficulty = "Beta" },
                 new BpEntry { Item = "Tek Rifle", Mission = "Velonasaur Stalk", Difficulty = "Alpha" },
                 new BpEntry { Item = "Riot Shield", Mission = "Velonasaur Stalk", Difficulty = "Beta" }
             }

@@ -1,0 +1,1230 @@
+@page "/bosses"
+
+<header class="page-header">
+    <h1 class="page-title">Boss Tribute Guide</h1>
+    <p class="page-subtitle">Bosses and mini-bosses sorted by map with entry requirements.</p>
+</header>
+
+<div class="bosses-layout">
+    <section class="content-card bosses-intro">
+        <div class="bosses-intro-header">
+            <div class="bosses-intro-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a6 6 0 0 0-6 6c0 2.5 1.54 4.64 3.74 5.5.16.06.26.21.26.38V16a2 2 0 0 0 4 0v-2.12c0-.17.1-.32.26-.38A5.999 5.999 0 0 0 16 8a6 6 0 0 0-6-6z" />
+                </svg>
+            </div>
+            <div>
+                <h3>How to use this list</h3>
+                <p>Expand each boss to see Gamma, Beta, and Alpha tribute requirements.</p>
+            </div>
+        </div>
+        <div class="bosses-legend">
+            <span class="boss-tier-pill tier-gamma">Gamma</span>
+            <span class="boss-tier-pill tier-beta">Beta</span>
+            <span class="boss-tier-pill tier-alpha">Alpha</span>
+            <span class="bosses-legend-note">Some bosses use a single entry list instead of tiers.</span>
+        </div>
+    </section>
+
+    @foreach (var map in maps)
+    {
+        <section class="content-card bosses-map-card">
+            <div class="bosses-map-header">
+                <div>
+                    <h2>@map.Name</h2>
+                    @if (!string.IsNullOrWhiteSpace(map.Note))
+                    {
+                        <p>@map.Note</p>
+                    }
+                </div>
+                <span class="bosses-map-count">@map.Bosses.Count entries</span>
+            </div>
+
+            <div class="bosses-grid">
+                @foreach (var boss in map.Bosses)
+                {
+                    <article class="boss-card">
+                        <div class="boss-card-header">
+                            <div>
+                                <div class="boss-title-row">
+                                    <h3>@boss.Name</h3>
+                                    <span class="boss-type-pill">@boss.Type</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(boss.Arena))
+                                {
+                                    <div class="boss-arena">@boss.Arena</div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(boss.Note))
+                        {
+                            <p class="boss-note">@boss.Note</p>
+                        }
+
+                        @if (boss.Tags.Count > 0)
+                        {
+                            <div class="boss-tags">
+                                @foreach (var tag in boss.Tags)
+                                {
+                                    <span class="boss-tag">@tag</span>
+                                }
+                            </div>
+                        }
+
+                        <details class="boss-tier-details">
+                            <summary>
+                                <span>@(boss.Tiers.Count > 1 ? "Show tier requirements" : "Show entry requirements")</span>
+                                <span class="boss-tier-summary">
+                                    @(boss.Tiers.Count > 1 ? "Gamma / Beta / Alpha" : "Single list")
+                                </span>
+                                <svg class="boss-tier-chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.7a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </summary>
+
+                            <div class="boss-tier-grid">
+                                @foreach (var tier in boss.Tiers)
+                                {
+                                    <div class="boss-tier-card @tier.CssClass">
+                                        <div class="boss-tier-header">
+                                            <span class="boss-tier-name">@tier.Name</span>
+                                            @if (!string.IsNullOrWhiteSpace(tier.Level))
+                                            {
+                                                <span class="boss-tier-level">@tier.Level</span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(tier.Note))
+                                        {
+                                            <div class="boss-tier-note">@tier.Note</div>
+                                        }
+                                        <ul class="boss-requirements">
+                                            @foreach (var requirement in tier.Requirements)
+                                            {
+                                                <li>@requirement</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        </details>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private readonly List<BossMap> maps = new()
+    {
+        new BossMap
+        {
+            Name = "The Island",
+            Note = "Story bosses and Tek Cave entry requirements.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Broodmother Lysrix",
+                    Type = "Boss",
+                    Arena = "Broodmother Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 30",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Massive x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 30",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Massive x1",
+                                "Argentavis Talon x5",
+                                "Sarcosuchus Skin x5",
+                                "Sauropod Vertebra x5",
+                                "Titanoboa Venom x5"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 70",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Massive x1",
+                                "Argentavis Talon x10",
+                                "Sarcosuchus Skin x10",
+                                "Sauropod Vertebra x10",
+                                "Titanoboa Venom x10"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Megapithecus",
+                    Type = "Boss",
+                    Arena = "Megapithecus Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 45",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Brute x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Pack x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 65",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Brute x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Pack x1",
+                                "Megalania Toxin x5",
+                                "Megalodon Tooth x5",
+                                "Spinosaurus Sail x5",
+                                "Therizino Claws x5",
+                                "Thylacoleo Hook-Claw x5"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 85",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Brute x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Pack x1",
+                                "Megalania Toxin x10",
+                                "Megalodon Tooth x10",
+                                "Spinosaurus Sail x10",
+                                "Therizino Claws x10",
+                                "Thylacoleo Hook-Claw x10"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Dragon",
+                    Type = "Boss",
+                    Arena = "Dragon Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Skylord x1",
+                                "Artifact of the Strong x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Skylord x1",
+                                "Artifact of the Strong x1",
+                                "Allosaurus Brain x5",
+                                "Basilosaurus Blubber x5",
+                                "Giganotosaurus Heart x1",
+                                "Tusoteuthis Tentacle x5",
+                                "Tyrannosaurus Arm x5"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Skylord x1",
+                                "Artifact of the Strong x1",
+                                "Allosaurus Brain x10",
+                                "Basilosaurus Blubber x10",
+                                "Giganotosaurus Heart x2",
+                                "Tusoteuthis Tentacle x10",
+                                "Tyrannosaurus Arm x15"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Overseer",
+                    Type = "Final Boss",
+                    Arena = "Tek Cave (entry items not consumed)",
+                    Note = "Entry items are required but not consumed.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 60",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Gamma Broodmother Trophy x1",
+                                "Gamma Megapithecus Trophy x1",
+                                "Gamma Dragon Trophy x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 80",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Beta Broodmother Trophy x1",
+                                "Beta Megapithecus Trophy x1",
+                                "Beta Dragon Trophy x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 100",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Alpha Broodmother Trophy x1",
+                                "Alpha Megapithecus Trophy x1",
+                                "Alpha Dragon Trophy x1"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Scorched Earth",
+            Note = "Manticore arena boss.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Manticore",
+                    Type = "Boss",
+                    Arena = "Scorched Earth Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 55",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Gatekeeper x1",
+                                "Artifact of the Crag x1",
+                                "Artifact of the Destroyer x1",
+                                "Fire Talon x2",
+                                "Lightning Talon x2",
+                                "Poison Talon x2"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 70",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Gatekeeper x1",
+                                "Artifact of the Crag x1",
+                                "Artifact of the Destroyer x1",
+                                "Fire Talon x10",
+                                "Lightning Talon x10",
+                                "Poison Talon x10"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 95",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Gatekeeper x1",
+                                "Artifact of the Crag x1",
+                                "Artifact of the Destroyer x1",
+                                "Fire Talon x20",
+                                "Lightning Talon x20",
+                                "Poison Talon x20"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Aberration",
+            Note = "Rockwell arena boss.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Rockwell",
+                    Type = "Boss",
+                    Arena = "Aberration Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 60",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Depths x1",
+                                "Artifact of the Shadows x1",
+                                "Artifact of the Stalker x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 75",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Depths x1",
+                                "Artifact of the Shadows x1",
+                                "Artifact of the Stalker x1",
+                                "Basilisk Scale x4",
+                                "Nameless Venom x12"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 100",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Depths x1",
+                                "Artifact of the Shadows x1",
+                                "Artifact of the Stalker x1",
+                                "Basilisk Scale x8",
+                                "Nameless Venom x20"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Extinction",
+            Note = "Titans are accessed via terminals inside their arena caves.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Desert Titan",
+                    Type = "Titan",
+                    Arena = "Desert Titan Portal",
+                    Note = "Tameable after corruption nodes.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of Chaos x1",
+                                "Corrupt Heart x100",
+                                "Fire Talon x10",
+                                "Sarcosuchus Skin x10"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Forest Titan",
+                    Type = "Titan",
+                    Arena = "Forest Titan Portal",
+                    Note = "Tameable after corruption nodes.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of Growth x1",
+                                "Corrupt Heart x100",
+                                "Sauropod Vertebra x10",
+                                "Tyrannosaurus Arm x10"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Ice Titan",
+                    Type = "Titan",
+                    Arena = "Ice Titan Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Void x1",
+                                "Corrupt Heart x100",
+                                "Spinosaurus Sail x10",
+                                "Therizino Claws x10"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "King Titan",
+                    Type = "Final Boss",
+                    Arena = "King Titan Portal",
+                    Tags = new List<string> { "Titan" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Desert Titan Trophy x1",
+                                "Corrupt Heart x150",
+                                "Alpha Tyrannosaur Tooth x5",
+                                "Titanoboa Venom x10"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Desert Titan Trophy x1",
+                                "Corrupt Heart x300",
+                                "Alpha Tyrannosaur Tooth x10",
+                                "Titanoboa Venom x20"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Desert Titan Trophy x1",
+                                "Corrupt Heart x300",
+                                "Alpha Tyrannosaur Tooth x10",
+                                "Titanoboa Venom x20",
+                                "Giganotosaurus Heart x20",
+                                "Spinosaurus Sail x20"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "The Center",
+            Note = "Combined guardian fight on the free map.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "The Center Guardians",
+                    Type = "Boss",
+                    Arena = "Center Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Massive x1",
+                                "Artifact of the Brute x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Pack x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Note = "Additional trophies (not specified).",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Massive x1",
+                                "Artifact of the Brute x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Pack x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Note = "Higher quantities (not specified).",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Massive x1",
+                                "Artifact of the Brute x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Pack x1"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Ragnarok",
+            Note = "Guardian arena plus cave mini-bosses.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Ragnarok Guardians",
+                    Type = "Boss",
+                    Arena = "Ragnarok Portal",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Devious x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Massive x1",
+                                "Artifact of the Pack x1",
+                                "Artifact of the Skylord x1",
+                                "Artifact of the Strong x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Note = "Additional trophies (not specified).",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Devious x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Massive x1",
+                                "Artifact of the Pack x1",
+                                "Artifact of the Skylord x1",
+                                "Artifact of the Strong x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Note = "Higher quantities (not specified).",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Clever x1",
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Devious x1",
+                                "Artifact of the Devourer x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Massive x1",
+                                "Artifact of the Pack x1",
+                                "Artifact of the Skylord x1",
+                                "Artifact of the Strong x1"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Lava Elemental",
+                    Type = "Mini-boss",
+                    Note = "Cave boss encounter.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Cave boss, no tribute."
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Iceworm Queen",
+                    Type = "Mini-boss",
+                    Note = "Cave boss encounter.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Cave boss, no tribute."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Valguero",
+            Note = "Guardians fight at Forsaken Oasis.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Valguero Guardians",
+                    Type = "Boss",
+                    Arena = "Forsaken Oasis",
+                    Note = "Uses the Forsaken Oasis tribute set for each tier.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Forsaken Oasis tribute set."
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Forsaken Oasis tribute set."
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Forsaken Oasis tribute set."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Crystal Isles",
+            Note = "Crystal Wyvern Queen arena boss.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Crystal Wyvern Queen",
+                    Type = "Boss",
+                    Arena = "Crystal Wyvern Queen Arena",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 55",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Massive x1",
+                                "Artifact of the Devious x1",
+                                "Artifact of the Skylord x1",
+                                "Primal Crystal x10",
+                                "Crystal Talon x5",
+                                "Alpha Crystal Talon x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 75",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Primal Crystal x20",
+                                "Crystal Talon x10",
+                                "Alpha Crystal Talon x3"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 100",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Primal Crystal x30",
+                                "Crystal Talon x15",
+                                "Alpha Crystal Talon x5"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Genesis: Part 1",
+            Note = "Mission-based boss fights (no obelisk tribute items).",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Moeder Master of the Ocean",
+                    Type = "Boss",
+                    Arena = "HLN-A mission flow",
+                    Note = "Mission-based boss.",
+                    Tags = new List<string> { "Mission-gated" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Mission access."
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Mission access."
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Mission access."
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Corrupted Master Controller",
+                    Type = "Final Boss",
+                    Arena = "The Final Test",
+                    Note = "Mission-gated final boss.",
+                    Tags = new List<string> { "Mission-gated" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Mission completion requirement."
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Mission completion requirement."
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Mission completion requirement."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Genesis: Part 2",
+            Note = "Mission-gated final boss with Mutagen requirements.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Rockwell Prime",
+                    Type = "Final Boss",
+                    Arena = "Terminus",
+                    Tags = new List<string> { "Mission-gated" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "All missions gamma.",
+                                "Mutagen x6"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "All missions beta.",
+                                "Mutagen x12"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "All missions alpha.",
+                                "Mutagen x24"
+                            }
+                        }
+                    }
+                },
+            }
+        },
+        new BossMap
+        {
+            Name = "Lost Island",
+            Note = "Free map boss fight.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Dinopithecus King",
+                    Type = "Boss",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            Level = "Lvl 55",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Cunning x1",
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Pack x1",
+                                "Artifact of the Skylord x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            Level = "Lvl 75",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Hunter x1",
+                                "Artifact of the Brute x1",
+                                "Artifact of the Immune x1",
+                                "Artifact of the Strong x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            Level = "Lvl 100",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Artifact of the Hunter x1",
+                                "Spinosaurus Sail x2",
+                                "Giganotosaurus Heart x1",
+                                "Megalania Toxin x10",
+                                "Tusoteuthis Tentacle x2",
+                                "Tyrannosaurus Arm x5",
+                                "Yutyrannus Lungs x2"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Fjordur",
+            Note = "Runestone-gated world bosses and final boss.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Beyla",
+                    Type = "Mini-boss",
+                    Tags = new List<string> { "World boss" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Runestone x30"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Steinbjorn",
+                    Type = "Mini-boss",
+                    Tags = new List<string> { "World boss" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Runestone x30"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Hati and Skoll",
+                    Type = "Mini-boss",
+                    Tags = new List<string> { "World boss" },
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Runestone x30"
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Fenrisulfr",
+                    Type = "Final Boss",
+                    Arena = "Obelisk summon",
+                    Note = "All trophies must match the chosen difficulty.",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "Gamma",
+                            CssClass = "tier-gamma",
+                            Requirements = new List<string>
+                            {
+                                "Gamma Broodmother Trophy x1",
+                                "Gamma Megapithecus Trophy x1",
+                                "Gamma Dragon Trophy x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Beta",
+                            CssClass = "tier-beta",
+                            Requirements = new List<string>
+                            {
+                                "Beta Broodmother Trophy x1",
+                                "Beta Megapithecus Trophy x1",
+                                "Beta Dragon Trophy x1"
+                            }
+                        },
+                        new BossTier
+                        {
+                            Name = "Alpha",
+                            CssClass = "tier-alpha",
+                            Requirements = new List<string>
+                            {
+                                "Alpha Broodmother Trophy x1",
+                                "Alpha Megapithecus Trophy x1",
+                                "Alpha Dragon Trophy x1"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        new BossMap
+        {
+            Name = "Events",
+            Note = "Seasonal event bosses.",
+            Bosses = new List<BossEntry>
+            {
+                new BossEntry
+                {
+                    Name = "Dodorex",
+                    Type = "Event boss",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Event boss, no tribute."
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Dodowyvern",
+                    Type = "Event boss",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Event boss, no tribute."
+                            }
+                        }
+                    }
+                },
+                new BossEntry
+                {
+                    Name = "Super Turkey",
+                    Type = "Event boss",
+                    Tiers = new List<BossTier>
+                    {
+                        new BossTier
+                        {
+                            Name = "All",
+                            CssClass = "tier-neutral",
+                            Requirements = new List<string>
+                            {
+                                "Event boss, no tribute."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    };
+
+    private sealed class BossMap
+    {
+        public string Name { get; init; } = "";
+        public string Note { get; init; } = "";
+        public List<BossEntry> Bosses { get; init; } = new();
+    }
+
+    private sealed class BossEntry
+    {
+        public string Name { get; init; } = "";
+        public string Type { get; init; } = "";
+        public string Arena { get; init; } = "";
+        public string Note { get; init; } = "";
+        public List<string> Tags { get; init; } = new();
+        public List<BossTier> Tiers { get; init; } = new();
+    }
+
+    private sealed class BossTier
+    {
+        public string Name { get; init; } = "";
+        public string Level { get; init; } = "";
+        public string CssClass { get; init; } = "";
+        public string Note { get; init; } = "";
+        public List<string> Requirements { get; init; } = new();
+    }
+}

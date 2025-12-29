@@ -1,0 +1,341 @@
+/* ===== BOSS TRIBUTES PAGE ===== */
+
+.bosses-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.bosses-intro {
+    padding: 1.5rem !important;
+    margin-bottom: 0 !important;
+}
+
+.bosses-intro-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.bosses-intro-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.bosses-intro-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.bosses-intro h3 {
+    margin: 0 0 0.4rem 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.bosses-intro p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.bosses-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.bosses-legend-note {
+    margin-left: 0.4rem;
+}
+
+.boss-tier-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.boss-tier-pill.tier-alpha {
+    background: rgba(239, 68, 68, 0.18);
+    color: var(--accent-red);
+    border-color: rgba(239, 68, 68, 0.45);
+}
+
+.boss-tier-pill.tier-beta {
+    background: rgba(59, 130, 246, 0.18);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.boss-tier-pill.tier-gamma {
+    background: rgba(34, 197, 94, 0.18);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.bosses-map-card {
+    padding: 1.5rem !important;
+    margin-bottom: 0 !important;
+}
+
+.bosses-map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.bosses-map-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.bosses-map-header p {
+    margin: 0.35rem 0 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.bosses-map-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.bosses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.boss-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.boss-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+}
+
+.boss-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.boss-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.boss-card h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.boss-type-pill {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgba(139, 92, 246, 0.16);
+    color: var(--accent-purple);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    transform: translateY(-6px);
+}
+
+.boss-arena {
+    margin-top: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.boss-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.boss-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.boss-tag {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--accent-purple);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.boss-tier-details {
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 0.6rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.boss-tier-details summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.boss-tier-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.boss-tier-summary {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.boss-tier-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.boss-tier-details[open] .boss-tier-chevron {
+    transform: rotate(180deg);
+}
+
+.boss-tier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem 0 0.25rem;
+}
+
+.boss-tier-card {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 0.75rem;
+}
+
+.boss-tier-card.tier-alpha {
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.boss-tier-card.tier-beta {
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.boss-tier-card.tier-gamma {
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.boss-tier-card.tier-neutral {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.boss-tier-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+}
+
+.boss-tier-name {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.boss-tier-level {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.boss-tier-note {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+}
+
+.boss-requirements {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.boss-requirements li::before {
+    content: "-";
+    margin-right: 0.5rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .bosses-map-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .bosses-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .boss-tier-summary {
+        display: none;
+    }
+}
