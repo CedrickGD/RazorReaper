@@ -1,4 +1,4 @@
-# RazorReaper
+# RazorReaper 
 
 **RazorReaper** is the modern successor to ReaperV2, rebuilt from the ground up using  
 **Blazor Hybrid (.NET MAUI)**.
@@ -8,106 +8,57 @@ in-game workflows, configuration management, and utility features.
 
 ---
 
-## Overview
+## 🌐 Features
 
-RazorReaper combines multiple ARK-related tools into a single, modern desktop application:
-
-- Automatic ARK path detection
-- Preset-based configuration editing
-- Steam server interaction
-- Visual and performance utilities
-- Lightweight, consistent UI without external services
-
-The project is actively maintained and replaces the legacy WinForms-based ReaperV2.
-
----
-
-## Features
-
-### Dashboard
-- System uptime
-- Time and session info
-- Storage and resource overview
-- Network status
-- ARK installation paths
-
-### Server Manager
-- Query ARK servers
-- Connect via Steam
-- Save and manage favorites
-- Open Steam server browser
-
-### Game Management
-- Launch and close ARK
-- Quick in-game commands:
-  - reconnect
-  - disconnect
-  - debugstructures
-
-### Configuration Tools
-- BaseDeviceProfiles.ini editor
-- Preset library
-- Load, save, reset configurations
-
-### Visual & Utility Tools
-- Suit FOV camera trace toggle (auto file detection)
-- Game font switching with auto-install
-- Pixel texture removal and restore by category
-- MyPaintings management
-- Mutagen price lookup (Genesis Part 2)
-- Building technique reference videos
-
-### Automation
-- Advanced auto clicker
-- Custom timing and randomization
-- Burst mode
-- Click heatmap visualization
-
-### Notifications
-- Toast notifications
-- Sound support
-- Activity log
+- **Dashboard** — system uptime, resources, storage, network status, and ARK path detection
+- **Server Manager** — query ARK servers, connect via Steam, manage favorites, open Steam browser
+- **Game Controls** — launch/close ARK, reconnect, disconnect, debug commands
+- **INI Tools** — BaseDeviceProfiles.ini editor with preset library (load, save, reset)
+- **Suit FOV** — one-click camera trace toggle with automatic detection
+- **Fonts** — switch ARK fonts, auto install, open ARK in Steam
+- **Textures** — delete or restore pixel textures by category
+- **Paintings** — manage MyPaintings and related resources
+- **Mutagen Prices** — searchable Genesis Part 2 dino list
+- **Building Guides** — foundation height technique references
+- **Auto Clicker** — advanced timing, randomization, burst mode, click heatmap
+- **Notifications** — clean toast system with sound and activity log
 
 ---
 
-## ReaperV2 vs RazorReaper
+## 🧠 ReaperV2 vs RazorReaper
 
-| Feature                    | ReaperV2 (WinForms) | RazorReaper (Blazor Hybrid) |
-|----------------------------|---------------------|-----------------------------|
-| UI / UX                    | Basic               | Modern and consistent       |
-| Platform                   | Windows only        | Windows (MAUI-based)        |
-| Path detection             | Manual              | Automatic with override     |
-| Config presets             | Limited              | Preset library              |
-| Server tools               | Basic                | Steam integration           |
-| Notifications & activity   | No                   | Yes                         |
-| Development status         | Archived             | Active                      |
+| Feature            | ReaperV2 | RazorReaper |
+|--------------------|----------|-------------|
+| UI / UX            | Basic    | Modern      |
+| Technology         | WinForms | Blazor Hybrid |
+| Path detection     | Manual   | Automatic   |
+| Presets            | Limited  | Built-in    |
+| Server tools       | Basic    | Steam-based |
+| Notifications      | No       | Yes         |
+| Status             | Archived | Active      |
 
 ---
 
-## Requirements
+## ⬇️ Download
 
-- Windows 10 / 11
-- .NET SDK 9.0.306 (Windows x64)
-- Steam with ARK: Survival Evolved installed
+### ✅ Requirements
+- Windows 10 / 11  
+- .NET SDK 9.0.306 (x64)  
+- Steam + ARK: Survival Evolved  
 
-.NET SDK download:  
+🔗 .NET SDK:  
 https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.306/dotnet-sdk-9.0.306-win-x64.exe
 
----
-
-## Download
-
-Latest release:  
+### 📦 Latest Release
 https://github.com/CedrickGD/RazorReaper/releases/latest
 
-Steps:
-1. Download the ZIP archive
-2. Extract it
+1. Download the ZIP  
+2. Extract it  
 3. Run `RazorReaper.exe`
 
 ---
 
-## Build From Source
+## 🛠️ Build From Source
 
 ```powershell
 dotnet build RazorReaper.sln
