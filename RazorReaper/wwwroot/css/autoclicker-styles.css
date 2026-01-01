@@ -611,7 +611,6 @@
     display: block;
 }
 
-/* Burst mode styles */
 .burst-settings {
     display: flex;
     flex-direction: column;

@@ -13,7 +13,6 @@
     gap: 1.5rem;
 }
 
-/* Content cards inherit from global theme.css */
 
 .developer-info {
     display: flex;
@@ -544,5 +543,3 @@
         padding: 0.75rem;
     }
 }
-
-/* fadeInUp animation defined in global theme.css */
