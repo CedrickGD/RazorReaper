@@ -20,6 +20,9 @@
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
+		<AssemblyVersion>1.3.1.0</AssemblyVersion>
+		<FileVersion>1.3.1.0</FileVersion>
+		<Version>1.3.1</Version>
 
 		<!-- Windows-specific settings -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -61,6 +64,7 @@
 		<PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
 		<PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
 		<PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+		<PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
 	</ItemGroup>
 
 	<ItemGroup>

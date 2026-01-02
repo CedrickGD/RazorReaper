@@ -1,4 +1,9 @@
-﻿namespace RazorReaper
+using System;
+using System.Threading.Tasks;
+using Microsoft.Maui.ApplicationModel;
+using RazorReaper.Services;
+
+namespace RazorReaper
 {
     public partial class App : Application
     {
@@ -9,7 +14,19 @@
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new MainPage()) { Title = "RazorReaper" };
+            var version = UpdateService.GetCurrentVersion();
+            var window = new Window(new MainPage())
+            {
+                Title = $"Razor Reaper : Version {version}"
+            };
+
+            window.Created += async (_, __) =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1.5));
+                MainThread.BeginInvokeOnMainThread(UpdateService.CheckForUpdates);
+            };
+
+            return window;
         }
     }
 }
