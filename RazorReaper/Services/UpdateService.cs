@@ -25,7 +25,7 @@ namespace RazorReaper.Services
             AutoUpdater.RemindLaterAt = 1;
             AutoUpdater.RunUpdateAsAdmin = false;
             AutoUpdater.ReportErrors = true;
-            AutoUpdater.Start("https://raw.githubusercontent.com/CedrickGD/RazorReaper/main/update.xml");
+            AutoUpdater.Start("https://raw.githubusercontent.com/CedrickGD/RazorReaper/master/update.xml");
         }
     }
 }
