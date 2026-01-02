@@ -1,0 +1,224 @@
+@page "/server-specific"
+
+<header class="page-header">
+    <h1 class="page-title">Server Specific Maps</h1>
+    <p class="page-subtitle">Mesa Ark' Server custom maps and cave edits with coordinates.</p>
+</header>
+
+<div class="server-specific-layout">
+    <section class="content-card server-specific-intro">
+        <div class="server-specific-intro-header">
+            <div class="server-specific-intro-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 4.2 5 9.5 5.2 9.7a1 1 0 0 0 1.6 0C11 17.5 16 12.2 16 8a6 6 0 0 0-6-6zm0 8.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div>
+                <h3>How to use this list</h3>
+                <p>Each spot lists Lat / Lon GPS coordinates for Mesa Ark' custom edits and landmarks.</p>
+            </div>
+        </div>
+    </section>
+
+    @foreach (var map in maps)
+    {
+        <section class="content-card server-specific-map-card">
+            <div class="server-specific-map-header">
+                <div>
+                    <h2>@map.Name</h2>
+                    @if (!string.IsNullOrWhiteSpace(map.Note))
+                    {
+                        <p>@map.Note</p>
+                    }
+                </div>
+                <span class="server-specific-map-count">@map.Spots.Count spots</span>
+            </div>
+
+            <div class="server-specific-grid">
+                @foreach (var spot in map.Spots)
+                {
+                    <article class="server-specific-spot">
+                        <div class="server-specific-spot-header">
+                            <h3>@spot.Name</h3>
+                            @if (!string.IsNullOrWhiteSpace(spot.Type))
+                            {
+                                <span class="server-specific-spot-type">@spot.Type</span>
+                            }
+                        </div>
+                        <div class="server-specific-coordinates">
+                            <span class="server-specific-coordinate-label">Lat</span>
+                            <span class="server-specific-coordinate-value">@spot.Latitude</span>
+                            <span class="server-specific-coordinate-divider">/</span>
+                            <span class="server-specific-coordinate-label">Lon</span>
+                            <span class="server-specific-coordinate-value">@spot.Longitude</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(spot.Note))
+                        {
+                            <p class="server-specific-spot-note">@spot.Note</p>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private readonly List<ServerSpecificMap> maps = new()
+    {
+        new ServerSpecificMap
+        {
+            Name = "Scorched Earth",
+            Note = "Desert caves, obelisks, and pillar edits.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Horror Cave", Latitude = "20", Longitude = "11", Type = "Cave" },
+                new ServerSpecificSpot { Name = "(Alien) Cave", Latitude = "50", Longitude = "72", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Egypt Cave", Latitude = "84", Longitude = "14", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Church Cave", Latitude = "78", Longitude = "75", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Large Pillar", Latitude = "54", Longitude = "53", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Red Ob", Latitude = "76", Longitude = "46", Type = "Obelisk" },
+                new ServerSpecificSpot { Name = "Central Cave", Latitude = "59", Longitude = "48", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Blue Ob", Latitude = "28", Longitude = "29", Type = "Obelisk" }
+            }
+        },
+        new ServerSpecificMap
+        {
+            Name = "Genesis 2",
+            Note = "Custom caves and mission landmarks.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Atlantis Cave (UW Cube)", Latitude = "44", Longitude = "68", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Iron Man Tower", Latitude = "45", Longitude = "75", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Tek Cave", Latitude = "29", Longitude = "80", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Garden Cave 1", Latitude = "46", Longitude = "90", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Garden Cave 2", Latitude = "46", Longitude = "60", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Tentacle Cave", Latitude = "73", Longitude = "41", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Rockwell Garden", Latitude = "47", Longitude = "8", Type = "Landmark" }
+            }
+        },
+        new ServerSpecificMap
+        {
+            Name = "Crystal Isles",
+            Note = "Cave edits and crystal landmarks.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Olympus Cave", Latitude = "21", Longitude = "76", Type = "Cave" },
+                new ServerSpecificSpot { Name = "(Gold Cave)", Latitude = "53", Longitude = "58", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Dragon Cave", Latitude = "48", Longitude = "75", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Redwood Green", Latitude = "33", Longitude = "27", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Ice Cave", Latitude = "33", Longitude = "50", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Crystal Cave", Latitude = "60", Longitude = "33", Type = "Cave" }
+            }
+        },
+        new ServerSpecificMap
+        {
+            Name = "Aberration",
+            Note = "Underground caves and plateau edits.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Waterfall Plateau", Latitude = "42", Longitude = "52", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Waterfall Cave", Latitude = "46", Longitude = "72", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Tentacle Cave", Latitude = "32", Longitude = "62", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Stalker Cave", Latitude = "83", Longitude = "49", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Shadow Cave", Latitude = "55", Longitude = "66", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Rockwell Cave", Latitude = "71", Longitude = "23", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Glowtail", Latitude = "48", Longitude = "27", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Fleshwalk Cave", Latitude = "50", Longitude = "30", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Fertile Lake Cave", Latitude = "12", Longitude = "40", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Basilisk Plateau", Latitude = "58", Longitude = "54", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Alpha Tree", Latitude = "32", Longitude = "55", Type = "Landmark" }
+            }
+        },
+        new ServerSpecificMap
+        {
+            Name = "Ragnarok",
+            Note = "Landmark caves, cliffs, and drop downs.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Beaver Cave", Latitude = "32", Longitude = "43", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Brute Cave", Latitude = "36", Longitude = "77", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Canyon Cave", Latitude = "41", Longitude = "42", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Dark Cave", Latitude = "21", Longitude = "42", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Desert Waterfall", Latitude = "55", Longitude = "57", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Doppey Cave", Latitude = "36", Longitude = "82", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Flooded Cove", Latitude = "63", Longitude = "02", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Green Obelisk Cliff", Latitude = "93", Longitude = "68", Type = "Obelisk" },
+                new ServerSpecificSpot { Name = "Highlands Cave", Latitude = "18", Longitude = "78", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Ice Lake", Latitude = "40", Longitude = "62", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Lava Cave", Latitude = "19", Longitude = "65", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Lighthouse", Latitude = "22", Longitude = "86", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Mushroom Cave", Latitude = "10", Longitude = "23", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Pillar Drop Down", Latitude = "41", Longitude = "29", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Prison Cave", Latitude = "79", Longitude = "63", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Rifle13", Latitude = "20", Longitude = "24", Type = "POI" },
+                new ServerSpecificSpot { Name = "Triple Waterfall", Latitude = "27", Longitude = "47", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Viking Bay", Latitude = "22", Longitude = "30", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Wild West", Latitude = "85", Longitude = "51", Type = "Landmark" }
+            }
+        },
+        new ServerSpecificMap
+        {
+            Name = "The Center",
+            Note = "Overworld and underworld cave edits.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Cross Cave", Latitude = "28", Longitude = "13", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Crouch Bear", Latitude = "26", Longitude = "64", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "FrenchOP", Latitude = "41", Longitude = "55", Type = "POI" },
+                new ServerSpecificSpot { Name = "Lower Redwoods", Latitude = "96", Longitude = "38", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Minecraft Cave", Latitude = "62", Longitude = "76", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Underworld Crouch", Latitude = "33", Longitude = "62", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Pearl Cave", Latitude = "15", Longitude = "50", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Redwoods Waterfall", Latitude = "93", Longitude = "68", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Shadow's Cave", Latitude = "31", Longitude = "52", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Snow North", Latitude = "18", Longitude = "29", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Snow South", Latitude = "60", Longitude = "22", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Solo Leveling", Latitude = "80", Longitude = "28", Type = "POI" },
+                new ServerSpecificSpot { Name = "Spider Cave", Latitude = "51", Longitude = "56", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Aberration Cave", Latitude = "46", Longitude = "14", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Ice Castle", Latitude = "34", Longitude = "16", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Yellow Lunar", Latitude = "85", Longitude = "51", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Central Cave", Latitude = "41", Longitude = "47", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Castle Cave", Latitude = "72", Longitude = "44", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Bunker Cave", Latitude = "73", Longitude = "34", Type = "Cave" }
+            }
+        },
+        new ServerSpecificMap
+        {
+            Name = "Extinction",
+            Note = "Wasteland caves and dome edits.",
+            Spots = new List<ServerSpecificSpot>
+            {
+                new ServerSpecificSpot { Name = "Unc Cave", Latitude = "18", Longitude = "56", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Vaulted Depths", Latitude = "37", Longitude = "62", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Sulfur Fields", Latitude = "78", Longitude = "09", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Snakes Bookshelf", Latitude = "49", Longitude = "64", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Rocket Cave", Latitude = "29", Longitude = "84", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Red Ob", Latitude = "72", Longitude = "67", Type = "Obelisk" },
+                new ServerSpecificSpot { Name = "Imian's Cave", Latitude = "15", Longitude = "29", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Fallout Bunker", Latitude = "63", Longitude = "16", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Extinction Pipe", Latitude = "48", Longitude = "81", Type = "Landmark" },
+                new ServerSpecificSpot { Name = "Engineer Icy Cave", Latitude = "51", Longitude = "53", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Desert Cave", Latitude = "73", Longitude = "88", Type = "Cave" },
+                new ServerSpecificSpot { Name = "Barracks Cave", Latitude = "36", Longitude = "15", Type = "Cave" }
+            }
+        }
+    };
+
+    private sealed class ServerSpecificMap
+    {
+        public string Name { get; init; } = "";
+        public string Note { get; init; } = "";
+        public List<ServerSpecificSpot> Spots { get; init; } = new();
+    }
+
+    private sealed class ServerSpecificSpot
+    {
+        public string Name { get; init; } = "";
+        public string Latitude { get; init; } = "";
+        public string Longitude { get; init; } = "";
+        public string Type { get; init; } = "";
+        public string Note { get; init; } = "";
+    }
+}
