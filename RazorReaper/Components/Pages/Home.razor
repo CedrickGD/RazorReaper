@@ -15,6 +15,7 @@
 @inject IOptions<AppConfiguration> Configuration
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
+@inject HttpClient HttpClient
 @implements IAsyncDisposable
 
 
@@ -24,6 +25,61 @@
         </header>
 
         <div class="dashboard-widgets">
+            <div class="content-card widget-card update-widget">
+                <div class="widget-header">
+                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
+                        <path d="M10 2a1 1 0 01.894.553l2 4a1 1 0 01-.13 1.047l-1.638 2.185A3.992 3.992 0 0112 12a4 4 0 11-6.528-3.047L3.894 7.6a1 1 0 01-.13-1.047l2-4A1 1 0 016 2h4zm-2 9a2 2 0 102.001-2.001A2 2 0 008 11zm-5 6a1 1 0 01.293-.707l3.84-3.84a5.962 5.962 0 002.162 1.373l-4.29 4.29A1 1 0 013 17zm14 0a1 1 0 01-1.005.995L12 17a1 1 0 01-.707-1.707l2.97-2.97A5.971 5.971 0 0014 11a5.958 5.958 0 00-.55-2.5l2.837-2.837A1 1 0 0117 6v11z" />
+                    </svg>
+                    <div class="update-header-text">
+                        <h3>Update Center</h3>
+                        <p>Stay in sync with Razor Reaper releases</p>
+                    </div>
+                    <span class="version-pill">v@updateStatus.DisplayCurrentVersion</span>
+                </div>
+
+                <div class="update-status-row">
+                    <div class="status-chip @GetUpdateStatusClass()">
+                        <span class="status-dot"></span>
+                        @GetUpdateStatusMessage()
+                    </div>
+                    @if (updateStatus.CheckedAt.HasValue)
+                    {
+                        <span class="checked-at">Checked @updateStatus.CheckedAt.Value.ToLocalTime().ToString("t")</span>
+                    }
+                </div>
+
+                <div class="version-grid">
+                    <div class="version-card">
+                        <p class="label">Current</p>
+                        <p class="value">@updateStatus.DisplayCurrentVersion</p>
+                    </div>
+                    <div class="version-card latest">
+                        <p class="label">Latest</p>
+                        <p class="value">@updateStatus.DisplayLatestVersion</p>
+                    </div>
+                </div>
+
+                <div class="update-actions">
+                    <button class="btn" @onclick="() => CheckForUpdatesAsync()" disabled="@(isCheckingUpdates)">
+                        @if (isCheckingUpdates)
+                        {
+                            <span class="loader"></span>
+                            <span>Checking...</span>
+                        }
+                        else
+                        {
+                            <span>Check for updates</span>
+                        }
+                    </button>
+                    <button class="btn btn-primary" @onclick="DownloadUpdateAsync" disabled="@(isCheckingUpdates || !CanDownloadUpdate)">
+                        Download update
+                    </button>
+                    <button class="btn btn-tertiary" @onclick="OpenChangelogAsync" disabled="@(string.IsNullOrWhiteSpace(updateStatus.ChangelogUrl))">
+                        View changelog
+                    </button>
+                </div>
+            </div>
+
             <div class="content-card widget-card clock-widget">
                 <div class="widget-header">
                     <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
@@ -426,6 +482,12 @@
 
     private bool _isDisposed = false;
     private bool _hasInitialized = false;
+    private UpdateCheckResult updateStatus = new()
+    {
+        CurrentVersion = UpdateService.GetCurrentVersionValue(),
+        LatestVersion = UpdateService.GetCurrentVersionValue()
+    };
+    private bool isCheckingUpdates = false;
 
     protected override Task OnInitializedAsync()
     {
@@ -486,6 +548,8 @@
             LoadSystemComponentsInfo();
             InvokeAsync(StateHasChanged);
         });
+
+        _ = CheckForUpdatesAsync(showFeedback: false);
 
         await InvokeAsync(StateHasChanged);
     }
@@ -1132,6 +1196,119 @@
         Logger.LogInformation("Clearing all activities");
         ActivityService.ClearActivities();
         StateHasChanged();
+    }
+
+    private bool CanDownloadUpdate =>
+        updateStatus?.IsUpdateAvailable == true &&
+        !string.IsNullOrWhiteSpace(updateStatus.DownloadUrl);
+
+    private string GetUpdateStatusMessage()
+    {
+        if (isCheckingUpdates)
+            return "Checking for updates...";
+
+        if (!string.IsNullOrWhiteSpace(updateStatus.Error))
+            return updateStatus.Error!;
+
+        if (updateStatus.IsUpdateAvailable)
+            return $"Version {updateStatus.DisplayLatestVersion} is available.";
+
+        return "You are on the latest version.";
+    }
+
+    private string GetUpdateStatusClass()
+    {
+        if (isCheckingUpdates)
+            return "checking";
+
+        if (!string.IsNullOrWhiteSpace(updateStatus.Error))
+            return "warning";
+
+        if (updateStatus.IsUpdateAvailable)
+            return "available";
+
+        return "ok";
+    }
+
+    private async Task CheckForUpdatesAsync(bool showFeedback = true)
+    {
+        if (isCheckingUpdates || _isDisposed)
+            return;
+
+        isCheckingUpdates = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var result = await UpdateService.CheckForUpdatesAsync(HttpClient, Logger);
+            updateStatus = result;
+
+            if (!string.IsNullOrWhiteSpace(result.Error))
+            {
+                if (showFeedback)
+                    NotificationService.ShowWarning(result.Error);
+            }
+            else if (result.IsUpdateAvailable)
+            {
+                NotificationService.ShowInfo($"New version {result.DisplayLatestVersion} is available");
+                ActivityService.AddActivity($"Update available: v{result.DisplayLatestVersion}", "info");
+            }
+            else if (showFeedback)
+            {
+                NotificationService.ShowSuccess("You are up to date");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to check for updates");
+            if (showFeedback)
+                NotificationService.ShowError("Unable to check for updates right now");
+        }
+        finally
+        {
+            isCheckingUpdates = false;
+            if (!_isDisposed)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DownloadUpdateAsync()
+    {
+        if (!CanDownloadUpdate)
+        {
+            NotificationService.ShowWarning("No update available to download right now");
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("open", updateStatus.DownloadUrl, "_blank");
+            ActivityService.AddActivity($"Downloading update v{updateStatus.DisplayLatestVersion}", "success");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to open update download link");
+            NotificationService.ShowError("Couldn't launch the download link");
+        }
+    }
+
+    private async Task OpenChangelogAsync()
+    {
+        if (string.IsNullOrWhiteSpace(updateStatus.ChangelogUrl))
+        {
+            NotificationService.ShowWarning("No changelog link available");
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("open", updateStatus.ChangelogUrl, "_blank");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to open changelog link");
+            NotificationService.ShowError("Couldn't open the changelog link");
+        }
     }
 
     // ARK Path Management Methods

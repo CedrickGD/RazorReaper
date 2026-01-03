@@ -40,6 +40,192 @@
     margin-bottom: 2rem;
 }
 
+.update-widget {
+    background: linear-gradient(135deg, rgba(75, 0, 130, 0.22), rgba(15, 15, 25, 0.9));
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.update-header-text h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.update-header-text p {
+    margin: 2px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.version-pill {
+    margin-left: auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.update-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.status-chip .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+}
+
+.status-chip.ok {
+    border-color: rgba(52, 211, 153, 0.4);
+    color: #a7f3d0;
+}
+
+.status-chip.ok .status-dot {
+    background: #34d399;
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.6);
+}
+
+.status-chip.available {
+    border-color: rgba(139, 92, 246, 0.6);
+    color: #c4b5fd;
+}
+
+.status-chip.available .status-dot {
+    background: #a78bfa;
+    box-shadow: 0 0 12px rgba(167, 139, 250, 0.8);
+}
+
+.status-chip.warning {
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fbbf24;
+}
+
+.status-chip.warning .status-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+}
+
+.status-chip.checking {
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #bfdbfe;
+}
+
+.status-chip.checking .status-dot {
+    background: #60a5fa;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.7);
+}
+
+.checked-at {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.version-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.2rem;
+}
+
+.version-card {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.version-card.latest {
+    border-color: rgba(139, 92, 246, 0.5);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(0, 0, 0, 0.25));
+}
+
+.version-card .label {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.version-card .value {
+    margin: 4px 0 0;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.update-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.update-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.update-actions .btn:hover:enabled {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.6);
+    transform: translateY(-1px);
+}
+
+.update-actions .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.update-actions .btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    border-color: rgba(124, 58, 237, 0.6);
+}
+
+.update-actions .btn-tertiary {
+    border-style: dashed;
+}
+
+.update-actions .loader {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #c084fc;
+    animation: spin 1s linear infinite;
+}
+
+.update-actions .btn-primary:disabled {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.6), rgba(91, 33, 182, 0.6));
+}
+
 .widget-card {
     padding: 1.25rem;
     animation: fadeInUp 0.6s ease-out;
