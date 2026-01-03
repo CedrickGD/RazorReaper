@@ -5,6 +5,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using RazorReaper.Configuration
+@using Microsoft.Maui.ApplicationModel
 @using System.Diagnostics
 @using System.IO
 @using System.Management
@@ -15,6 +16,7 @@
 @inject IOptions<AppConfiguration> Configuration
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
+@inject IUpdateService UpdateService
 @implements IAsyncDisposable
 
 
@@ -22,6 +24,51 @@
             <h1 class="page-title">Welcome, @userName</h1>
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
+
+        <div class="content-card update-card">
+            <div class="update-card-header">
+                <div class="update-title">
+                    <div class="update-icon">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 14a1 1 0 011 1v1h12v-1a1 1 0 112 0v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 011-1zm7-12a1 1 0 011 1v7.586l2.293-2.293a1 1 0 111.414 1.414l-4.004 4.004a1 1 0 01-1.414 0L5.286 9.707a1 1 0 111.414-1.414L9 10.586V3a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Update</h3>
+                        <p class="update-subtitle">Keep Razor Reaper current with the latest release.</p>
+                    </div>
+                </div>
+                <div class="update-actions">
+                    <button class="btn-small" @onclick="() => CheckForUpdatesAsync(true)" disabled="@isCheckingForUpdates">
+                        @(isCheckingForUpdates ? "Checking..." : "Check for Update")
+                    </button>
+                    <button class="btn-small btn-update-download" @onclick="DownloadUpdate" disabled="@(!CanDownloadUpdate)">
+                        Download Update
+                    </button>
+                </div>
+            </div>
+            <div class="update-status">
+                @if (ShowUpdateBadge)
+                {
+                    <div class="@UpdateBadgeClass">@UpdateBadgeText</div>
+                }
+                <div class="update-meta">
+                    <div class="update-meta-item">
+                        <span class="update-meta-label">Current</span>
+                        <span class="update-meta-value">@UpdateService.CurrentVersionLabel</span>
+                    </div>
+                    <div class="update-meta-item">
+                        <span class="update-meta-label">Latest</span>
+                        <span class="update-meta-value">@LatestVersionLabel</span>
+                    </div>
+                    <div class="update-meta-item">
+                        <span class="update-meta-label">Checked</span>
+                        <span class="update-meta-value">@LastCheckedLabel</span>
+                    </div>
+                </div>
+                <div class="update-message">@UpdateStatusMessage</div>
+            </div>
+        </div>
 
         <div class="dashboard-widgets">
             <div class="content-card widget-card clock-widget">
@@ -390,6 +437,8 @@
     private readonly DateTime appStartTime = DateTime.Now;
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
+    private UpdateCheckResult? updateResult;
+    private bool isCheckingForUpdates = false;
 
     private int driveCount = 0;
     private List<DriveUsageInfo> driveInfos = new();
@@ -487,7 +536,179 @@
             InvokeAsync(StateHasChanged);
         });
 
+        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        if (!_isDisposed)
+        {
+            await CheckForUpdatesAsync(true);
+        }
+
         await InvokeAsync(StateHasChanged);
+    }
+
+    private string LatestVersionLabel => updateResult?.LatestVersion?.ToString() ?? "N/A";
+
+    private string LastCheckedLabel => updateResult == null
+        ? "N/A"
+        : updateResult.CheckedAt.LocalDateTime.ToString("MMM dd, HH:mm");
+
+    private string UpdateBadgeClass
+    {
+        get
+        {
+            if (isCheckingForUpdates)
+                return "update-badge update-badge-checking";
+
+            if (updateResult == null)
+                return "update-badge update-badge-idle";
+
+            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
+                return "update-badge update-badge-error";
+
+            return updateResult.HasUpdate
+                ? "update-badge update-badge-available"
+                : "update-badge update-badge-current";
+        }
+    }
+
+    private string UpdateBadgeText
+    {
+        get
+        {
+            if (isCheckingForUpdates)
+                return "Checking...";
+
+            if (updateResult == null)
+                return "Not checked";
+
+            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
+                return "Check failed";
+
+            return updateResult.HasUpdate ? "Update available" : "Up to date";
+        }
+    }
+
+    private string UpdateStatusMessage
+    {
+        get
+        {
+            if (isCheckingForUpdates)
+                return "Checking for updates...";
+
+            if (updateResult == null)
+                return "Run a check to see if a new version is available.";
+
+            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
+                return updateResult.ErrorMessage;
+
+            if (updateResult.HasUpdate)
+                return $"Version {updateResult.LatestVersion} is ready to download.";
+
+            return "You're on the latest version.";
+        }
+    }
+
+    private bool ShowUpdateBadge
+    {
+        get
+        {
+            if (isCheckingForUpdates)
+                return true;
+
+            if (updateResult == null)
+                return true;
+
+            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
+                return true;
+
+            return updateResult.HasUpdate;
+        }
+    }
+
+    private bool CanDownloadUpdate => !isCheckingForUpdates
+        && updateResult?.HasUpdate == true
+        && !string.IsNullOrWhiteSpace(updateResult.DownloadUrl);
+
+    private async Task CheckForUpdatesAsync(bool showToast)
+    {
+        if (isCheckingForUpdates || _isDisposed)
+            return;
+
+        isCheckingForUpdates = true;
+        if (!_isDisposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+
+        UpdateCheckResult result;
+        try
+        {
+            result = await UpdateService.CheckForUpdatesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Update check failed");
+            result = new UpdateCheckResult
+            {
+                CurrentVersion = UpdateService.CurrentVersion,
+                ErrorMessage = "Update check failed.",
+                CheckedAt = DateTimeOffset.UtcNow
+            };
+        }
+
+        updateResult = result;
+        isCheckingForUpdates = false;
+
+        if (showToast && !_isDisposed)
+        {
+            if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+            {
+                NotificationService.ShowError(result.ErrorMessage);
+            }
+            else if (result.HasUpdate)
+            {
+                var latestLabel = result.LatestVersion?.ToString() ?? "new version";
+                NotificationService.ShowWarning($"Update available: v{latestLabel}");
+            }
+            else
+            {
+                NotificationService.ShowSuccess("You're up to date.");
+            }
+        }
+
+        if (!_isDisposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DownloadUpdate()
+    {
+        if (!CanDownloadUpdate || updateResult == null)
+            return;
+
+        try
+        {
+            var downloadUrl = updateResult.DownloadUrl;
+            if (string.IsNullOrWhiteSpace(downloadUrl))
+            {
+                NotificationService.ShowError("Download link is missing.");
+                return;
+            }
+
+            if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri))
+            {
+                NotificationService.ShowError("Download link is invalid.");
+                return;
+            }
+
+            await Launcher.Default.OpenAsync(uri);
+            ActivityService.AddActivity($"Opened update download for v{updateResult.LatestVersion}", "info");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError("Failed to open update download.");
+            Logger.LogError(ex, "Failed to open update download link");
+        }
     }
 
     [DllImport("kernel32.dll")]

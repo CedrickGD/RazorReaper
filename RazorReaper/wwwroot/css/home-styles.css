@@ -40,6 +40,162 @@
     margin-bottom: 2rem;
 }
 
+.update-card {
+    margin-bottom: 2rem;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-left: 4px solid var(--accent-purple);
+    background: rgba(0, 0, 0, 0.18) !important;
+}
+
+.update-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.update-title {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.update-title h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.update-subtitle {
+    margin: 0.2rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.update-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+}
+
+.update-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.update-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.btn-update-download {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(109, 40, 217, 0.18));
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.btn-update-download:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(109, 40, 217, 0.28));
+    border-color: var(--accent-purple);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.35);
+}
+
+.update-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(139, 92, 246, 0.2);
+    flex-wrap: wrap;
+}
+
+.update-badge {
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    text-transform: uppercase;
+}
+
+.update-badge-idle {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.update-badge-checking {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--accent-purple-light);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.update-badge-current {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple-light);
+    border-color: rgba(139, 92, 246, 0.35);
+}
+
+.update-badge-available {
+    background: rgba(139, 92, 246, 0.3);
+    color: var(--text-primary);
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 14px rgba(139, 92, 246, 0.4);
+}
+
+.update-badge-error {
+    background: rgba(245, 158, 11, 0.18);
+    color: var(--accent-orange);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.update-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.update-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.45rem 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    min-width: 120px;
+}
+
+.update-meta-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.update-meta-value {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.update-message {
+    flex-basis: 100%;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
 .widget-card {
     padding: 1.25rem;
     animation: fadeInUp 0.6s ease-out;

@@ -93,6 +93,7 @@ namespace RazorReaper
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
             services.AddSingleton<INotificationService, NotificationService>();
+            services.AddSingleton<IUpdateService, UpdateService>();
         }
     }
 }
