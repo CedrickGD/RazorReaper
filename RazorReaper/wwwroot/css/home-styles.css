@@ -1483,6 +1483,19 @@
     line-height: 1.5;
 }
 
+.path-edit-hint {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.path-edit-path {
+    margin-top: 0.35rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
 .path-edit-input {
     margin-bottom: 1rem;
 }

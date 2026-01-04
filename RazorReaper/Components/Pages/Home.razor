@@ -355,7 +355,11 @@
                         <svg fill="currentColor" viewBox="0 0 20 20" style="width: 20px; height: 20px; color: var(--accent-orange);">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                         </svg>
-                        <p>Set a custom ARK installation path. This will be used for all file operations.</p>
+                        <div>
+                            <p>Set a custom ARK installation path. This will be used for all file operations.</p>
+                            <p class="path-edit-hint">Paste the ARK install folder (contains ShooterGame). Config/INI files live in:</p>
+                            <div class="path-edit-path">@GetConfigPathHint(customArkPath)</div>
+                        </div>
                     </div>
                     <div class="path-edit-input">
                         <input type="text" @bind="customArkPath" placeholder="C:\Program Files (x86)\Steam\steamapps\common\ARK" class="ark-path-input" />
@@ -1356,30 +1360,118 @@
     }
 
     // ARK Path Management Methods
+    private const string ArkConfigPathFallback = @"ARK\ShooterGame\Saved\Config\WindowsNoEditor";
+    private static readonly string[] ArkPathSuffixes =
+    {
+        Path.Combine("ShooterGame", "Saved", "Config", "WindowsNoEditor"),
+        Path.Combine("ShooterGame", "Saved", "Config"),
+        Path.Combine("ShooterGame", "Saved"),
+        Path.Combine("ShooterGame")
+    };
+
+    private static string BuildArkConfigPath(string basePath)
+    {
+        return Path.Combine(basePath, "ShooterGame", "Saved", "Config", "WindowsNoEditor");
+    }
+
+    private string GetConfigPathHint(string? inputPath)
+    {
+        var normalized = NormalizeCustomArkPath(inputPath, out _);
+        if (!string.IsNullOrEmpty(normalized))
+        {
+            return BuildArkConfigPath(normalized);
+        }
+
+        return ArkConfigPathFallback;
+    }
+
+    private static string? NormalizeCustomArkPath(string? inputPath, out bool wasAdjusted)
+    {
+        wasAdjusted = false;
+
+        if (string.IsNullOrWhiteSpace(inputPath))
+        {
+            return null;
+        }
+
+        var candidate = inputPath.Trim().Trim('"');
+        candidate = Environment.ExpandEnvironmentVariables(candidate);
+        candidate = candidate.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        candidate = candidate.TrimEnd(Path.DirectorySeparatorChar);
+
+        if (Path.HasExtension(candidate))
+        {
+            var directory = Path.GetDirectoryName(candidate);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                candidate = directory;
+                wasAdjusted = true;
+            }
+        }
+
+        foreach (var suffix in ArkPathSuffixes)
+        {
+            if (candidate.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = candidate.Substring(0, candidate.Length - suffix.Length);
+                candidate = candidate.TrimEnd(Path.DirectorySeparatorChar);
+                wasAdjusted = true;
+                break;
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(candidate) ? null : candidate;
+    }
+
+    private static bool PathsEqual(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+
+        var leftNormalized = left.Trim().Trim('"').TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var rightNormalized = right.Trim().Trim('"').TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        return string.Equals(leftNormalized, rightNormalized, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void SetArkPaths(string? installPath)
+    {
+        arkInstallPath = installPath ?? string.Empty;
+        configPath = string.IsNullOrEmpty(arkInstallPath)
+            ? string.Empty
+            : BuildArkConfigPath(arkInstallPath);
+    }
+
     private void LoadArkPaths()
     {
         try
         {
             // Try to load custom path from preferences
             var customPath = Preferences.Get(CustomPathPreferenceKey, string.Empty);
+            var normalizedCustomPath = NormalizeCustomArkPath(customPath, out _);
 
-            if (!string.IsNullOrEmpty(customPath) && Directory.Exists(customPath))
+            if (!string.IsNullOrEmpty(normalizedCustomPath) && Directory.Exists(normalizedCustomPath))
             {
-                arkInstallPath = customPath;
-                Logger.LogInformation("Using custom ARK path: {Path}", arkInstallPath);
-            }
-            else
-            {
-                // Auto-detect ARK path
-                arkInstallPath = ArkUtilities.FindArkPath() ?? "";
-                Logger.LogInformation("Auto-detected ARK path: {Path}", arkInstallPath);
+                if (ArkPathProvider.IsValidArkPath(normalizedCustomPath))
+                {
+                    if (!PathsEqual(customPath, normalizedCustomPath))
+                    {
+                        Preferences.Set(CustomPathPreferenceKey, normalizedCustomPath);
+                    }
+
+                    SetArkPaths(normalizedCustomPath);
+                    Logger.LogInformation("Using custom ARK path: {Path}", arkInstallPath);
+                    return;
+                }
+
+                Logger.LogWarning("Custom ARK path is invalid, falling back to auto-detect: {Path}", normalizedCustomPath);
             }
 
-            // Set config path based on ARK installation
-            if (!string.IsNullOrEmpty(arkInstallPath))
-            {
-                configPath = Path.Combine(arkInstallPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor");
-            }
+            // Auto-detect ARK path
+            SetArkPaths(ArkUtilities.FindArkPath() ?? string.Empty);
+            Logger.LogInformation("Auto-detected ARK path: {Path}", arkInstallPath);
         }
         catch (Exception ex)
         {
@@ -1432,32 +1524,36 @@
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(customArkPath))
+            var normalizedPath = NormalizeCustomArkPath(customArkPath, out var wasAdjusted);
+            if (string.IsNullOrWhiteSpace(normalizedPath))
             {
                 NotificationService.ShowError("Please enter a valid ARK installation path");
                 return;
             }
 
-            if (!Directory.Exists(customArkPath))
+            if (!Directory.Exists(normalizedPath))
             {
                 NotificationService.ShowError("The specified directory does not exist");
                 return;
             }
 
-            // Validate that it's an ARK installation by checking for ShooterGame.exe
-            var shooterGameExe = Path.Combine(customArkPath, "ShooterGame", "Binaries", "Win64", "ShooterGame.exe");
-            if (!File.Exists(shooterGameExe))
+            if (!ArkPathProvider.IsValidArkPath(normalizedPath))
             {
-                NotificationService.ShowWarning("Warning: This doesn't appear to be a valid ARK installation (ShooterGame.exe not found)");
+                NotificationService.ShowError("This doesn't appear to be a valid ARK installation. Paste the folder that contains ShooterGame.");
+                return;
             }
 
             // Save to preferences
-            Preferences.Set(CustomPathPreferenceKey, customArkPath);
-            arkInstallPath = customArkPath;
-            configPath = Path.Combine(arkInstallPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor");
+            Preferences.Set(CustomPathPreferenceKey, normalizedPath);
+            SetArkPaths(normalizedPath);
 
             isEditingArkPath = false;
             customArkPath = "";
+
+            if (wasAdjusted)
+            {
+                NotificationService.ShowInfo($"Detected a subfolder. Using ARK install root: {arkInstallPath}");
+            }
 
             NotificationService.ShowSuccess("Custom ARK path saved successfully");
             ActivityService.AddActivity($"ARK path set to: {arkInstallPath}", "success");
