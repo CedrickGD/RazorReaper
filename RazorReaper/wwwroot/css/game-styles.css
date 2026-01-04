@@ -228,29 +228,14 @@
     flex: 1;
 }
 
-.tone-launch {
+.tone-launch,
+.tone-close,
+.tone-reconnect,
+.tone-disconnect,
+.tone-clean,
+.tone-debug {
     --game-tone: #8b5cf6;
     --game-tone-rgb: 139, 92, 246;
-}
-
-.tone-close {
-    --game-tone: #ef4444;
-    --game-tone-rgb: 239, 68, 68;
-}
-
-.tone-reconnect {
-    --game-tone: #3b82f6;
-    --game-tone-rgb: 59, 130, 246;
-}
-
-.tone-disconnect {
-    --game-tone: #f59e0b;
-    --game-tone-rgb: 245, 158, 11;
-}
-
-.tone-debug {
-    --game-tone: #14b8a6;
-    --game-tone-rgb: 20, 184, 166;
 }
 
 .game-actions-note {

@@ -3,6 +3,7 @@
 @using System.Runtime.InteropServices
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
+@using Microsoft.Maui.ApplicationModel.DataTransfer
 @using RazorReaper.Services
 @using RazorReaper.Configuration
 
@@ -47,10 +48,6 @@
                     <span class="game-kv-label">Launch</span>
                     <span class="game-kv-value">Steam AppId 346110</span>
                 </div>
-                <div class="game-kv">
-                    <span class="game-kv-label">Commands</span>
-                    <span class="game-kv-value">Sent to the focused game window</span>
-                </div>
             </div>
         </section>
 
@@ -94,14 +91,21 @@
                     <span>Disconnect</span>
                 </button>
 
+                <button class="game-action-btn tone-clean" @onclick="ExecuteCleanVision" disabled="@IsGameNotRunning()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>Clean Vision</span>
+                </button>
+
                 <button class="game-action-btn tone-debug" @onclick="ExecuteDebugStructures" disabled="@IsGameNotRunning()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
-                    <span>debugstructures</span>
+                    <span>Debug Structures</span>
                 </button>
             </div>
-            <div class="game-actions-note">Commands restore and focus the game window before typing.</div>
         </section>
     </div>
 
@@ -123,7 +127,11 @@
                     <div class="game-info-text">Leaves the current server session using the disconnect command.</div>
                 </li>
                 <li class="game-info-item">
-                    <div class="game-info-title">debugstructures</div>
+                    <div class="game-info-title">Clean Vision</div>
+                    <div class="game-info-text">Applies a visibility command stack to reduce foliage and lower detail effects.</div>
+                </li>
+                <li class="game-info-item">
+                    <div class="game-info-title">Debug Structures</div>
                     <div class="game-info-text">Runs the debugstructures command for structure debugging.</div>
                 </li>
             </ul>
@@ -182,6 +190,9 @@
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint VK_TAB = 0x09;
     private const uint VK_RETURN = 0x0D;
+    private const uint VK_CONTROL = 0x11;
+    private const uint VK_V = 0x56;
+    private const string CleanVisionCommand = "foliage.DensityScale 0 | grass.DensityScale 0 | r.SkeletalMeshLODBias 10000 | r.DetailMode 0 | r.RefractionQuality 0 |  r.SSR 0 | r.SceneColorFormat 0 | r.DetailMode 0 | r.TranslucencyVolumeBlur 0  | r.GroundClutterQuality 0 | r.SSR.Quality 0 | r.SSS.Scale 0| r.SSS.SampleSet 0 | r.HFShadowQuality 0 | r.PostProcessAAQuality 0 | r.MSAA.CompositingSampleCount 0 | r.SkeletalMeshLODBias 1000 | r.ViewDistanceScale -7 | r.LightFunctionQuality 0 | r.ShadowQuality 0 | r.Shadow.CSM.MaxCascades 0 | r.Shadow.CSM.MaxFarCascades 0 | r.Shadow.AllowForegroundShadows 0 | r.Shadow.MaxResolution 0 | r.Shadow.RadiusThreshold 0 | r.Shadow.DistanceScale 0 | r.Shadow.CSM.TransitionScale 0 | r.DistanceFieldShadowing 0 | r.DistanceFieldShadowRaytraceDistance 0 | r.DistanceFieldAO 0 | r.oneframethreadlag 0 | r.MotionBlurQuality 0 | r.AmbientOcclusionSampleSetQuality 0 | r.AmbientOcclusionLevels 0 | r.AmbientOcclusionRadiusScale 0 | r.AmbientOcclusionFadeoutExponent 0 |r.AmbientOcclusion32BitPrecision 0 | r.DepthOfFieldQuality 0 | r.RenderTargetPoolMin 0 | r.LensFlareQuality 0 | r.SceneColorFringeQuality 0 | r.EyeAdaptationQuality 0 | r.BloomQuality 0 | r.FastBlurThreshold 0 | r.UpsampleQuality 0 | r.TonemapperQuality 0 | r.LightShaftQuality 0 | r.ScreenSpaceReflections 0 | r.Streaming.MipBias 100000 | r.MaxAnisotropy 8 | r.Streaming.PoolSize 0 | r.RefractionQuality 0 | r.SSR.Quality 0 | r.SceneColorFormat 0 | r.DetailMode 0 | r.TranslucencyVolumeBlur 0 | r.SSS.Scale 0 | r.SSS.SampleSet 0 | grass.enable 0 | r.ContactShadows 0 | r.DynamicGlobalIlluminationMethod 2 | r.Nanite.MaxPixelsPerEdge 4 | r.Shadow.CSM.MaxCascades 0 | r.ShadowQuality 0 | r.VolumetricCloud 0 | r.volumetricfog 0 | r.Water.SingleLayer.Reflection 0 | r.LandscapeLODBias 100000 | r.ParticleLODBias 10000 | r.MaterialQualityLevel 0 | r.TrueSkyQuality 0 | r.atmosphere 0 | r.lightshafts 0 | r.mapmaplodbias 9 |";
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -237,14 +248,20 @@
 
     private async Task ExecuteDebugStructures()
     {
-        await ExecuteGameCommand("debugstructures");
+        await ExecuteGameCommand("debugstructures", displayName: "Debug Structures");
     }
 
-    private async Task ExecuteGameCommand(string command)
+    private async Task ExecuteCleanVision()
+    {
+        await ExecuteGameCommand(CleanVisionCommand, useClipboard: true, displayName: "Clean Vision");
+    }
+
+    private async Task ExecuteGameCommand(string command, bool useClipboard = false, string? displayName = null)
     {
         try
         {
             Logger.LogInformation("Executing game command: {Command}", command);
+            var commandLabel = displayName ?? command;
             var processName = Configuration.Value.Ark.GameProcessName;
             Process[] processes = ProcessService.GetProcessesByName(processName);
             try
@@ -258,25 +275,34 @@
                     SetForegroundWindow(gameWindowHandle);
                     await Task.Delay(500);
 
-                keybd_event((byte)VK_TAB, 0, 0, UIntPtr.Zero);
-                await Task.Delay(50);
-                keybd_event((byte)VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-                await Task.Delay(300);
-
-                foreach (char c in command.ToLower())
-                {
-                    SendChar(c);
+                    keybd_event((byte)VK_TAB, 0, 0, UIntPtr.Zero);
                     await Task.Delay(50);
-                }
+                    keybd_event((byte)VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    await Task.Delay(300);
 
-                await Task.Delay(200);
+                    if (useClipboard)
+                    {
+                        var pasted = await PasteCommandAsync(command);
+                        if (!pasted)
+                        {
+                            NotificationService.ShowError($"Failed to paste '{commandLabel}'. Try again.");
+                            StateHasChanged();
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        await TypeCommandAsync(command);
+                    }
 
-                keybd_event((byte)VK_RETURN, 0, 0, UIntPtr.Zero);
-                await Task.Delay(50);
-                keybd_event((byte)VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    await Task.Delay(200);
 
-                NotificationService.ShowSuccess($"Command '{command}' executed successfully");
-                    ActivityService.AddActivity($"Game command executed: {command}", "success");
+                    keybd_event((byte)VK_RETURN, 0, 0, UIntPtr.Zero);
+                    await Task.Delay(50);
+                    keybd_event((byte)VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+                    NotificationService.ShowSuccess($"Command '{commandLabel}' executed successfully");
+                    ActivityService.AddActivity($"Game command executed: {commandLabel}", "success");
                 }
                 else
                 {
@@ -303,9 +329,80 @@
 
     private void SendChar(char c)
     {
-        byte vk = (byte)char.ToUpper(c);
+        byte vk = (byte)char.ToUpperInvariant(c);
         keybd_event(vk, 0, 0, UIntPtr.Zero);
         keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    private async Task TypeCommandAsync(string command)
+    {
+        foreach (char c in command.ToLowerInvariant())
+        {
+            SendChar(c);
+            await Task.Delay(25);
+        }
+    }
+
+    private async Task<bool> PasteCommandAsync(string command)
+    {
+        string? previousText = null;
+        try
+        {
+            try
+            {
+                previousText = await Clipboard.Default.GetTextAsync();
+            }
+            catch
+            {
+                previousText = null;
+            }
+
+            await Clipboard.Default.SetTextAsync(command);
+            await Task.Delay(50);
+
+            SendPasteShortcut();
+            await Task.Delay(120);
+
+            if (!string.IsNullOrEmpty(previousText))
+            {
+                try
+                {
+                    await Clipboard.Default.SetTextAsync(previousText);
+                }
+                catch
+                {
+                    // Ignore clipboard restore failures.
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error pasting game command");
+
+            if (!string.IsNullOrEmpty(previousText))
+            {
+                try
+                {
+                    await Clipboard.Default.SetTextAsync(previousText);
+                }
+                catch
+                {
+                    // Ignore clipboard restore failures.
+                }
+            }
+
+            return false;
+        }
+    }
+
+    private void SendPasteShortcut()
+    {
+        keybd_event((byte)VK_CONTROL, 0, 0, UIntPtr.Zero);
+        keybd_event((byte)VK_V, 0, 0, UIntPtr.Zero);
+        keybd_event((byte)VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event((byte)VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
     private async Task LaunchGame()
