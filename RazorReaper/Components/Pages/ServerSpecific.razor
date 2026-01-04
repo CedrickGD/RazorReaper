@@ -1,66 +1,76 @@
 @page "/server-specific"
 
-<header class="page-header">
-    <h1 class="page-title">Server Specific Maps</h1>
-    <p class="page-subtitle">Mesa Ark' Server custom maps and cave edits with coordinates.</p>
+<header class="page-header server-specific-header">
+    <div class="server-specific-header-content">
+        <div class="server-specific-logo-wrap">
+            <img class="server-specific-logo" src="/images/mesa-logo.webp" alt="Mesa server logo" />
+        </div>
+        <div>
+            <h1 class="page-title">Map Mods</h1>
+            <p class="page-subtitle">Mesa Ark' server map mods with custom coordinates and landmarks.</p>
+        </div>
+    </div>
+    <div class="server-specific-header-stats">
+        <div class="server-specific-stat">
+            <span class="server-specific-stat-label">Maps</span>
+            <span class="server-specific-stat-value">@MapCount</span>
+        </div>
+        <div class="server-specific-stat">
+            <span class="server-specific-stat-label">Spots</span>
+            <span class="server-specific-stat-value">@TotalSpotCount</span>
+        </div>
+    </div>
 </header>
 
 <div class="server-specific-layout">
-    <section class="content-card server-specific-intro">
-        <div class="server-specific-intro-header">
-            <div class="server-specific-intro-icon">
-                <svg fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 4.2 5 9.5 5.2 9.7a1 1 0 0 0 1.6 0C11 17.5 16 12.2 16 8a6 6 0 0 0-6-6zm0 8.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div>
-                <h3>How to use this list</h3>
-                <p>Each spot lists Lat / Lon GPS coordinates for Mesa Ark' custom edits and landmarks.</p>
-            </div>
-        </div>
-    </section>
-
-    @foreach (var map in maps)
-    {
-        <section class="content-card server-specific-map-card">
-            <div class="server-specific-map-header">
-                <div>
-                    <h2>@map.Name</h2>
-                    @if (!string.IsNullOrWhiteSpace(map.Note))
-                    {
-                        <p>@map.Note</p>
-                    }
-                </div>
-                <span class="server-specific-map-count">@map.Spots.Count spots</span>
-            </div>
-
-            <div class="server-specific-grid">
-                @foreach (var spot in map.Spots)
-                {
-                    <article class="server-specific-spot">
-                        <div class="server-specific-spot-header">
-                            <h3>@spot.Name</h3>
-                            @if (!string.IsNullOrWhiteSpace(spot.Type))
+    <section class="server-specific-category">
+        <div class="server-specific-category-body">
+            @foreach (var map in maps)
+            {
+                <details class="server-specific-map-card" open>
+                    <summary class="server-specific-map-header">
+                        <div class="server-specific-map-heading">
+                            <h2>@map.Name</h2>
+                            @if (!string.IsNullOrWhiteSpace(map.Note))
                             {
-                                <span class="server-specific-spot-type">@spot.Type</span>
+                                <p>@map.Note</p>
                             }
                         </div>
-                        <div class="server-specific-coordinates">
-                            <span class="server-specific-coordinate-label">Lat</span>
-                            <span class="server-specific-coordinate-value">@spot.Latitude</span>
-                            <span class="server-specific-coordinate-divider">/</span>
-                            <span class="server-specific-coordinate-label">Lon</span>
-                            <span class="server-specific-coordinate-value">@spot.Longitude</span>
+                        <div class="server-specific-map-meta">
+                            <span class="server-specific-map-count">@map.Spots.Count spots</span>
+                            <span class="server-specific-map-toggle" aria-hidden="true"></span>
                         </div>
-                        @if (!string.IsNullOrWhiteSpace(spot.Note))
+                    </summary>
+
+                    <div class="server-specific-grid">
+                        @foreach (var spot in map.Spots)
                         {
-                            <p class="server-specific-spot-note">@spot.Note</p>
+                            <article class="server-specific-spot">
+                                <div class="server-specific-spot-header">
+                                    <h3>@spot.Name</h3>
+                                    @if (!string.IsNullOrWhiteSpace(spot.Type))
+                                    {
+                                        <span class="server-specific-spot-type">@spot.Type</span>
+                                    }
+                                </div>
+                                <div class="server-specific-coordinates">
+                                    <span class="server-specific-coordinate-label">Lat</span>
+                                    <span class="server-specific-coordinate-value">@spot.Latitude</span>
+                                    <span class="server-specific-coordinate-divider">/</span>
+                                    <span class="server-specific-coordinate-label">Lon</span>
+                                    <span class="server-specific-coordinate-value">@spot.Longitude</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(spot.Note))
+                                {
+                                    <p class="server-specific-spot-note">@spot.Note</p>
+                                }
+                            </article>
                         }
-                    </article>
-                }
-            </div>
-        </section>
-    }
+                    </div>
+                </details>
+            }
+        </div>
+    </section>
 </div>
 
 @code {
@@ -205,6 +215,9 @@
             }
         }
     };
+
+    private int MapCount => maps.Count;
+    private int TotalSpotCount => maps.Sum(map => map.Spots.Count);
 
     private sealed class ServerSpecificMap
     {

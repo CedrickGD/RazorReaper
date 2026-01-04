@@ -118,7 +118,7 @@
                     <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 4.2 5 9.5 5.2 9.7a1 1 0 0 0 1.6 0C11 17.5 16 12.2 16 8a6 6 0 0 0-6-6zm0 8.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" clip-rule="evenodd" />
                     </svg>
-                    Server Specific
+                    Map Mods
                 </a>
             </li>
 
@@ -167,11 +167,17 @@
     private string GetActiveClass(string href)
     {
         var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        currentPath = currentPath.Split('?', '#')[0];
+        var normalizedCurrent = currentPath.Trim('/');
+        var normalizedHref = href.Trim('/');
 
-        if (string.IsNullOrEmpty(currentPath) && href == "/home")
+        if (string.IsNullOrEmpty(normalizedCurrent) && normalizedHref.Equals("home", StringComparison.OrdinalIgnoreCase))
             return "active";
 
-        if (currentPath.StartsWith(href.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(normalizedCurrent, normalizedHref, StringComparison.OrdinalIgnoreCase))
+            return "active";
+
+        if (normalizedCurrent.StartsWith(normalizedHref + "/", StringComparison.OrdinalIgnoreCase))
             return "active";
 
         return "";

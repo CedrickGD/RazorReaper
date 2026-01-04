@@ -442,6 +442,8 @@
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
     private UpdateCheckResult? updateResult;
+    private static UpdateCheckResult? cachedUpdateResult;
+    private static bool hasAutoCheckedForUpdates = false;
     private bool isCheckingForUpdates = false;
 
     private int driveCount = 0;
@@ -508,6 +510,11 @@
         if (_isDisposed)
             return;
 
+        if (cachedUpdateResult != null)
+        {
+            updateResult = cachedUpdateResult;
+        }
+
         // Start consolidated update timer (updates clock)
         // Set to 1 second for smooth clock updates without excessive overhead
         updateTimer = new System.Timers.Timer(1000);
@@ -541,8 +548,9 @@
         });
 
         await Task.Delay(TimeSpan.FromSeconds(1.5));
-        if (!_isDisposed)
+        if (!_isDisposed && !hasAutoCheckedForUpdates)
         {
+            hasAutoCheckedForUpdates = true;
             await CheckForUpdatesAsync(true);
         }
 
@@ -660,6 +668,7 @@
         }
 
         updateResult = result;
+        cachedUpdateResult = result;
         isCheckingForUpdates = false;
 
         if (showToast && !_isDisposed)
