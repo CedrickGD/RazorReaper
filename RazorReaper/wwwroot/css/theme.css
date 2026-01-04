@@ -1,9 +1,9 @@
-﻿:root {
+:root {
     --primary-color: #ffffff;
     --secondary-color: #000000;
     --background-dark: #0a0a0a;
     --background-card: rgba(26, 26, 26, 0.9);
-    --background-sidebar: rgba(17, 17, 17, 0.95);
+    --background-sidebar: #111111;
     --background-hover: #222222;
     --text-primary: #ffffff;
     --text-secondary: #999999;
@@ -749,3 +749,4 @@ h3 {
         opacity: 1;
     }
 }
+
