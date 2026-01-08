@@ -110,77 +110,33 @@
     </div>
 
     <div class="game-details-grid">
-        <section class="content-card game-panel game-info-card">
+        <section class="content-card game-panel game-info-card game-keybind-card">
             <div class="game-card-header">
                 <div>
-                    <h3>Command Reference</h3>
-                    <p class="game-card-subtitle">What each action does in-game.</p>
+                    <h3>Console Hotkey</h3>
+                    <p class="game-card-subtitle">Set the key that opens the in-game console.</p>
                 </div>
             </div>
-            <ul class="game-info-list">
-                <li class="game-info-item">
-                    <div class="game-info-title">Reconnect</div>
-                    <div class="game-info-text">Rejoins the last server session using the reconnect console command.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Disconnect</div>
-                    <div class="game-info-text">Leaves the current server session using the disconnect command.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Clean Vision</div>
-                    <div class="game-info-text">Applies a visibility command stack to reduce foliage and lower detail effects.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Debug Structures</div>
-                    <div class="game-info-text">Runs the debugstructures command for structure debugging.</div>
-                </li>
-            </ul>
-        </section>
-
-        <section class="content-card game-panel game-info-card">
-            <div class="game-card-header">
-                <div>
-                    <h3>Usage Tips</h3>
-                    <p class="game-card-subtitle">Small things that prevent misfires.</p>
+            <div class="game-keybind-grid">
+                <div class="game-keybind-info">
+                    <div class="game-keybind-pill">
+                        <span class="game-keybind-pill-label">Default</span>
+                        <span class="game-keybind-pill-value">@DefaultConsoleKey</span>
+                    </div>
+                    <p class="game-keybind-text">If you have rebound the console key in ARK, update it here so all command buttons can open the console.</p>
+                </div>
+                <div class="game-keybind-control">
+                    <label class="game-keybind-label" for="consoleKeyInput">Console key</label>
+                    <input id="consoleKeyInput"
+                           class="game-keybind-input"
+                           type="text"
+                           value="@consoleKey"
+                           @onchange="UpdateConsoleKey"
+                           maxlength="12"
+                           placeholder="@DefaultConsoleKey" />
+                    <div class="game-keybind-current">Current key: <span>@consoleKey</span></div>
                 </div>
             </div>
-            <ul class="game-info-list">
-                <li class="game-info-item">
-                    <div class="game-info-title">Focus the game</div>
-                    <div class="game-info-text">If a command does not fire, click into ARK once and try again.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Reconnect timing</div>
-                    <div class="game-info-text">Use reconnect after timeouts or server restarts.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Clean exit</div>
-                    <div class="game-info-text">Disconnect before closing when you want a clean exit.</div>
-                </li>
-            </ul>
-        </section>
-
-        <section class="content-card game-panel game-info-card">
-            <div class="game-card-header">
-                <div>
-                    <h3>Safety Notes</h3>
-                    <p class="game-card-subtitle">Keep your session stable.</p>
-                </div>
-            </div>
-            <ul class="game-info-list">
-                <li class="game-info-item">
-                    <div class="game-info-title">Close Game</div>
-                    <div class="game-info-text">Force stops the process and can lose unsaved progress.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Steam required</div>
-                    <div class="game-info-text">Launching ARK uses Steam. Keep it running.</div>
-                </li>
-                <li class="game-info-item">
-                    <div class="game-info-title">Commands</div>
-                    <div class="game-info-text">Actions only work while ARK is running.</div>
-                </li>
-            </ul>
         </section>
     </div>
 </div>
@@ -188,11 +144,48 @@
 @code {
     private const int SW_RESTORE = 9;
     private const uint KEYEVENTF_KEYUP = 0x0002;
-    private const uint VK_TAB = 0x09;
-    private const uint VK_RETURN = 0x0D;
-    private const uint VK_CONTROL = 0x11;
-    private const uint VK_V = 0x56;
+    private const byte VK_TAB = 0x09;
+    private const byte VK_RETURN = 0x0D;
+    private const byte VK_CONTROL = 0x11;
+    private const byte VK_V = 0x56;
+    private const string DefaultConsoleKey = "TAB";
+    private const string ConsoleKeyPreferenceKey = "GameConsoleKey";
     private const string CleanVisionCommand = "foliage.DensityScale 0 | grass.DensityScale 0 | r.SkeletalMeshLODBias 10000 | r.DetailMode 0 | r.RefractionQuality 0 |  r.SSR 0 | r.SceneColorFormat 0 | r.DetailMode 0 | r.TranslucencyVolumeBlur 0  | r.GroundClutterQuality 0 | r.SSR.Quality 0 | r.SSS.Scale 0| r.SSS.SampleSet 0 | r.HFShadowQuality 0 | r.PostProcessAAQuality 0 | r.MSAA.CompositingSampleCount 0 | r.SkeletalMeshLODBias 1000 | r.ViewDistanceScale -7 | r.LightFunctionQuality 0 | r.ShadowQuality 0 | r.Shadow.CSM.MaxCascades 0 | r.Shadow.CSM.MaxFarCascades 0 | r.Shadow.AllowForegroundShadows 0 | r.Shadow.MaxResolution 0 | r.Shadow.RadiusThreshold 0 | r.Shadow.DistanceScale 0 | r.Shadow.CSM.TransitionScale 0 | r.DistanceFieldShadowing 0 | r.DistanceFieldShadowRaytraceDistance 0 | r.DistanceFieldAO 0 | r.oneframethreadlag 0 | r.MotionBlurQuality 0 | r.AmbientOcclusionSampleSetQuality 0 | r.AmbientOcclusionLevels 0 | r.AmbientOcclusionRadiusScale 0 | r.AmbientOcclusionFadeoutExponent 0 |r.AmbientOcclusion32BitPrecision 0 | r.DepthOfFieldQuality 0 | r.RenderTargetPoolMin 0 | r.LensFlareQuality 0 | r.SceneColorFringeQuality 0 | r.EyeAdaptationQuality 0 | r.BloomQuality 0 | r.FastBlurThreshold 0 | r.UpsampleQuality 0 | r.TonemapperQuality 0 | r.LightShaftQuality 0 | r.ScreenSpaceReflections 0 | r.Streaming.MipBias 100000 | r.MaxAnisotropy 8 | r.Streaming.PoolSize 0 | r.RefractionQuality 0 | r.SSR.Quality 0 | r.SceneColorFormat 0 | r.DetailMode 0 | r.TranslucencyVolumeBlur 0 | r.SSS.Scale 0 | r.SSS.SampleSet 0 | grass.enable 0 | r.ContactShadows 0 | r.DynamicGlobalIlluminationMethod 2 | r.Nanite.MaxPixelsPerEdge 4 | r.Shadow.CSM.MaxCascades 0 | r.ShadowQuality 0 | r.VolumetricCloud 0 | r.volumetricfog 0 | r.Water.SingleLayer.Reflection 0 | r.LandscapeLODBias 100000 | r.ParticleLODBias 10000 | r.MaterialQualityLevel 0 | r.TrueSkyQuality 0 | r.atmosphere 0 | r.lightshafts 0 | r.mapmaplodbias 9 |";
+    private static readonly Dictionary<string, byte> ConsoleKeyMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["TAB"] = VK_TAB,
+        ["ENTER"] = VK_RETURN,
+        ["RETURN"] = VK_RETURN,
+        ["ESC"] = 0x1B,
+        ["ESCAPE"] = 0x1B,
+        ["SPACE"] = 0x20,
+        ["BACKSPACE"] = 0x08,
+        ["TILDE"] = 0xC0,
+        ["`"] = 0xC0,
+        ["~"] = 0xC0,
+        ["GRAVE"] = 0xC0,
+        ["BACKQUOTE"] = 0xC0,
+        ["F1"] = 0x70,
+        ["F2"] = 0x71,
+        ["F3"] = 0x72,
+        ["F4"] = 0x73,
+        ["F5"] = 0x74,
+        ["F6"] = 0x75,
+        ["F7"] = 0x76,
+        ["F8"] = 0x77,
+        ["F9"] = 0x78,
+        ["F10"] = 0x79,
+        ["F11"] = 0x7A,
+        ["F12"] = 0x7B,
+        ["INSERT"] = 0x2D,
+        ["DELETE"] = 0x2E,
+        ["HOME"] = 0x24,
+        ["END"] = 0x23,
+        ["PAGEUP"] = 0x21,
+        ["PGUP"] = 0x21,
+        ["PAGEDOWN"] = 0x22,
+        ["PGDN"] = 0x22
+    };
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -205,12 +198,15 @@
 
     private bool isGameRunning = false;
     private Timer? statusTimer;
+    private string consoleKey = DefaultConsoleKey;
+    private byte consoleKeyCode = VK_TAB;
 
     // Helper method for boolean attributes
     private bool IsGameNotRunning() => !isGameRunning;
 
     protected override void OnInitialized()
     {
+        LoadConsoleKey();
         CheckGameStatus();
 
         // Check game status every 10 seconds to reduce CPU usage
@@ -234,6 +230,99 @@
             Logger.LogError(ex, "Error checking game status");
             isGameRunning = false;
         }
+    }
+
+    private void LoadConsoleKey()
+    {
+        try
+        {
+            var savedKey = Preferences.Get(ConsoleKeyPreferenceKey, DefaultConsoleKey);
+            ApplyConsoleKey(savedKey, persist: false, notify: false);
+        }
+        catch
+        {
+            consoleKey = DefaultConsoleKey;
+            consoleKeyCode = VK_TAB;
+        }
+    }
+
+    private void UpdateConsoleKey(ChangeEventArgs e)
+    {
+        ApplyConsoleKey(e.Value?.ToString(), persist: true, notify: true);
+    }
+
+    private void ApplyConsoleKey(string? rawKey, bool persist, bool notify)
+    {
+        var normalized = NormalizeConsoleKey(rawKey);
+
+        if (!TryGetVirtualKeyCode(normalized, out var keyCode))
+        {
+            normalized = DefaultConsoleKey;
+            keyCode = VK_TAB;
+            if (notify)
+            {
+                NotificationService.ShowWarning($"Unknown console key '{rawKey}'. Using {DefaultConsoleKey}.");
+            }
+        }
+
+        consoleKey = normalized;
+        consoleKeyCode = keyCode;
+
+        if (persist)
+        {
+            try
+            {
+                Preferences.Set(ConsoleKeyPreferenceKey, consoleKey);
+            }
+            catch
+            {
+                // Ignore save errors.
+            }
+        }
+    }
+
+    private static string NormalizeConsoleKey(string? rawKey)
+    {
+        if (string.IsNullOrWhiteSpace(rawKey))
+        {
+            return DefaultConsoleKey;
+        }
+
+        var trimmed = rawKey.Trim();
+        if (trimmed.Length == 1)
+        {
+            return trimmed.ToUpperInvariant();
+        }
+
+        return trimmed.Replace(" ", "").ToUpperInvariant();
+    }
+
+    private static bool TryGetVirtualKeyCode(string key, out byte keyCode)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            keyCode = VK_TAB;
+            return false;
+        }
+
+        if (key.Length == 1)
+        {
+            var c = char.ToUpperInvariant(key[0]);
+            if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+            {
+                keyCode = (byte)c;
+                return true;
+            }
+        }
+
+        if (ConsoleKeyMap.TryGetValue(key, out var mapped))
+        {
+            keyCode = mapped;
+            return true;
+        }
+
+        keyCode = VK_TAB;
+        return false;
     }
 
     private async Task ExecuteReconnect()
@@ -275,9 +364,9 @@
                     SetForegroundWindow(gameWindowHandle);
                     await Task.Delay(500);
 
-                    keybd_event((byte)VK_TAB, 0, 0, UIntPtr.Zero);
+                    keybd_event(consoleKeyCode, 0, 0, UIntPtr.Zero);
                     await Task.Delay(50);
-                    keybd_event((byte)VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    keybd_event(consoleKeyCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
                     await Task.Delay(300);
 
                     if (useClipboard)
@@ -297,9 +386,9 @@
 
                     await Task.Delay(200);
 
-                    keybd_event((byte)VK_RETURN, 0, 0, UIntPtr.Zero);
+                    keybd_event(VK_RETURN, 0, 0, UIntPtr.Zero);
                     await Task.Delay(50);
-                    keybd_event((byte)VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                    keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
 
                     NotificationService.ShowSuccess($"Command '{commandLabel}' executed successfully");
                     ActivityService.AddActivity($"Game command executed: {commandLabel}", "success");
@@ -399,10 +488,10 @@
 
     private void SendPasteShortcut()
     {
-        keybd_event((byte)VK_CONTROL, 0, 0, UIntPtr.Zero);
-        keybd_event((byte)VK_V, 0, 0, UIntPtr.Zero);
-        keybd_event((byte)VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-        keybd_event((byte)VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_V, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
     private async Task LaunchGame()

@@ -273,6 +273,80 @@
     line-height: 1.5;
 }
 
+.game-keybind-card {
+    grid-column: 1 / -1;
+}
+
+.game-keybind-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(240px, 1fr);
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.game-keybind-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.game-keybind-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.16);
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    width: fit-content;
+}
+
+.game-keybind-pill-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.game-keybind-pill-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.game-keybind-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.game-keybind-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.game-keybind-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+}
+
+.game-keybind-input {
+    max-width: 280px;
+}
+
+.game-keybind-current {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.game-keybind-current span {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
 @media (max-width: 1024px) {
     .game-hero-grid {
         grid-template-columns: 1fr;
@@ -286,6 +360,14 @@
 
     .game-actions {
         grid-template-columns: 1fr;
+    }
+
+    .game-keybind-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .game-keybind-input {
+        max-width: 100%;
     }
 }
 
