@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @page "/home"
 @using RazorReaper.Services
 @using RazorReaper.Models
@@ -564,9 +564,9 @@
     private string customSoundFolderDisplay = CustomSoundFolderRelative;
     private bool customSoundFolderAvailable = false;
     private const string DefaultNotificationSound = "assets/sounds/notify.mp3";
-    private const string DefaultClickSound = "";
+    private const string DefaultClickSound = "assets/sounds/globalclick.mp3";
     private const string DefaultNotificationLabel = "Default (Notify)";
-    private const string DefaultClickLabel = "Default (Soft Click)";
+    private const string DefaultClickLabel = "Default (Global Click)";
     private const string CustomSoundFolderRelative = @"wwwroot\assets\sounds\custom";
     private const long MaxSoundFileBytes = 2 * 1024 * 1024;
     private const int MaxSoundFileMb = 2;
