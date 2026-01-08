@@ -254,11 +254,14 @@
     private void ApplyConsoleKey(string? rawKey, bool persist, bool notify)
     {
         var normalized = NormalizeConsoleKey(rawKey);
+        var previousKey = consoleKey;
+        var wasUnknown = false;
 
         if (!TryGetVirtualKeyCode(normalized, out var keyCode))
         {
             normalized = DefaultConsoleKey;
             keyCode = VK_TAB;
+            wasUnknown = true;
             if (notify)
             {
                 NotificationService.ShowWarning($"Unknown console key '{rawKey}'. Using {DefaultConsoleKey}.");
@@ -278,6 +281,11 @@
             {
                 // Ignore save errors.
             }
+        }
+
+        if (notify && !wasUnknown && !string.Equals(previousKey, consoleKey, StringComparison.OrdinalIgnoreCase))
+        {
+            NotificationService.ShowSuccess("New Hotkey Saved");
         }
     }
 
