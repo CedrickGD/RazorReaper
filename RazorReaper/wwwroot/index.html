@@ -39,20 +39,95 @@
     </div>
 
     <audio id="notify-audio" src="assets/sounds/notify.mp3" preload="auto"></audio>
+    <audio id="click-audio" preload="auto"></audio>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
     <script>
-        window.startLocationPicker = function (dotNetRef) {
-            // Just notify C# to start picking - it will handle everything
-            dotNetRef.invokeMethodAsync('StartGlobalLocationPicker');
+        const soundDefaults = {
+            enabled: true,
+            notificationEnabled: true,
+            clickEnabled: true,
+            notificationSource: 'assets/sounds/notify.mp3',
+            clickSource: '',
+            notificationLabel: 'Default (Notify)',
+            clickLabel: 'Default (Soft Click)',
+            notificationCustom: false,
+            clickCustom: false,
+            notificationVolume: 0.35,
+            clickVolume: 0.2
         };
 
-        window.playNotificationSound = function () {
-            try {
-                const audio = document.getElementById('notify-audio');
-                if (!audio) return;
+        function applySoundSettings(settings, persist) {
+            if (persist) {
+                try {
+                    localStorage.setItem('razorReaperSoundSettings', JSON.stringify(settings));
+                } catch (e) {
+                    // Ignore storage errors.
+                }
+            }
 
-                audio.volume = 0.35;
+            const notifyAudio = document.getElementById('notify-audio');
+            if (notifyAudio && settings.notificationSource) {
+                notifyAudio.src = settings.notificationSource;
+                notifyAudio.load();
+            }
+
+            const clickAudio = document.getElementById('click-audio');
+            if (clickAudio) {
+                if (settings.clickSource) {
+                    clickAudio.src = settings.clickSource;
+                } else {
+                    clickAudio.removeAttribute('src');
+                }
+                clickAudio.load();
+            }
+        }
+
+        window.getSoundSettings = function () {
+            if (window._soundSettings) {
+                return window._soundSettings;
+            }
+
+            let stored = {};
+            try {
+                const raw = localStorage.getItem('razorReaperSoundSettings');
+                if (raw) {
+                    stored = JSON.parse(raw);
+                }
+            } catch (e) {
+                stored = {};
+            }
+
+            window._soundSettings = Object.assign({}, soundDefaults, stored);
+            applySoundSettings(window._soundSettings, false);
+            return window._soundSettings;
+        };
+
+        window.updateSoundSettings = function (settings) {
+            const current = window.getSoundSettings();
+            window._soundSettings = Object.assign({}, current, settings || {});
+            applySoundSettings(window._soundSettings, true);
+            return window._soundSettings;
+        };
+
+        function getSoundSettingsSafe() {
+            try {
+                return window.getSoundSettings();
+            } catch (e) {
+                return soundDefaults;
+            }
+        }
+
+        const clickSoundDelayMs = 200;
+        const clickSoundSuppressMs = 400;
+        let clickSoundTimeoutId = null;
+        let clickSoundToken = 0;
+        let clickSoundSuppressedUntil = 0;
+
+        function playAudioElement(audio, volume) {
+            if (!audio) return;
+            try {
+                audio.volume = volume;
                 audio.currentTime = 0;
                 const playPromise = audio.play();
                 if (playPromise && playPromise.catch) {
@@ -61,6 +136,120 @@
             } catch (e) {
                 // Ignore audio errors.
             }
+        }
+
+        function suppressClickSoundFor(durationMs) {
+            const until = Date.now() + durationMs;
+            if (until > clickSoundSuppressedUntil) {
+                clickSoundSuppressedUntil = until;
+            }
+
+            if (clickSoundTimeoutId) {
+                clearTimeout(clickSoundTimeoutId);
+                clickSoundTimeoutId = null;
+            }
+
+            clickSoundToken++;
+        }
+
+        function scheduleClickSound() {
+            const token = ++clickSoundToken;
+
+            if (clickSoundTimeoutId) {
+                clearTimeout(clickSoundTimeoutId);
+                clickSoundTimeoutId = null;
+            }
+
+            clickSoundTimeoutId = setTimeout(() => {
+                if (clickSoundToken !== token) return;
+                if (Date.now() < clickSoundSuppressedUntil) return;
+
+                window.playClickSound();
+                clickSoundTimeoutId = null;
+            }, clickSoundDelayMs);
+        }
+
+        function playClickFallback() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+
+                if (!window._clickAudioContext) {
+                    window._clickAudioContext = new AudioContext();
+                }
+
+                const context = window._clickAudioContext;
+                if (context.state === 'suspended') {
+                    context.resume();
+                }
+
+                const oscillator = context.createOscillator();
+                const gain = context.createGain();
+                const now = context.currentTime;
+
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(900, now);
+                gain.gain.setValueAtTime(0.06, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+                oscillator.connect(gain);
+                gain.connect(context.destination);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.04);
+            } catch (e) {
+                // Ignore audio errors.
+            }
+        }
+
+        window.playNotificationSound = function () {
+            suppressClickSoundFor(clickSoundSuppressMs);
+
+            const settings = getSoundSettingsSafe();
+            if (!settings.enabled || !settings.notificationEnabled) return;
+
+            const audio = document.getElementById('notify-audio');
+            playAudioElement(audio, settings.notificationVolume ?? 0.35);
+        };
+
+        window.playClickSound = function () {
+            const settings = getSoundSettingsSafe();
+            if (!settings.enabled || !settings.clickEnabled) return;
+
+            const audio = document.getElementById('click-audio');
+            if (audio && audio.src) {
+                playAudioElement(audio, settings.clickVolume ?? 0.2);
+                return;
+            }
+
+            playClickFallback();
+        };
+
+        function ensureClickSoundListener() {
+            if (window._clickSoundListenerAttached) {
+                return;
+            }
+
+            window._clickSoundListenerAttached = true;
+            document.addEventListener('click', (event) => {
+                const settings = getSoundSettingsSafe();
+                if (!settings.enabled || !settings.clickEnabled) return;
+
+                if (!(event.target instanceof Element)) return;
+
+                const interactive = event.target.closest('button, a, input, select, textarea, [role="button"], .clickable');
+                if (!interactive || interactive.hasAttribute('disabled')) return;
+                if (interactive.closest('[data-sound-skip]')) return;
+
+                scheduleClickSound();
+            }, true);
+        }
+
+        ensureClickSoundListener();
+
+        window.startLocationPicker = function (dotNetRef) {
+            // Just notify C# to start picking - it will handle everything
+            dotNetRef.invokeMethodAsync('StartGlobalLocationPicker');
         };
 
         window.renderHeatmap = function (clickData) {

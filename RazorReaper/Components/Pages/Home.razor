@@ -70,6 +70,78 @@
             </div>
         </div>
 
+        <div class="content-card sound-settings-card">
+            <div class="sound-settings-header">
+                <div>
+                    <h3>Sound Settings</h3>
+                    <p class="sound-settings-subtitle">Control UI click and notification audio.</p>
+                </div>
+                <label class="sound-toggle sound-toggle-master">
+                    <input type="checkbox" @bind="soundsEnabled" @bind:after="PersistSoundSettingsAsync" />
+                    <span>Enable UI sounds</span>
+                </label>
+            </div>
+            <div class="sound-settings-grid">
+                <div class="sound-setting">
+                    <div class="sound-setting-header">
+                        <span class="sound-setting-title">Notification Sound</span>
+                        <label class="sound-toggle sound-toggle-inline">
+                            <input type="checkbox" @bind="notificationSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
+                            <span>Enabled</span>
+                        </label>
+                    </div>
+                    <div class="sound-setting-body">
+                        <div class="sound-source">
+                            <span class="sound-source-label">Current</span>
+                            <span class="sound-source-value">@notificationSoundLabel</span>
+                        </div>
+                        <div class="sound-actions">
+                            <label class="btn-small sound-upload-button" for="notificationSoundUpload">Upload</label>
+                            <InputFile id="notificationSoundUpload"
+                                       class="sound-upload-input"
+                                       OnChange="HandleNotificationSoundUpload"
+                                       accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
+                            <button class="btn-small" @onclick="ResetNotificationSound">Reset</button>
+                            <button class="btn-small" data-sound-skip="true" @onclick="PlayNotificationPreview">Test</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sound-setting">
+                    <div class="sound-setting-header">
+                        <span class="sound-setting-title">Click Sound</span>
+                        <label class="sound-toggle sound-toggle-inline">
+                            <input type="checkbox" @bind="clickSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
+                            <span>Enabled</span>
+                        </label>
+                    </div>
+                    <div class="sound-setting-body">
+                        <div class="sound-source">
+                            <span class="sound-source-label">Current</span>
+                            <span class="sound-source-value">@clickSoundLabel</span>
+                        </div>
+                        <div class="sound-actions">
+                            <label class="btn-small sound-upload-button" for="clickSoundUpload">Upload</label>
+                            <InputFile id="clickSoundUpload"
+                                       class="sound-upload-input"
+                                       OnChange="HandleClickSoundUpload"
+                                       accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
+                            <button class="btn-small" @onclick="ResetClickSound">Reset</button>
+                            <button class="btn-small" data-sound-skip="true" @onclick="PlayClickPreview">Test</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sound-folder">
+                <div class="sound-folder-info">
+                    <div class="sound-folder-label">Custom sounds folder</div>
+                    <div class="sound-folder-path">@customSoundFolderDisplay</div>
+                </div>
+                <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">Open Folder</button>
+            </div>
+            <div class="sound-folder-note">Supports MP3, WAV, OGG, M4A, AAC. Keep files under @MaxSoundFileMb MB for fast playback.</div>
+        </div>
+
         <div class="dashboard-widgets">
             <div class="content-card widget-card clock-widget">
                 <div class="widget-header">
@@ -479,6 +551,34 @@
     private string customArkPath = "";
     private const string CustomPathPreferenceKey = "CustomArkInstallPath";
 
+    private bool soundsEnabled = true;
+    private bool notificationSoundEnabled = true;
+    private bool clickSoundEnabled = true;
+    private bool notificationSoundCustom = false;
+    private bool clickSoundCustom = false;
+    private string notificationSoundLabel = DefaultNotificationLabel;
+    private string clickSoundLabel = DefaultClickLabel;
+    private string notificationSoundSource = DefaultNotificationSound;
+    private string clickSoundSource = DefaultClickSound;
+    private string customSoundFolderPath = "";
+    private string customSoundFolderDisplay = CustomSoundFolderRelative;
+    private bool customSoundFolderAvailable = false;
+    private const string DefaultNotificationSound = "assets/sounds/notify.mp3";
+    private const string DefaultClickSound = "";
+    private const string DefaultNotificationLabel = "Default (Notify)";
+    private const string DefaultClickLabel = "Default (Soft Click)";
+    private const string CustomSoundFolderRelative = @"wwwroot\assets\sounds\custom";
+    private const long MaxSoundFileBytes = 2 * 1024 * 1024;
+    private const int MaxSoundFileMb = 2;
+    private static readonly HashSet<string> SupportedSoundExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".mp3",
+        ".wav",
+        ".ogg",
+        ".m4a",
+        ".aac"
+    };
+
     private bool _isDisposed = false;
     private bool _hasInitialized = false;
 
@@ -506,6 +606,8 @@
     {
         // Load ARK paths
         LoadArkPaths();
+        ResolveCustomSoundFolder();
+        await LoadSoundSettingsAsync();
 
         if (_isDisposed)
             return;
@@ -555,6 +657,254 @@
         }
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadSoundSettingsAsync()
+    {
+        try
+        {
+            var settings = await JSRuntime.InvokeAsync<SoundSettings>("getSoundSettings");
+            ApplySoundSettings(settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not load sound settings");
+        }
+    }
+
+    private async Task PersistSoundSettingsAsync()
+    {
+        try
+        {
+            var settings = new SoundSettings
+            {
+                Enabled = soundsEnabled,
+                NotificationEnabled = notificationSoundEnabled,
+                ClickEnabled = clickSoundEnabled,
+                NotificationSource = notificationSoundSource,
+                ClickSource = clickSoundSource,
+                NotificationLabel = notificationSoundLabel,
+                ClickLabel = clickSoundLabel,
+                NotificationCustom = notificationSoundCustom,
+                ClickCustom = clickSoundCustom
+            };
+
+            await JSRuntime.InvokeVoidAsync("updateSoundSettings", settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not save sound settings");
+        }
+    }
+
+    private void ApplySoundSettings(SoundSettings settings)
+    {
+        soundsEnabled = settings.Enabled;
+        notificationSoundEnabled = settings.NotificationEnabled;
+        clickSoundEnabled = settings.ClickEnabled;
+        notificationSoundCustom = settings.NotificationCustom;
+        clickSoundCustom = settings.ClickCustom;
+
+        notificationSoundSource = string.IsNullOrWhiteSpace(settings.NotificationSource)
+            ? DefaultNotificationSound
+            : settings.NotificationSource;
+        clickSoundSource = string.IsNullOrWhiteSpace(settings.ClickSource)
+            ? DefaultClickSound
+            : settings.ClickSource;
+
+        notificationSoundLabel = ResolveSoundLabel(
+            settings.NotificationLabel,
+            notificationSoundCustom,
+            DefaultNotificationLabel);
+        clickSoundLabel = ResolveSoundLabel(
+            settings.ClickLabel,
+            clickSoundCustom,
+            DefaultClickLabel);
+    }
+
+    private static string ResolveSoundLabel(string? label, bool isCustom, string fallback)
+    {
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            return label;
+        }
+
+        return isCustom ? "Custom" : fallback;
+    }
+
+    private void ResolveCustomSoundFolder()
+    {
+        try
+        {
+            var candidate = Path.Combine(AppContext.BaseDirectory, "wwwroot", "assets", "sounds", "custom");
+            customSoundFolderAvailable = Directory.Exists(candidate);
+            customSoundFolderPath = customSoundFolderAvailable ? candidate : "";
+            customSoundFolderDisplay = customSoundFolderAvailable ? candidate : CustomSoundFolderRelative;
+        }
+        catch
+        {
+            customSoundFolderAvailable = false;
+            customSoundFolderPath = "";
+            customSoundFolderDisplay = CustomSoundFolderRelative;
+        }
+    }
+
+    private void OpenCustomSoundFolder()
+    {
+        if (!customSoundFolderAvailable)
+        {
+            NotificationService.ShowError("Custom sound folder not found.");
+            return;
+        }
+
+        OpenFolderInExplorer(customSoundFolderPath);
+    }
+
+    private async Task HandleNotificationSoundUpload(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file == null)
+        {
+            return;
+        }
+
+        if (!IsSupportedSoundFile(file))
+        {
+            NotificationService.ShowWarning("Unsupported audio format. Use MP3, WAV, OGG, M4A, or AAC.");
+            return;
+        }
+
+        if (file.Size > MaxSoundFileBytes)
+        {
+            NotificationService.ShowWarning($"Sound file too large. Max size is {MaxSoundFileMb} MB.");
+            return;
+        }
+
+        var dataUrl = await ReadSoundFileAsDataUrl(file);
+        if (string.IsNullOrWhiteSpace(dataUrl))
+        {
+            NotificationService.ShowError("Could not read the sound file.");
+            return;
+        }
+
+        notificationSoundSource = dataUrl;
+        notificationSoundLabel = file.Name;
+        notificationSoundCustom = true;
+
+        await PersistSoundSettingsAsync();
+        NotificationService.ShowSuccess("Notification sound updated");
+    }
+
+    private async Task HandleClickSoundUpload(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file == null)
+        {
+            return;
+        }
+
+        if (!IsSupportedSoundFile(file))
+        {
+            NotificationService.ShowWarning("Unsupported audio format. Use MP3, WAV, OGG, M4A, or AAC.");
+            return;
+        }
+
+        if (file.Size > MaxSoundFileBytes)
+        {
+            NotificationService.ShowWarning($"Sound file too large. Max size is {MaxSoundFileMb} MB.");
+            return;
+        }
+
+        var dataUrl = await ReadSoundFileAsDataUrl(file);
+        if (string.IsNullOrWhiteSpace(dataUrl))
+        {
+            NotificationService.ShowError("Could not read the sound file.");
+            return;
+        }
+
+        clickSoundSource = dataUrl;
+        clickSoundLabel = file.Name;
+        clickSoundCustom = true;
+
+        await PersistSoundSettingsAsync();
+        NotificationService.ShowSuccess("Click sound updated");
+    }
+
+    private async Task<string?> ReadSoundFileAsDataUrl(IBrowserFile file)
+    {
+        try
+        {
+            var contentType = ResolveSoundContentType(file);
+            await using var stream = file.OpenReadStream(MaxSoundFileBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var base64 = Convert.ToBase64String(buffer.ToArray());
+            return $"data:{contentType};base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Failed to read sound file");
+            return null;
+        }
+    }
+
+    private static string ResolveSoundContentType(IBrowserFile file)
+    {
+        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
+            file.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+        {
+            return file.ContentType;
+        }
+
+        var extension = Path.GetExtension(file.Name);
+        return extension switch
+        {
+            ".wav" => "audio/wav",
+            ".ogg" => "audio/ogg",
+            ".m4a" => "audio/mp4",
+            ".aac" => "audio/aac",
+            _ => "audio/mpeg"
+        };
+    }
+
+    private static bool IsSupportedSoundFile(IBrowserFile file)
+    {
+        if (!string.IsNullOrWhiteSpace(file.ContentType) &&
+            file.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var extension = Path.GetExtension(file.Name);
+        return SupportedSoundExtensions.Contains(extension);
+    }
+
+    private async Task ResetNotificationSound()
+    {
+        notificationSoundSource = DefaultNotificationSound;
+        notificationSoundLabel = DefaultNotificationLabel;
+        notificationSoundCustom = false;
+
+        await PersistSoundSettingsAsync();
+    }
+
+    private async Task ResetClickSound()
+    {
+        clickSoundSource = DefaultClickSound;
+        clickSoundLabel = DefaultClickLabel;
+        clickSoundCustom = false;
+
+        await PersistSoundSettingsAsync();
+    }
+
+    private async Task PlayNotificationPreview()
+    {
+        await JSRuntime.InvokeVoidAsync("playNotificationSound");
+    }
+
+    private async Task PlayClickPreview()
+    {
+        await JSRuntime.InvokeVoidAsync("playClickSound");
     }
 
     private string LatestVersionLabel => updateResult?.LatestVersion?.ToString() ?? "N/A";
@@ -761,6 +1111,19 @@
         public float UtilizationVideo { get; set; }
         public float DedicatedMemoryUsedMB { get; set; }
         public float DedicatedMemoryTotalMB { get; set; }
+    }
+
+    private sealed class SoundSettings
+    {
+        public bool Enabled { get; set; } = true;
+        public bool NotificationEnabled { get; set; } = true;
+        public bool ClickEnabled { get; set; } = true;
+        public string? NotificationSource { get; set; }
+        public string? ClickSource { get; set; }
+        public string? NotificationLabel { get; set; }
+        public string? ClickLabel { get; set; }
+        public bool NotificationCustom { get; set; }
+        public bool ClickCustom { get; set; }
     }
 
     private class DriveUsageInfo
