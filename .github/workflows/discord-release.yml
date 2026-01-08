@@ -1,0 +1,29 @@
+name: Discord Release Notify
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord message
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPO: ${{ github.repository }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          TAG: ${{ github.event.release.tag_name }}
+          URL: ${{ github.event.release.html_url }}
+        run: |
+          # Fallback if release name is empty
+          if [ -z "$RELEASE_NAME" ]; then RELEASE_NAME="$TAG"; fi
+
+          payload=$(cat <<EOF
+          {
+            "content": "🚀 **New release published** in **$REPO**\\n**$RELEASE_NAME** (\\`$TAG\\`)\\n$URL"
+          }
+          EOF
+          )
+
+          curl -sS -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK"
