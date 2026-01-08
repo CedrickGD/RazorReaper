@@ -4,6 +4,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using Microsoft.Maui.ApplicationModel.DataTransfer
+@using Microsoft.AspNetCore.Components.Web
 @using RazorReaper.Services
 @using RazorReaper.Configuration
 
@@ -130,10 +131,16 @@
                     <input id="consoleKeyInput"
                            class="game-keybind-input"
                            type="text"
-                           value="@consoleKey"
-                           @onchange="UpdateConsoleKey"
+                           value="@ConsoleKeyDisplay"
+                           @onclick="StartConsoleKeyCapture"
+                           @onfocus="StartConsoleKeyCapture"
+                           @onblur="StopConsoleKeyCapture"
+                           @onkeydown="CaptureConsoleKey"
+                           @onkeydown:preventDefault="true"
+                           @onkeydown:stopPropagation="true"
                            maxlength="12"
-                           placeholder="@DefaultConsoleKey" />
+                           placeholder="@DefaultConsoleKey"
+                           readonly />
                     <div class="game-keybind-current">Current key: <span>@consoleKey</span></div>
                 </div>
             </div>
@@ -200,6 +207,8 @@
     private Timer? statusTimer;
     private string consoleKey = DefaultConsoleKey;
     private byte consoleKeyCode = VK_TAB;
+    private bool isCapturingConsoleKey = false;
+    private string ConsoleKeyDisplay => isCapturingConsoleKey ? "Press a key..." : consoleKey;
 
     // Helper method for boolean attributes
     private bool IsGameNotRunning() => !isGameRunning;
@@ -244,6 +253,107 @@
             consoleKey = DefaultConsoleKey;
             consoleKeyCode = VK_TAB;
         }
+    }
+
+    private void StartConsoleKeyCapture()
+    {
+        isCapturingConsoleKey = true;
+    }
+
+    private void StopConsoleKeyCapture()
+    {
+        isCapturingConsoleKey = false;
+    }
+
+    private void CaptureConsoleKey(KeyboardEventArgs e)
+    {
+        if (!isCapturingConsoleKey)
+        {
+            return;
+        }
+
+        var keyName = GetConsoleKeyName(e);
+        if (string.IsNullOrWhiteSpace(keyName) || IsModifierKey(keyName))
+        {
+            return;
+        }
+
+        ApplyConsoleKey(keyName, persist: true, notify: true);
+        isCapturingConsoleKey = false;
+    }
+
+    private static bool IsModifierKey(string keyName)
+    {
+        return keyName is "SHIFT" or "SHIFTLEFT" or "SHIFTRIGHT"
+            or "CONTROL" or "CONTROLLEFT" or "CONTROLRIGHT"
+            or "ALT" or "ALTLEFT" or "ALTRIGHT"
+            or "META" or "WIN" or "WINDOWS";
+    }
+
+    private static string? GetConsoleKeyName(KeyboardEventArgs e)
+    {
+        var code = e.Code?.Trim();
+        if (!string.IsNullOrEmpty(code))
+        {
+            var upperCode = code.ToUpperInvariant();
+
+            if (upperCode.StartsWith("KEY", StringComparison.Ordinal))
+            {
+                return upperCode.Substring(3);
+            }
+
+            if (upperCode.StartsWith("DIGIT", StringComparison.Ordinal))
+            {
+                return upperCode.Substring(5);
+            }
+
+            if (upperCode.StartsWith("NUMPAD", StringComparison.Ordinal))
+            {
+                return upperCode;
+            }
+
+            if (upperCode.StartsWith("F", StringComparison.Ordinal)
+                && int.TryParse(upperCode.Substring(1), out var fnum)
+                && fnum >= 1
+                && fnum <= 24)
+            {
+                return $"F{fnum}";
+            }
+
+            return upperCode switch
+            {
+                "SPACE" => "SPACE",
+                "TAB" => "TAB",
+                "ESCAPE" => "ESC",
+                "BACKSPACE" => "BACKSPACE",
+                "BACKQUOTE" => "BACKQUOTE",
+                "INSERT" => "INSERT",
+                "DELETE" => "DELETE",
+                "HOME" => "HOME",
+                "END" => "END",
+                "PAGEUP" => "PAGEUP",
+                "PAGEDOWN" => "PAGEDOWN",
+                _ => null
+            };
+        }
+
+        var key = e.Key?.Trim();
+        if (string.IsNullOrEmpty(key))
+        {
+            return null;
+        }
+
+        if (key == " ")
+        {
+            return "SPACE";
+        }
+
+        if (key.Length == 1)
+        {
+            return key.ToUpperInvariant();
+        }
+
+        return key.Replace(" ", "").ToUpperInvariant();
     }
 
     private void UpdateConsoleKey(ChangeEventArgs e)
