@@ -57,7 +57,58 @@
             clickVolume: 0.2
         };
 
+        const legacyClickLabel = 'Default (Soft Click)';
+
+        function normalizeSoundSettings(settings) {
+            if (!settings || typeof settings !== 'object') {
+                return {};
+            }
+
+            const normalized = { ...settings };
+
+            if (!normalized.notificationSource || typeof normalized.notificationSource !== 'string' || normalized.notificationSource.trim() === '') {
+                delete normalized.notificationSource;
+            }
+
+            if (!normalized.clickSource || typeof normalized.clickSource !== 'string' || normalized.clickSource.trim() === '') {
+                delete normalized.clickSource;
+            }
+
+            if (!normalized.notificationCustom && (!normalized.notificationLabel || normalized.notificationLabel.trim() === '')) {
+                delete normalized.notificationLabel;
+            }
+
+            if (!normalized.clickCustom && (!normalized.clickLabel || normalized.clickLabel.trim() === '' || normalized.clickLabel === legacyClickLabel)) {
+                delete normalized.clickLabel;
+            }
+
+            return normalized;
+        }
+
+        function coerceSoundDefaults(settings) {
+            const resolved = settings || {};
+
+            if (!resolved.notificationSource) {
+                resolved.notificationSource = soundDefaults.notificationSource;
+            }
+
+            if (!resolved.clickSource) {
+                resolved.clickSource = soundDefaults.clickSource;
+            }
+
+            if (!resolved.notificationCustom) {
+                resolved.notificationLabel = soundDefaults.notificationLabel;
+            }
+
+            if (!resolved.clickCustom) {
+                resolved.clickLabel = soundDefaults.clickLabel;
+            }
+
+            return resolved;
+        }
+
         function applySoundSettings(settings, persist) {
+            settings = coerceSoundDefaults(settings);
             if (persist) {
                 try {
                     localStorage.setItem('razorReaperSoundSettings', JSON.stringify(settings));
@@ -98,14 +149,16 @@
                 stored = {};
             }
 
-            window._soundSettings = Object.assign({}, soundDefaults, stored);
+            stored = normalizeSoundSettings(stored);
+            window._soundSettings = coerceSoundDefaults(Object.assign({}, soundDefaults, stored));
             applySoundSettings(window._soundSettings, false);
             return window._soundSettings;
         };
 
         window.updateSoundSettings = function (settings) {
             const current = window.getSoundSettings();
-            window._soundSettings = Object.assign({}, current, settings || {});
+            const normalized = normalizeSoundSettings(settings || {});
+            window._soundSettings = coerceSoundDefaults(Object.assign({}, current, normalized));
             applySoundSettings(window._soundSettings, true);
             return window._soundSettings;
         };
