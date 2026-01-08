@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.3.3.0</version>
-    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.3.3/RazorReaper.exe</url>
-    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.3.3</changelog>
+    <version>1.3.4.0</version>
+    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.3.4/RazorReaper.exe</url>
+    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.3.4</changelog>
     <mandatory>false</mandatory>
     <args>/SILENT /SUPPRESSMSGBOXES /NORESTART</args>
 </item>
