@@ -94,6 +94,7 @@ namespace RazorReaper
             services.AddSingleton<IIniPresetService, IniPresetService>();
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IUpdateService, UpdateService>();
+            services.AddSingleton<IFontInstaller, FontInstaller>();
         }
     }
 }

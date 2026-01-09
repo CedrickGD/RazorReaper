@@ -132,7 +132,7 @@
     color: var(--text-primary);
     font-size: 0.9rem;
     font-weight: 500;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     margin-bottom: 0.25rem;
 }
 
@@ -450,7 +450,7 @@
     }
 
 .path-value {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     color: var(--text-primary);
     font-size: 0.75rem;
     word-break: break-all;

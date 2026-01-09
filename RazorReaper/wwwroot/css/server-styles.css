@@ -288,7 +288,7 @@
 .detail-value {
     color: var(--text-primary);
     font-weight: 600;
-    font-family: monospace;
+    font-family: var(--font-mono);
 }
 
 .server-info-header {
@@ -419,7 +419,7 @@
 
 .server-address {
     font-size: 0.8rem;
-    font-family: monospace;
+    font-family: var(--font-mono);
     margin-bottom: 0.25rem;
     color: var(--text-secondary);
 }

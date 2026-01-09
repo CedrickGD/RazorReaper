@@ -187,7 +187,7 @@
     font-size: 0.9rem;
     color: var(--text-primary);
     font-weight: 600;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
 }
 
 .update-message {
@@ -344,7 +344,7 @@
 
 .sound-folder-path {
     margin-top: 0.35rem;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     color: var(--text-primary);
     word-break: break-all;
@@ -354,6 +354,196 @@
     margin-top: 0.6rem;
     color: var(--text-secondary);
     font-size: 0.8rem;
+}
+
+.font-settings-card {
+    margin-bottom: 2rem;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: rgba(0, 0, 0, 0.18) !important;
+}
+
+.font-settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.font-settings-subtitle {
+    margin: 0.2rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.font-current {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.font-current-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+}
+
+.font-current-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.font-preset-grid {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.font-preset-card {
+    background: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--text-primary);
+}
+
+.font-preset-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.font-preset-card.active {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.25);
+}
+
+.font-preset-card:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.font-preset-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.font-preset-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.font-preset-status {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.font-preset-card.active .font-preset-status {
+    color: var(--accent-purple);
+    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(139, 92, 246, 0.12);
+}
+
+.font-preset-description {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.font-preset-preview {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.font-settings-note {
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.font-manual-install {
+    margin-top: 1rem;
+    padding: 0.9rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.font-manual-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.font-manual-steps {
+    margin: 0 0 0.75rem;
+    padding-left: 1.1rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.6;
+}
+
+.font-manual-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.font-manual-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.font-manual-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.font-manual-link-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.font-manual-link-url {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+    text-align: right;
 }
 
 .widget-card {
@@ -424,7 +614,7 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 2px;
     text-shadow: 0 0 30px var(--glow-purple);
 }
@@ -472,7 +662,7 @@
     color: var(--accent-purple);
     font-size: 0.85rem;
     font-weight: 600;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
 }
 
 .weather-display {
@@ -1650,7 +1840,7 @@
 
 .path-edit-path {
     margin-top: 0.35rem;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 0.85rem;
     color: var(--text-primary);
     word-break: break-all;
@@ -1667,7 +1857,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: var(--text-primary);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
 }
 
@@ -1748,7 +1938,7 @@
 }
 
 .path-value {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     color: var(--text-secondary);
     word-break: break-all;
@@ -1814,6 +2004,19 @@
 
     .sound-settings-header {
         align-items: flex-start;
+    }
+
+    .font-settings-header {
+        align-items: flex-start;
+    }
+
+    .font-current {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .font-preset-grid {
+        grid-template-columns: 1fr;
     }
 
     .sound-folder {

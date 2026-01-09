@@ -176,7 +176,7 @@
         cursor: pointer;
         transition: all 0.3s ease;
         min-width: 120px;
-        font-family: 'Courier New', monospace;
+        font-family: var(--font-mono);
         font-weight: 600;
     }
 
@@ -258,7 +258,7 @@
         border-radius: 4px;
         color: var(--text-primary);
         text-align: center;
-        font-family: 'Courier New', monospace;
+        font-family: var(--font-mono);
         transition: all 0.3s ease;
     }
 
@@ -321,7 +321,7 @@
 
     .autoclicker-layout .position-value {
         color: var(--text-primary);
-        font-family: 'Courier New', monospace;
+        font-family: var(--font-mono);
         font-weight: 500;
     }
 
@@ -399,7 +399,7 @@
 .autoclicker-layout .status-value {
     color: var(--text-primary);
     font-weight: 600;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
 }
 
     .autoclicker-layout .status-value.text-green {
@@ -586,7 +586,7 @@
 .position-coords {
     flex: 1;
     color: var(--text-primary);
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 0.9rem;
 }
 

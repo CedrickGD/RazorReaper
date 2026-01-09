@@ -4,9 +4,10 @@ namespace RazorReaper
 {
     public partial class App : Application
     {
-        public App()
+        public App(IFontInstaller fontInstaller)
         {
             InitializeComponent();
+            _ = Task.Run(() => fontInstaller.EnsurePresetFontsInstalledAsync());
         }
 
         protected override Window CreateWindow(IActivationState? activationState)

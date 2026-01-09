@@ -16,6 +16,7 @@
 @inject IOptions<AppConfiguration> Configuration
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
+@inject IFontInstaller FontInstaller
 @inject IUpdateService UpdateService
 @implements IAsyncDisposable
 
@@ -140,6 +141,62 @@
                 <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">Open Folder</button>
             </div>
             <div class="sound-folder-note">Supports MP3, WAV, OGG, M4A, AAC. Keep files under @MaxSoundFileMb MB for fast playback.</div>
+        </div>
+
+        <div class="content-card font-settings-card">
+            <div class="font-settings-header">
+                <div>
+                    <h3>Interface Font</h3>
+                    <p class="font-settings-subtitle">Switch the UI font preset. Fonts auto-install in the background.</p>
+                </div>
+                <div class="font-current">
+                    <span class="font-current-label">Active</span>
+                    <span class="font-current-value">@GetFontPresetName(selectedFontPresetId)</span>
+                </div>
+            </div>
+            <div class="font-preset-grid">
+                @foreach (var preset in FontPresets)
+                {
+                    var isActive = selectedFontPresetId == preset.Id;
+                    var statusLabel = GetFontPresetStatus(preset);
+                    <button class="font-preset-card @(isActive ? "active" : "")"
+                            @onclick="@(() => SelectFontPresetAsync(preset))"
+                            disabled="@IsFontPresetInstalling(preset)">
+                        <div class="font-preset-top">
+                            <span class="font-preset-name">@preset.Name</span>
+                            <span class="font-preset-status">@statusLabel</span>
+                        </div>
+                        <div class="font-preset-description">@preset.Description</div>
+                        <div class="font-preset-preview" style="font-family: @preset.UiStack">
+                            The quick brown fox jumps over the lazy dog 0123456789.
+                        </div>
+                    </button>
+                }
+            </div>
+            <div class="font-manual-install">
+                <div class="font-manual-title">Manual install (if auto-install fails)</div>
+                <ol class="font-manual-steps">
+                    <li>Download the font from the official link below.</li>
+                    <li>If you get a zip, extract it.</li>
+                    <li>Right-click the .ttf file and choose <strong>Install</strong> (or double-click and install).</li>
+                    <li>Return here and select the preset again. Switching updates the UI instantly.</li>
+                </ol>
+                <div class="font-manual-links">
+                    @foreach (var preset in FontPresets)
+                    {
+                        if (string.IsNullOrWhiteSpace(preset.DownloadUrl))
+                        {
+                            continue;
+                        }
+
+                        <button class="font-manual-link" @onclick="@(() => CopyFontDownloadLinkAsync(preset))" data-sound-skip="true">
+                            <span class="font-manual-link-name">@preset.Name</span>
+                            <span class="font-manual-link-url">@preset.DownloadUrl</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="font-settings-note">Fonts install per-user in the background. Switching updates the UI instantly.</div>
         </div>
 
         <div class="dashboard-widgets">
@@ -579,6 +636,64 @@
         ".aac"
     };
 
+    private const string FontDefaultPresetId = "system";
+    private const string DefaultUiStack = "\"Segoe UI Variable\", \"Segoe UI\", \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif";
+    private const string DefaultMonoStack = "\"Cascadia Code\", \"JetBrainsMono Nerd Font\", \"FiraCode Nerd Font\", Consolas, \"Courier New\", monospace";
+    private string selectedFontPresetId = FontDefaultPresetId;
+    private readonly HashSet<string> installingFontPresets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, bool> fontInstallStatus = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyList<FontPreset> FontPresets = new List<FontPreset>
+    {
+        new()
+        {
+            Id = "system",
+            Name = "System UI",
+            Description = "Windows UI stack with a clean sans look.",
+            UiStack = DefaultUiStack,
+            MonoStack = DefaultMonoStack
+        },
+        new()
+        {
+            Id = "space-grotesk",
+            Name = "Space Grotesk",
+            Description = "Wide, modern sans with a tech edge.",
+            UiStack = $"\"Space Grotesk\", \"SpaceGrotesk\", {DefaultUiStack}",
+            MonoStack = DefaultMonoStack,
+            InstallerId = "space-grotesk",
+            DownloadUrl = "https://fonts.google.com/specimen/Space+Grotesk"
+        },
+        new()
+        {
+            Id = "manrope",
+            Name = "Manrope",
+            Description = "Smooth sans with balanced geometry.",
+            UiStack = $"\"Manrope\", {DefaultUiStack}",
+            MonoStack = DefaultMonoStack,
+            InstallerId = "manrope",
+            DownloadUrl = "https://fonts.google.com/specimen/Manrope"
+        },
+        new()
+        {
+            Id = "jetbrains-mono-nerd",
+            Name = "JetBrains Mono Nerd",
+            Description = "Compact mono with nerd glyphs.",
+            UiStack = "\"JetBrainsMono Nerd Font\", \"JetBrainsMono Nerd Font Mono\", \"JetBrains Mono\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
+            MonoStack = "\"JetBrainsMono Nerd Font\", \"JetBrainsMono Nerd Font Mono\", \"JetBrains Mono\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
+            InstallerId = "jetbrains-mono-nerd",
+            DownloadUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+        },
+        new()
+        {
+            Id = "fira-code-nerd",
+            Name = "Fira Code Nerd",
+            Description = "Ligature-friendly mono with nerd glyphs.",
+            UiStack = "\"FiraCode Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
+            MonoStack = "\"FiraCode Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
+            InstallerId = "fira-code-nerd",
+            DownloadUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip"
+        }
+    };
+
     private bool _isDisposed = false;
     private bool _hasInitialized = false;
 
@@ -608,6 +723,8 @@
         LoadArkPaths();
         ResolveCustomSoundFolder();
         await LoadSoundSettingsAsync();
+        await LoadFontSettingsAsync();
+        await RefreshFontInstallStatusAsync();
 
         if (_isDisposed)
             return;
@@ -730,6 +847,215 @@
         }
 
         return isCustom ? "Custom" : fallback;
+    }
+
+    private async Task LoadFontSettingsAsync()
+    {
+        try
+        {
+            var settings = await JSRuntime.InvokeAsync<FontSettings>("getFontSettings");
+            var preset = ResolveFontPreset(settings?.PresetId);
+            selectedFontPresetId = preset.Id;
+
+            if (string.IsNullOrWhiteSpace(settings?.UiStack) || string.IsNullOrWhiteSpace(settings?.MonoStack))
+            {
+                await PersistFontSettingsAsync(preset);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not load font settings");
+        }
+    }
+
+    private async Task SelectFontPresetAsync(FontPreset preset)
+    {
+        selectedFontPresetId = preset.Id;
+        await PersistFontSettingsAsync(preset);
+
+        ActivityService.AddActivity($"UI font set: {preset.Name}", "info");
+        Logger.LogInformation("UI font preset selected: {PresetId}", preset.Id);
+
+        _ = EnsureFontPresetInstalledAsync(preset);
+    }
+
+    private async Task PersistFontSettingsAsync(FontPreset preset)
+    {
+        try
+        {
+            var settings = new FontSettings
+            {
+                PresetId = preset.Id,
+                UiStack = preset.UiStack,
+                MonoStack = preset.MonoStack
+            };
+
+            await JSRuntime.InvokeVoidAsync("updateFontSettings", settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not save font settings");
+        }
+    }
+
+    private async Task EnsureFontPresetInstalledAsync(FontPreset preset)
+    {
+        if (string.IsNullOrWhiteSpace(preset.InstallerId))
+        {
+            fontInstallStatus[preset.Id] = true;
+            return;
+        }
+
+        if (IsFontPresetInstalled(preset))
+        {
+            return;
+        }
+
+        if (!installingFontPresets.Add(preset.Id))
+        {
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        NotificationService.ShowInfo($"Installing {preset.Name}...");
+
+        try
+        {
+            await FontInstaller.EnsureFontInstalledAsync(preset.InstallerId);
+            var installed = FontInstaller.IsFontInstalled(preset.InstallerId);
+            fontInstallStatus[preset.Id] = installed;
+
+            if (installed)
+            {
+                NotificationService.ShowSuccess($"{preset.Name} installed.");
+                await PersistFontSettingsAsync(preset);
+            }
+            else
+            {
+                NotificationService.ShowWarning($"{preset.Name} installation pending. Try the preset again in a few seconds.");
+            }
+        }
+        catch (InvalidDataException ex)
+        {
+            Logger.LogError(ex, "Invalid font package for preset {PresetId}", preset.Id);
+            NotificationService.ShowError("Font package is invalid or blocked. Use the manual install links below.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogError(ex, "Font files could not be installed for preset {PresetId}", preset.Id);
+            NotificationService.ShowError("Font files are in use. Close other apps using the font and try again.");
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            Logger.LogError(ex, "Font download failed for preset {PresetId}", preset.Id);
+            NotificationService.ShowError("Font download failed. Check your network or add the font zip to wwwroot/assets/fonts.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error installing font preset {PresetId}", preset.Id);
+            NotificationService.ShowError($"Font installation failed: {ex.Message}");
+        }
+        finally
+        {
+            installingFontPresets.Remove(preset.Id);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshFontInstallStatusAsync()
+    {
+        try
+        {
+            foreach (var preset in FontPresets)
+            {
+                if (string.IsNullOrWhiteSpace(preset.InstallerId))
+                {
+                    fontInstallStatus[preset.Id] = true;
+                    continue;
+                }
+
+                fontInstallStatus[preset.Id] = FontInstaller.IsFontInstalled(preset.InstallerId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not refresh font installation status");
+        }
+
+        if (!_isDisposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool IsFontPresetInstalled(FontPreset preset)
+    {
+        if (string.IsNullOrWhiteSpace(preset.InstallerId))
+        {
+            return true;
+        }
+
+        return fontInstallStatus.TryGetValue(preset.Id, out var installed) && installed;
+    }
+
+    private string GetFontPresetStatus(FontPreset preset)
+    {
+        if (string.IsNullOrWhiteSpace(preset.InstallerId))
+        {
+            return "System";
+        }
+
+        if (IsFontPresetInstalling(preset))
+        {
+            return "Installing";
+        }
+
+        return IsFontPresetInstalled(preset) ? "Installed" : "Auto-install";
+    }
+
+    private string GetFontPresetName(string presetId)
+    {
+        return ResolveFontPreset(presetId).Name;
+    }
+
+    private bool IsFontPresetInstalling(FontPreset preset)
+    {
+        return installingFontPresets.Contains(preset.Id);
+    }
+
+    private async Task CopyFontDownloadLinkAsync(FontPreset preset)
+    {
+        if (string.IsNullOrWhiteSpace(preset.DownloadUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            await Clipboard.Default.SetTextAsync(preset.DownloadUrl);
+            NotificationService.ShowSuccess($"Copied download link for {preset.Name}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying font download link for {PresetId}", preset.Id);
+            NotificationService.ShowError("Failed to copy download link.");
+        }
+    }
+
+    private FontPreset ResolveFontPreset(string? presetId)
+    {
+        if (!string.IsNullOrWhiteSpace(presetId))
+        {
+            var match = FontPresets.FirstOrDefault(preset =>
+                string.Equals(preset.Id, presetId, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return FontPresets[0];
     }
 
     private void ResolveCustomSoundFolder()
@@ -1124,6 +1450,24 @@
         public string? ClickLabel { get; set; }
         public bool NotificationCustom { get; set; }
         public bool ClickCustom { get; set; }
+    }
+
+    private sealed class FontSettings
+    {
+        public string? PresetId { get; set; }
+        public string? UiStack { get; set; }
+        public string? MonoStack { get; set; }
+    }
+
+    private sealed class FontPreset
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string UiStack { get; set; } = "";
+        public string MonoStack { get; set; } = "";
+        public string? InstallerId { get; set; }
+        public string? DownloadUrl { get; set; }
     }
 
     private class DriveUsageInfo

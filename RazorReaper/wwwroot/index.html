@@ -163,6 +163,88 @@
             return window._soundSettings;
         };
 
+        const fontDefaults = {
+            presetId: 'system',
+            uiStack: '',
+            monoStack: ''
+        };
+
+        function normalizeFontSettings(settings) {
+            if (!settings || typeof settings !== 'object') {
+                return {};
+            }
+
+            const normalized = { ...settings };
+
+            if (!normalized.presetId || typeof normalized.presetId !== 'string') {
+                delete normalized.presetId;
+            }
+
+            if (!normalized.uiStack || typeof normalized.uiStack !== 'string' || normalized.uiStack.trim() === '') {
+                delete normalized.uiStack;
+            }
+
+            if (!normalized.monoStack || typeof normalized.monoStack !== 'string' || normalized.monoStack.trim() === '') {
+                delete normalized.monoStack;
+            }
+
+            return normalized;
+        }
+
+        function applyFontSettings(settings, persist) {
+            const resolved = Object.assign({}, fontDefaults, settings || {});
+
+            if (persist) {
+                try {
+                    localStorage.setItem('razorReaperFontSettings', JSON.stringify(resolved));
+                } catch (e) {
+                    // Ignore storage errors.
+                }
+            }
+
+            const root = document.documentElement;
+            if (resolved.uiStack) {
+                root.style.setProperty('--font-primary', resolved.uiStack);
+            }
+            if (resolved.monoStack) {
+                root.style.setProperty('--font-mono', resolved.monoStack);
+            }
+
+            return resolved;
+        }
+
+        window.getFontSettings = function () {
+            if (window._fontSettings) {
+                return window._fontSettings;
+            }
+
+            let stored = {};
+            try {
+                const raw = localStorage.getItem('razorReaperFontSettings');
+                if (raw) {
+                    stored = JSON.parse(raw);
+                }
+            } catch (e) {
+                stored = {};
+            }
+
+            stored = normalizeFontSettings(stored);
+            window._fontSettings = applyFontSettings(stored, false);
+            return window._fontSettings;
+        };
+
+        window.updateFontSettings = function (settings) {
+            const normalized = normalizeFontSettings(settings || {});
+            window._fontSettings = applyFontSettings(normalized, true);
+            return window._fontSettings;
+        };
+
+        try {
+            window.getFontSettings();
+        } catch (e) {
+            // Ignore font initialization errors.
+        }
+
         function getSoundSettingsSafe() {
             try {
                 return window.getSoundSettings();
