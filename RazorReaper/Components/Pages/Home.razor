@@ -71,134 +71,6 @@
             </div>
         </div>
 
-        <div class="content-card sound-settings-card">
-            <div class="sound-settings-header">
-                <div>
-                    <h3>Sound Settings</h3>
-                    <p class="sound-settings-subtitle">Control UI click and notification audio.</p>
-                </div>
-                <label class="sound-toggle sound-toggle-master">
-                    <input type="checkbox" @bind="soundsEnabled" @bind:after="PersistSoundSettingsAsync" />
-                    <span>Enable UI sounds</span>
-                </label>
-            </div>
-            <div class="sound-settings-grid">
-                <div class="sound-setting">
-                    <div class="sound-setting-header">
-                        <span class="sound-setting-title">Notification Sound</span>
-                        <label class="sound-toggle sound-toggle-inline">
-                            <input type="checkbox" @bind="notificationSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
-                            <span>Enabled</span>
-                        </label>
-                    </div>
-                    <div class="sound-setting-body">
-                        <div class="sound-source">
-                            <span class="sound-source-label">Current</span>
-                            <span class="sound-source-value">@notificationSoundLabel</span>
-                        </div>
-                        <div class="sound-actions">
-                            <label class="btn-small sound-upload-button" for="notificationSoundUpload">Upload</label>
-                            <InputFile id="notificationSoundUpload"
-                                       class="sound-upload-input"
-                                       OnChange="HandleNotificationSoundUpload"
-                                       accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
-                            <button class="btn-small" @onclick="ResetNotificationSound">Reset</button>
-                            <button class="btn-small" data-sound-skip="true" @onclick="PlayNotificationPreview">Test</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="sound-setting">
-                    <div class="sound-setting-header">
-                        <span class="sound-setting-title">Click Sound</span>
-                        <label class="sound-toggle sound-toggle-inline">
-                            <input type="checkbox" @bind="clickSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
-                            <span>Enabled</span>
-                        </label>
-                    </div>
-                    <div class="sound-setting-body">
-                        <div class="sound-source">
-                            <span class="sound-source-label">Current</span>
-                            <span class="sound-source-value">@clickSoundLabel</span>
-                        </div>
-                        <div class="sound-actions">
-                            <label class="btn-small sound-upload-button" for="clickSoundUpload">Upload</label>
-                            <InputFile id="clickSoundUpload"
-                                       class="sound-upload-input"
-                                       OnChange="HandleClickSoundUpload"
-                                       accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
-                            <button class="btn-small" @onclick="ResetClickSound">Reset</button>
-                            <button class="btn-small" data-sound-skip="true" @onclick="PlayClickPreview">Test</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="sound-folder">
-                <div class="sound-folder-info">
-                    <div class="sound-folder-label">Custom sounds folder</div>
-                    <div class="sound-folder-path">@customSoundFolderDisplay</div>
-                </div>
-                <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">Open Folder</button>
-            </div>
-            <div class="sound-folder-note">Supports MP3, WAV, OGG, M4A, AAC. Keep files under @MaxSoundFileMb MB for fast playback.</div>
-        </div>
-
-        <div class="content-card font-settings-card">
-            <div class="font-settings-header">
-                <div>
-                    <h3>Interface Font</h3>
-                    <p class="font-settings-subtitle">Switch the UI font preset. Fonts auto-install in the background.</p>
-                </div>
-                <div class="font-current">
-                    <span class="font-current-label">Active</span>
-                    <span class="font-current-value">@GetFontPresetName(selectedFontPresetId)</span>
-                </div>
-            </div>
-            <div class="font-preset-grid">
-                @foreach (var preset in FontPresets)
-                {
-                    var isActive = selectedFontPresetId == preset.Id;
-                    var statusLabel = GetFontPresetStatus(preset);
-                    <button class="font-preset-card @(isActive ? "active" : "")"
-                            @onclick="@(() => SelectFontPresetAsync(preset))"
-                            disabled="@IsFontPresetInstalling(preset)">
-                        <div class="font-preset-top">
-                            <span class="font-preset-name">@preset.Name</span>
-                            <span class="font-preset-status">@statusLabel</span>
-                        </div>
-                        <div class="font-preset-description">@preset.Description</div>
-                        <div class="font-preset-preview" style="font-family: @preset.UiStack">
-                            The quick brown fox jumps over the lazy dog 0123456789.
-                        </div>
-                    </button>
-                }
-            </div>
-            <div class="font-manual-install">
-                <div class="font-manual-title">Manual install (if auto-install fails)</div>
-                <ol class="font-manual-steps">
-                    <li>Download the font from the official link below.</li>
-                    <li>If you get a zip, extract it.</li>
-                    <li>Right-click the .ttf file and choose <strong>Install</strong> (or double-click and install).</li>
-                    <li>Return here and select the preset again. Switching updates the UI instantly.</li>
-                </ol>
-                <div class="font-manual-links">
-                    @foreach (var preset in FontPresets)
-                    {
-                        if (string.IsNullOrWhiteSpace(preset.DownloadUrl))
-                        {
-                            continue;
-                        }
-
-                        <button class="font-manual-link" @onclick="@(() => CopyFontDownloadLinkAsync(preset))" data-sound-skip="true">
-                            <span class="font-manual-link-name">@preset.Name</span>
-                            <span class="font-manual-link-url">@preset.DownloadUrl</span>
-                        </button>
-                    }
-                </div>
-            </div>
-            <div class="font-settings-note">Fonts install per-user in the background. Switching updates the UI instantly.</div>
-        </div>
-
         <div class="dashboard-widgets">
             <div class="content-card widget-card clock-widget">
                 <div class="widget-header">
@@ -463,6 +335,162 @@
             </div>
         </div>
 
+        <div class="content-card sound-settings-card collapsible-card">
+            <div class="sound-settings-header">
+                <div>
+                    <h3>Sound Settings</h3>
+                    <p class="sound-settings-subtitle">Control UI click and notification audio.</p>
+                </div>
+                <div class="collapsible-actions">
+                    <label class="sound-toggle sound-toggle-master">
+                        <input type="checkbox" @bind="soundsEnabled" @bind:after="PersistSoundSettingsAsync" />
+                        <span>Enable UI sounds</span>
+                    </label>
+                    <button type="button"
+                            class="collapsible-toggle"
+                            @onclick="ToggleSoundSettings"
+                            aria-expanded="@isSoundSettingsOpen"
+                            aria-controls="sound-settings-content">
+                        <span class="collapsible-toggle-label">@(isSoundSettingsOpen ? "Collapse" : "Expand")</span>
+                        <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="sound-settings-content" class="collapsible-content" hidden="@(!isSoundSettingsOpen)">
+                <div class="sound-settings-grid">
+                    <div class="sound-setting">
+                        <div class="sound-setting-header">
+                            <span class="sound-setting-title">Notification Sound</span>
+                            <label class="sound-toggle sound-toggle-inline">
+                                <input type="checkbox" @bind="notificationSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
+                                <span>Enabled</span>
+                            </label>
+                        </div>
+                        <div class="sound-setting-body">
+                            <div class="sound-source">
+                                <span class="sound-source-label">Current</span>
+                                <span class="sound-source-value">@notificationSoundLabel</span>
+                            </div>
+                            <div class="sound-actions">
+                                <label class="btn-small sound-upload-button" for="notificationSoundUpload">Upload</label>
+                                <InputFile id="notificationSoundUpload"
+                                           class="sound-upload-input"
+                                           OnChange="HandleNotificationSoundUpload"
+                                           accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
+                                <button class="btn-small" @onclick="ResetNotificationSound">Reset</button>
+                                <button class="btn-small" data-sound-skip="true" @onclick="PlayNotificationPreview">Test</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sound-setting">
+                        <div class="sound-setting-header">
+                            <span class="sound-setting-title">Click Sound</span>
+                            <label class="sound-toggle sound-toggle-inline">
+                                <input type="checkbox" @bind="clickSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
+                                <span>Enabled</span>
+                            </label>
+                        </div>
+                        <div class="sound-setting-body">
+                            <div class="sound-source">
+                                <span class="sound-source-label">Current</span>
+                                <span class="sound-source-value">@clickSoundLabel</span>
+                            </div>
+                            <div class="sound-actions">
+                                <label class="btn-small sound-upload-button" for="clickSoundUpload">Upload</label>
+                                <InputFile id="clickSoundUpload"
+                                           class="sound-upload-input"
+                                           OnChange="HandleClickSoundUpload"
+                                           accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
+                                <button class="btn-small" @onclick="ResetClickSound">Reset</button>
+                                <button class="btn-small" data-sound-skip="true" @onclick="PlayClickPreview">Test</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sound-folder">
+                    <div class="sound-folder-info">
+                        <div class="sound-folder-label">Custom sounds folder</div>
+                        <div class="sound-folder-path">@customSoundFolderDisplay</div>
+                    </div>
+                    <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">Open Folder</button>
+                </div>
+                <div class="sound-folder-note">Supports MP3, WAV, OGG, M4A, AAC. Keep files under @MaxSoundFileMb MB for fast playback.</div>
+            </div>
+        </div>
+
+        <div class="content-card font-settings-card collapsible-card">
+            <div class="font-settings-header">
+                <div>
+                    <h3>Interface Font</h3>
+                    <p class="font-settings-subtitle">Switch the UI font preset. Fonts auto-install in the background.</p>
+                </div>
+                <div class="collapsible-actions">
+                    <div class="font-current">
+                        <span class="font-current-label">Active</span>
+                        <span class="font-current-value">@GetFontPresetName(selectedFontPresetId)</span>
+                    </div>
+                    <button type="button"
+                            class="collapsible-toggle"
+                            @onclick="ToggleFontSettings"
+                            aria-expanded="@isFontSettingsOpen"
+                            aria-controls="font-settings-content">
+                        <span class="collapsible-toggle-label">@(isFontSettingsOpen ? "Collapse" : "Expand")</span>
+                        <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="font-settings-content" class="collapsible-content" hidden="@(!isFontSettingsOpen)">
+                <div class="font-preset-grid">
+                    @foreach (var preset in FontPresets)
+                    {
+                        var isActive = selectedFontPresetId == preset.Id;
+                        var statusLabel = GetFontPresetStatus(preset);
+                        <button class="font-preset-card @(isActive ? "active" : "")"
+                                @onclick="@(() => SelectFontPresetAsync(preset))"
+                                disabled="@IsFontPresetInstalling(preset)">
+                            <div class="font-preset-top">
+                                <span class="font-preset-name">@preset.Name</span>
+                                <span class="font-preset-status">@statusLabel</span>
+                            </div>
+                            <div class="font-preset-description">@preset.Description</div>
+                            <div class="font-preset-preview" style="font-family: @preset.UiStack">
+                                The quick brown fox jumps over the lazy dog 0123456789.
+                            </div>
+                        </button>
+                    }
+                </div>
+                <div class="font-manual-install">
+                    <div class="font-manual-title">Manual install (if auto-install fails)</div>
+                    <ol class="font-manual-steps">
+                        <li>Download the font from the official link below.</li>
+                        <li>If you get a zip, extract it.</li>
+                        <li>Right-click the .ttf file and choose <strong>Install</strong> (or double-click and install).</li>
+                        <li>Return here and select the preset again. Switching updates the UI instantly.</li>
+                    </ol>
+                    <div class="font-manual-links">
+                        @foreach (var preset in FontPresets)
+                        {
+                            if (string.IsNullOrWhiteSpace(preset.DownloadUrl))
+                            {
+                                continue;
+                            }
+
+                            <button class="font-manual-link" @onclick="@(() => CopyFontDownloadLinkAsync(preset))" data-sound-skip="true">
+                                <span class="font-manual-link-name">@preset.Name</span>
+                                <span class="font-manual-link-url">@preset.DownloadUrl</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="font-settings-note">Fonts install per-user in the background. Switching updates the UI instantly.</div>
+            </div>
+        </div>
+
         <div class="content-card">
             <div class="paths-header">
                 <h3>System Paths</h3>
@@ -607,6 +635,9 @@
     private bool isEditingArkPath = false;
     private string customArkPath = "";
     private const string CustomPathPreferenceKey = "CustomArkInstallPath";
+
+    private bool isSoundSettingsOpen = true;
+    private bool isFontSettingsOpen = true;
 
     private bool soundsEnabled = true;
     private bool notificationSoundEnabled = true;
@@ -774,6 +805,16 @@
         }
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleSoundSettings()
+    {
+        isSoundSettingsOpen = !isSoundSettingsOpen;
+    }
+
+    private void ToggleFontSettings()
+    {
+        isFontSettingsOpen = !isFontSettingsOpen;
     }
 
     private async Task LoadSoundSettingsAsync()
