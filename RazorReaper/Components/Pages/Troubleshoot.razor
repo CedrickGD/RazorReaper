@@ -1,0 +1,319 @@
+@page "/troubleshoot"
+@using System.Diagnostics
+@using System.IO
+@using RazorReaper.Services
+@using Microsoft.Extensions.Logging
+@inject ILogger<Troubleshoot> Logger
+@inject INotificationService NotificationService
+
+        <header class="page-header">
+            <h1 class="page-title">Troubleshoot</h1>
+            <p class="page-subtitle">Logging, diagnostics, and quick fixes when something looks off.</p>
+        </header>
+
+        <div class="troubleshoot-grid">
+            <div class="content-card troubleshoot-info-card">
+                <div class="troubleshoot-card-header">
+                    <div class="troubleshoot-title">
+                        <div class="troubleshoot-icon">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-4a1 1 0 100 2 1 1 0 000-2zm-1 4a1 1 0 011-1h1a1 1 0 011 1v4a1 1 0 01-2 0v-3h-0a1 1 0 01-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="troubleshoot-title-text">
+                            <h3>Important Notes</h3>
+                            <p class="troubleshoot-subtitle">Things to check before assuming something is broken.</p>
+                        </div>
+                    </div>
+                </div>
+                <ul class="troubleshoot-tips">
+                    <li>
+                        If Steam is updating or repairing ARK, paths can appear missing or locked.
+                        Wait for Steam to finish, then try again.
+                    </li>
+                    <li>
+                        If files refuse to change, close the game first and rerun the tool.
+                    </li>
+                    <li>
+                        If you ever see a startup error code, note it and share it with support.
+                    </li>
+                </ul>
+            </div>
+
+            <div class="content-card troubleshoot-logging-card">
+                <div class="troubleshoot-card-header">
+                    <div class="troubleshoot-title">
+                        <div class="troubleshoot-icon">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 3a2 2 0 00-2 2v9a3 3 0 003 3h8a3 3 0 003-3V9a2 2 0 00-2-2h-4l-2-2H4z" />
+                            </svg>
+                        </div>
+                        <div class="troubleshoot-title-text">
+                            <h3>Logging</h3>
+                            <p class="troubleshoot-subtitle">Turn on logs to capture issues and share details.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="troubleshoot-toggle-grid">
+                    <label class="troubleshoot-toggle">
+                        <input type="checkbox" @bind="loggingEnabled" @bind:after="PersistLoggingSettings" />
+                        <span>Enable logging</span>
+                    </label>
+                    <label class="troubleshoot-toggle">
+                        <input type="checkbox" @bind="verboseLoggingEnabled" @bind:after="PersistLoggingSettings" disabled="@(!loggingEnabled)" />
+                        <span>Verbose diagnostics (debug)</span>
+                    </label>
+                </div>
+
+                <div class="troubleshoot-log-section">
+                    <div class="troubleshoot-log-label">Log folder</div>
+                    <div class="troubleshoot-log-row">
+                        <div class="troubleshoot-log-path">
+                            <div class="troubleshoot-log-path-label">Current folder</div>
+                            <div class="troubleshoot-log-path-value">@GetCurrentLogFolder()</div>
+                        </div>
+                        <button type="button" class="troubleshoot-log-open" @onclick="OpenLogFolder" aria-label="Open log folder">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v1H2V6z" />
+                                <path d="M2 10h16v5a2 2 0 01-2 2H4a2 2 0 01-2-2v-5z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="troubleshoot-log-actions">
+                        <button class="btn-small" @onclick="PickLogFolderAsync">Change output</button>
+                        <button class="btn-small" @onclick="ResetLogFolder">Reset default</button>
+                    </div>
+                    <div class="troubleshoot-log-note">
+                        Log location changes apply after a restart. The logging toggle updates immediately.
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card troubleshoot-error-card">
+                <div class="troubleshoot-card-header">
+                    <div class="troubleshoot-title">
+                        <div class="troubleshoot-icon warn">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="troubleshoot-title-text">
+                            <h3>Last Error</h3>
+                            <p class="troubleshoot-subtitle">Most recent error captured by the app.</p>
+                        </div>
+                    </div>
+                    <div class="troubleshoot-card-actions">
+                        <button class="btn-small" @onclick="ClearLastError" disabled="@(lastError == null)">Clear</button>
+                    </div>
+                </div>
+
+                @if (lastError == null)
+                {
+                    <div class="troubleshoot-empty">No errors captured yet.</div>
+                }
+                else
+                {
+                    <div class="troubleshoot-error-details">
+                        <div class="troubleshoot-error-code">@lastError!.Code</div>
+                        <div class="troubleshoot-error-message">@GetLastErrorMessage()</div>
+                        <div class="troubleshoot-error-time">@lastErrorTimeLabel</div>
+                    </div>
+                }
+            </div>
+
+            <div class="content-card troubleshoot-codes-card">
+                <div class="troubleshoot-card-header">
+                    <div class="troubleshoot-title">
+                        <div class="troubleshoot-icon">
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7.5a1 1 0 00-.293-.707l-2.5-2.5A1 1 0 0014.5 4H4zm0 2h9v3a1 1 0 001 1h3v8H4V5zm7.5 0V6h1V5h-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="troubleshoot-title-text">
+                            <h3>Error Codes</h3>
+                            <p class="troubleshoot-subtitle">Short descriptions to help decode failures.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="troubleshoot-codes-grid">
+                    @foreach (var item in DiagnosticCodes)
+                    {
+                        <div class="troubleshoot-code-card">
+                            <div class="troubleshoot-code">@item.Code</div>
+                            <div class="troubleshoot-code-title">@item.Title</div>
+                            <div class="troubleshoot-code-desc">@item.Description</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+@code {
+    private bool loggingEnabled;
+    private bool verboseLoggingEnabled;
+    private string logFolderInput = string.Empty;
+    private DiagnosticErrorInfo? lastError;
+    private string lastErrorTimeLabel = string.Empty;
+
+    private static readonly IReadOnlyList<DiagnosticCodeInfo> DiagnosticCodes = new List<DiagnosticCodeInfo>
+    {
+        new(AppErrorCodes.UnhandledException, "Unhandled exception", "The app hit an unexpected error. Restart and check the log file."),
+        new(AppErrorCodes.StartupTimeout, "Startup timeout", "The UI did not load in time. Restart or reinstall the app."),
+        new(AppErrorCodes.StartupScriptError, "Startup script error", "A startup script failed before the UI loaded."),
+        new(AppErrorCodes.UnobservedTaskException, "Background task failure", "A background task crashed. Check the log file for details.")
+    };
+
+    protected override void OnInitialized()
+    {
+        LoadSettings();
+    }
+
+    private void LoadSettings()
+    {
+        loggingEnabled = AppDiagnostics.GetLoggingEnabled();
+        verboseLoggingEnabled = AppDiagnostics.GetVerboseLoggingEnabled();
+        logFolderInput = AppDiagnostics.GetLogFolder();
+        RefreshLastError();
+    }
+
+    private void PersistLoggingSettings()
+    {
+        AppDiagnostics.SetLoggingEnabled(loggingEnabled);
+        AppDiagnostics.SetVerboseLoggingEnabled(verboseLoggingEnabled);
+        LoggingControl.ApplySettings(loggingEnabled, verboseLoggingEnabled);
+        NotificationService.ShowSuccess("Logging settings updated.");
+    }
+
+    private async Task PickLogFolderAsync()
+    {
+        try
+        {
+            var selectedPath = await TryPickFolderAsync();
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(selectedPath);
+            AppDiagnostics.SetLogFolder(selectedPath);
+            logFolderInput = selectedPath;
+            NotificationService.ShowSuccess("Log folder updated. Restart to apply.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to select log folder");
+            NotificationService.ShowError("Unable to select a log folder.");
+        }
+    }
+
+    private void ResetLogFolder()
+    {
+        var folder = AppDiagnostics.DefaultLogFolder;
+        try
+        {
+            Directory.CreateDirectory(folder);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create default log folder: {Path}", folder);
+            NotificationService.ShowError("Could not create the default log folder.");
+            return;
+        }
+
+        AppDiagnostics.SetLogFolder(folder);
+        logFolderInput = folder;
+        NotificationService.ShowInfo("Log folder reset to default. Restart to apply.");
+    }
+
+    private void OpenLogFolder()
+    {
+        var folder = GetCurrentLogFolder();
+        if (!Directory.Exists(folder))
+        {
+            NotificationService.ShowWarning("Log folder does not exist yet.");
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{folder}\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to open log folder: {Path}", folder);
+            NotificationService.ShowError("Unable to open the log folder.");
+        }
+    }
+
+    private void RefreshLastError()
+    {
+        lastError = AppDiagnostics.GetLastError();
+        if (lastError == null)
+        {
+            lastErrorTimeLabel = string.Empty;
+            return;
+        }
+
+        lastErrorTimeLabel = lastError.Timestamp == DateTimeOffset.MinValue
+            ? "Time unknown"
+            : lastError.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    private string GetLastErrorMessage()
+    {
+        if (lastError == null)
+        {
+            return string.Empty;
+        }
+
+        return string.IsNullOrWhiteSpace(lastError.Message)
+            ? "No additional details recorded."
+            : lastError.Message;
+    }
+
+    private void ClearLastError()
+    {
+        AppDiagnostics.ClearLastError();
+        RefreshLastError();
+        NotificationService.ShowInfo("Last error cleared.");
+    }
+
+    private string GetCurrentLogFolder()
+    {
+        var raw = string.IsNullOrWhiteSpace(logFolderInput)
+            ? AppDiagnostics.DefaultLogFolder
+            : logFolderInput.Trim();
+        return Environment.ExpandEnvironmentVariables(raw);
+    }
+
+    private static async Task<string?> TryPickFolderAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+
+        var windows = App.Current?.Windows;
+        if (windows == null || windows.Count == 0)
+        {
+            return null;
+        }
+
+        var window = windows[0].Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+        if (window == null)
+        {
+            return null;
+        }
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    private sealed record DiagnosticCodeInfo(string Code, string Title, string Description);
+}

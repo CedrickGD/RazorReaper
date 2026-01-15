@@ -4,6 +4,7 @@ using RazorReaper.Configuration;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
 using Serilog;
+using Serilog.Core;
 using System.Reflection;
 
 namespace RazorReaper
@@ -41,21 +42,38 @@ namespace RazorReaper
 
         private static void ConfigureLogging(MauiAppBuilder builder)
         {
-            var logPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "RazorReaper",
-                "Logs",
-                "app.log");
+            var logFolder = AppDiagnostics.GetLogFolder();
+            var logPath = AppDiagnostics.GetLogFilePath();
 
-            // Ensure log directory exists
-            var logDir = Path.GetDirectoryName(logPath);
-            if (logDir != null && !Directory.Exists(logDir))
+            try
             {
-                Directory.CreateDirectory(logDir);
+                if (!Directory.Exists(logFolder))
+                {
+                    Directory.CreateDirectory(logFolder);
+                }
+            }
+            catch
+            {
+                logFolder = AppDiagnostics.DefaultLogFolder;
+                logPath = Path.Combine(logFolder, AppDiagnostics.DefaultLogFileName);
+                try
+                {
+                    Directory.CreateDirectory(logFolder);
+                    AppDiagnostics.SetLogFolder(logFolder);
+                }
+                catch
+                {
+                }
             }
 
+            var levelSwitch = new LoggingLevelSwitch();
+            LoggingControl.Initialize(levelSwitch);
+            LoggingControl.ApplySettings(
+                AppDiagnostics.GetLoggingEnabled(),
+                AppDiagnostics.GetVerboseLoggingEnabled());
+
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
+                .MinimumLevel.ControlledBy(levelSwitch)
                 .WriteTo.Debug()
                 .WriteTo.File(
                     logPath,

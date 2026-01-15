@@ -8,6 +8,9 @@ namespace RazorReaper
         {
             InitializeComponent();
             _ = Task.Run(() => fontInstaller.EnsurePresetFontsInstalledAsync());
+
+            AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
+            TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
         }
 
         protected override Window CreateWindow(IActivationState? activationState)
@@ -19,6 +22,24 @@ namespace RazorReaper
             };
 
             return window;
+        }
+
+        private static void HandleUnhandledException(object? sender, UnhandledExceptionEventArgs e)
+        {
+            var exception = e.ExceptionObject as Exception;
+            AppDiagnostics.RecordError(
+                AppErrorCodes.UnhandledException,
+                "Unhandled exception during app execution.",
+                exception);
+        }
+
+        private static void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+        {
+            AppDiagnostics.RecordError(
+                AppErrorCodes.UnobservedTaskException,
+                "Background task exception was not observed.",
+                e.Exception);
+            e.SetObserved();
         }
     }
 }

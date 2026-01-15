@@ -22,6 +22,7 @@
     <link href="css/oc-bps-styles.css" rel="stylesheet" />
     <link href="css/bosses-styles.css" rel="stylesheet" />
     <link href="css/server-specific-styles.css" rel="stylesheet" />
+    <link href="css/troubleshoot-styles.css" rel="stylesheet" />
     <link href="css/widget-highlights.css" rel="stylesheet" />
 </head>
 
@@ -31,6 +32,17 @@
     <canvas id="network-canvas"></canvas>
 
     <div id="app">Loading...</div>
+
+    <div id="startup-error" class="startup-error" aria-live="polite">
+        <div class="startup-error-card">
+            <div class="startup-error-title">Startup Error</div>
+            <div class="startup-error-code" data-startup-code>RR-E1001</div>
+            <div class="startup-error-message" data-startup-message>
+                The UI did not finish loading. Restart the app or reinstall.
+            </div>
+            <div class="startup-error-hint">Share this code when asking for support.</div>
+        </div>
+    </div>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.
@@ -43,6 +55,57 @@
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
     <script>
+        (function () {
+            const appHost = document.getElementById('app');
+            const errorHost = document.getElementById('startup-error');
+            if (!appHost || !errorHost) return;
+
+            let uiReady = false;
+            const observer = new MutationObserver(() => {
+                if (appHost.textContent && appHost.textContent.trim() !== 'Loading...') {
+                    uiReady = true;
+                    errorHost.classList.remove('visible');
+                    observer.disconnect();
+                }
+            });
+
+            observer.observe(appHost, { childList: true, subtree: true, characterData: true });
+
+            function showStartupError(code, message) {
+                const codeNode = errorHost.querySelector('[data-startup-code]');
+                const messageNode = errorHost.querySelector('[data-startup-message]');
+                if (codeNode) codeNode.textContent = code;
+                if (messageNode) messageNode.textContent = message;
+                errorHost.classList.add('visible');
+                try {
+                    localStorage.setItem('razorReaperStartupError', JSON.stringify({
+                        code: code,
+                        message: message,
+                        time: new Date().toISOString()
+                    }));
+                } catch (e) {
+                    // Ignore storage errors.
+                }
+            }
+
+            window.addEventListener('error', () => {
+                if (!uiReady) {
+                    showStartupError('RR-E1002', 'A startup script failed before the UI loaded.');
+                }
+            });
+
+            window.addEventListener('unhandledrejection', () => {
+                if (!uiReady) {
+                    showStartupError('RR-E1002', 'A startup script failed before the UI loaded.');
+                }
+            });
+
+            setTimeout(() => {
+                if (uiReady) return;
+                if (appHost.textContent && appHost.textContent.trim() !== 'Loading...') return;
+                showStartupError('RR-E1001', 'The UI did not finish loading. Restart the app or reinstall.');
+            }, 8000);
+        })();
         const soundDefaults = {
             enabled: true,
             notificationEnabled: true,
