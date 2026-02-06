@@ -4,10 +4,11 @@ namespace RazorReaper
 {
     public partial class App : Application
     {
-        public App(IFontInstaller fontInstaller)
+        public App(IFontInstaller fontInstaller, IScopeModeStartupService scopeModeStartupService)
         {
             InitializeComponent();
             _ = Task.Run(() => fontInstaller.EnsurePresetFontsInstalledAsync());
+            _ = Task.Run(() => scopeModeStartupService.ApplySavedScopeModeAsync());
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;

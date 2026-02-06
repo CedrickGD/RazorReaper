@@ -1,8 +1,18 @@
-﻿.suitfov-layout {
+.suitfov-layout {
+    display: block;
+}
+
+.vision-tools-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem;
-    align-items: start;
+    align-items: stretch;
+}
+
+.vision-tools-grid > .content-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .suitfov-main-panel {
@@ -51,7 +61,19 @@
 .section-description-fov {
     color: var(--text-secondary);
     font-size: 0.9rem;
-    margin-top: 0.25rem;
+    margin: 0 0 0.35rem;
+}
+
+.section-header-fov h3 {
+    margin: 0;
+}
+
+.suitfov-header .page-subtitle {
+    margin-bottom: 0.2rem;
+}
+
+.suitfov-header .page-title {
+    margin-bottom: 0;
 }
 
 .settings-status-card {
@@ -156,6 +178,13 @@
     margin: 1.5rem 0;
 }
 
+.scope-main-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin: 1.25rem 0 0;
+}
+
 .fov-btn-large {
     display: flex;
     align-items: center;
@@ -169,6 +198,22 @@
     position: relative;
     overflow: hidden;
     min-width: 240px;
+}
+
+.scope-main-actions .fov-btn-large {
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.fov-btn-large:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.fov-btn-large:disabled::before {
+    display: none;
 }
 
     .fov-btn-large::before {
@@ -419,6 +464,12 @@
     border-radius: 8px;
 }
 
+.path-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
 .path-icon {
     width: 40px;
     height: 40px;
@@ -451,10 +502,51 @@
 
 .path-value {
     font-family: var(--font-mono);
-    color: var(--text-primary);
+    color: #d8b4fe;
     font-size: 0.75rem;
     word-break: break-all;
-    opacity: 0.9;
+    opacity: 1;
+}
+
+.path-section {
+    margin-top: 0.9rem;
+}
+
+.path-section strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.45rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.suitfov-layout .path-display {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    word-break: break-all;
+    color: #a78bfa;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.suitfov-layout .path-display.clickable {
+    cursor: pointer;
+}
+
+.suitfov-layout .path-display.clickable:hover {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.suitfov-layout .path-display.clickable:active {
+    transform: translateY(0);
 }
 
 .restart-notice {
@@ -491,31 +583,14 @@
 }
 
 @media (max-width: 1200px) {
-    .suitfov-layout {
+    .vision-tools-grid {
         grid-template-columns: 1fr;
         gap: 1.5rem;
-    }
-
-    .suitfov-side-panel {
-        position: relative;
-        top: 0;
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5rem;
-    }
-
-    .restart-notice {
-        grid-column: span 2;
     }
 }
 
 @media (max-width: 768px) {
-    .suitfov-layout {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .suitfov-side-panel {
+    .vision-tools-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
@@ -604,3 +679,84 @@
 }
 
 /* fadeInUp animation defined in global theme.css */
+.path-info-box.with-action {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.path-open-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(139, 92, 246, 0.55);
+    background: rgba(139, 92, 246, 0.16);
+    color: var(--accent-purple);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.path-open-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.path-open-btn:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.85);
+    color: #f5edff;
+}
+
+.path-open-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.compact-card {
+    margin-bottom: 1rem;
+}
+
+.scope-status-note {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+}
+
+.scope-main-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.scope-main-actions .fov-btn-large {
+    width: 100%;
+}
+
+.scope-main-actions .btn-content-large {
+    align-items: center;
+    width: 100%;
+}
+
+.scope-main-actions .btn-title {
+    margin-bottom: 0;
+}
+
+.fov-main-actions .btn-content-large {
+    align-items: center;
+}
+
+.fov-btn-large:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.fov-btn-large:disabled::before {
+    display: none;
+}
+

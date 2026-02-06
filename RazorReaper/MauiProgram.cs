@@ -113,6 +113,7 @@ namespace RazorReaper
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
+            services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
         }
     }
 }
