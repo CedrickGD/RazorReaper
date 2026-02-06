@@ -1,0 +1,209 @@
+.launch-options-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.launch-options-intro-card,
+.launch-options-args-card,
+.launch-options-steps-card,
+.launch-options-example-card {
+    margin-bottom: 0 !important;
+}
+
+.launch-options-intro-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+
+.launch-options-intro-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+.launch-options-intro-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.launch-options-intro-header h3,
+.launch-options-section-header h3,
+.launch-options-steps-card h3,
+.launch-options-example-card h3 {
+    margin: 0;
+}
+
+.launch-options-intro-header p,
+.launch-options-section-header p,
+.launch-options-example-card p {
+    margin: 0.35rem 0 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.launch-options-section-header {
+    margin-bottom: 1.1rem;
+}
+
+.launch-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.launch-option-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.launch-option-flag {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.28rem 0.58rem;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.16);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    color: var(--accent-purple);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.launch-option-flag-btn {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.launch-option-flag-btn:hover {
+    border-color: rgba(139, 92, 246, 0.6);
+    background: rgba(139, 92, 246, 0.22);
+}
+
+.launch-option-description {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.launch-option-list-block {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(34, 197, 94, 0.24);
+    border-radius: 10px;
+    padding: 0.7rem 0.75rem;
+}
+
+.launch-option-list-block-warning {
+    border-color: rgba(239, 68, 68, 0.22);
+}
+
+.launch-option-list-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+}
+
+.launch-option-list {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.launch-options-bottom-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.launch-options-steps {
+    margin: 0.85rem 0 0;
+    padding-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.launch-options-steam-btn {
+    margin-top: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 0.6rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.16);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.launch-options-steam-btn:hover {
+    border-color: rgba(139, 92, 246, 0.8);
+    background: rgba(139, 92, 246, 0.24);
+}
+
+.launch-options-code {
+    margin-top: 0.8rem;
+    padding: 0.8rem;
+    border-radius: 10px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    background: rgba(0, 0, 0, 0.28);
+    color: #c4b5fd;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.launch-options-code-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.launch-options-code-btn:hover {
+    border-color: rgba(139, 92, 246, 0.65);
+    background: rgba(0, 0, 0, 0.36);
+}
+
+.launch-options-note {
+    margin-top: 0.75rem;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+}
+
+.launch-options-note code {
+    color: #c4b5fd;
+    font-family: var(--font-mono);
+}
+
+@media (max-width: 980px) {
+    .launch-options-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}

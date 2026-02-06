@@ -1,0 +1,228 @@
+@page "/launch-options"
+@using System.Diagnostics
+@using RazorReaper.Services
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+
+<header class="page-header">
+    <h1 class="page-title">Launch Options</h1>
+    <p class="page-subtitle">Quick ARK startup flags with clear trade-offs.</p>
+</header>
+
+<div class="launch-options-layout">
+    <section class="content-card launch-options-intro-card">
+        <div class="launch-options-intro-header">
+            <div class="launch-options-intro-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V3a1 1 0 011-1z" />
+                </svg>
+            </div>
+            <div>
+                <h3>Before you change anything</h3>
+                <p>Use only what helps. Test FPS, stability, and visibility after each change.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-card launch-options-args-card">
+        <div class="launch-options-section-header">
+            <h3>ARK Launch Arguments</h3>
+            <p>Click any argument to copy it.</p>
+        </div>
+
+        <div class="launch-options-grid">
+            @foreach (var option in options)
+            {
+                <article class="launch-option-card">
+                    <button class="launch-option-flag launch-option-flag-btn"
+                            @onclick="() => CopyTextAsync(option.Flag)"
+                            title="Copy @option.Flag">
+                        @option.Flag
+                    </button>
+                    <p class="launch-option-description">@option.Description</p>
+
+                    <div class="launch-option-list-block">
+                        <div class="launch-option-list-title">Good for</div>
+                        <ul class="launch-option-list">
+                            @foreach (var item in option.Pros)
+                            {
+                                <li>@item</li>
+                            }
+                        </ul>
+                    </div>
+
+                    <div class="launch-option-list-block launch-option-list-block-warning">
+                        <div class="launch-option-list-title">Watch out</div>
+                        <ul class="launch-option-list">
+                            @foreach (var item in option.Cons)
+                            {
+                                <li>@item</li>
+                            }
+                        </ul>
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+
+    <div class="launch-options-bottom-grid">
+        <section class="content-card launch-options-steps-card">
+            <h3>How to add them in Steam</h3>
+            <button class="launch-options-steam-btn" @onclick="OpenArkLaunchOptionsInSteam">
+                Open ARK Properties (General)
+            </button>
+            <ol class="launch-options-steps">
+                <li>Open <strong>Steam</strong>.</li>
+                <li>Open <strong>ARK</strong> and go to <strong>Properties</strong>.</li>
+                <li>In the <strong>General</strong> tab, find <strong>Launch Options</strong>.</li>
+                <li>Paste your selected arguments separated by spaces.</li>
+            </ol>
+            <p class="launch-options-note">
+                If you already use custom options, keep them. Example: keep <code>-culture=zh-Hans-CN</code> and append new flags with spaces.
+            </p>
+        </section>
+
+        <section class="content-card launch-options-example-card">
+            <h3>Example line</h3>
+            <p>Click to copy:</p>
+            <button class="launch-options-code launch-options-code-btn"
+                    @onclick="() => CopyTextAsync(ExampleLaunchLine)"
+                    title="Copy full launch line">
+                @ExampleLaunchLine
+            </button>
+            <p class="launch-options-note">Many players keep <code>-lowmemory</code>, but test on your own hardware.</p>
+        </section>
+    </div>
+</div>
+
+@code {
+    private const string ArkSteamUrl = "steam://gameproperties/346110/general";
+    private const string ArkSteamFallbackUrl = "steam://gameproperties/346110";
+    private const string ExampleLaunchLine = "-lowmemory -USEALLAVAILABLECORES -sm4 -high -noVerifiedMappings -nomansky";
+
+    private readonly List<LaunchOptionInfo> options = new()
+    {
+        new(
+            "-lowmemory",
+            "Low-memory mode for RAM-limited PCs.",
+            new[]
+            {
+                "Best for systems with under 8 GB RAM",
+                "Reduces memory usage",
+                "Destroyed structures despawn immediately"
+            },
+            new[]
+            {
+                "Can reduce visual quality"
+            }),
+        new(
+            "-USEALLAVAILABLECORES",
+            "Forces ARK to use all CPU cores.",
+            new[]
+            {
+                "Can improve FPS and performance"
+            },
+            new[]
+            {
+                "Can increase load on older CPUs"
+            }),
+        new(
+            "-sm4",
+            "Forces Shader Model 4.",
+            new[]
+            {
+                "Can increase FPS on older hardware"
+            },
+            new[]
+            {
+                "Water and shadows look worse"
+            }),
+        new(
+            "-high",
+            "Starts ARK with high process priority.",
+            new[]
+            {
+                "Can improve performance"
+            },
+            new[]
+            {
+                "Can make other apps slower while ARK is running"
+            }),
+        new(
+            "-noVerifiedMappings",
+            "Skips part of startup file checks.",
+            new[]
+            {
+                "Can reduce startup time"
+            },
+            new[]
+            {
+                "Can cause issues if game files are damaged"
+            }),
+        new(
+            "-nomansky",
+            "Disables sky effects to reduce visual overhead.",
+            new[]
+            {
+                "Can improve FPS",
+                "Can improve visibility"
+            },
+            new[]
+            {
+                "Sky can look unrealistic"
+            })
+    };
+
+    private async Task CopyTextAsync(string text)
+    {
+        try
+        {
+            await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(text);
+            NotificationService.ShowSuccess("Copied to clipboard.");
+            ActivityService.AddActivity($"Copied launch text: {text}", "info");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to copy: {ex.Message}");
+        }
+    }
+
+    private void OpenArkLaunchOptionsInSteam()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = ArkSteamUrl,
+                UseShellExecute = true
+            });
+
+            NotificationService.ShowSuccess("Opened ARK Properties (General).");
+            ActivityService.AddActivity("Opened ARK Properties General tab", "info");
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = ArkSteamFallbackUrl,
+                    UseShellExecute = true
+                });
+
+                NotificationService.ShowWarning("Opened ARK Properties. If General is not selected, click the General tab.");
+                ActivityService.AddActivity("Opened ARK Properties (fallback URI)", "warning");
+            }
+            catch
+            {
+                NotificationService.ShowError($"Failed to open Steam: {ex.Message}");
+            }
+        }
+    }
+
+    private sealed record LaunchOptionInfo(
+        string Flag,
+        string Description,
+        IReadOnlyList<string> Pros,
+        IReadOnlyList<string> Cons);
+}
