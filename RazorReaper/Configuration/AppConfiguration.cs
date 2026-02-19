@@ -19,6 +19,11 @@ public class AppConfiguration
     /// Autoclicker configuration.
     /// </summary>
     public AutoclickerSettings Autoclicker { get; set; } = new();
+
+    /// <summary>
+    /// Anonymous telemetry configuration.
+    /// </summary>
+    public TelemetrySettings Telemetry { get; set; } = new();
 }
 
 /// <summary>
@@ -82,4 +87,45 @@ public class AutoclickerSettings
     /// Hotkey monitoring interval in milliseconds.
     /// </summary>
     public int HotkeyMonitorInterval { get; set; } = 50;
+}
+
+/// <summary>
+/// Anonymous telemetry settings.
+/// </summary>
+public class TelemetrySettings
+{
+    /// <summary>
+    /// Enables anonymous telemetry collection.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Backend endpoint that receives telemetry events.
+    /// </summary>
+    public string Endpoint { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional shared key sent as X-App-Key header.
+    /// </summary>
+    public string AppKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Request timeout in seconds.
+    /// </summary>
+    public int RequestTimeoutSeconds { get; set; } = 3;
+
+    /// <summary>
+    /// Heartbeat interval in hours.
+    /// </summary>
+    public int HeartbeatIntervalHours { get; set; } = 24;
+
+    /// <summary>
+    /// Max number of failed telemetry events kept for retry.
+    /// </summary>
+    public int RetryQueueMaxItems { get; set; } = 200;
+
+    /// <summary>
+    /// Max number of queued telemetry events retried per send attempt.
+    /// </summary>
+    public int RetryBatchSize { get; set; } = 20;
 }

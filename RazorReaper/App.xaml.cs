@@ -1,14 +1,19 @@
 using RazorReaper.Services;
+using RazorReaper.Telemetry;
 
 namespace RazorReaper
 {
     public partial class App : Application
     {
-        public App(IFontInstaller fontInstaller, IScopeModeStartupService scopeModeStartupService)
+        public App(
+            IFontInstaller fontInstaller,
+            IScopeModeStartupService scopeModeStartupService,
+            ITelemetryStartupService telemetryStartupService)
         {
             InitializeComponent();
             _ = Task.Run(() => fontInstaller.EnsurePresetFontsInstalledAsync());
             _ = Task.Run(() => scopeModeStartupService.ApplySavedScopeModeAsync());
+            _ = Task.Run(() => telemetryStartupService.RunAsync());
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;

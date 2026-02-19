@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using RazorReaper.Configuration;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
+using RazorReaper.Telemetry;
 using Serilog;
 using Serilog.Core;
 using System.Reflection;
@@ -13,6 +14,8 @@ namespace RazorReaper
     {
         public static MauiApp CreateMauiApp()
         {
+            ConfigureWebView2UserDataFolder();
+
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
@@ -38,6 +41,26 @@ namespace RazorReaper
 #endif
 
             return builder.Build();
+        }
+
+        private static void ConfigureWebView2UserDataFolder()
+        {
+#if WINDOWS
+            try
+            {
+                var userDataFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "RazorReaper",
+                    "WebView2");
+
+                Directory.CreateDirectory(userDataFolder);
+                Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", userDataFolder);
+            }
+            catch
+            {
+                // Fall back to WebView2 default behavior if the custom folder cannot be prepared.
+            }
+#endif
         }
 
         private static void ConfigureLogging(MauiAppBuilder builder)
@@ -114,6 +137,11 @@ namespace RazorReaper
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
+            services.AddSingleton<IInstallIdProvider, FileInstallIdProvider>();
+            services.AddSingleton<ITelemetryStateStore, FileTelemetryStateStore>();
+            services.AddSingleton<ITelemetryClient, HttpTelemetryClient>();
+            services.AddSingleton<ITelemetryService, TelemetryService>();
+            services.AddSingleton<ITelemetryStartupService, TelemetryStartupService>();
         }
     }
 }
