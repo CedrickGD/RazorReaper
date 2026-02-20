@@ -117,6 +117,7 @@ namespace RazorReaper
             var config = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
                 .Build();
 
             builder.Configuration.AddConfiguration(config);
