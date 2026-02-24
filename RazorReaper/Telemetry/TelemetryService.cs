@@ -10,7 +10,7 @@ namespace RazorReaper.Telemetry;
 public sealed class TelemetryService : ITelemetryService
 {
     private static readonly Version FallbackVersion = new(0, 0, 0, 0);
-    private const string DefaultWorkerName = "razorreaper-telemetry-backend";
+    private const string DefaultWorkerName = "razorreaper-app-telemetry";
 
     private readonly ILogger<TelemetryService> _logger;
     private readonly AppConfiguration _configuration;

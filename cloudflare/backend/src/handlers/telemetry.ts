@@ -1,3 +1,4 @@
+import { defaultWorkerTelemetryName } from '../constants';
 import { isAuthorized } from '../lib/auth';
 import { hashInstallId } from '../lib/hash';
 import { jsonResponse } from '../lib/http';
@@ -65,23 +66,36 @@ export async function handleTelemetryEvent(request: Request, env: WorkerEnv): Pr
 }
 
 function serializeProperties(properties: TelemetryRequestBody['properties']): string | null {
-	if (!properties || typeof properties !== 'object') {
-		return null;
-	}
-
 	const normalized: Record<string, string> = {};
-	for (const [key, value] of Object.entries(properties)) {
-		const trimmedKey = key.trim();
-		const trimmedValue = value.trim();
-		if (trimmedKey.length === 0 || trimmedValue.length === 0) {
-			continue;
-		}
 
-		normalized[trimmedKey] = trimmedValue;
+	if (properties && typeof properties === 'object') {
+		for (const [key, value] of Object.entries(properties)) {
+			const trimmedKey = key.trim();
+			const trimmedValue = value.trim();
+			if (trimmedKey.length === 0 || trimmedValue.length === 0) {
+				continue;
+			}
+
+			normalized[trimmedKey] = trimmedValue;
+		}
 	}
 
-	if (Object.keys(normalized).length === 0) {
-		return null;
+	const workerIdentity = (
+		normalized.worker_name ??
+		normalized.workerName ??
+		normalized.worker ??
+		normalized.service ??
+		''
+	).trim();
+
+	if (
+		workerIdentity.length === 0 ||
+		workerIdentity.toLowerCase() === 'unknown' ||
+		workerIdentity === 'razorreaper-telemetry-backend'
+	) {
+		normalized.worker_name = defaultWorkerTelemetryName;
+	} else {
+		normalized.worker_name = workerIdentity;
 	}
 
 	return JSON.stringify(normalized);

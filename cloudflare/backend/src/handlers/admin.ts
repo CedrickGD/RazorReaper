@@ -1,4 +1,4 @@
-import { allowedEventNames } from '../constants';
+import { allowedEventNames, defaultWorkerTelemetryName } from '../constants';
 import { getAdminAuthError } from '../lib/auth';
 import { addUtcDays, toUtcDateString, truncateToUtcDate } from '../lib/date';
 import { jsonResponse } from '../lib/http';
@@ -499,7 +499,7 @@ export async function handleAdminWorkers(request: Request, env: WorkerEnv): Prom
 					NULLIF(json_extract(properties_json, '$.workerName'), ''),
 					NULLIF(json_extract(properties_json, '$.worker'), ''),
 					NULLIF(json_extract(properties_json, '$.service'), ''),
-					'unknown'
+					'${defaultWorkerTelemetryName}'
 				) AS worker_name,
 				COUNT(*) AS total_events,
 				COUNT(DISTINCT install_id_hash) AS unique_installs,

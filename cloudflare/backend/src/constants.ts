@@ -1,5 +1,7 @@
 import type { TelemetryEventName } from './types/telemetry';
 
+export const defaultWorkerTelemetryName = 'razorreaper-app-telemetry';
+
 export const allowedEventNames = new Set<TelemetryEventName>([
 	'install_first_run',
 	'app_start',

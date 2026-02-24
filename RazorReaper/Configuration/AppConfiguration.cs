@@ -112,7 +112,7 @@ public class TelemetrySettings
     /// <summary>
     /// Worker identifier written into telemetry properties for backend worker monitoring.
     /// </summary>
-    public string WorkerName { get; set; } = "razorreaper-telemetry-backend";
+    public string WorkerName { get; set; } = "razorreaper-app-telemetry";
 
     /// <summary>
     /// Request timeout in seconds.
