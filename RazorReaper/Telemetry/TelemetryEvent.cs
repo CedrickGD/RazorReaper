@@ -18,4 +18,7 @@ public sealed class TelemetryEvent
 
     [JsonPropertyName("platform")]
     public string Platform { get; init; } = "windows";
+
+    [JsonPropertyName("properties")]
+    public Dictionary<string, string>? Properties { get; init; }
 }

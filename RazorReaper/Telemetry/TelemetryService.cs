@@ -9,6 +9,7 @@ namespace RazorReaper.Telemetry;
 public sealed class TelemetryService : ITelemetryService
 {
     private static readonly Version FallbackVersion = new(0, 0, 0, 0);
+    private const string DefaultWorkerName = "razorreaper-telemetry-backend";
 
     private readonly ILogger<TelemetryService> _logger;
     private readonly AppConfiguration _configuration;
@@ -143,7 +144,11 @@ public sealed class TelemetryService : ITelemetryService
                 EventName = eventName,
                 AppVersion = GetCurrentVersionLabel(),
                 TimestampUtc = DateTimeOffset.UtcNow,
-                Platform = GetPlatformLabel()
+                Platform = GetPlatformLabel(),
+                Properties = new Dictionary<string, string>
+                {
+                    ["worker_name"] = ResolveWorkerName()
+                }
             };
 
             return await _telemetryClient.SendAsync(telemetryEvent, cancellationToken).ConfigureAwait(false);
@@ -164,6 +169,12 @@ public sealed class TelemetryService : ITelemetryService
         }
 
         return !string.IsNullOrWhiteSpace(_configuration.Telemetry.Endpoint);
+    }
+
+    private string ResolveWorkerName()
+    {
+        var configured = _configuration.Telemetry.WorkerName?.Trim();
+        return string.IsNullOrWhiteSpace(configured) ? DefaultWorkerName : configured;
     }
 
     private static string GetCurrentVersionLabel()

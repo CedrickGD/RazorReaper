@@ -110,6 +110,11 @@ public class TelemetrySettings
     public string AppKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// Worker identifier written into telemetry properties for backend worker monitoring.
+    /// </summary>
+    public string WorkerName { get; set; } = "razorreaper-telemetry-backend";
+
+    /// <summary>
     /// Request timeout in seconds.
     /// </summary>
     public int RequestTimeoutSeconds { get; set; } = 3;
