@@ -287,8 +287,6 @@ node_modules/
 
 # Local app/runtime secrets
 RazorReaper/appsettings.local.json
-cloudflare/backend/.dev.vars
-cloudflare/backend/.wrangler/
 
 # Visual Studio 6 build log
 *.plg

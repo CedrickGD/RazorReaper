@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using RazorReaper.Configuration;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
-using RazorReaper.Telemetry;
 using Serilog;
 using Serilog.Core;
 using System.Reflection;
@@ -138,11 +137,6 @@ namespace RazorReaper
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
-            services.AddSingleton<IInstallIdProvider, FileInstallIdProvider>();
-            services.AddSingleton<ITelemetryStateStore, FileTelemetryStateStore>();
-            services.AddSingleton<ITelemetryClient, HttpTelemetryClient>();
-            services.AddSingleton<ITelemetryService, TelemetryService>();
-            services.AddSingleton<ITelemetryStartupService, TelemetryStartupService>();
         }
     }
 }

@@ -12,7 +12,6 @@ public static class AppDiagnostics
     private const string LoggingEnabledKey = "rr.logging.enabled";
     private const string VerboseLoggingKey = "rr.logging.verbose";
     private const string LogFolderKey = "rr.logging.folder";
-    private const string TelemetryEnabledKey = "rr.telemetry.enabled";
     private const string LastErrorCodeKey = "rr.error.code";
     private const string LastErrorMessageKey = "rr.error.message";
     private const string LastErrorTimeKey = "rr.error.time";
@@ -58,21 +57,6 @@ public static class AppDiagnostics
     public static string GetLogFilePath()
     {
         return Path.Combine(GetLogFolder(), DefaultLogFileName);
-    }
-
-    public static bool GetTelemetryEnabled(bool defaultValue)
-    {
-        return Preferences.Get(TelemetryEnabledKey, defaultValue);
-    }
-
-    public static void SetTelemetryEnabled(bool enabled)
-    {
-        Preferences.Set(TelemetryEnabledKey, enabled);
-    }
-
-    public static void ClearTelemetryEnabledOverride()
-    {
-        Preferences.Remove(TelemetryEnabledKey);
     }
 
     public static void RecordError(string code, string message, Exception? exception = null)

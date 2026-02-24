@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
 using RazorReaper.Models;
-using RazorReaper.Telemetry;
 
 namespace RazorReaper.Services;
 
@@ -10,12 +9,10 @@ public class UpdateService : IUpdateService
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/CedrickGD/RazorReaper/master/update.xml";
     private static readonly Version FallbackVersion = new Version(0, 0, 0, 0);
     private readonly HttpClient httpClient;
-    private readonly ITelemetryService telemetryService;
 
-    public UpdateService(HttpClient httpClient, ITelemetryService telemetryService)
+    public UpdateService(HttpClient httpClient)
     {
         this.httpClient = httpClient;
-        this.telemetryService = telemetryService;
     }
 
     public Version CurrentVersion => GetAssemblyVersion();
@@ -29,8 +26,6 @@ public class UpdateService : IUpdateService
 
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
-        _ = telemetryService.TrackUpdateCheckAsync();
-
         var currentVersion = CurrentVersion;
         try
         {
