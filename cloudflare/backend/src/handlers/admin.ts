@@ -239,6 +239,252 @@ export async function handleAdminAppOpens(request: Request, env: WorkerEnv): Pro
 	});
 }
 
+export async function handleAdminSessions(request: Request, env: WorkerEnv): Promise<Response> {
+	const authError = getAdminAuthError(request, env.ADMIN_API_KEY);
+	if (authError) {
+		return authError;
+	}
+
+	const url = new URL(request.url);
+	const rawDays = url.searchParams.get('days');
+	const rawLimit = url.searchParams.get('limit');
+	const parsedDays = rawDays ? Number.parseInt(rawDays, 10) : 7;
+	const parsedLimit = rawLimit ? Number.parseInt(rawLimit, 10) : 25;
+	const days = Number.isNaN(parsedDays) ? 7 : Math.min(Math.max(parsedDays, 1), 365);
+	const limit = Number.isNaN(parsedLimit) ? 25 : Math.min(Math.max(parsedLimit, 1), 100);
+	const dayOffset = `-${days - 1} day`;
+
+	const summary = await env.razorreaper_telemetry_prod
+		.prepare(
+			`SELECT
+				(SELECT COUNT(*)
+					FROM telemetry_events
+					WHERE event_name = 'app_start'
+					AND julianday(received_utc) >= julianday('now', '-1 day')) AS sessions_started_24h,
+				(SELECT COUNT(*)
+					FROM telemetry_events
+					WHERE event_name = 'app_start'
+					AND julianday(received_utc) >= julianday('now', '-7 day')) AS sessions_started_7d,
+				(SELECT COUNT(*)
+					FROM telemetry_events
+					WHERE event_name = 'app_start'
+					AND julianday(received_utc) >= julianday('now', '-30 day')) AS sessions_started_30d,
+				(SELECT COUNT(*)
+					FROM telemetry_events
+					WHERE event_name = 'app_start') AS sessions_started_all_time,
+				(SELECT COUNT(*)
+					FROM telemetry_events
+					WHERE event_name = 'app_session_end') AS sessions_ended_all_time,
+				(SELECT COUNT(*)
+					FROM (
+						SELECT
+							install_id_hash,
+							COALESCE(
+								NULLIF(
+									CASE
+										WHEN json_valid(properties_json) = 1
+											THEN json_extract(properties_json, '$.session_id')
+										ELSE NULL
+									END,
+									''
+								),
+								printf('legacy-%d', id)
+							) AS session_id
+						FROM telemetry_events
+						WHERE event_name = 'app_start'
+						AND julianday(received_utc) >= julianday('now', '-1 day')
+					) starts
+					LEFT JOIN (
+						SELECT
+							install_id_hash,
+							COALESCE(
+								NULLIF(
+									CASE
+										WHEN json_valid(properties_json) = 1
+											THEN json_extract(properties_json, '$.session_id')
+										ELSE NULL
+									END,
+									''
+								),
+								''
+							) AS session_id
+						FROM telemetry_events
+						WHERE event_name = 'app_session_end'
+					) ends
+						ON starts.install_id_hash = ends.install_id_hash
+						AND starts.session_id = ends.session_id
+					WHERE ends.session_id IS NULL) AS active_sessions,
+				(SELECT CAST(AVG(CASE
+						WHEN json_valid(properties_json) = 1
+							AND CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER) >= 0
+						THEN CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER)
+						ELSE NULL
+					END) AS INTEGER)
+					FROM telemetry_events
+					WHERE event_name = 'app_session_end'
+					AND julianday(received_utc) >= julianday('now', '-1 day')) AS avg_duration_seconds_24h,
+				(SELECT CAST(AVG(CASE
+						WHEN json_valid(properties_json) = 1
+							AND CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER) >= 0
+						THEN CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER)
+						ELSE NULL
+					END) AS INTEGER)
+					FROM telemetry_events
+					WHERE event_name = 'app_session_end'
+					AND julianday(received_utc) >= julianday('now', '-7 day')) AS avg_duration_seconds_7d,
+				(SELECT CAST(AVG(CASE
+						WHEN json_valid(properties_json) = 1
+							AND CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER) >= 0
+						THEN CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER)
+						ELSE NULL
+					END) AS INTEGER)
+					FROM telemetry_events
+					WHERE event_name = 'app_session_end'
+					AND julianday(received_utc) >= julianday('now', '-30 day')) AS avg_duration_seconds_30d,
+				(SELECT CAST(AVG(CASE
+						WHEN json_valid(properties_json) = 1
+							AND CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER) >= 0
+						THEN CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER)
+						ELSE NULL
+					END) AS INTEGER)
+					FROM telemetry_events
+					WHERE event_name = 'app_session_end') AS avg_duration_seconds_all_time,
+				(SELECT MAX(received_utc)
+					FROM telemetry_events
+					WHERE event_name = 'app_start') AS latest_app_start_utc,
+				(SELECT MAX(received_utc)
+					FROM telemetry_events
+					WHERE event_name = 'app_session_end') AS latest_session_end_utc`
+		)
+		.first<{
+			sessions_started_24h: number;
+			sessions_started_7d: number;
+			sessions_started_30d: number;
+			sessions_started_all_time: number;
+			sessions_ended_all_time: number;
+			active_sessions: number;
+			avg_duration_seconds_24h: number | null;
+			avg_duration_seconds_7d: number | null;
+			avg_duration_seconds_30d: number | null;
+			avg_duration_seconds_all_time: number | null;
+			latest_app_start_utc: string | null;
+			latest_session_end_utc: string | null;
+		}>();
+
+	const queryResult = await env.razorreaper_telemetry_prod
+		.prepare(
+			`WITH app_starts AS (
+				SELECT
+					install_id_hash,
+					COALESCE(
+						NULLIF(
+							CASE
+								WHEN json_valid(properties_json) = 1
+									THEN json_extract(properties_json, '$.session_id')
+								ELSE NULL
+							END,
+							''
+						),
+						printf('legacy-%d', id)
+					) AS session_id,
+					event_utc AS started_utc,
+					received_utc AS started_received_utc
+				FROM telemetry_events
+				WHERE event_name = 'app_start'
+				AND date(event_utc) >= date('now', ?)
+			),
+			app_ends AS (
+				SELECT
+					install_id_hash,
+					COALESCE(
+						NULLIF(
+							CASE
+								WHEN json_valid(properties_json) = 1
+									THEN json_extract(properties_json, '$.session_id')
+								ELSE NULL
+							END,
+							''
+						),
+						''
+					) AS session_id,
+					MAX(event_utc) AS ended_utc,
+					MAX(received_utc) AS ended_received_utc,
+					MAX(CASE
+						WHEN json_valid(properties_json) = 1
+							AND CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER) >= 0
+							THEN CAST(json_extract(properties_json, '$.duration_seconds') AS INTEGER)
+						ELSE NULL
+					END) AS duration_seconds
+				FROM telemetry_events
+				WHERE event_name = 'app_session_end'
+				GROUP BY install_id_hash, session_id
+			)
+			SELECT
+				s.session_id,
+				s.install_id_hash,
+				s.started_utc,
+				s.started_received_utc,
+				e.ended_utc,
+				e.ended_received_utc,
+				CASE
+					WHEN e.duration_seconds IS NOT NULL THEN e.duration_seconds
+					WHEN e.ended_utc IS NOT NULL THEN MAX(CAST((julianday(e.ended_utc) - julianday(s.started_utc)) * 86400 AS INTEGER), 0)
+					ELSE NULL
+				END AS duration_seconds,
+				CASE WHEN e.ended_utc IS NULL THEN 1 ELSE 0 END AS is_active
+			FROM app_starts s
+			LEFT JOIN app_ends e
+				ON s.install_id_hash = e.install_id_hash
+				AND s.session_id = e.session_id
+			ORDER BY s.started_received_utc DESC
+			LIMIT ?`
+		)
+		.bind(dayOffset, limit)
+		.all<{
+			session_id: string;
+			install_id_hash: string;
+			started_utc: string;
+			started_received_utc: string;
+			ended_utc: string | null;
+			ended_received_utc: string | null;
+			duration_seconds: number | null;
+			is_active: number;
+		}>();
+
+	const items = queryResult.results.map((row) => ({
+		session_id: row.session_id,
+		install_id_hash: row.install_id_hash,
+		started_utc: row.started_utc,
+		started_received_utc: row.started_received_utc,
+		ended_utc: row.ended_utc,
+		ended_received_utc: row.ended_received_utc,
+		duration_seconds: row.duration_seconds,
+		is_active: row.is_active === 1,
+	}));
+
+	const sessionsStartedAllTime = summary?.sessions_started_all_time ?? 0;
+	const sessionsEndedAllTime = summary?.sessions_ended_all_time ?? 0;
+	const activeSessions = summary?.active_sessions ?? 0;
+
+	return jsonResponse(200, {
+		days,
+		limit,
+		latest_app_start_utc: summary?.latest_app_start_utc ?? null,
+		latest_session_end_utc: summary?.latest_session_end_utc ?? null,
+		active_sessions: activeSessions,
+		sessions_started_24h: summary?.sessions_started_24h ?? 0,
+		sessions_started_7d: summary?.sessions_started_7d ?? 0,
+		sessions_started_30d: summary?.sessions_started_30d ?? 0,
+		sessions_started_all_time: sessionsStartedAllTime,
+		sessions_ended_all_time: sessionsEndedAllTime,
+		avg_duration_seconds_24h: summary?.avg_duration_seconds_24h ?? null,
+		avg_duration_seconds_7d: summary?.avg_duration_seconds_7d ?? null,
+		avg_duration_seconds_30d: summary?.avg_duration_seconds_30d ?? null,
+		avg_duration_seconds_all_time: summary?.avg_duration_seconds_all_time ?? null,
+		items,
+	});
+}
+
 export async function handleAdminWorkers(request: Request, env: WorkerEnv): Promise<Response> {
 	const authError = getAdminAuthError(request, env.ADMIN_API_KEY);
 	if (authError) {

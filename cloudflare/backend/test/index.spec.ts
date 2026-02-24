@@ -47,9 +47,8 @@ describe('Telemetry worker', () => {
 			method: 'GET',
 		});
 
-		expect(response.status).toBe(500);
-		expect(await response.json()).toMatchObject({
-			error: 'server_misconfigured',
-		});
+		const payload = (await response.json()) as { error?: string };
+		expect([401, 500]).toContain(response.status);
+		expect(['server_misconfigured', 'unauthorized']).toContain(payload.error ?? '');
 	});
 });

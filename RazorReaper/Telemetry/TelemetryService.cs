@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
@@ -17,6 +18,9 @@ public sealed class TelemetryService : ITelemetryService
     private readonly ITelemetryClient _telemetryClient;
     private readonly ITelemetryStateStore _stateStore;
     private readonly SemaphoreSlim _stateGate = new(1, 1);
+    private readonly string _sessionId = Guid.NewGuid().ToString("D");
+    private readonly DateTimeOffset _sessionStartedUtc = DateTimeOffset.UtcNow;
+    private int _sessionEndTracked;
 
     public TelemetryService(
         ILogger<TelemetryService> logger,
@@ -74,7 +78,41 @@ public sealed class TelemetryService : ITelemetryService
             return;
         }
 
-        await TrackEventCoreAsync(TelemetryEventNames.AppStart, cancellationToken).ConfigureAwait(false);
+        var properties = new Dictionary<string, string>
+        {
+            ["session_started_utc"] = _sessionStartedUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture)
+        };
+
+        await TrackEventCoreAsync(TelemetryEventNames.AppStart, cancellationToken, properties).ConfigureAwait(false);
+    }
+
+    public async Task TrackAppSessionEndAsync(CancellationToken cancellationToken = default)
+    {
+        if (!ShouldSendTelemetry())
+        {
+            return;
+        }
+
+        if (Interlocked.Exchange(ref _sessionEndTracked, 1) != 0)
+        {
+            return;
+        }
+
+        var endedAtUtc = DateTimeOffset.UtcNow;
+        var durationSeconds = Math.Max((int)(endedAtUtc - _sessionStartedUtc).TotalSeconds, 0);
+        var properties = new Dictionary<string, string>
+        {
+            ["session_started_utc"] = _sessionStartedUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
+            ["session_ended_utc"] = endedAtUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
+            ["duration_seconds"] = durationSeconds.ToString(CultureInfo.InvariantCulture),
+            ["end_reason"] = "app_exit"
+        };
+
+        var sent = await TrackEventCoreAsync(TelemetryEventNames.AppSessionEnd, cancellationToken, properties).ConfigureAwait(false);
+        if (!sent)
+        {
+            Interlocked.Exchange(ref _sessionEndTracked, 0);
+        }
     }
 
     public async Task TrackHeartbeatIfDueAsync(CancellationToken cancellationToken = default)
@@ -127,7 +165,10 @@ public sealed class TelemetryService : ITelemetryService
         await TrackEventCoreAsync(TelemetryEventNames.UpdateCheck, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<bool> TrackEventCoreAsync(string eventName, CancellationToken cancellationToken)
+    private async Task<bool> TrackEventCoreAsync(
+        string eventName,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? additionalProperties = null)
     {
         if (!TelemetryEventNames.IsSupported(eventName))
         {
@@ -138,6 +179,23 @@ public sealed class TelemetryService : ITelemetryService
         try
         {
             var identity = await _installIdProvider.GetOrCreateAsync(cancellationToken).ConfigureAwait(false);
+            var properties = CreateBaseProperties();
+
+            if (additionalProperties != null)
+            {
+                foreach (var (key, value) in additionalProperties)
+                {
+                    var trimmedKey = key?.Trim();
+                    var trimmedValue = value?.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmedKey) || string.IsNullOrWhiteSpace(trimmedValue))
+                    {
+                        continue;
+                    }
+
+                    properties[trimmedKey] = trimmedValue;
+                }
+            }
+
             var telemetryEvent = new TelemetryEvent
             {
                 InstallId = identity.InstallId,
@@ -145,10 +203,7 @@ public sealed class TelemetryService : ITelemetryService
                 AppVersion = GetCurrentVersionLabel(),
                 TimestampUtc = DateTimeOffset.UtcNow,
                 Platform = GetPlatformLabel(),
-                Properties = new Dictionary<string, string>
-                {
-                    ["worker_name"] = ResolveWorkerName()
-                }
+                Properties = properties
             };
 
             return await _telemetryClient.SendAsync(telemetryEvent, cancellationToken).ConfigureAwait(false);
@@ -169,6 +224,15 @@ public sealed class TelemetryService : ITelemetryService
         }
 
         return !string.IsNullOrWhiteSpace(_configuration.Telemetry.Endpoint);
+    }
+
+    private Dictionary<string, string> CreateBaseProperties()
+    {
+        return new Dictionary<string, string>
+        {
+            ["worker_name"] = ResolveWorkerName(),
+            ["session_id"] = _sessionId
+        };
     }
 
     private string ResolveWorkerName()

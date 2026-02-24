@@ -1,6 +1,7 @@
 export type TelemetryEventName =
 	| 'install_first_run'
 	| 'app_start'
+	| 'app_session_end'
 	| 'heartbeat'
 	| 'update_check'
 	| 'update_check_result'

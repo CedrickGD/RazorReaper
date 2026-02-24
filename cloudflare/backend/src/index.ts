@@ -3,6 +3,7 @@ import {
 	handleAdminDaily,
 	handleAdminEventsByType,
 	handleAdminOverview,
+	handleAdminSessions,
 	handleAdminWorkers,
 } from './handlers/admin';
 import { handleTelemetryEvent } from './handlers/telemetry';
@@ -47,6 +48,10 @@ export default {
 
 		if (request.method === 'GET' && url.pathname === '/v1/admin/workers') {
 			return handleAdminWorkers(request, runtimeEnv);
+		}
+
+		if (request.method === 'GET' && url.pathname === '/v1/admin/sessions') {
+			return handleAdminSessions(request, runtimeEnv);
 		}
 
 		return jsonResponse(404, {
