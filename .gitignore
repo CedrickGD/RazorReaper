@@ -284,6 +284,7 @@ FakesAssemblies/
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
 node_modules/
+.wrangler/
 
 # Local app/runtime secrets
 RazorReaper/appsettings.local.json

@@ -9,10 +9,12 @@ namespace RazorReaper.Services.Implementations;
 public class ProcessService : IProcessService
 {
     private readonly ILogger<ProcessService> _logger;
+    private readonly ITelemetryService _telemetryService;
 
-    public ProcessService(ILogger<ProcessService> logger)
+    public ProcessService(ILogger<ProcessService> logger, ITelemetryService telemetryService)
     {
         _logger = logger;
+        _telemetryService = telemetryService;
     }
 
     /// <inheritdoc/>
@@ -68,13 +70,30 @@ public class ProcessService : IProcessService
                 _logger.LogWarning("Process.Start returned null for: {FilePath}", filePath);
                 // For URI protocols (steam://), Process.Start may return null but still work
                 // Return a dummy process to indicate success
+                _ = _telemetryService.TrackEventAsync(
+                    "process_start",
+                    TelemetryEventStatus.Ok,
+                    "Process launch requested (null handle).",
+                    BuildProcessMetrics(filePath, null));
                 return Process.GetCurrentProcess();
             }
+
+            _ = _telemetryService.TrackEventAsync(
+                "process_start",
+                TelemetryEventStatus.Ok,
+                "Process launch requested.",
+                BuildProcessMetrics(filePath, process));
+
             return process;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting process: {FilePath}", filePath);
+            _ = _telemetryService.TrackEventAsync(
+                "process_start",
+                TelemetryEventStatus.Down,
+                ex.Message,
+                BuildProcessMetrics(filePath, null));
             throw;
         }
     }
@@ -87,12 +106,58 @@ public class ProcessService : IProcessService
             _logger.LogInformation("Killing process: {ProcessName} (ID: {ProcessId})",
                 process.ProcessName, process.Id);
             process.Kill();
+            _ = _telemetryService.TrackEventAsync(
+                "process_kill",
+                TelemetryEventStatus.Ok,
+                "Process kill requested.",
+                new Dictionary<string, object?>
+                {
+                    ["process_name"] = process.ProcessName,
+                    ["process_id"] = process.Id
+                });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error killing process: {ProcessName} (ID: {ProcessId})",
                 process.ProcessName, process.Id);
+            _ = _telemetryService.TrackEventAsync(
+                "process_kill",
+                TelemetryEventStatus.Down,
+                ex.Message,
+                new Dictionary<string, object?>
+                {
+                    ["process_name"] = process.ProcessName,
+                    ["process_id"] = process.Id
+                });
             throw;
         }
+    }
+
+    private static Dictionary<string, object?> BuildProcessMetrics(string filePath, Process? process)
+    {
+        var metrics = new Dictionary<string, object?>
+        {
+            ["target"] = filePath,
+            ["target_name"] = Path.GetFileName(filePath)
+        };
+
+        if (Uri.TryCreate(filePath, UriKind.Absolute, out var uri))
+        {
+            metrics["target_scheme"] = uri.Scheme;
+            metrics["target_is_uri"] = !uri.IsFile;
+        }
+        else
+        {
+            metrics["target_scheme"] = "file";
+            metrics["target_is_uri"] = false;
+        }
+
+        if (process is not null)
+        {
+            metrics["process_id"] = process.Id;
+            metrics["process_name"] = process.ProcessName;
+        }
+
+        return metrics;
     }
 }

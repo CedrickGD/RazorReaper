@@ -34,6 +34,7 @@ namespace RazorReaper
 
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("RazorReaperTelemetry");
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -137,6 +138,7 @@ namespace RazorReaper
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
+            services.AddSingleton<ITelemetryService, TelemetryService>();
         }
     }
 }

@@ -10,6 +10,7 @@ namespace RazorReaper.Services.Implementations;
 public class IniPresetService : IIniPresetService
 {
     private readonly ILogger<IniPresetService> _logger;
+    private readonly ITelemetryService _telemetryService;
     private readonly List<IniPreset> _presets;
     private readonly List<IniPreset> _customPresets = new();
     private readonly string _customPresetsPath;
@@ -17,9 +18,10 @@ public class IniPresetService : IIniPresetService
 
     private const string CustomPresetsFileName = "custom-ini-presets.json";
 
-    public IniPresetService(ILogger<IniPresetService> logger)
+    public IniPresetService(ILogger<IniPresetService> logger, ITelemetryService telemetryService)
     {
         _logger = logger;
+        _telemetryService = telemetryService;
         _presets = InitializePresets();
         _customPresetsPath = GetCustomPresetsPath();
         LoadCustomPresets();
@@ -92,6 +94,10 @@ public class IniPresetService : IIniPresetService
             if (!TryNormalizePreset(preset, out var normalized))
             {
                 _logger.LogWarning("Custom preset rejected due to invalid data.");
+                _ = _telemetryService.TrackEventAsync(
+                    "ini_preset_add",
+                    TelemetryEventStatus.Degraded,
+                    "Custom preset rejected due to invalid data.");
                 return false;
             }
 
@@ -102,6 +108,11 @@ public class IniPresetService : IIniPresetService
                 if (_presets.Any(p => p.Name.Equals(normalized.Name, StringComparison.OrdinalIgnoreCase)))
                 {
                     _logger.LogWarning("Preset name already exists: {Name}", normalized.Name);
+                    _ = _telemetryService.TrackEventAsync(
+                        "ini_preset_add",
+                        TelemetryEventStatus.Degraded,
+                        "Custom preset name already exists.",
+                        new Dictionary<string, object?> { ["preset_name"] = normalized.Name });
                     return false;
                 }
 
@@ -119,11 +130,21 @@ public class IniPresetService : IIniPresetService
                 }
             }
 
+            _ = _telemetryService.TrackEventAsync(
+                "ini_preset_add",
+                saved ? TelemetryEventStatus.Ok : TelemetryEventStatus.Down,
+                saved ? "Custom preset saved." : "Custom preset save failed.",
+                new Dictionary<string, object?> { ["preset_name"] = normalized.Name });
+
             return saved;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding custom preset");
+            _ = _telemetryService.TrackEventAsync(
+                "ini_preset_add",
+                TelemetryEventStatus.Down,
+                ex.Message);
             return false;
         }
     }
@@ -135,6 +156,10 @@ public class IniPresetService : IIniPresetService
         {
             if (string.IsNullOrWhiteSpace(name))
             {
+                _ = _telemetryService.TrackEventAsync(
+                    "ini_preset_remove",
+                    TelemetryEventStatus.Degraded,
+                    "Custom preset remove rejected due to empty name.");
                 return false;
             }
 
@@ -145,6 +170,11 @@ public class IniPresetService : IIniPresetService
                 target = _customPresets.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
                 if (target == null)
                 {
+                    _ = _telemetryService.TrackEventAsync(
+                        "ini_preset_remove",
+                        TelemetryEventStatus.Degraded,
+                        "Custom preset not found.",
+                        new Dictionary<string, object?> { ["preset_name"] = name });
                     return false;
                 }
 
@@ -162,11 +192,22 @@ public class IniPresetService : IIniPresetService
                 }
             }
 
+            _ = _telemetryService.TrackEventAsync(
+                "ini_preset_remove",
+                saved ? TelemetryEventStatus.Ok : TelemetryEventStatus.Down,
+                saved ? "Custom preset removed." : "Custom preset removal failed.",
+                new Dictionary<string, object?> { ["preset_name"] = name });
+
             return saved;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing custom preset");
+            _ = _telemetryService.TrackEventAsync(
+                "ini_preset_remove",
+                TelemetryEventStatus.Down,
+                ex.Message,
+                new Dictionary<string, object?> { ["preset_name"] = name });
             return false;
         }
     }

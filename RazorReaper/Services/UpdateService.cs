@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
+using Microsoft.Extensions.Logging;
 using RazorReaper.Models;
 
 namespace RazorReaper.Services;
@@ -9,10 +10,14 @@ public class UpdateService : IUpdateService
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/CedrickGD/RazorReaper/master/update.xml";
     private static readonly Version FallbackVersion = new Version(0, 0, 0, 0);
     private readonly HttpClient httpClient;
+    private readonly ITelemetryService telemetryService;
+    private readonly ILogger<UpdateService> logger;
 
-    public UpdateService(HttpClient httpClient)
+    public UpdateService(HttpClient httpClient, ITelemetryService telemetryService, ILogger<UpdateService> logger)
     {
         this.httpClient = httpClient;
+        this.telemetryService = telemetryService;
+        this.logger = logger;
     }
 
     public Version CurrentVersion => GetAssemblyVersion();
@@ -38,23 +43,27 @@ public class UpdateService : IUpdateService
 
             if (item == null)
             {
-                return new UpdateCheckResult
+                var result = new UpdateCheckResult
                 {
                     CurrentVersion = currentVersion,
                     ErrorMessage = "Update manifest is missing required data.",
                     CheckedAt = DateTimeOffset.UtcNow
                 };
+                TrackUpdateTelemetry(result, "invalid_manifest", TelemetryEventStatus.Degraded);
+                return result;
             }
 
             var versionText = item.Element("version")?.Value?.Trim();
             if (string.IsNullOrWhiteSpace(versionText) || !Version.TryParse(versionText, out var latestVersion))
             {
-                return new UpdateCheckResult
+                var result = new UpdateCheckResult
                 {
                     CurrentVersion = currentVersion,
                     ErrorMessage = "Update manifest contains an invalid version.",
                     CheckedAt = DateTimeOffset.UtcNow
                 };
+                TrackUpdateTelemetry(result, "invalid_version", TelemetryEventStatus.Degraded);
+                return result;
             }
 
             var downloadUrl = item.Element("url")?.Value?.Trim();
@@ -62,7 +71,7 @@ public class UpdateService : IUpdateService
             var mandatoryText = item.Element("mandatory")?.Value?.Trim();
             var isMandatory = bool.TryParse(mandatoryText, out var mandatory) && mandatory;
 
-            return new UpdateCheckResult
+            var successResult = new UpdateCheckResult
             {
                 CurrentVersion = currentVersion,
                 LatestVersion = latestVersion,
@@ -72,34 +81,68 @@ public class UpdateService : IUpdateService
                 IsMandatory = isMandatory,
                 CheckedAt = DateTimeOffset.UtcNow
             };
+            TrackUpdateTelemetry(
+                successResult,
+                successResult.HasUpdate ? "update_available" : "up_to_date",
+                TelemetryEventStatus.Ok);
+            return successResult;
         }
         catch (TaskCanceledException)
         {
-            return new UpdateCheckResult
+            var result = new UpdateCheckResult
             {
                 CurrentVersion = currentVersion,
                 ErrorMessage = "Update check timed out.",
                 CheckedAt = DateTimeOffset.UtcNow
             };
+            TrackUpdateTelemetry(result, "timeout", TelemetryEventStatus.Degraded);
+            return result;
         }
         catch (HttpRequestException)
         {
-            return new UpdateCheckResult
+            var result = new UpdateCheckResult
             {
                 CurrentVersion = currentVersion,
                 ErrorMessage = "Could not reach the update server.",
                 CheckedAt = DateTimeOffset.UtcNow
             };
+            TrackUpdateTelemetry(result, "network_error", TelemetryEventStatus.Degraded);
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
-            return new UpdateCheckResult
+            logger.LogWarning(ex, "Update check failed unexpectedly.");
+            var result = new UpdateCheckResult
             {
                 CurrentVersion = currentVersion,
                 ErrorMessage = "Update check failed.",
                 CheckedAt = DateTimeOffset.UtcNow
             };
+            TrackUpdateTelemetry(result, "failed", TelemetryEventStatus.Degraded);
+            return result;
         }
+    }
+
+    private void TrackUpdateTelemetry(
+        UpdateCheckResult result,
+        string outcome,
+        TelemetryEventStatus status)
+    {
+        var metrics = new Dictionary<string, object?>
+        {
+            ["outcome"] = outcome,
+            ["current_version"] = FormatVersion(result.CurrentVersion),
+            ["latest_version"] = result.LatestVersion is null ? null : FormatVersion(result.LatestVersion),
+            ["has_update"] = result.HasUpdate,
+            ["is_mandatory"] = result.IsMandatory,
+            ["checked_at"] = result.CheckedAt.ToString("O")
+        };
+
+        _ = telemetryService.TrackEventAsync(
+            "update_check",
+            status,
+            result.ErrorMessage ?? "Update check completed.",
+            metrics);
     }
 
     private static Version GetAssemblyVersion()

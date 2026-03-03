@@ -19,6 +19,11 @@ public class AppConfiguration
     /// Autoclicker configuration.
     /// </summary>
     public AutoclickerSettings Autoclicker { get; set; } = new();
+
+    /// <summary>
+    /// Telemetry and remote dashboard reporting settings.
+    /// </summary>
+    public TelemetrySettings Telemetry { get; set; } = new();
 }
 
 /// <summary>
@@ -82,4 +87,40 @@ public class AutoclickerSettings
     /// Hotkey monitoring interval in milliseconds.
     /// </summary>
     public int HotkeyMonitorInterval { get; set; } = 50;
+}
+
+/// <summary>
+/// Telemetry reporting settings.
+/// </summary>
+public class TelemetrySettings
+{
+    /// <summary>
+    /// Enables telemetry pushes to the admin panel backend.
+    /// </summary>
+    public bool Enabled { get; set; } = false;
+
+    /// <summary>
+    /// Backend endpoint for telemetry events.
+    /// </summary>
+    public string Endpoint { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Ingest credential sent as Bearer token (and legacy X-App-Key for compatibility).
+    /// </summary>
+    public string AppKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Logical source name shown in the dashboard.
+    /// </summary>
+    public string WorkerName { get; set; } = "razorreaper-app";
+
+    /// <summary>
+    /// Heartbeat interval in seconds.
+    /// </summary>
+    public int HeartbeatIntervalSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Per-request timeout in seconds.
+    /// </summary>
+    public int RequestTimeoutSeconds { get; set; } = 10;
 }
