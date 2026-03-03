@@ -112,7 +112,7 @@ public class TelemetrySettings
     /// <summary>
     /// Logical source name shown in the dashboard.
     /// </summary>
-    public string WorkerName { get; set; } = "razorreaper-app";
+    public string WorkerName { get; set; } = "rr-app";
 
     /// <summary>
     /// Heartbeat interval in seconds.
