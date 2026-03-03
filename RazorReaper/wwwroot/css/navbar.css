@@ -40,7 +40,7 @@
     display: flex !important;
     flex-direction: column !important;
     flex: 1 !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     padding: 1rem 0 !important;
 }
 
@@ -61,6 +61,23 @@
 
 .nav-item {
     padding: 0 0.75rem !important;
+}
+
+.nav-group-label {
+    margin: 0.85rem 0.95rem 0.15rem !important;
+    padding: 0.25rem 0.15rem !important;
+    font-size: 0.66rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.09em !important;
+    text-transform: uppercase !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    user-select: none !important;
+    pointer-events: none !important;
+}
+
+.nav-group-label:first-child {
+    margin-top: 0 !important;
 }
 
 .nav-link {

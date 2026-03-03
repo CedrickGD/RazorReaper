@@ -1,29 +1,86 @@
-name: Discord Release Notify
+name: Discord Notify
 
 on:
+  push:
+    branches:
+      - master
+      - main
   release:
-    types: [published]
+    types:
+      - published
+      - prereleased
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord message
+      - name: Validate DISCORD_WEBHOOK secret
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          REPO: ${{ github.repository }}
-          RELEASE_NAME: ${{ github.event.release.name }}
-          TAG: ${{ github.event.release.tag_name }}
-          URL: ${{ github.event.release.html_url }}
         run: |
-          # Fallback if release name is empty
-          if [ -z "$RELEASE_NAME" ]; then RELEASE_NAME="$TAG"; fi
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::error::Missing DISCORD_WEBHOOK repository secret."
+            exit 1
+          fi
 
-          payload=$(cat <<EOF
-          {
-            "content": "🚀 **New release published** in **$REPO**\\n**$RELEASE_NAME** (\\`$TAG\\`)\\n$URL"
-          }
-          EOF
-          )
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
-          curl -sS -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK"
+          if [ "$EVENT_NAME" = "release" ]; then
+            release_name="$(jq -r '.release.name // empty' "$GITHUB_EVENT_PATH")"
+            tag_name="$(jq -r '.release.tag_name // "unknown"' "$GITHUB_EVENT_PATH")"
+            release_url="$(jq -r '.release.html_url // empty' "$GITHUB_EVENT_PATH")"
+            prerelease="$(jq -r '.release.prerelease // false' "$GITHUB_EVENT_PATH")"
+
+            if [ -z "$release_name" ]; then
+              release_name="$tag_name"
+            fi
+
+            if [ "$prerelease" = "true" ]; then
+              headline="🧪 **New prerelease published**"
+            else
+              headline="🚀 **New release published**"
+            fi
+
+            content="$headline in **$REPO**"$'\n'"**$release_name** (\`$tag_name\`)"$'\n'"$release_url"
+          else
+            commit_count="$(jq '.commits | length' "$GITHUB_EVENT_PATH")"
+            compare_url="$(jq -r '.compare // empty' "$GITHUB_EVENT_PATH")"
+
+            commit_lines="$(jq -r '.commits[:5][] | "- [`" + (.id[0:7]) + "`] " + ((.message // "") | split("\n")[0])' "$GITHUB_EVENT_PATH")"
+            extra_lines=$((commit_count - 5))
+            if [ "$extra_lines" -gt 0 ]; then
+              commit_lines="$commit_lines"$'\n'"- ... and $extra_lines more"
+            fi
+
+            if [ -z "$commit_lines" ]; then
+              commit_lines="- No commit details provided by GitHub payload"
+            fi
+
+            content="📦 **Push detected** in **$REPO**"$'\n'"Branch: \`$REF_NAME\`"$'\n'"By: **$ACTOR**"$'\n'"Commits: **$commit_count**"$'\n'"$compare_url"$'\n\n'"$commit_lines"
+          fi
+
+          if [ "${#content}" -gt 1900 ]; then
+            content="${content:0:1900}"$'\n'"(truncated)"
+          fi
+
+          payload="$(jq -n --arg content "$content" '{content: $content}')"
+
+          http_code="$(curl -sS -o discord_response.txt -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK")"
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::Discord webhook returned HTTP $http_code"
+            cat discord_response.txt
+            exit 1
+          fi
