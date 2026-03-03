@@ -1,0 +1,526 @@
+@page "/steam-mods"
+@using RazorReaper.Models
+@using RazorReaper.Services
+@inject ISteamWorkshopService SteamWorkshopService
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+@inject IProcessService ProcessService
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">Steam Mods</h1>
+    <p class="page-subtitle">Browse installed ARK: Survival Evolved workshop mods with fast search and latest-install filters.</p>
+</header>
+
+<div class="steam-mods-layout">
+    <section class="content-card steam-mods-summary-card">
+        <div class="steam-mods-summary-header">
+            <div class="steam-mods-summary-meta">
+                <div class="steam-mods-meta-item">
+                    <span class="steam-mods-meta-label">Installed Mods</span>
+                    <span class="steam-mods-meta-value">@allMods.Count</span>
+                </div>
+                <div class="steam-mods-meta-item">
+                    <span class="steam-mods-meta-label">Showing</span>
+                    <span class="steam-mods-meta-value">@visibleMods.Count</span>
+                </div>
+                <div class="steam-mods-meta-item">
+                    <span class="steam-mods-meta-label">Libraries</span>
+                    <span class="steam-mods-meta-value">@librariesScanned.Count</span>
+                </div>
+                <div class="steam-mods-meta-item">
+                    <span class="steam-mods-meta-label">Named by Steam</span>
+                    <span class="steam-mods-meta-value">@allMods.Count(mod => mod.HasSteamMetadata)</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary steam-mods-refresh-btn" @onclick="RefreshModsAsync" disabled="@isLoading">
+                @(isLoading ? "Scanning..." : "Refresh Mods")
+            </button>
+        </div>
+
+        <div class="steam-mods-path-line">
+            <span class="steam-mods-path-label">Steam Path:</span>
+            <span class="steam-mods-path-value">@(string.IsNullOrWhiteSpace(steamPath) ? "Not detected" : steamPath)</span>
+        </div>
+        <div class="steam-mods-path-line">
+            <span class="steam-mods-path-label">Last Scan:</span>
+            <span class="steam-mods-path-value">@FormatScanTime(lastScannedLocal)</span>
+        </div>
+    </section>
+
+    <section class="content-card steam-mods-filter-card">
+        <div class="steam-mods-filter-grid">
+            <div class="steam-mods-filter-field">
+                <label for="mod-search">Search</label>
+                <input id="mod-search"
+                       class="steam-mods-input"
+                       @bind="SearchQuery"
+                       @bind:event="oninput"
+                       placeholder="Search by mod name or workshop ID" />
+            </div>
+
+            <div class="steam-mods-filter-field">
+                <label for="mod-sort">Sort</label>
+                <select id="mod-sort" class="steam-mods-select" @bind="SortOption">
+                    <option value="@SteamModsSort.LatestInstalled">Latest Installed</option>
+                    <option value="@SteamModsSort.LatestUpdated">Latest Updated</option>
+                    <option value="@SteamModsSort.NameAscending">Name A-Z</option>
+                    <option value="@SteamModsSort.NameDescending">Name Z-A</option>
+                    <option value="@SteamModsSort.IdAscending">Workshop ID (Low-High)</option>
+                    <option value="@SteamModsSort.IdDescending">Workshop ID (High-Low)</option>
+                </select>
+            </div>
+
+            <div class="steam-mods-filter-field">
+                <label for="mod-recency">Installed Filter</label>
+                <select id="mod-recency" class="steam-mods-select" @bind="RecencyFilter">
+                    <option value="@SteamModsRecency.All">All</option>
+                    <option value="@SteamModsRecency.Last7Days">Last 7 Days</option>
+                    <option value="@SteamModsRecency.Last30Days">Last 30 Days</option>
+                    <option value="@SteamModsRecency.Last90Days">Last 90 Days</option>
+                </select>
+            </div>
+        </div>
+
+        <label class="steam-mods-toggle">
+            <input type="checkbox" @bind="OnlyNamedMods" />
+            <span>Only show mods with Steam titles</span>
+        </label>
+    </section>
+
+    @if (scanWarnings.Count > 0)
+    {
+        <section class="content-card steam-mods-warning-card">
+            <h3>Scan Notes</h3>
+            <ul class="steam-mods-warning-list">
+                @foreach (var warning in scanWarnings)
+                {
+                    <li>@warning</li>
+                }
+            </ul>
+        </section>
+    }
+
+    @if (isLoading)
+    {
+        <section class="content-card steam-mods-empty-card">
+            <div class="steam-mods-spinner"></div>
+            <p>Scanning Steam libraries and workshop metadata...</p>
+        </section>
+    }
+    else if (!steamDetected)
+    {
+        <section class="content-card steam-mods-empty-card">
+            <h3>Steam not detected</h3>
+            <p>Install path was not found in registry. Open Steam once and then refresh.</p>
+        </section>
+    }
+    else if (allMods.Count == 0)
+    {
+        <section class="content-card steam-mods-empty-card">
+            <h3>No installed ARK workshop mods found</h3>
+            <p>This scan checks all detected Steam libraries for <code>steamapps\workshop\content\346110</code>.</p>
+        </section>
+    }
+    else if (visibleMods.Count == 0)
+    {
+        <section class="content-card steam-mods-empty-card">
+            <h3>No matches for current filters</h3>
+            <p>Try widening the recency filter or clearing the search box.</p>
+        </section>
+    }
+    else
+    {
+        <section class="steam-mods-list">
+            @foreach (var mod in visibleMods)
+            {
+                <article class="content-card steam-mods-item-card">
+                    <div class="steam-mods-item-main">
+                        <div class="steam-mods-item-title-row">
+                            <h3>@mod.Title</h3>
+                            <span class="steam-mods-id-chip">ID @mod.WorkshopId</span>
+                        </div>
+
+                        <div class="steam-mods-tag-row">
+                            <span class="steam-mods-tag">Drive: @GetDriveRoot(mod.LibraryPath)</span>
+                            <span class="steam-mods-tag">Size: @FormatSize(mod.SizeBytes)</span>
+                            <span class="steam-mods-tag">Installed: @GetRelativeAge(mod.InstalledAtUtc)</span>
+                            <span class="steam-mods-tag">Updated: @GetRelativeAge(mod.EffectiveLastUpdatedUtc)</span>
+                        </div>
+
+                        <div class="steam-mods-time-grid">
+                            <div>
+                                <span class="steam-mods-time-label">Installed (Local)</span>
+                                <span class="steam-mods-time-value">@FormatTimestamp(mod.InstalledAtUtc)</span>
+                            </div>
+                            <div>
+                                <span class="steam-mods-time-label">Updated (Best Source)</span>
+                                <span class="steam-mods-time-value">@FormatTimestamp(mod.EffectiveLastUpdatedUtc)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="steam-mods-actions">
+                        <button class="btn btn-secondary" @onclick="() => CopyWorkshopIdAsync(mod.WorkshopId)">Copy ID</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenWorkshopInBrowser(mod.WorkshopId)">Open Web</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenWorkshopInSteam(mod.WorkshopId)">Open Steam</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenModFolder(mod.ContentPath)">Open Folder</button>
+                    </div>
+                </article>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private readonly List<SteamWorkshopMod> allMods = new();
+    private readonly List<SteamWorkshopMod> visibleMods = new();
+    private readonly List<string> librariesScanned = new();
+    private readonly List<string> scanWarnings = new();
+
+    private CancellationTokenSource scanCts = new();
+    private bool isLoading;
+    private bool steamDetected;
+    private string steamPath = string.Empty;
+    private DateTime? lastScannedLocal;
+
+    private string searchQuery = string.Empty;
+    private SteamModsSort sortOption = SteamModsSort.LatestInstalled;
+    private SteamModsRecency recencyFilter = SteamModsRecency.All;
+    private bool onlyNamedMods;
+
+    private string SearchQuery
+    {
+        get => searchQuery;
+        set
+        {
+            if (string.Equals(searchQuery, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            searchQuery = value;
+            ApplyFilters();
+        }
+    }
+
+    private SteamModsSort SortOption
+    {
+        get => sortOption;
+        set
+        {
+            if (sortOption == value)
+            {
+                return;
+            }
+
+            sortOption = value;
+            ApplyFilters();
+        }
+    }
+
+    private SteamModsRecency RecencyFilter
+    {
+        get => recencyFilter;
+        set
+        {
+            if (recencyFilter == value)
+            {
+                return;
+            }
+
+            recencyFilter = value;
+            ApplyFilters();
+        }
+    }
+
+    private bool OnlyNamedMods
+    {
+        get => onlyNamedMods;
+        set
+        {
+            if (onlyNamedMods == value)
+            {
+                return;
+            }
+
+            onlyNamedMods = value;
+            ApplyFilters();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshModsAsync(showToast: false);
+    }
+
+    private async Task RefreshModsAsync()
+    {
+        await RefreshModsAsync(showToast: true);
+    }
+
+    private async Task RefreshModsAsync(bool showToast)
+    {
+        if (isLoading)
+        {
+            return;
+        }
+
+        isLoading = true;
+        StateHasChanged();
+
+        scanCts.Cancel();
+        scanCts.Dispose();
+        scanCts = new CancellationTokenSource();
+
+        try
+        {
+            var result = await SteamWorkshopService.ScanInstalledArkModsAsync(scanCts.Token);
+
+            steamDetected = result.SteamDetected;
+            steamPath = result.SteamPath ?? string.Empty;
+            lastScannedLocal = result.ScannedAtUtc.ToLocalTime();
+
+            librariesScanned.Clear();
+            librariesScanned.AddRange(result.LibrariesScanned);
+
+            scanWarnings.Clear();
+            scanWarnings.AddRange(result.Warnings);
+
+            allMods.Clear();
+            allMods.AddRange(result.Mods);
+
+            ApplyFilters();
+
+            if (showToast)
+            {
+                if (!steamDetected)
+                {
+                    NotificationService.ShowWarning("Steam was not detected on this machine.");
+                }
+                else if (allMods.Count == 0)
+                {
+                    NotificationService.ShowInfo("No installed ARK workshop mods found.");
+                }
+                else
+                {
+                    NotificationService.ShowSuccess($"Loaded {allMods.Count} installed ARK mods.");
+                }
+            }
+
+            ActivityService.AddActivity($"Steam Workshop scan complete: {allMods.Count} ARK mods", "info");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to scan Steam mods: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<SteamWorkshopMod> query = allMods;
+        var term = searchQuery.Trim();
+
+        if (!string.IsNullOrWhiteSpace(term))
+        {
+            query = query.Where(mod =>
+                mod.WorkshopId.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                mod.Title.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (onlyNamedMods)
+        {
+            query = query.Where(mod => mod.HasSteamMetadata);
+        }
+
+        var utcNow = DateTime.UtcNow;
+        query = recencyFilter switch
+        {
+            SteamModsRecency.Last7Days => query.Where(mod => mod.InstalledAtUtc.HasValue && mod.InstalledAtUtc.Value >= utcNow.AddDays(-7)),
+            SteamModsRecency.Last30Days => query.Where(mod => mod.InstalledAtUtc.HasValue && mod.InstalledAtUtc.Value >= utcNow.AddDays(-30)),
+            SteamModsRecency.Last90Days => query.Where(mod => mod.InstalledAtUtc.HasValue && mod.InstalledAtUtc.Value >= utcNow.AddDays(-90)),
+            _ => query
+        };
+
+        query = sortOption switch
+        {
+            SteamModsSort.LatestInstalled => query.OrderByDescending(mod => mod.InstalledAtUtc ?? DateTime.MinValue),
+            SteamModsSort.LatestUpdated => query.OrderByDescending(mod => mod.EffectiveLastUpdatedUtc ?? DateTime.MinValue),
+            SteamModsSort.NameAscending => query.OrderBy(mod => mod.Title, StringComparer.OrdinalIgnoreCase),
+            SteamModsSort.NameDescending => query.OrderByDescending(mod => mod.Title, StringComparer.OrdinalIgnoreCase),
+            SteamModsSort.IdAscending => query.OrderBy(mod => mod.WorkshopId, StringComparer.OrdinalIgnoreCase),
+            SteamModsSort.IdDescending => query.OrderByDescending(mod => mod.WorkshopId, StringComparer.OrdinalIgnoreCase),
+            _ => query
+        };
+
+        visibleMods.Clear();
+        visibleMods.AddRange(query);
+    }
+
+    private async Task CopyWorkshopIdAsync(string workshopId)
+    {
+        try
+        {
+            await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(workshopId);
+            NotificationService.ShowSuccess($"Copied ID {workshopId}");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to copy ID: {ex.Message}");
+        }
+    }
+
+    private void OpenWorkshopInBrowser(string workshopId)
+    {
+        OpenProcess(GetWorkshopWebUrl(workshopId), "Could not open workshop page in browser.");
+    }
+
+    private void OpenWorkshopInSteam(string workshopId)
+    {
+        OpenProcess($"steam://url/CommunityFilePage/{workshopId}", "Could not open workshop page in Steam client.");
+    }
+
+    private void OpenModFolder(string contentPath)
+    {
+        if (string.IsNullOrWhiteSpace(contentPath))
+        {
+            NotificationService.ShowWarning("No mod folder path available.");
+            return;
+        }
+
+        OpenProcess(contentPath, "Could not open mod folder.");
+    }
+
+    private void OpenProcess(string target, string errorMessage)
+    {
+        try
+        {
+            ProcessService.Start(target);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"{errorMessage} {ex.Message}");
+        }
+    }
+
+    private static string GetWorkshopWebUrl(string workshopId)
+    {
+        return $"https://steamcommunity.com/sharedfiles/filedetails/?id={workshopId}";
+    }
+
+    private static string FormatScanTime(DateTime? localTime)
+    {
+        if (!localTime.HasValue)
+        {
+            return "Not scanned yet";
+        }
+
+        return localTime.Value.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    private static string GetDriveRoot(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return "Unknown";
+        }
+
+        try
+        {
+            return Path.GetPathRoot(path) ?? path;
+        }
+        catch
+        {
+            return path;
+        }
+    }
+
+    private static string FormatTimestamp(DateTime? timestampUtc)
+    {
+        if (!timestampUtc.HasValue)
+        {
+            return "Unknown";
+        }
+
+        return timestampUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    }
+
+    private static string GetRelativeAge(DateTime? timestampUtc)
+    {
+        if (!timestampUtc.HasValue)
+        {
+            return "Unknown";
+        }
+
+        var span = DateTime.UtcNow - timestampUtc.Value;
+        if (span.TotalDays >= 1)
+        {
+            return $"{(int)span.TotalDays}d ago";
+        }
+
+        if (span.TotalHours >= 1)
+        {
+            return $"{(int)span.TotalHours}h ago";
+        }
+
+        if (span.TotalMinutes >= 1)
+        {
+            return $"{(int)span.TotalMinutes}m ago";
+        }
+
+        return "Just now";
+    }
+
+    private static string FormatSize(long? bytes)
+    {
+        if (!bytes.HasValue || bytes.Value <= 0)
+        {
+            return "Unknown";
+        }
+
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double value = bytes.Value;
+        var unitIndex = 0;
+
+        while (value >= 1024 && unitIndex < units.Length - 1)
+        {
+            value /= 1024;
+            unitIndex++;
+        }
+
+        return $"{value:0.##} {units[unitIndex]}";
+    }
+
+    public void Dispose()
+    {
+        scanCts.Cancel();
+        scanCts.Dispose();
+    }
+
+    private enum SteamModsSort
+    {
+        LatestInstalled,
+        LatestUpdated,
+        NameAscending,
+        NameDescending,
+        IdAscending,
+        IdDescending
+    }
+
+    private enum SteamModsRecency
+    {
+        All,
+        Last7Days,
+        Last30Days,
+        Last90Days
+    }
+}

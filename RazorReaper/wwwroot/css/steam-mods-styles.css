@@ -1,0 +1,278 @@
+.steam-mods-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.steam-mods-summary-card,
+.steam-mods-filter-card,
+.steam-mods-warning-card,
+.steam-mods-empty-card,
+.steam-mods-item-card {
+    margin-bottom: 0 !important;
+}
+
+.steam-mods-summary-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.steam-mods-summary-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.65rem;
+    width: min(760px, 100%);
+}
+
+.steam-mods-meta-item {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.steam-mods-meta-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+}
+
+.steam-mods-meta-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.steam-mods-refresh-btn {
+    min-width: 150px;
+}
+
+.steam-mods-path-line {
+    margin-top: 0.8rem;
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+}
+
+.steam-mods-path-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    min-width: 85px;
+}
+
+.steam-mods-path-value {
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+
+.steam-mods-filter-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 0.8rem;
+}
+
+.steam-mods-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.steam-mods-filter-field label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.steam-mods-input,
+.steam-mods-select {
+    width: 100%;
+}
+
+.steam-mods-toggle {
+    margin-top: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+}
+
+.steam-mods-toggle input {
+    width: auto;
+}
+
+.steam-mods-warning-card h3 {
+    margin: 0 0 0.7rem;
+    color: #fca5a5;
+}
+
+.steam-mods-warning-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.steam-mods-empty-card {
+    text-align: center;
+    padding: 2rem !important;
+}
+
+.steam-mods-empty-card h3 {
+    margin: 0 0 0.5rem;
+}
+
+.steam-mods-empty-card p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.steam-mods-empty-card code {
+    color: #c4b5fd;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.steam-mods-spinner {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid rgba(139, 92, 246, 0.2);
+    border-top-color: rgba(139, 92, 246, 0.8);
+    margin: 0 auto 0.8rem;
+    animation: spin 1s linear infinite;
+}
+
+.steam-mods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.steam-mods-item-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.steam-mods-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.steam-mods-item-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.7rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.steam-mods-item-title-row h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.steam-mods-id-chip {
+    border-radius: 999px;
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    background: rgba(139, 92, 246, 0.16);
+    color: #ddd6fe;
+    font-size: 0.74rem;
+    font-family: var(--font-mono);
+    padding: 0.28rem 0.58rem;
+}
+
+.steam-mods-tag-row {
+    margin-top: 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.steam-mods-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.54rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+}
+
+.steam-mods-time-grid {
+    margin-top: 0.9rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
+.steam-mods-time-label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.22rem;
+}
+
+.steam-mods-time-value {
+    display: block;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.steam-mods-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    min-width: 220px;
+}
+
+.steam-mods-actions .btn {
+    min-height: 35px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 1060px) {
+    .steam-mods-filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 960px) {
+    .steam-mods-item-card {
+        flex-direction: column;
+    }
+
+    .steam-mods-actions {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 720px) {
+    .steam-mods-summary-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .steam-mods-time-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .steam-mods-actions {
+        grid-template-columns: 1fr;
+    }
+}
