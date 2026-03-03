@@ -65,6 +65,8 @@
                 <select id="mod-sort" class="steam-mods-select" @bind="SortOption">
                     <option value="@SteamModsSort.LatestInstalled">Latest Installed</option>
                     <option value="@SteamModsSort.LatestUpdated">Latest Updated</option>
+                    <option value="@SteamModsSort.SizeDescending">Size (Biggest-Smallest)</option>
+                    <option value="@SteamModsSort.SizeAscending">Size (Smallest-Biggest)</option>
                     <option value="@SteamModsSort.NameAscending">Name A-Z</option>
                     <option value="@SteamModsSort.NameDescending">Name Z-A</option>
                     <option value="@SteamModsSort.IdAscending">Workshop ID (Low-High)</option>
@@ -79,6 +81,18 @@
                     <option value="@SteamModsRecency.Last7Days">Last 7 Days</option>
                     <option value="@SteamModsRecency.Last30Days">Last 30 Days</option>
                     <option value="@SteamModsRecency.Last90Days">Last 90 Days</option>
+                </select>
+            </div>
+
+            <div class="steam-mods-filter-field">
+                <label for="mod-size-filter">Size Filter</label>
+                <select id="mod-size-filter" class="steam-mods-select" @bind="SizeFilter">
+                    <option value="@SteamModsSizeFilter.All">All Sizes</option>
+                    <option value="@SteamModsSizeFilter.Unknown">Unknown Size</option>
+                    <option value="@SteamModsSizeFilter.Under100Mb">Under 100 MB</option>
+                    <option value="@SteamModsSizeFilter.Mb100To500">100 MB to 500 MB</option>
+                    <option value="@SteamModsSizeFilter.Mb500To1Gb">500 MB to 1 GB</option>
+                    <option value="@SteamModsSizeFilter.Over1Gb">Over 1 GB</option>
                 </select>
             </div>
         </div>
@@ -188,6 +202,7 @@
     private string searchQuery = string.Empty;
     private SteamModsSort sortOption = SteamModsSort.LatestInstalled;
     private SteamModsRecency recencyFilter = SteamModsRecency.All;
+    private SteamModsSizeFilter sizeFilter = SteamModsSizeFilter.All;
     private bool onlyNamedMods;
 
     private string SearchQuery
@@ -231,6 +246,21 @@
             }
 
             recencyFilter = value;
+            ApplyFilters();
+        }
+    }
+
+    private SteamModsSizeFilter SizeFilter
+    {
+        get => sizeFilter;
+        set
+        {
+            if (sizeFilter == value)
+            {
+                return;
+            }
+
+            sizeFilter = value;
             ApplyFilters();
         }
     }
@@ -351,10 +381,21 @@
             _ => query
         };
 
+        if (sizeFilter != SteamModsSizeFilter.All)
+        {
+            query = query.Where(mod => MatchesSizeFilter(mod.SizeBytes, sizeFilter));
+        }
+
         query = sortOption switch
         {
             SteamModsSort.LatestInstalled => query.OrderByDescending(mod => mod.InstalledAtUtc ?? DateTime.MinValue),
             SteamModsSort.LatestUpdated => query.OrderByDescending(mod => mod.EffectiveLastUpdatedUtc ?? DateTime.MinValue),
+            SteamModsSort.SizeDescending => query
+                .OrderByDescending(mod => mod.SizeBytes ?? -1)
+                .ThenBy(mod => mod.Title, StringComparer.OrdinalIgnoreCase),
+            SteamModsSort.SizeAscending => query
+                .OrderBy(mod => mod.SizeBytes ?? long.MaxValue)
+                .ThenBy(mod => mod.Title, StringComparer.OrdinalIgnoreCase),
             SteamModsSort.NameAscending => query.OrderBy(mod => mod.Title, StringComparer.OrdinalIgnoreCase),
             SteamModsSort.NameDescending => query.OrderByDescending(mod => mod.Title, StringComparer.OrdinalIgnoreCase),
             SteamModsSort.IdAscending => query.OrderBy(mod => mod.WorkshopId, StringComparer.OrdinalIgnoreCase),
@@ -364,6 +405,28 @@
 
         visibleMods.Clear();
         visibleMods.AddRange(query);
+    }
+
+    private static bool MatchesSizeFilter(long? sizeBytes, SteamModsSizeFilter filter)
+    {
+        const long oneMegabyte = 1024L * 1024L;
+        const long oneGigabyte = 1024L * 1024L * 1024L;
+
+        if (!sizeBytes.HasValue || sizeBytes.Value <= 0)
+        {
+            return filter == SteamModsSizeFilter.Unknown;
+        }
+
+        var size = sizeBytes.Value;
+        return filter switch
+        {
+            SteamModsSizeFilter.Unknown => false,
+            SteamModsSizeFilter.Under100Mb => size < 100L * oneMegabyte,
+            SteamModsSizeFilter.Mb100To500 => size >= 100L * oneMegabyte && size < 500L * oneMegabyte,
+            SteamModsSizeFilter.Mb500To1Gb => size >= 500L * oneMegabyte && size < oneGigabyte,
+            SteamModsSizeFilter.Over1Gb => size >= oneGigabyte,
+            _ => true
+        };
     }
 
     private async Task CopyWorkshopIdAsync(string workshopId)
@@ -510,6 +573,8 @@
     {
         LatestInstalled,
         LatestUpdated,
+        SizeDescending,
+        SizeAscending,
         NameAscending,
         NameDescending,
         IdAscending,
@@ -522,5 +587,15 @@
         Last7Days,
         Last30Days,
         Last90Days
+    }
+
+    private enum SteamModsSizeFilter
+    {
+        All,
+        Unknown,
+        Under100Mb,
+        Mb100To500,
+        Mb500To1Gb,
+        Over1Gb
     }
 }
