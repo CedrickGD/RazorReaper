@@ -4,6 +4,7 @@ namespace RazorReaper
 {
     public partial class App : Application
     {
+        private static readonly TimeSpan TelemetryShutdownTimeout = TimeSpan.FromSeconds(5);
         private readonly ITelemetryService telemetryService;
 
         public App(
@@ -36,7 +37,15 @@ namespace RazorReaper
 
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
-            _ = telemetryService.StopAsync();
+            try
+            {
+                using var cts = new CancellationTokenSource(TelemetryShutdownTimeout);
+                Task.Run(() => telemetryService.StopAsync(cts.Token)).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                // App is closing and the bounded telemetry flush timed out.
+            }
         }
 
         private void HandleUnhandledException(object? sender, UnhandledExceptionEventArgs e)

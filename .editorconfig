@@ -1,0 +1,6 @@
+root = true
+
+[*.{cs,csproj,sln,razor,xaml,xml,json,md,txt,css,js,html,svg,yml,yaml,props,targets,plist,manifest}]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
