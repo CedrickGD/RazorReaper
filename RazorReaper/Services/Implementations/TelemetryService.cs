@@ -15,11 +15,23 @@ namespace RazorReaper.Services.Implementations;
 public sealed class TelemetryService : ITelemetryService
 {
     private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
-    private const int MinHeartbeatSeconds = 10;
-    private const int MaxHeartbeatSeconds = 900;
+    private const string SessionStartEventName = "session_start";
+    private const string SessionActiveEventName = "session_active";
+    private const string SessionEndEventName = "session_end";
+    private const string AppErrorEventName = "app_error";
+    private const int MinSessionActivitySeconds = 120;
+    private const int MaxSessionActivitySeconds = 3600;
     private const int MinTimeoutSeconds = 3;
     private const int MaxTimeoutSeconds = 60;
     private static readonly Regex InvalidIdentifierChars = new("[^a-zA-Z0-9._:-]", RegexOptions.Compiled);
+    private static readonly HashSet<string> AllowedEventNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        SessionStartEventName,
+        SessionActiveEventName,
+        SessionEndEventName,
+        AppErrorEventName
+    };
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
@@ -30,12 +42,13 @@ public sealed class TelemetryService : ITelemetryService
     private readonly ILogger<TelemetryService> logger;
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
 
-    private CancellationTokenSource? heartbeatCts;
-    private Task? heartbeatTask;
-    private DateTimeOffset startedAtUtc;
+    private CancellationTokenSource? sessionActivityCts;
+    private Task? sessionActivityTask;
     private bool isStarted;
     private bool configurationWarningLogged;
     private string? installId;
+    private string? sessionId;
+    private DateTimeOffset sessionStartedAtUtc;
 
     public TelemetryService(
         IHttpClientFactory httpClientFactory,
@@ -70,9 +83,10 @@ public sealed class TelemetryService : ITelemetryService
             }
 
             isStarted = true;
-            startedAtUtc = DateTimeOffset.UtcNow;
-            heartbeatCts = new CancellationTokenSource();
-            heartbeatTask = Task.Run(() => HeartbeatLoopAsync(heartbeatCts.Token), CancellationToken.None);
+            sessionId = Guid.NewGuid().ToString("D");
+            sessionStartedAtUtc = DateTimeOffset.UtcNow;
+            sessionActivityCts = new CancellationTokenSource();
+            sessionActivityTask = Task.Run(() => SessionActivityLoopAsync(sessionActivityCts.Token), CancellationToken.None);
         }
         finally
         {
@@ -80,22 +94,22 @@ public sealed class TelemetryService : ITelemetryService
         }
 
         await TrackEventAsync(
-            "app_start",
+            SessionStartEventName,
             TelemetryEventStatus.Ok,
-            "RazorReaper started.",
-            cancellationToken: cancellationToken);
+            "Session started.",
+            new Dictionary<string, object?>
+            {
+                ["session_open"] = true
+            },
+            cancellationToken);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        await TrackEventAsync(
-            "app_stop",
-            TelemetryEventStatus.Ok,
-            "RazorReaper stopped.",
-            cancellationToken: cancellationToken);
-
         CancellationTokenSource? ctsToCancel;
         Task? taskToWait;
+        bool shouldTrackStop;
+
         await lifecycleGate.WaitAsync(cancellationToken);
         try
         {
@@ -105,37 +119,55 @@ public sealed class TelemetryService : ITelemetryService
             }
 
             isStarted = false;
-            ctsToCancel = heartbeatCts;
-            taskToWait = heartbeatTask;
-            heartbeatCts = null;
-            heartbeatTask = null;
+            shouldTrackStop = true;
+            ctsToCancel = sessionActivityCts;
+            taskToWait = sessionActivityTask;
+            sessionActivityCts = null;
+            sessionActivityTask = null;
         }
         finally
         {
             lifecycleGate.Release();
         }
 
-        if (ctsToCancel is null)
+        if (ctsToCancel is not null)
+        {
+            try
+            {
+                await ctsToCancel.CancelAsync();
+                if (taskToWait is not null)
+                {
+                    await taskToWait;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected while shutting down the activity loop.
+            }
+            finally
+            {
+                ctsToCancel.Dispose();
+            }
+        }
+
+        if (!shouldTrackStop)
         {
             return;
         }
 
-        try
-        {
-            await ctsToCancel.CancelAsync();
-            if (taskToWait is not null)
+        await TrackEventAsync(
+            SessionEndEventName,
+            TelemetryEventStatus.Ok,
+            "Session ended.",
+            new Dictionary<string, object?>
             {
-                await taskToWait;
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected when stopping heartbeat loop.
-        }
-        finally
-        {
-            ctsToCancel.Dispose();
-        }
+                ["session_open"] = false,
+                ["session_duration_seconds"] = GetSessionDurationSeconds()
+            },
+            cancellationToken);
+
+        sessionId = null;
+        sessionStartedAtUtc = default;
     }
 
     public async Task TrackEventAsync(
@@ -162,12 +194,21 @@ public sealed class TelemetryService : ITelemetryService
             return;
         }
 
-        var source = BuildSource(settings);
-        var normalizedEventName = SanitizeIdentifier(eventName, "event");
-        var outboundEventName = MapExternalEventName(normalizedEventName, status);
-        var statusText = ToStatusText(status);
+        var normalizedEventName = SanitizeIdentifier(eventName, "event").ToLowerInvariant();
+        if (!AllowedEventNames.Contains(normalizedEventName))
+        {
+            return;
+        }
 
-        var metricPayload = BuildBaseMetrics();
+        var source = BuildSource(settings);
+        var metricPayload = BuildBaseMetrics(source);
+        metricPayload["telemetry_schema"] = "rr.session.v1";
+
+        if (normalizedEventName is SessionActiveEventName or SessionEndEventName)
+        {
+            metricPayload["session_duration_seconds"] = GetSessionDurationSeconds();
+        }
+
         if (metrics is not null)
         {
             foreach (var item in metrics)
@@ -182,30 +223,20 @@ public sealed class TelemetryService : ITelemetryService
             }
         }
 
-        metricPayload["worker_name"] = source;
-        metricPayload["source"] = source;
-        metricPayload["result"] = statusText;
-        metricPayload["event_name"] = normalizedEventName;
-
-        var payload = new LegacyTelemetryPayload(
-            GetOrCreateInstallId(),
-            outboundEventName,
-            BuildAppVersion(),
+        var payload = new CanonicalTelemetryPayload(
+            source,
+            normalizedEventName,
             DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
-            BuildPlatformName(),
-            metricPayload);
-
-        var normalizedMessage = NormalizeMessage(message);
-        if (!string.IsNullOrWhiteSpace(normalizedMessage))
-        {
-            payload.Properties["message"] = normalizedMessage;
-        }
+            ToStatusText(status),
+            metricPayload,
+            NormalizeMessage(message));
 
         var requestBody = JsonSerializer.Serialize(payload, SerializerOptions);
         using var request = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint)
         {
             Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
         };
+
         var credential = settings.AppKey.Trim();
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential);
         request.Headers.TryAddWithoutValidation("x-app-key", credential);
@@ -228,7 +259,7 @@ public sealed class TelemetryService : ITelemetryService
                     logger.LogWarning(
                         "Telemetry push redirected ({StatusCode}) for service {Service}. Endpoint may be Access-protected. Location: {Location}. Response: {Response}",
                         statusCode,
-                        outboundEventName,
+                        normalizedEventName,
                         location,
                         Truncate(responseText, 200));
                     return;
@@ -239,7 +270,7 @@ public sealed class TelemetryService : ITelemetryService
                     logger.LogWarning(
                         "Telemetry push unauthorized ({StatusCode}) for service {Service}. Verify telemetry token matches backend ingest secret. Response: {Response}",
                         statusCode,
-                        outboundEventName,
+                        normalizedEventName,
                         Truncate(responseText, 200));
                     return;
                 }
@@ -247,7 +278,7 @@ public sealed class TelemetryService : ITelemetryService
                 logger.LogWarning(
                     "Telemetry push failed ({StatusCode}) for service {Service}. Response: {Response}",
                     statusCode,
-                    outboundEventName,
+                    normalizedEventName,
                     Truncate(responseText, 200));
             }
         }
@@ -257,25 +288,28 @@ public sealed class TelemetryService : ITelemetryService
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Telemetry push failed for service {Service}.", outboundEventName);
+            logger.LogWarning(ex, "Telemetry push failed for service {Service}.", normalizedEventName);
         }
     }
 
-    private async Task HeartbeatLoopAsync(CancellationToken cancellationToken)
+    private async Task SessionActivityLoopAsync(CancellationToken cancellationToken)
     {
-        var heartbeatSeconds = Clamp(
-            options.Value.Telemetry.HeartbeatIntervalSeconds,
-            MinHeartbeatSeconds,
-            MaxHeartbeatSeconds);
+        var intervalSeconds = Clamp(
+            options.Value.Telemetry.SessionActivityIntervalSeconds,
+            MinSessionActivitySeconds,
+            MaxSessionActivitySeconds);
 
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(heartbeatSeconds));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(intervalSeconds));
         while (await timer.WaitForNextTickAsync(cancellationToken))
         {
-            var uptimeSeconds = Math.Max(0, (int)(DateTimeOffset.UtcNow - startedAtUtc).TotalSeconds);
             await TrackEventAsync(
-                "heartbeat",
+                SessionActiveEventName,
                 TelemetryEventStatus.Ok,
-                metrics: new Dictionary<string, object?> { ["uptime_seconds"] = uptimeSeconds },
+                metrics: new Dictionary<string, object?>
+                {
+                    ["session_open"] = true,
+                    ["session_duration_seconds"] = GetSessionDurationSeconds()
+                },
                 cancellationToken: cancellationToken);
         }
     }
@@ -318,19 +352,26 @@ public sealed class TelemetryService : ITelemetryService
 
     private string BuildSource(TelemetrySettings settings)
     {
-        var fallback = $"razorreaper-{GetOrCreateInstallId()[..8]}";
-        return SanitizeIdentifier(settings.WorkerName, fallback);
+        return SanitizeIdentifier(settings.AppName, "razorreaper");
     }
 
-    private Dictionary<string, object?> BuildBaseMetrics()
+    private Dictionary<string, object?> BuildBaseMetrics(string source)
     {
         var metrics = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
+            ["app_name"] = source,
             ["install_id"] = GetOrCreateInstallId(),
             ["machine_name"] = Environment.MachineName,
+            ["user_label"] = Environment.MachineName,
             ["framework"] = $".NET {Environment.Version}",
             ["process_id"] = Environment.ProcessId
         };
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            metrics["session_id"] = sessionId;
+            metrics["session_started_at"] = sessionStartedAtUtc.ToString("O", CultureInfo.InvariantCulture);
+        }
 
         try
         {
@@ -347,6 +388,16 @@ public sealed class TelemetryService : ITelemetryService
         }
 
         return metrics;
+    }
+
+    private int GetSessionDurationSeconds()
+    {
+        if (sessionStartedAtUtc == default)
+        {
+            return 0;
+        }
+
+        return Math.Max(0, (int)(DateTimeOffset.UtcNow - sessionStartedAtUtc).TotalSeconds);
     }
 
     private string GetOrCreateInstallId()
@@ -373,7 +424,11 @@ public sealed class TelemetryService : ITelemetryService
         var normalized = (value ?? string.Empty).Trim();
         normalized = normalized.Replace(' ', '_');
         normalized = InvalidIdentifierChars.Replace(normalized, "_");
-        normalized = normalized.Replace("__", "_");
+        while (normalized.Contains("__", StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace("__", "_", StringComparison.Ordinal);
+        }
+
         if (normalized.Length > 64)
         {
             normalized = normalized[..64];
@@ -402,27 +457,6 @@ public sealed class TelemetryService : ITelemetryService
             TelemetryEventStatus.Down => "down",
             _ => "ok"
         };
-    }
-
-    private static string MapExternalEventName(string eventName, TelemetryEventStatus status)
-    {
-        if (status == TelemetryEventStatus.Down ||
-            string.Equals(eventName, "app_error", StringComparison.OrdinalIgnoreCase))
-        {
-            return "app_error";
-        }
-
-        if (string.Equals(eventName, "app_start", StringComparison.OrdinalIgnoreCase))
-        {
-            return "app_start";
-        }
-
-        if (string.Equals(eventName, "app_stop", StringComparison.OrdinalIgnoreCase))
-        {
-            return "app_stop";
-        }
-
-        return "heartbeat";
     }
 
     private static int Clamp(int value, int min, int max)
@@ -457,35 +491,11 @@ public sealed class TelemetryService : ITelemetryService
         return text[..maxLength];
     }
 
-    private string BuildAppVersion()
-    {
-        try
-        {
-            return AppInfo.Current.VersionString;
-        }
-        catch
-        {
-            return "unknown";
-        }
-    }
-
-    private string BuildPlatformName()
-    {
-        try
-        {
-            return DeviceInfo.Platform.ToString().ToLowerInvariant();
-        }
-        catch
-        {
-            return "unknown";
-        }
-    }
-
-    private sealed record LegacyTelemetryPayload(
-        [property: JsonPropertyName("install_id")] string InstallId,
-        [property: JsonPropertyName("event_name")] string EventName,
-        [property: JsonPropertyName("app_version")] string AppVersion,
-        [property: JsonPropertyName("timestamp_utc")] string TimestampUtc,
-        [property: JsonPropertyName("platform")] string Platform,
-        [property: JsonPropertyName("properties")] Dictionary<string, object?> Properties);
+    private sealed record CanonicalTelemetryPayload(
+        [property: JsonPropertyName("source")] string Source,
+        [property: JsonPropertyName("service")] string Service,
+        [property: JsonPropertyName("timestamp")] string Timestamp,
+        [property: JsonPropertyName("status")] string Status,
+        [property: JsonPropertyName("metrics")] Dictionary<string, object?> Metrics,
+        [property: JsonPropertyName("message")] string? Message);
 }

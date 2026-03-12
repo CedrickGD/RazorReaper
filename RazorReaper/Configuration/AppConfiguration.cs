@@ -110,14 +110,14 @@ public class TelemetrySettings
     public string AppKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Logical source name shown in the dashboard.
+    /// Logical application name shown in the dashboard.
     /// </summary>
-    public string WorkerName { get; set; } = "backend";
+    public string AppName { get; set; } = "razorreaper";
 
     /// <summary>
-    /// Heartbeat interval in seconds.
+    /// Session activity ping interval in seconds.
     /// </summary>
-    public int HeartbeatIntervalSeconds { get; set; } = 30;
+    public int SessionActivityIntervalSeconds { get; set; } = 300;
 
     /// <summary>
     /// Per-request timeout in seconds.
