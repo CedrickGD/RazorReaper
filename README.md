@@ -1,8 +1,11 @@
 # RazorReaper
 
-**RazorReaper** is a Windows desktop toolkit for **ARK: Survival Evolved**, built with **Blazor Hybrid (.NET MAUI)**.
+**RazorReaper** is a Windows desktop toolkit for **Steam ARK: Survival Evolved**, built with **Blazor Hybrid (.NET MAUI)**.
 
 It is meant to keep the useful stuff in one place: game tweaks, config handling, utility tools, mod intel, and a cleaner workflow around ARK files and setup.
+
+> Steam version only.  
+> Microsoft Store / Windows Store builds, console versions, and other platforms are not supported.
 
 ---
 
@@ -12,6 +15,7 @@ It is meant to keep the useful stuff in one place: game tweaks, config handling,
 - Built around actual in-game workflows instead of generic launcher clutter
 - Includes tools for configs, visuals, mods, prices, paintings, and quick helpers
 - Ships through GitHub Releases with a direct **`.exe` installer**
+- Made specifically for **Steam ARK: Survival Evolved**
 
 ---
 
@@ -53,7 +57,7 @@ It is meant to keep the useful stuff in one place: game tweaks, config handling,
 ### Requirements
 
 - Windows 10 or Windows 11
-- ARK: Survival Evolved
+- **Steam** ARK: Survival Evolved
 
 ### Install
 
@@ -98,4 +102,4 @@ dotnet run --project RazorReaper/RazorReaper.csproj -f net9.0-windows10.0.19041.
 
 - RazorReaper is focused on **ARK: Survival Evolved**
 - Some tools expect a valid ARK install path
-- Admin/dashboard telemetry for RazorReaper is handled separately in the `RR-Admin-Panel` repo
+- Steam edition only
