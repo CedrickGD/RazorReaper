@@ -502,6 +502,54 @@ namespace RazorReaper.Components.Pages
                           "maleMetal_Pants.uasset",
                           "maleMetal_Shirt.uasset"
                     }}
+
+                },
+                ["⚙️ Armor - Riot"] = new Dictionary<string, string[]>
+                {
+                    { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Riot", "Textures"), new[] {
+                          "Riot_armor_fpv_Layered.uasset",
+                          "Riot_armor_fpv_N.uasset",
+                          "riot_armor_gloves_Layered.uasset",
+                          "riot_armor_gloves_N.uasset",
+                          "riot_armor_helmet_D.uasset",
+                          "riot_armor_helmet_Layered.uasset",
+                          "riot_armor_helmet_N.uasset",
+                          "riot_armor_pants_Layered.uasset",
+                          "riot_armor_pants_N.uasset",
+                          "riot_armor_shirt_Layered.uasset",
+                          "riot_armor_shirt_N.uasset",
+                          "riot_armor_shoes_Layered.uasset",
+                          "riot_armor_shoes_N.uasset",
+                          "riot_armor_Male_FPV_gloves_Skin_m.uasset",
+                          "riot_armor_Male_gloves_Skin_m.uasset",
+                          "riot_armor_Male_pants_Skin_m.uasset",
+                          "riot_armor_Male_shirt_skin_m.uasset",
+                          "riot_armor_Male_shoes_Skin_m.uasset"
+                    }},
+                    { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Riot", "Colorization"), new[] {
+                          "riot_armor_gloves_Colorize_d.uasset",
+                          "riot_armor_gloves_Colorize_m.uasset",
+                          "riot_armor_helmet_Colorize_d.uasset",
+                          "riot_armor_helmet_Colorize_m.uasset",
+                          "riot_armor_pants_Colorize_d.uasset",
+                          "riot_armor_pants_Colorize_m.uasset",
+                          "riot_armor_shirt_Colorize_d.uasset",
+                          "riot_armor_shirt_Colorize_m.uasset",
+                          "riot_armor_shoes_Colorize_d.uasset",
+                          "riot_armor_shoes_Colorize_m.uasset",
+                          "Riot_armor_fpv_Colorize_d.uasset",
+                          "Riot_armor_fpv_Colorize_m.uasset"
+                    }},
+                    { Path.Combine(shooterGamePath, "Human", "Male", "Outfits", "Riot", "Materials"), new[] {
+                          "Male_Riot_Colorize_BaseMIC.uasset",
+                          "Male_Riot_FPV_Gloves_Colorize_MIC.uasset",
+                          "Male_Riot_Gloves_Colorize_MIC.uasset",
+                          "Male_Riot_Helmet_Colorize_MIC.uasset",
+                          "Male_Riot_Pants_Colorize_MIC.uasset",
+                          "Male_Riot_Shirt_Colorize_MIC.uasset",
+                          "Male_Riot_Shoes_Colorize_MIC.uasset"
+                    }},
+
                 },
                 ["🦖 Saddles - Tek"] = new Dictionary<string, string[]>
                 {
