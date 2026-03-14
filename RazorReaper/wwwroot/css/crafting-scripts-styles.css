@@ -4,6 +4,10 @@
     gap: clamp(1rem, 2vw, 1.75rem);
 }
 
+.page-header + .crafting-page-shell {
+    margin-top: -1rem;
+}
+
 .crafting-scripts-layout {
     --crafting-accent-rgb: 132, 112, 214;
     display: grid;
@@ -31,7 +35,7 @@
 
 .crafting-accent-card {
     background: rgba(0, 0, 0, 0.15) !important;
-    border: 1px solid rgba(var(--crafting-accent-rgb), 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow: none !important;
 }
 
@@ -97,7 +101,7 @@
     flex-direction: column;
     gap: 1rem;
     align-self: stretch;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .crafting-action-stack,
