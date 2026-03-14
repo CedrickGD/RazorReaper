@@ -20,6 +20,7 @@ namespace RazorReaper
             _ = this.telemetryService.StartAsync();
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
+            AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
         }
 
@@ -37,15 +38,12 @@ namespace RazorReaper
 
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
-            try
-            {
-                using var cts = new CancellationTokenSource(TelemetryShutdownTimeout);
-                Task.Run(() => telemetryService.StopAsync(cts.Token)).GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                // App is closing and the bounded telemetry flush timed out.
-            }
+            FlushTelemetryShutdown();
+        }
+
+        private void HandleProcessExit(object? sender, EventArgs e)
+        {
+            FlushTelemetryShutdown();
         }
 
         private void HandleUnhandledException(object? sender, UnhandledExceptionEventArgs e)
@@ -88,6 +86,19 @@ namespace RazorReaper
                 });
 
             e.SetObserved();
+        }
+
+        private void FlushTelemetryShutdown()
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TelemetryShutdownTimeout);
+                Task.Run(() => telemetryService.StopAsync(cts.Token)).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                // App is closing and the bounded telemetry flush timed out.
+            }
         }
     }
 }

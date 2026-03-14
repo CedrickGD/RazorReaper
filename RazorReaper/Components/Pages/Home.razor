@@ -618,9 +618,14 @@
     private PerformanceCounter? cpuCounter;
     private PerformanceCounter? ramCounter;
     private List<PerformanceCounter> gpuCounters = new();
+    private int resourceUpdateInProgress = 0;
     private bool hasGpuCounter = false;
     private bool resourceMonitoringInitialized = false;
     private Process? currentProcess; // Cache current process to avoid creating new ones
+    private DateTime lastWifiRefreshUtc = DateTime.MinValue;
+    private DateTime lastStorageRefreshUtc = DateTime.MinValue;
+    private static readonly TimeSpan WifiRefreshInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan StorageRefreshInterval = TimeSpan.FromSeconds(20);
 
     // WiFi and hardware info
     private string wifiName = "Not Connected";
@@ -794,6 +799,8 @@
             LoadWiFiInfo();
             LoadSystemHardwareInfo();
             LoadSystemComponentsInfo();
+            lastWifiRefreshUtc = DateTime.UtcNow;
+            lastStorageRefreshUtc = DateTime.UtcNow;
             InvokeAsync(StateHasChanged);
         });
 
@@ -1645,14 +1652,19 @@
         }
     }
 
-    private void UpdateResources(object? sender, System.Timers.ElapsedEventArgs e)
+    private void UpdateResources(object? sender, System.Timers.ElapsedEventArgs? e)
     {
         // Don't update if initialization hasn't completed or component is disposed
         if (!resourceMonitoringInitialized || _isDisposed)
             return;
 
+        if (System.Threading.Interlocked.Exchange(ref resourceUpdateInProgress, 1) == 1)
+            return;
+
         try
         {
+            var nowUtc = DateTime.UtcNow;
+
             // Get CPU usage - ensure it's between 0-100
             var cpuValue = cpuCounter?.NextValue() ?? 0;
             cpuUsage = (int)Math.Round(Math.Clamp(cpuValue, 0, 100));
@@ -1679,7 +1691,7 @@
             {
                 try
                 {
-                    // Dictionary to track adapters by LUID
+                    // Track unique physical engines per adapter to avoid overcounting
                     var adapters = new Dictionary<string, GpuAdapter>();
 
                     foreach (var counter in gpuCounters)
@@ -1689,9 +1701,7 @@
                             var instanceName = counter.InstanceName;
                             var value = counter.NextValue();
 
-                            // Parse LUID from instance name (format: "pid_1234_luid_0xABCD1234_0xEF567890_phys_0_engtype_3D")
-                            var luid = ExtractLuid(instanceName);
-                            if (string.IsNullOrEmpty(luid))
+                            if (!TryParseGpuInstance(instanceName, out var luid, out var engineType))
                                 continue;
 
                             // Get or create adapter entry
@@ -1702,26 +1712,24 @@
 
                             var adapter = adapters[luid];
 
-                            // Sum all engine utilizations for this adapter
-                            adapter.TotalUtilization += value;
+                            var normalizedValue = Math.Clamp(value, 0, 100);
+                            adapter.TotalUtilization = Math.Max(adapter.TotalUtilization, normalizedValue);
 
-                            // Track by engine type for detailed monitoring
-                            if (instanceName.Contains("engtype_3D", StringComparison.OrdinalIgnoreCase))
+                            if (engineType.Equals("3D", StringComparison.OrdinalIgnoreCase))
                             {
-                                adapter.Utilization3D += value;
+                                adapter.Utilization3D = Math.Max(adapter.Utilization3D, normalizedValue);
                             }
-                            else if (instanceName.Contains("engtype_Compute", StringComparison.OrdinalIgnoreCase))
+                            else if (engineType.Equals("Compute", StringComparison.OrdinalIgnoreCase))
                             {
-                                adapter.UtilizationCompute += value;
+                                adapter.UtilizationCompute = Math.Max(adapter.UtilizationCompute, normalizedValue);
                             }
-                            else if (instanceName.Contains("engtype_Copy", StringComparison.OrdinalIgnoreCase))
+                            else if (engineType.Equals("Copy", StringComparison.OrdinalIgnoreCase))
                             {
-                                adapter.UtilizationCopy += value;
+                                adapter.UtilizationCopy = Math.Max(adapter.UtilizationCopy, normalizedValue);
                             }
-                            else if (instanceName.Contains("engtype_VideoDecode", StringComparison.OrdinalIgnoreCase) ||
-                                     instanceName.Contains("engtype_VideoEncode", StringComparison.OrdinalIgnoreCase))
+                            else if (engineType.StartsWith("Video", StringComparison.OrdinalIgnoreCase))
                             {
-                                adapter.UtilizationVideo += value;
+                                adapter.UtilizationVideo = Math.Max(adapter.UtilizationVideo, normalizedValue);
                             }
                         }
                         catch (Exception counterEx)
@@ -1735,7 +1743,7 @@
                     {
                         var primaryAdapter = adapters.Values.OrderByDescending(a => a.TotalUtilization).First();
 
-                        // Clamp to 0-100 range
+                        // Task Manager-style summary: use the busiest engine for the primary adapter.
                         gpuUsage = (int)Math.Round(Math.Clamp(primaryAdapter.TotalUtilization, 0, 100));
 
                         Logger.LogTrace("GPU Adapter {Luid}: Total={Total}%, 3D={D3D}%, Compute={Compute}%, Copy={Copy}%, Video={Video}%",
@@ -1756,6 +1764,18 @@
                     Logger.LogDebug(gpuEx, "Error reading GPU usage");
                     gpuUsage = 0;
                 }
+            }
+
+            if (nowUtc - lastWifiRefreshUtc >= WifiRefreshInterval)
+            {
+                LoadWiFiInfo();
+                lastWifiRefreshUtc = nowUtc;
+            }
+
+            if (nowUtc - lastStorageRefreshUtc >= StorageRefreshInterval)
+            {
+                LoadSystemComponentsInfo();
+                lastStorageRefreshUtc = nowUtc;
             }
 
             // Get current process memory - use cached process to avoid lag
@@ -1786,32 +1806,42 @@
         {
             Logger.LogError(ex, "Error updating resource usage");
         }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref resourceUpdateInProgress, 0);
+        }
     }
 
-    private string ExtractLuid(string instanceName)
+    private bool TryParseGpuInstance(string instanceName, out string adapterKey, out string engineType)
     {
+        adapterKey = string.Empty;
+        engineType = string.Empty;
+
         try
         {
-            // Instance name format: "pid_1234_luid_0x00000000_0x0000D4CB_phys_0_engtype_3D_262948"
-            // Extract the LUID portion (luid_0xXXXXXXXX_0xXXXXXXXX)
+            // Example instance:
+            // pid_1234_luid_0x00000000_0x0000D4CB_phys_0_engtype_3D
+            var parts = instanceName.Split('_', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 8)
+                return false;
 
-            var luidIndex = instanceName.IndexOf("luid_", StringComparison.OrdinalIgnoreCase);
-            if (luidIndex < 0)
-                return string.Empty;
+            var luidIndex = Array.IndexOf(parts, "luid");
+            var physIndex = Array.IndexOf(parts, "phys");
+            var engTypeIndex = Array.IndexOf(parts, "engtype");
 
-            var luidStart = luidIndex;
+            if (luidIndex < 0 || physIndex < 0 || engTypeIndex < 0)
+                return false;
 
-            // Find the end marker "_phys_"
-            var physIndex = instanceName.IndexOf("_phys_", luidStart, StringComparison.OrdinalIgnoreCase);
-            if (physIndex < 0)
-                return string.Empty;
+            if (luidIndex + 2 >= parts.Length || physIndex + 1 >= parts.Length || engTypeIndex + 1 >= parts.Length)
+                return false;
 
-            // Extract the LUID string between "luid_" and "_phys_"
-            return instanceName.Substring(luidStart, physIndex - luidStart);
+            adapterKey = $"luid_{parts[luidIndex + 1]}_{parts[luidIndex + 2]}";
+            engineType = parts[engTypeIndex + 1];
+            return true;
         }
         catch
         {
-            return string.Empty;
+            return false;
         }
     }
 
@@ -1895,14 +1925,44 @@
             using var process = Process.Start(processInfo);
             if (process != null)
             {
-                var output = process.StandardOutput.ReadToEnd();
-                var error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
+                var outputTask = process.StandardOutput.ReadToEndAsync();
+                var errorTask = process.StandardError.ReadToEndAsync();
 
-                // Check if WiFi adapter is not available or disabled
-                if (!string.IsNullOrWhiteSpace(error) || output.Contains("not", StringComparison.OrdinalIgnoreCase))
+                if (!process.WaitForExit(2000))
                 {
-                    Logger.LogDebug("WiFi adapter not available or not connected");
+                    try
+                    {
+                        process.Kill(true);
+                    }
+                    catch
+                    {
+                        // ignore kill failures
+                    }
+
+                    Logger.LogDebug("WiFi detection timed out");
+                    wifiName = "Timed Out";
+                    wifiSignalStrength = "N/A";
+                    return;
+                }
+
+                if (!Task.WaitAll(new Task[] { outputTask, errorTask }, 2000))
+                {
+                    Logger.LogDebug("WiFi detection output read timed out");
+                    wifiName = "Timed Out";
+                    wifiSignalStrength = "N/A";
+                    return;
+                }
+
+                var output = outputTask.GetAwaiter().GetResult();
+                var error = errorTask.GetAwaiter().GetResult();
+
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    Logger.LogDebug("WiFi detection reported an error: {Error}", error);
+                }
+
+                if (output.Contains("There is no wireless interface on the system", StringComparison.OrdinalIgnoreCase))
+                {
                     wifiName = "No WiFi Adapter";
                     wifiSignalStrength = "N/A";
                     return;
@@ -1911,16 +1971,28 @@
                 // Parse the output to extract SSID and signal strength
                 var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 bool foundWifi = false;
+                string state = string.Empty;
+
+                wifiName = "Not Connected";
+                wifiSignalStrength = "N/A";
 
                 foreach (var line in lines)
                 {
                     var trimmedLine = line.Trim();
 
+                    if (trimmedLine.StartsWith("State", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var parts = trimmedLine.Split(':', 2);
+                        if (parts.Length == 2)
+                        {
+                            state = parts[1].Trim();
+                        }
+                    }
                     if (trimmedLine.StartsWith("SSID", StringComparison.OrdinalIgnoreCase) &&
                         !trimmedLine.StartsWith("BSSID", StringComparison.OrdinalIgnoreCase))
                     {
-                        var parts = trimmedLine.Split(':');
-                        if (parts.Length >= 2)
+                        var parts = trimmedLine.Split(':', 2);
+                        if (parts.Length == 2)
                         {
                             wifiName = parts[1].Trim();
                             if (string.IsNullOrWhiteSpace(wifiName))
@@ -1935,17 +2007,27 @@
                     }
                     else if (trimmedLine.StartsWith("Signal", StringComparison.OrdinalIgnoreCase))
                     {
-                        var parts = trimmedLine.Split(':');
-                        if (parts.Length >= 2)
+                        var parts = trimmedLine.Split(':', 2);
+                        if (parts.Length == 2)
                         {
                             wifiSignalStrength = parts[1].Trim();
                         }
                     }
                 }
 
+                if (state.Equals("disconnected", StringComparison.OrdinalIgnoreCase) ||
+                    state.Equals("disconnecting", StringComparison.OrdinalIgnoreCase) ||
+                    state.Equals("not ready", StringComparison.OrdinalIgnoreCase))
+                {
+                    wifiName = "Not Connected";
+                    wifiSignalStrength = "N/A";
+                    Logger.LogDebug("WiFi adapter is present but not connected");
+                    return;
+                }
+
                 if (foundWifi)
                 {
-                    Logger.LogInformation("WiFi connected: {Name} - {Signal}", wifiName, wifiSignalStrength);
+                    Logger.LogDebug("WiFi connected: {Name} - {Signal}", wifiName, wifiSignalStrength);
                 }
                 else
                 {

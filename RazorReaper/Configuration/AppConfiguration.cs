@@ -115,11 +115,6 @@ public class TelemetrySettings
     public string AppName { get; set; } = "razorreaper";
 
     /// <summary>
-    /// Session activity ping interval in seconds.
-    /// </summary>
-    public int SessionActivityIntervalSeconds { get; set; } = 300;
-
-    /// <summary>
     /// Per-request timeout in seconds.
     /// </summary>
     public int RequestTimeoutSeconds { get; set; } = 10;

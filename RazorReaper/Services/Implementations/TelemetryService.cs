@@ -16,18 +16,14 @@ public sealed class TelemetryService : ITelemetryService
 {
     private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
     private const string SessionStartEventName = "session_start";
-    private const string SessionActiveEventName = "session_active";
     private const string SessionEndEventName = "session_end";
     private const string AppErrorEventName = "app_error";
-    private const int MinSessionActivitySeconds = 120;
-    private const int MaxSessionActivitySeconds = 3600;
     private const int MinTimeoutSeconds = 3;
     private const int MaxTimeoutSeconds = 60;
     private static readonly Regex InvalidIdentifierChars = new("[^a-zA-Z0-9._:-]", RegexOptions.Compiled);
     private static readonly HashSet<string> AllowedEventNames = new(StringComparer.OrdinalIgnoreCase)
     {
         SessionStartEventName,
-        SessionActiveEventName,
         SessionEndEventName,
         AppErrorEventName
     };
@@ -42,8 +38,6 @@ public sealed class TelemetryService : ITelemetryService
     private readonly ILogger<TelemetryService> logger;
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
 
-    private CancellationTokenSource? sessionActivityCts;
-    private Task? sessionActivityTask;
     private bool isStarted;
     private bool configurationWarningLogged;
     private string? installId;
@@ -85,8 +79,6 @@ public sealed class TelemetryService : ITelemetryService
             isStarted = true;
             sessionId = Guid.NewGuid().ToString("D");
             sessionStartedAtUtc = DateTimeOffset.UtcNow;
-            sessionActivityCts = new CancellationTokenSource();
-            sessionActivityTask = Task.Run(() => SessionActivityLoopAsync(sessionActivityCts.Token), CancellationToken.None);
         }
         finally
         {
@@ -106,10 +98,6 @@ public sealed class TelemetryService : ITelemetryService
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        CancellationTokenSource? ctsToCancel;
-        Task? taskToWait;
-        bool shouldTrackStop;
-
         await lifecycleGate.WaitAsync(cancellationToken);
         try
         {
@@ -119,55 +107,24 @@ public sealed class TelemetryService : ITelemetryService
             }
 
             isStarted = false;
-            shouldTrackStop = true;
-            ctsToCancel = sessionActivityCts;
-            taskToWait = sessionActivityTask;
-            sessionActivityCts = null;
-            sessionActivityTask = null;
+            await TrackEventAsync(
+                SessionEndEventName,
+                TelemetryEventStatus.Ok,
+                "Session ended.",
+                metrics: new Dictionary<string, object?>
+                {
+                    ["session_open"] = false,
+                    ["session_duration_seconds"] = GetSessionDurationSeconds()
+                },
+                cancellationToken: cancellationToken);
+
+            sessionId = null;
+            sessionStartedAtUtc = default;
         }
         finally
         {
             lifecycleGate.Release();
         }
-
-        if (ctsToCancel is not null)
-        {
-            try
-            {
-                await ctsToCancel.CancelAsync();
-                if (taskToWait is not null)
-                {
-                    await taskToWait;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected while shutting down the activity loop.
-            }
-            finally
-            {
-                ctsToCancel.Dispose();
-            }
-        }
-
-        if (!shouldTrackStop)
-        {
-            return;
-        }
-
-        await TrackEventAsync(
-            SessionEndEventName,
-            TelemetryEventStatus.Ok,
-            "Session ended.",
-            new Dictionary<string, object?>
-            {
-                ["session_open"] = false,
-                ["session_duration_seconds"] = GetSessionDurationSeconds()
-            },
-            cancellationToken);
-
-        sessionId = null;
-        sessionStartedAtUtc = default;
     }
 
     public async Task TrackEventAsync(
@@ -204,7 +161,7 @@ public sealed class TelemetryService : ITelemetryService
         var metricPayload = BuildBaseMetrics(source);
         metricPayload["telemetry_schema"] = "rr.session.v1";
 
-        if (normalizedEventName is SessionActiveEventName or SessionEndEventName)
+        if (normalizedEventName is SessionEndEventName)
         {
             metricPayload["session_duration_seconds"] = GetSessionDurationSeconds();
         }
@@ -289,28 +246,6 @@ public sealed class TelemetryService : ITelemetryService
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Telemetry push failed for service {Service}.", normalizedEventName);
-        }
-    }
-
-    private async Task SessionActivityLoopAsync(CancellationToken cancellationToken)
-    {
-        var intervalSeconds = Clamp(
-            options.Value.Telemetry.SessionActivityIntervalSeconds,
-            MinSessionActivitySeconds,
-            MaxSessionActivitySeconds);
-
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(intervalSeconds));
-        while (await timer.WaitForNextTickAsync(cancellationToken))
-        {
-            await TrackEventAsync(
-                SessionActiveEventName,
-                TelemetryEventStatus.Ok,
-                metrics: new Dictionary<string, object?>
-                {
-                    ["session_open"] = true,
-                    ["session_duration_seconds"] = GetSessionDurationSeconds()
-                },
-                cancellationToken: cancellationToken);
         }
     }
 
