@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.5.0.0</version>
+    <version>1.4.0.0</version>
     <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.0/RazorReaper.exe</url>
     <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.0</changelog>
     <mandatory>false</mandatory>
