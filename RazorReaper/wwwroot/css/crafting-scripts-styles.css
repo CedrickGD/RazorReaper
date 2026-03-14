@@ -1,0 +1,293 @@
+.crafting-page-shell {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 2vw, 1.75rem);
+}
+
+.crafting-scripts-layout {
+    --crafting-accent-rgb: 132, 112, 214;
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) clamp(250px, 28vw, 360px);
+    gap: clamp(1rem, 2vw, 1.75rem);
+    align-items: start;
+}
+
+.crafting-page-shell .content-card,
+.crafting-scripts-layout .content-card {
+    margin-bottom: 0 !important;
+    padding: clamp(1rem, 1.8vw, 1.5rem) !important;
+}
+
+.crafting-scripts-main,
+.crafting-scripts-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 1.8vw, 1.5rem);
+}
+
+.crafting-scripts-sidebar {
+    position: static;
+}
+
+.crafting-accent-card {
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(var(--crafting-accent-rgb), 0.14) !important;
+    box-shadow: none !important;
+}
+
+.crafting-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.crafting-section-header h3,
+.crafting-script-card h4,
+.crafting-asset-meta h4 {
+    margin: 0;
+    color: #f5f7fb;
+    font-weight: 700;
+}
+
+.crafting-section-copy,
+.crafting-script-card p,
+.crafting-asset-meta p {
+    margin: 0;
+    color: #a8aeb9;
+    line-height: 1.55;
+}
+
+.crafting-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) clamp(270px, 30vw, 390px);
+    gap: clamp(1rem, 2vw, 1.75rem);
+    align-items: start;
+}
+
+.crafting-video-column,
+.crafting-hero-panel {
+    min-width: 0;
+}
+
+.crafting-video-shell {
+    overflow: hidden;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.28);
+    aspect-ratio: 16 / 9;
+}
+
+.crafting-video-player {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+    background: #000;
+}
+
+.crafting-hero-panel h3 {
+    margin: 0 0 0.4rem;
+    color: #f5f7fb;
+}
+
+.crafting-hero-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-self: stretch;
+    justify-content: center;
+}
+
+.crafting-action-stack,
+.crafting-inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+}
+
+.crafting-action-stack > *,
+.crafting-inline-actions > * {
+    flex: 1 1 140px;
+}
+
+.crafting-action-stack {
+    margin: 0;
+}
+
+.crafting-action-btn,
+.crafting-copy-btn {
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    color: #f3f6fb;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.crafting-action-btn {
+    padding: 0.8rem 0.95rem;
+}
+
+.crafting-copy-btn {
+    padding: 0.55rem 0.85rem;
+}
+
+.crafting-copy-btn.subtle {
+    min-width: 70px;
+}
+
+.crafting-action-btn:hover,
+.crafting-copy-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(var(--crafting-accent-rgb), 0.32);
+    background: rgba(var(--crafting-accent-rgb), 0.11);
+}
+
+.crafting-showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 1rem;
+}
+
+.crafting-asset-card {
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crafting-asset-card.light-card {
+    grid-column: span 2;
+}
+
+.crafting-asset-image {
+    width: 100%;
+    display: block;
+    background: rgba(0, 0, 0, 0.22);
+}
+
+.crafting-asset-image.cover {
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+}
+
+.crafting-asset-image.contain {
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    padding: 0.75rem;
+}
+
+.crafting-asset-meta {
+    padding: 0.9rem 1rem 1rem;
+}
+
+.crafting-library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 1rem;
+}
+
+.crafting-script-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.crafting-script-card.selected {
+    border-color: rgba(var(--crafting-accent-rgb), 0.34);
+    background: rgba(var(--crafting-accent-rgb), 0.07);
+}
+
+.crafting-script-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.crafting-script-trigger {
+    margin: 0;
+    color: #c9d0db;
+    font-size: 0.85rem;
+}
+
+.crafting-copy-block,
+.crafting-script-block {
+    margin: 0;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    font-family: Consolas, "Courier New", monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.crafting-copy-block {
+    padding: 1rem 1.05rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.025);
+    color: #d7dce6;
+    font-size: 0.86rem;
+    line-height: 1.65;
+}
+
+.crafting-copy-block.compact {
+    margin-top: 0.25rem;
+}
+
+.crafting-script-block {
+    max-height: 700px;
+    padding: 1.15rem;
+    border-radius: 14px;
+    border: 1px solid rgba(var(--crafting-accent-rgb), 0.16);
+    background: rgba(0, 0, 0, 0.24);
+    color: #dbe2ee;
+    font-size: 0.84rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 1200px) {
+    .crafting-scripts-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .crafting-hero-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .crafting-asset-card.light-card {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 720px) {
+    .crafting-section-header,
+    .crafting-script-card-head {
+        flex-direction: column;
+    }
+
+    .crafting-action-btn,
+    .crafting-copy-btn {
+        width: 100%;
+    }
+
+    .crafting-showcase-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .crafting-inline-actions,
+    .crafting-action-stack {
+        flex-direction: column;
+    }
+}

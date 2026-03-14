@@ -25,7 +25,8 @@
                 <div class="connection-form">
                     <div>
                         <label class="input-label">Server IP Address</label>
-                        <input @bind="serverInput"
+                        <input @bind="ServerInput"
+                               @bind:event="oninput"
                                @onkeypress="@(async (e) => { if (e.Key == "Enter") await QueryServer(); })"
                                placeholder="141.98.157.224:27015"
                                class="server-input" />
@@ -256,6 +257,9 @@
 
 
 @code {
+    private const int SourceQueryTimeoutMs = 3500;
+    private const int PingTimeoutMs = 2500;
+
     private string serverInput = "";
     private bool isQuerying = false;
     private bool showTroubleshooting = false;
@@ -267,6 +271,29 @@
     private bool isPageActive = true;
     private bool _isDisposed = false;
     private bool _hasInitialized = false;
+    private int _queryVersion = 0;
+    private CancellationTokenSource? _queryCancellation;
+
+    private string ServerInput
+    {
+        get => serverInput;
+        set
+        {
+            var nextValue = value ?? string.Empty;
+            if (serverInput == nextValue)
+            {
+                return;
+            }
+
+            serverInput = nextValue;
+
+            // If the user edits the endpoint while a query is running, abandon the stale request immediately.
+            if (isQuerying)
+            {
+                CancelActiveQuery(resetBusyState: true);
+            }
+        }
+    }
 
     // Helper method for boolean attributes
     private bool IsServerNull() => currentServer == null;
@@ -387,6 +414,7 @@
     public void Dispose()
     {
         _isDisposed = true;
+        CancelActiveQuery();
         refreshTimer?.Dispose();
     }
 
@@ -457,14 +485,13 @@
 
     private string GetSteamUrl()
     {
-        if (string.IsNullOrWhiteSpace(serverInput)) return "";
-        var parts = serverInput.Split(':');
-        if (parts.Length != 2 || !int.TryParse(parts[1], out int port)) return "";
+        if (!TryParseServerInput(serverInput, out var ip, out var queryPort, out _))
+        {
+            return "";
+        }
 
-        int gamePort = port - 12288;
-        if (gamePort <= 0) gamePort = port;
-
-        return $"steam://run/346110//+connect {parts[0]}:{gamePort}";
+        var gamePort = GetGamePort(queryPort);
+        return $"steam://run/346110//+connect {ip}:{gamePort}";
     }
 
     private async Task CopySteamUrl()
@@ -485,55 +512,55 @@
 
     private async Task QueryServer()
     {
-        if (string.IsNullOrWhiteSpace(serverInput)) return;
+        var attemptedInput = serverInput.Trim();
+        if (string.IsNullOrWhiteSpace(attemptedInput))
+        {
+            return;
+        }
+
+        var requestId = ++_queryVersion;
+        CancelActiveQuery();
+
+        var queryCancellation = new CancellationTokenSource();
+        _queryCancellation = queryCancellation;
 
         isQuerying = true;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
 
         try
         {
-            var parts = serverInput.Split(':');
-            if (parts.Length != 2 || !int.TryParse(parts[1], out int queryPort))
+            if (!TryParseServerInput(attemptedInput, out var ip, out var queryPort, out var validationError))
             {
-                NotificationService.ShowError("Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)");
-                isQuerying = false;
-                StateHasChanged();
+                if (IsCurrentQuery(requestId))
+                {
+                    NotificationService.ShowError(validationError);
+                }
+
                 return;
             }
 
-            string ip = parts[0];
-            int gamePort = queryPort - 12288;
-            if (gamePort <= 0) gamePort = queryPort;
+            serverInput = $"{ip}:{queryPort}";
+            currentServer = CreatePendingServer(ip, queryPort);
 
-            currentServer = new GameServer
+            var serverInfo = await QuerySourceServer(ip, queryPort, queryCancellation.Token);
+            if (!IsCurrentQuery(requestId) || currentServer == null)
             {
-                IpAddress = ip,
-                Port = gamePort,
-                QueryPort = queryPort,
-                Name = $"ARK Server {ip}:{gamePort}",
-                IsOnline = false,
-                CurrentPlayers = 0,
-                MaxPlayers = 70,
-                CurrentMap = "Unknown",
-                Version = "Unknown"
-            };
-
-            var serverInfo = await QuerySourceServer(ip, queryPort);
+                return;
+            }
 
             if (serverInfo != null)
             {
-                currentServer.IsOnline = true;
-                currentServer.Name = string.IsNullOrEmpty(serverInfo.Name) ? currentServer.Name : serverInfo.Name;
-                currentServer.CurrentPlayers = serverInfo.Players;
-                currentServer.MaxPlayers = serverInfo.MaxPlayers;
-                currentServer.CurrentMap = string.IsNullOrEmpty(serverInfo.Map) ? "Unknown" : serverInfo.Map;
-                currentServer.Version = string.IsNullOrEmpty(serverInfo.Version) ? "Unknown" : serverInfo.Version;
+                ApplyServerInfo(currentServer, serverInfo);
                 NotificationService.ShowSuccess($"Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers} | Map: {serverInfo.Map}");
             }
             else
             {
                 using var ping = new Ping();
-                var pingReply = await ping.SendPingAsync(ip, 5000);
+                var pingReply = await ping.SendPingAsync(ip, PingTimeoutMs);
+                if (!IsCurrentQuery(requestId) || currentServer == null)
+                {
+                    return;
+                }
 
                 if (pingReply.Status == IPStatus.Success)
                 {
@@ -546,26 +573,50 @@
                 }
             }
         }
+        catch (OperationCanceledException) when (_isDisposed)
+        {
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("Server query canceled for {Input}", attemptedInput);
+        }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Query failed: {ex.Message}");
+            if (IsCurrentQuery(requestId))
+            {
+                NotificationService.ShowError($"Query failed: {ex.Message}");
+            }
         }
         finally
         {
-            isQuerying = false;
-            StateHasChanged();
+            if (ReferenceEquals(_queryCancellation, queryCancellation))
+            {
+                queryCancellation.Dispose();
+                _queryCancellation = null;
+            }
+
+            if (IsCurrentQuery(requestId))
+            {
+                isQuerying = false;
+                await InvokeAsync(StateHasChanged);
+            }
         }
     }
 
-    private async Task<ServerQueryResult?> QuerySourceServer(string ip, int port)
+    private async Task<ServerQueryResult?> QuerySourceServer(string ip, int port, CancellationToken cancellationToken = default)
     {
         try
         {
             using var client = new UdpClient();
-            client.Client.ReceiveTimeout = 10000;
-            client.Client.SendTimeout = 5000;
+            client.Client.ReceiveTimeout = SourceQueryTimeoutMs;
+            client.Client.SendTimeout = SourceQueryTimeoutMs;
 
-            var endpoint = new IPEndPoint(IPAddress.Parse(ip), port);
+            if (!IPAddress.TryParse(ip, out var parsedAddress))
+            {
+                return null;
+            }
+
+            var endpoint = new IPEndPoint(parsedAddress, port);
 
             var infoQuery = new byte[] {
                 0xFF, 0xFF, 0xFF, 0xFF,
@@ -576,7 +627,7 @@
             };
 
             await client.SendAsync(infoQuery, infoQuery.Length, endpoint);
-            var response = await client.ReceiveAsync();
+            var response = await client.ReceiveAsync().WaitAsync(TimeSpan.FromMilliseconds(SourceQueryTimeoutMs), cancellationToken);
 
             Logger.LogDebug("Query response length: {Length} bytes", response.Buffer.Length);
 
@@ -637,11 +688,19 @@
                     Array.Copy(challenge, 0, challengeQuery, infoQuery.Length, 4);
 
                     await client.SendAsync(challengeQuery, challengeQuery.Length, endpoint);
-                    var challengeResponse = await client.ReceiveAsync();
+                    var challengeResponse = await client.ReceiveAsync().WaitAsync(TimeSpan.FromMilliseconds(SourceQueryTimeoutMs), cancellationToken);
 
                     return ProcessInfoResponse(challengeResponse.Buffer);
                 }
             }
+        }
+        catch (TimeoutException)
+        {
+            Logger.LogDebug("Query timed out for {IP}:{Port}", ip, port);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -721,6 +780,99 @@
 
         if (offset < data.Length) offset++;
         return "";
+    }
+
+    private void CancelActiveQuery(bool resetBusyState = false)
+    {
+        if (_queryCancellation != null)
+        {
+            try
+            {
+                _queryCancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            _queryCancellation.Dispose();
+            _queryCancellation = null;
+        }
+
+        if (resetBusyState)
+        {
+            isQuerying = false;
+        }
+    }
+
+    private bool IsCurrentQuery(int requestId) => !_isDisposed && requestId == _queryVersion;
+
+    private bool TryParseServerInput(string input, out string ip, out int queryPort, out string errorMessage)
+    {
+        ip = string.Empty;
+        queryPort = 0;
+        errorMessage = "Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)";
+
+        var trimmedInput = input?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedInput))
+        {
+            errorMessage = "Enter a server endpoint in the format IP:QUERYPORT.";
+            return false;
+        }
+
+        var parts = trimmedInput.Split(':', StringSplitOptions.TrimEntries);
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        if (!IPAddress.TryParse(parts[0], out var parsedAddress) || parsedAddress.AddressFamily != AddressFamily.InterNetwork)
+        {
+            errorMessage = "Invalid IP address. Use a valid IPv4 address like 141.98.157.224.";
+            return false;
+        }
+
+        if (!int.TryParse(parts[1], out queryPort) || queryPort is < 1 or > 65535)
+        {
+            errorMessage = "Invalid query port. Use a value between 1 and 65535.";
+            return false;
+        }
+
+        ip = parsedAddress.ToString();
+        return true;
+    }
+
+    private static int GetGamePort(int queryPort)
+    {
+        var gamePort = queryPort - 12288;
+        return gamePort > 0 ? gamePort : queryPort;
+    }
+
+    private GameServer CreatePendingServer(string ip, int queryPort)
+    {
+        var gamePort = GetGamePort(queryPort);
+
+        return new GameServer
+        {
+            IpAddress = ip,
+            Port = gamePort,
+            QueryPort = queryPort,
+            Name = $"ARK Server {ip}:{gamePort}",
+            IsOnline = false,
+            CurrentPlayers = 0,
+            MaxPlayers = 70,
+            CurrentMap = "Unknown",
+            Version = "Unknown"
+        };
+    }
+
+    private static void ApplyServerInfo(GameServer server, ServerQueryResult serverInfo)
+    {
+        server.IsOnline = true;
+        server.Name = string.IsNullOrWhiteSpace(serverInfo.Name) ? server.Name : serverInfo.Name;
+        server.CurrentPlayers = serverInfo.Players;
+        server.MaxPlayers = serverInfo.MaxPlayers;
+        server.CurrentMap = string.IsNullOrWhiteSpace(serverInfo.Map) ? "Unknown" : serverInfo.Map;
+        server.Version = string.IsNullOrWhiteSpace(serverInfo.Version) ? "Unknown" : serverInfo.Version;
     }
 
     private async Task SaveServer()

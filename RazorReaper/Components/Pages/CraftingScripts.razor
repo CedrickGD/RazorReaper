@@ -1,0 +1,485 @@
+@page "/crafting-scripts"
+@using System.IO
+@using System.Linq
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@inject IJSRuntime JSRuntime
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+@inject ILogger<CraftingScripts> Logger
+
+<header class="page-header">
+    <h1 class="page-title">Macro / AHK</h1>
+    <p class="page-subtitle">Video, refs, scripts.</p>
+</header>
+
+<div class="crafting-page-shell">
+    <section class="content-card crafting-hero-card crafting-accent-card">
+        <div class="crafting-hero-grid">
+            <div class="crafting-video-column">
+                <div class="crafting-section-header">
+                    <div>
+                        <h3>Video</h3>
+                    </div>
+                </div>
+
+                <div class="crafting-video-shell">
+                    <video controls preload="metadata" class="crafting-video-player">
+                        <source src="@LocalVideoUrl" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+
+            <div class="crafting-hero-panel">
+                <h3>Fast setup</h3>
+                <p class="crafting-section-copy">Open the links once, download a script, then test short first.</p>
+
+                <div class="crafting-action-stack">
+                    <button class="crafting-action-btn" @onclick="OpenReferenceVideo">Open YouTube</button>
+                    <button class="crafting-action-btn" @onclick="OpenAutoHotkeyDownload">Open AHK</button>
+                    <button class="crafting-action-btn" @onclick="OpenRecorderDownload">Open Jitbit</button>
+                </div>
+
+                <pre class="crafting-copy-block compact">@QuickStepsText</pre>
+            </div>
+        </div>
+    </section>
+
+    <div class="crafting-scripts-layout">
+        <div class="crafting-scripts-main">
+        <section class="content-card crafting-accent-card">
+            <div class="crafting-section-header">
+                <div>
+                    <h3>Layout Refs</h3>
+                </div>
+            </div>
+
+            <div class="crafting-showcase-grid">
+                <article class="crafting-asset-card">
+                    <img src="/images/crafting-scripts/fabricator-row.png" alt="Fabricator row layout" class="crafting-asset-image cover" />
+                    <div class="crafting-asset-meta">
+                        <h4>Fab Row</h4>
+                        <p>ADV line.</p>
+                    </div>
+                </article>
+
+                <article class="crafting-asset-card">
+                    <img src="/images/crafting-scripts/chem-bench-row.png" alt="Chem bench row layout" class="crafting-asset-image cover" />
+                    <div class="crafting-asset-meta">
+                        <h4>Chem Row</h4>
+                        <p>GP line.</p>
+                    </div>
+                </article>
+
+                <article class="crafting-asset-card">
+                    <img src="/images/crafting-scripts/fabricator-ghost.png" alt="Fabricator ghost placement view" class="crafting-asset-image cover" />
+                    <div class="crafting-asset-meta">
+                        <h4>Fab Angle</h4>
+                        <p>Placement ref.</p>
+                    </div>
+                </article>
+
+                <article class="crafting-asset-card">
+                    <img src="/images/crafting-scripts/chem-bench-ghost.png" alt="Chem bench ghost placement view" class="crafting-asset-image cover" />
+                    <div class="crafting-asset-meta">
+                        <h4>Chem Angle</h4>
+                        <p>Bench spacing.</p>
+                    </div>
+                </article>
+
+                <article class="crafting-asset-card light-card">
+                    <img src="/images/crafting-scripts/macro-annotated.png" alt="Annotated macro reference" class="crafting-asset-image contain" />
+                    <div class="crafting-asset-meta">
+                        <h4>Macro Map</h4>
+                        <p>Click map.</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="content-card crafting-accent-card">
+            <div class="crafting-section-header">
+                <div>
+                    <h3>Script Library</h3>
+                </div>
+            </div>
+
+            <div class="crafting-library-grid">
+                @foreach (var script in Scripts)
+                {
+                    <article class="crafting-script-card @(SelectedScript.Key == script.Key ? "selected" : string.Empty)">
+                        <div class="crafting-script-card-head">
+                            <div>
+                                <h4>@script.Title</h4>
+                                <p>@script.Description</p>
+                            </div>
+                            <button class="crafting-copy-btn subtle" @onclick="() => SelectScript(script.Key)">View</button>
+                        </div>
+
+                        <p class="crafting-script-trigger">@script.Trigger</p>
+
+                        <div class="crafting-inline-actions">
+                            <button class="crafting-copy-btn" @onclick="() => CopyScript(script)">Copy</button>
+                            <button class="crafting-copy-btn" @onclick="() => DownloadScript(script)">Download</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="content-card crafting-accent-card">
+            <div class="crafting-section-header">
+                <div>
+                    <h3>@SelectedScript.Title</h3>
+                    <p class="crafting-section-copy">@SelectedScript.Description</p>
+                </div>
+                <div class="crafting-inline-actions">
+                    <button class="crafting-copy-btn" @onclick="() => DownloadScript(SelectedScript)">Download .ahk</button>
+                    <button class="crafting-copy-btn" @onclick="() => CopyScript(SelectedScript)">Copy .ahk</button>
+                </div>
+            </div>
+
+            <pre class="crafting-script-block">@SelectedScript.Content</pre>
+        </section>
+    </div>
+
+    <aside class="crafting-scripts-sidebar">
+        <section class="content-card crafting-sidebar-card crafting-accent-card">
+            <div class="crafting-section-header">
+                <div>
+                    <h3>Quick Setup</h3>
+                </div>
+                <button class="crafting-copy-btn" @onclick="CopySetup">Copy</button>
+            </div>
+            <pre class="crafting-copy-block">@SetupText</pre>
+        </section>
+
+        <section class="content-card crafting-sidebar-card crafting-accent-card">
+            <div class="crafting-section-header">
+                <div>
+                    <h3>Selected</h3>
+                </div>
+            </div>
+            <pre class="crafting-copy-block">@SelectedInfoText</pre>
+        </section>
+    </aside>
+    </div>
+</div>
+
+@code {
+    private const string ReferenceVideoUrl = "https://www.youtube.com/watch?v=qmfL-UZW_zk";
+    private const string LocalVideoUrl = "videos/how-to-macro-(script).mp4";
+    private const string AutoHotkeyDownloadUrl = "https://www.autohotkey.com/download/";
+    private const string RecorderDownloadUrl = "https://static.jitbit.com/mr/MacroRecorderSetup.exe";
+
+    private static readonly string QuickStepsText = @"
+1. Install AutoHotkey v1.
+2. Download a script.
+3. Open it.
+4. Edit coords if needed.
+5. Test short first.
+";
+
+    private static readonly string SetupText = @"
+Change before use:
+- Same res / UI scale
+- Mouse coords
+- Delay values if needed
+
+Use the mouse-pos script first if needed.
+";
+
+    private static readonly IReadOnlyList<ScriptAsset> Scripts = new[]
+    {
+        new ScriptAsset(
+            "fab-loop",
+            "22x Fab ADV",
+            "22 fabricator loop. Edit coords first.",
+            "F4 start / stop, F5 exit",
+            "rr-fab-22x.ahk",
+            @"
+F5::ExitApp
+F4::
+if Running
+{
+
+Running := false
+Return
+}
+Running := true
+
+Loop,
+{
+	Loop,22
+	{
+		Sleep 1000
+		send v
+		Sleep 1000
+		MouseClick, left, 974, 279
+		Sleep 1000
+		Send {A}
+		Send {d}
+		Send {v}
+		Sleep 1000
+		MouseClick, left, 1172, 339
+		Sleep 1000
+		Loop,10
+		{
+			Send a
+			Sleep 200
+		}
+		Sleep 1000
+		Send f
+		Sleep 1000
+		Send {a Down}
+		Sleep 275
+		Send {a Up}
+		Sleep 1000
+	}
+	Sleep 1000
+	Send {d Down}
+	Sleep 15000
+	Send {d Up}
+}
+
+
+Running := false
+return
+"),
+        new ScriptAsset(
+            "take-all",
+            "Take All",
+            "Fast take-all click sequence.",
+            "Q run",
+            "rr-take-all.ahk",
+            @"
+F5::ExitApp
+Q::
+if Running
+{
+Running := false
+Return
+}
+Running := true
+
+{
+		send v
+                Sleep 200
+		MouseClick, left, 1071, 273
+		Send {Click Left}
+                Send {Click Left}
+                Send {Click Left}
+                MouseClick, left, 720, 540
+
+
+}
+
+
+Running := false
+return
+"),
+        new ScriptAsset(
+            "mammoth-basic",
+            "Mammoth",
+            "Mammoth buffing. Space + c every 2s.",
+            "F4 start / stop, F5 exit",
+            "rr-mammoth-basic.ahk",
+            @"
+F5::ExitApp  ; Exit the script
+
+F4:: ; Start / stop
+if Running
+{
+    Running := false
+    return
+}
+Running := true
+
+SetTimer, AutomateKeys, 2000
+return
+
+AutomateKeys:
+if Running
+{
+    Send, {Space}
+    Sleep, 200
+    Send, c
+}
+return
+"),
+        new ScriptAsset(
+            "mammoth-fast",
+            "Mammoth Fast",
+            "Mammoth buffing. Click + c every 685ms.",
+            "F4 start / stop, F5 exit",
+            "rr-mammoth-fast.ahk",
+            @"
+F5::ExitApp  ; Exit the script
+
+F4:: ; Start / stop
+if Running
+{
+    Running := false
+    return
+}
+Running := true
+
+SetTimer, AutomateClickAndC, 685
+return
+
+AutomateClickAndC:
+if Running
+{
+    Click
+    Sleep, 90
+    Send, c
+}
+return
+"),
+        new ScriptAsset(
+            "mammoth-pause",
+            "Mammoth + Pause",
+            "Mammoth buffing with a 24s pause after 4 min.",
+            "F4 start / stop, F5 exit",
+            "rr-mammoth-pause.ahk",
+            @"
+F5::ExitApp  ; Exit the script
+
+F4:: ; Start / stop
+if Running
+{
+    Running := false
+    return
+}
+Running := true
+StartTime := A_TickCount
+SetTimer, AutomateKeys, 1550
+return
+
+AutomateKeys:
+if !Running
+    return
+
+if (A_TickCount - StartTime >= 240000)
+{
+    ToolTip, Pause - 24 seconds...
+    Sleep, 24000
+    ToolTip
+    StartTime := A_TickCount
+}
+
+Send, {Space}
+Sleep, 200
+Send, c
+return
+"),
+        new ScriptAsset(
+            "mouse-pos",
+            "Mouse Pos",
+            "Shows cursor coords for setup.",
+            "F4 show coords",
+            "rr-mouse-pos.ahk",
+            @"
+F4::
+        MouseGetPos, x, y
+	msgBox, x=%x% - y=%y%
+
+
+
+	return
+")
+    };
+
+    private string selectedScriptKey = "fab-loop";
+
+    private ScriptAsset SelectedScript => Scripts.First(script => script.Key == selectedScriptKey);
+
+    private string SelectedInfoText => $@"
+Hotkey: {SelectedScript.Trigger}
+Download: {SelectedScript.FileName}
+";
+
+    private async Task OpenReferenceVideo()
+    {
+        await OpenUrl(ReferenceVideoUrl, "Opening crafting reference video...");
+    }
+
+    private async Task OpenAutoHotkeyDownload()
+    {
+        await OpenUrl(AutoHotkeyDownloadUrl, "Opening AutoHotkey download...");
+    }
+
+    private async Task OpenRecorderDownload()
+    {
+        await OpenUrl(RecorderDownloadUrl, "Opening Jitbit Macro Recorder download...");
+    }
+
+    private void SelectScript(string key)
+    {
+        selectedScriptKey = key;
+    }
+
+    private async Task CopySetup()
+        => await CopyText(SetupText, "Setup notes copied to clipboard.", "Crafting setup copied");
+
+    private async Task CopyScript(ScriptAsset script)
+        => await CopyText(script.Content, $"{script.Title} copied to clipboard.", $"{script.Title} copied");
+
+    private async Task CopyText(string text, string successMessage, string activityTitle)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            NotificationService.ShowSuccess(successMessage);
+            ActivityService.AddActivity(activityTitle, "info");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy crafting text");
+            NotificationService.ShowError("Failed to copy text.");
+        }
+    }
+
+    private async Task DownloadScript(ScriptAsset script)
+    {
+        try
+        {
+            var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            Directory.CreateDirectory(downloadsPath);
+
+            var fullPath = Path.Combine(downloadsPath, script.FileName);
+            await File.WriteAllTextAsync(fullPath, script.Content);
+
+            NotificationService.ShowSuccess($"Downloaded {script.FileName} to {fullPath}");
+            ActivityService.AddActivity($"{script.Title} downloaded", "success");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save crafting script");
+            NotificationService.ShowError("Failed to save the script.");
+        }
+    }
+
+    private async Task OpenUrl(string url, string successMessage)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
+            NotificationService.ShowSuccess(successMessage);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to open URL {Url}", url);
+            NotificationService.ShowError("Failed to open the requested link.");
+        }
+    }
+
+    private sealed record ScriptAsset(
+        string Key,
+        string Title,
+        string Description,
+        string Trigger,
+        string FileName,
+        string Content);
+}
