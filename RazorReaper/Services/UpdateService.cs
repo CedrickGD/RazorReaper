@@ -68,6 +68,7 @@ public class UpdateService : IUpdateService
 
             var downloadUrl = item.Element("url")?.Value?.Trim();
             var changelogUrl = item.Element("changelog")?.Value?.Trim();
+            var installerArgs = item.Element("args")?.Value?.Trim();
             var mandatoryText = item.Element("mandatory")?.Value?.Trim();
             var isMandatory = bool.TryParse(mandatoryText, out var mandatory) && mandatory;
 
@@ -78,6 +79,7 @@ public class UpdateService : IUpdateService
                 HasUpdate = latestVersion > currentVersion,
                 DownloadUrl = downloadUrl,
                 ChangelogUrl = changelogUrl,
+                InstallerArgs = installerArgs,
                 IsMandatory = isMandatory,
                 CheckedAt = DateTimeOffset.UtcNow
             };

@@ -1418,33 +1418,68 @@
         }
     }
 
+    private bool isDownloadingUpdate;
+
     private async Task DownloadUpdate()
     {
-        if (!CanDownloadUpdate || updateResult == null)
+        if (!CanDownloadUpdate || updateResult == null || isDownloadingUpdate)
             return;
+
+        var downloadUrl = updateResult.DownloadUrl;
+        if (string.IsNullOrWhiteSpace(downloadUrl))
+        {
+            NotificationService.ShowError("Download link is missing.");
+            return;
+        }
+
+        isDownloadingUpdate = true;
+        await InvokeAsync(StateHasChanged);
 
         try
         {
-            var downloadUrl = updateResult.DownloadUrl;
-            if (string.IsNullOrWhiteSpace(downloadUrl))
+            NotificationService.ShowSuccess("Downloading update — this may take a moment…");
+            ActivityService.AddActivity($"Downloading update v{updateResult.LatestVersion}", "info");
+
+            // Download installer to temp folder
+            using var httpClient = new HttpClient();
+            var tempDir = Path.Combine(Path.GetTempPath(), "RazorReaperUpdate");
+            Directory.CreateDirectory(tempDir);
+            var installerPath = Path.Combine(tempDir, "RazorReaper_Update.exe");
+
+            using (var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
             {
-                NotificationService.ShowError("Download link is missing.");
-                return;
+                response.EnsureSuccessStatusCode();
+                await using var fs = new FileStream(installerPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await response.Content.CopyToAsync(fs);
             }
 
-            if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri))
+            // Launch installer silently and exit app so files can be replaced
+            var args = updateResult.InstallerArgs ?? "/SILENT /SUPPRESSMSGBOXES /NORESTART";
+            var process = new System.Diagnostics.Process
             {
-                NotificationService.ShowError("Download link is invalid.");
-                return;
-            }
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    Arguments = args,
+                    UseShellExecute = true
+                }
+            };
 
-            await Launcher.Default.OpenAsync(uri);
-            ActivityService.AddActivity($"Opened update download for v{updateResult.LatestVersion}", "info");
+            NotificationService.ShowSuccess("Installing update — app will close momentarily…");
+            ActivityService.AddActivity($"Launching silent installer for v{updateResult.LatestVersion}", "info");
+
+            process.Start();
+
+            // Give a brief moment for the UI to show the message, then exit
+            await Task.Delay(1500);
+            Application.Current?.Quit();
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError("Failed to open update download.");
-            Logger.LogError(ex, "Failed to open update download link");
+            NotificationService.ShowError("Failed to download or install update.");
+            Logger.LogError(ex, "Auto-update failed for v{Version}", updateResult.LatestVersion);
+            isDownloadingUpdate = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
