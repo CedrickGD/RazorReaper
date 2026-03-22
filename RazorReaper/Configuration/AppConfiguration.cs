@@ -118,4 +118,19 @@ public class TelemetrySettings
     /// Per-request timeout in seconds.
     /// </summary>
     public int RequestTimeoutSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Enables best-effort device geolocation collection for telemetry sessions.
+    /// </summary>
+    public bool CaptureDeviceLocation { get; set; } = true;
+
+    /// <summary>
+    /// Maximum time spent waiting for the device location provider.
+    /// </summary>
+    public int DeviceLocationTimeoutSeconds { get; set; } = 12;
+
+    /// <summary>
+    /// Refresh window for cached device coordinates.
+    /// </summary>
+    public int DeviceLocationRefreshMinutes { get; set; } = 15;
 }

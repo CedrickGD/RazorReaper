@@ -35,6 +35,7 @@ public sealed class TelemetryService : ITelemetryService
 
     private readonly IHttpClientFactory httpClientFactory;
     private readonly IOptions<AppConfiguration> options;
+    private readonly IDeviceLocationService deviceLocationService;
     private readonly ILogger<TelemetryService> logger;
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
 
@@ -47,10 +48,12 @@ public sealed class TelemetryService : ITelemetryService
     public TelemetryService(
         IHttpClientFactory httpClientFactory,
         IOptions<AppConfiguration> options,
+        IDeviceLocationService deviceLocationService,
         ILogger<TelemetryService> logger)
     {
         this.httpClientFactory = httpClientFactory;
         this.options = options;
+        this.deviceLocationService = deviceLocationService;
         this.logger = logger;
     }
 
@@ -158,8 +161,8 @@ public sealed class TelemetryService : ITelemetryService
         }
 
         var source = BuildSource(settings);
-        var metricPayload = BuildBaseMetrics(source);
-        metricPayload["telemetry_schema"] = "rr.session.v1";
+        var metricPayload = await BuildBaseMetricsAsync(source, cancellationToken);
+        metricPayload["telemetry_schema"] = "rr.session.v2";
 
         if (normalizedEventName is SessionEndEventName)
         {
@@ -290,7 +293,7 @@ public sealed class TelemetryService : ITelemetryService
         return SanitizeIdentifier(settings.AppName, "razorreaper");
     }
 
-    private Dictionary<string, object?> BuildBaseMetrics(string source)
+    private async Task<Dictionary<string, object?>> BuildBaseMetricsAsync(string source, CancellationToken cancellationToken)
     {
         var metrics = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
@@ -320,6 +323,24 @@ public sealed class TelemetryService : ITelemetryService
         catch
         {
             // Keep base metrics only if MAUI device info is unavailable.
+        }
+
+        var location = await deviceLocationService.GetBestEffortLocationAsync(cancellationToken);
+        if (location is not null)
+        {
+            metrics["client_geo_source"] = location.Source;
+            if (!string.IsNullOrWhiteSpace(location.SignalSource))
+            {
+                metrics["client_geo_signal_source"] = location.SignalSource;
+            }
+            metrics["client_latitude"] = location.Latitude;
+            metrics["client_longitude"] = location.Longitude;
+            metrics["client_geo_captured_at"] = location.CapturedAtUtc.ToString("O", CultureInfo.InvariantCulture);
+
+            if (location.AccuracyMeters is > 0)
+            {
+                metrics["client_accuracy_meters"] = location.AccuracyMeters.Value;
+            }
         }
 
         return metrics;

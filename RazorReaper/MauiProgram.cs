@@ -138,6 +138,7 @@ namespace RazorReaper
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
+            services.AddSingleton<IDeviceLocationService, DeviceLocationService>();
             services.AddSingleton<ITelemetryService, TelemetryService>();
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
         }
