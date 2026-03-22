@@ -103,3 +103,4 @@ dotnet run --project RazorReaper/RazorReaper.csproj -f net9.0-windows10.0.19041.
 - RazorReaper is focused on **ARK: Survival Evolved**
 - Some tools expect a valid ARK install path
 - Steam edition only
+- Geo/telemetry notice: see [PRIVACY.md](PRIVACY.md)
