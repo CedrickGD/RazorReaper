@@ -55,6 +55,9 @@ namespace RazorReaper
 
                 Directory.CreateDirectory(userDataFolder);
                 Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", userDataFolder);
+
+                // Clear any persisted zoom factor so the UI always starts at 100%.
+                ResetWebView2ZoomPreference(userDataFolder);
             }
             catch
             {
@@ -62,6 +65,66 @@ namespace RazorReaper
             }
 #endif
         }
+
+#if WINDOWS
+        private static void ResetWebView2ZoomPreference(string userDataFolder)
+        {
+            try
+            {
+                var prefsPath = Path.Combine(userDataFolder, "EBWebView", "Default", "Preferences");
+                if (!File.Exists(prefsPath))
+                    return;
+
+                var json = File.ReadAllText(prefsPath);
+
+                // Remove the partition block that stores per-host zoom levels.
+                // The zoom data lives under "partition" → "per_host_zoom_levels".
+                // Stripping it forces WebView2 to fall back to the default 1.0 factor.
+                if (json.Contains("per_host_zoom_levels"))
+                {
+                    // Simple but effective: deserialize, strip the key, rewrite.
+                    var doc = System.Text.Json.JsonDocument.Parse(json);
+                    using var ms = new MemoryStream();
+                    using (var writer = new System.Text.Json.Utf8JsonWriter(ms, new System.Text.Json.JsonWriterOptions { Indented = true }))
+                    {
+                        WriteJsonWithoutZoom(writer, doc.RootElement);
+                    }
+                    File.WriteAllBytes(prefsPath, ms.ToArray());
+                }
+            }
+            catch
+            {
+                // Non-critical; worst case the previous zoom level stays for one more launch.
+            }
+        }
+
+        private static void WriteJsonWithoutZoom(System.Text.Json.Utf8JsonWriter writer, System.Text.Json.JsonElement element, string? propertyName = null)
+        {
+            switch (element.ValueKind)
+            {
+                case System.Text.Json.JsonValueKind.Object:
+                    writer.WriteStartObject();
+                    foreach (var prop in element.EnumerateObject())
+                    {
+                        if (prop.Name == "per_host_zoom_levels")
+                            continue;
+                        writer.WritePropertyName(prop.Name);
+                        WriteJsonWithoutZoom(writer, prop.Value, prop.Name);
+                    }
+                    writer.WriteEndObject();
+                    break;
+                case System.Text.Json.JsonValueKind.Array:
+                    writer.WriteStartArray();
+                    foreach (var item in element.EnumerateArray())
+                        WriteJsonWithoutZoom(writer, item);
+                    writer.WriteEndArray();
+                    break;
+                default:
+                    element.WriteTo(writer);
+                    break;
+            }
+        }
+#endif
 
         private static void ConfigureLogging(MauiAppBuilder builder)
         {
