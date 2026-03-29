@@ -24,6 +24,9 @@
 		<FileVersion>1.4.1.0</FileVersion>
 		<Version>1.4.1</Version>
 
+		<!-- Windows App Icon -->
+		<ApplicationIcon>Resources\AppIcon\rrlogo.ico</ApplicationIcon>
+
 		<!-- Windows-specific settings -->
 		<WindowsPackageType>None</WindowsPackageType>
 		<SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
@@ -32,11 +35,12 @@
 		<!-- Disable SourceLink -->
 		<EnableSourceLink>false</EnableSourceLink>
 		<EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+		<PackageIcon>RRlogo.png</PackageIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<!-- App Icon -->
-		<MauiIcon Include="Resources\AppIcon\actualicon.svg" ForegroundFile="Resources\AppIcon\actualicon.svg" Color="#512BD4" />
+		<MauiIcon Include="Resources\AppIcon\rrlogo.png" BaseSize="256,256" />
 
 		<!-- Splash Screen -->
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
@@ -50,6 +54,13 @@
 
 		<!-- Raw Assets -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="wwwroot\images\RRlogo.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>
 
 	<ItemGroup>
