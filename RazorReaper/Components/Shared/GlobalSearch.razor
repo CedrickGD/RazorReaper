@@ -1,0 +1,273 @@
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (_isVisible)
+{
+    <div class="search-overlay" @onclick="Close" @onkeydown="HandleKeyDown">
+        <div class="search-container" @onclick:stopPropagation>
+            <div class="search-input-wrapper">
+                <svg class="search-input-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="9" r="5.5" />
+                    <path d="m13.5 13.5 3 3" />
+                </svg>
+                <input @ref="_inputRef"
+                       type="text"
+                       class="search-input"
+                       placeholder="Search pages..."
+                       @bind-value="_query"
+                       @bind-value:event="oninput"
+                       @onkeydown="HandleKeyDown"
+                       autocomplete="off"
+                       spellcheck="false" />
+                <kbd class="search-kbd">ESC</kbd>
+            </div>
+
+            @if (FilteredResults.Any())
+            {
+                <ul class="search-results">
+                    @foreach (var (item, index) in FilteredResults.Select((v, i) => (v, i)))
+                    {
+                        <li class="search-result-item @(index == _selectedIndex ? "selected" : "")"
+                            @onclick="() => NavigateTo(item.Route)"
+                            @onmouseenter="() => _selectedIndex = index">
+                            <div class="search-result-icon">
+                                @((MarkupString)item.Icon)
+                            </div>
+                            <div class="search-result-text">
+                                <span class="search-result-title">@item.Title</span>
+                                <span class="search-result-description">@item.Description</span>
+                            </div>
+                            <span class="search-result-category">@item.Category</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else if (!string.IsNullOrWhiteSpace(_query))
+            {
+                <div class="search-empty">
+                    <span>No results for "<strong>@_query</strong>"</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isVisible;
+    private string _query = "";
+    private int _selectedIndex;
+    private ElementReference _inputRef;
+    private DotNetObjectReference<GlobalSearch>? _dotNetRef;
+
+    private record SearchEntry(string Title, string Description, string Route, string Category, string Icon, string[] Keywords);
+
+    private static readonly List<SearchEntry> AllPages = new()
+    {
+        new("Home", "Dashboard, updates & recent activity", "/home", "Core",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9.5 10 4l7 5.5\"/><path d=\"M5.5 8.5V16h9V8.5\"/><path d=\"M8.5 16v-3.5h3V16\"/></svg>",
+            new[] { "home", "dashboard", "updates", "activity", "welcome" }),
+
+        new("Server", "Connect and manage ARK servers", "/server", "Core",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"5\" rx=\"1.4\"/><rect x=\"3\" y=\"11\" width=\"14\" height=\"5\" rx=\"1.4\"/><path d=\"M12.5 6.5h1\"/><path d=\"M15 6.5h.5\"/><path d=\"M12.5 13.5h1\"/><path d=\"M15 13.5h.5\"/></svg>",
+            new[] { "server", "connect", "ip", "manage", "query" }),
+
+        new("Game", "Control and monitor ARK: Survival Evolved", "/game", "Core",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4\" width=\"15\" height=\"12\" rx=\"2\"/><path d=\"M7 8l3 2-3 2\"/><path d=\"M11.5 12h3\"/></svg>",
+            new[] { "game", "launch", "start", "ark", "monitor", "status", "running" }),
+
+        new("INI Changer", "Manage & optimize ARK configuration presets", "/ini-changer", "ARK Tweaks",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 5.5h12\"/><path d=\"M4 10h12\"/><path d=\"M4 14.5h12\"/><circle cx=\"7\" cy=\"5.5\" r=\"1.25\"/><circle cx=\"12.5\" cy=\"10\" r=\"1.25\"/><circle cx=\"9\" cy=\"14.5\" r=\"1.25\"/></svg>",
+            new[] { "ini", "config", "configuration", "presets", "settings", "basedeviceprofiles", "optimize" }),
+
+        new("Vision Tools", "TEK camera behavior and scope visibility", "/suitfov", "ARK Tweaks",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z\"/><circle cx=\"10\" cy=\"10\" r=\"2.2\"/></svg>",
+            new[] { "vision", "fov", "camera", "tek", "suit", "scope", "zoom" }),
+
+        new("Launch Options", "Quick ARK startup flags with trade-offs", "/launch-options", "ARK Tweaks",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 16.5V3.5\"/><path d=\"M5 4h8l-1.6 2.6L13 9H5\"/></svg>",
+            new[] { "launch", "options", "flags", "startup", "arguments", "steam", "parameters" }),
+
+        new("Fonts", "Customize ARK font settings", "/fonts", "ARK Tweaks",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 15 10 5l4 10\"/><path d=\"M7.4 11.5h5.2\"/></svg>",
+            new[] { "fonts", "text", "typography", "chinese", "global", "install" }),
+
+        new("Pixel Glitch", "Manage ARK texture files for visual mods", "/pixel", "ARK Tweaks",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.5 2.5 4 10h5l-.6 7.5L16 10h-5l-.5-7.5Z\"/></svg>",
+            new[] { "pixel", "glitch", "texture", "visual", "riot", "saddle", "armor" }),
+
+        new("Paintings", "Manage your in-game paintings", "/paintings", "ARK Tweaks",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7\"/><circle cx=\"7\" cy=\"7.5\" r=\"1\"/></svg>",
+            new[] { "paintings", "mypaintings", "art", "images" }),
+
+        new("Mutagen Prices", "Browse creature mutation values by name", "/dino-prices", "Mods & Intel",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M11 3H6.5a2 2 0 0 0-2 2v4.5L11 16l5-5-6-8Z\"/><circle cx=\"7.3\" cy=\"7.3\" r=\"1\"/></svg>",
+            new[] { "mutagen", "prices", "dino", "creature", "gen2", "mutation", "values" }),
+
+        new("OC BPs", "Genesis 2 mission rewards for overcapped blueprints", "/oc-bps", "Mods & Intel",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"4.5\" y=\"3.5\" width=\"11\" height=\"13\" rx=\"2\"/><path d=\"M8 6h4\"/><path d=\"M7 9.5h6\"/><path d=\"M7 12.5h6\"/></svg>",
+            new[] { "oc", "blueprints", "bps", "genesis", "mission", "rewards", "overcapped" }),
+
+        new("Bosses", "Boss tribute guide sorted by map", "/bosses", "Mods & Intel",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3 5 5.8V10c0 3 1.7 5.3 5 6.8 3.3-1.5 5-3.8 5-6.8V5.8L10 3Z\"/></svg>",
+            new[] { "bosses", "tribute", "guide", "map", "requirements", "mini-boss", "fight" }),
+
+        new("Map Mods", "Server map mods with custom coordinates", "/server-specific", "Mods & Intel",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 16s4.8-4.8 4.8-8A4.8 4.8 0 1 0 5.2 8c0 3.2 4.8 8 4.8 8Z\"/><circle cx=\"10\" cy=\"8\" r=\"1.8\"/></svg>",
+            new[] { "map", "mods", "coordinates", "landmarks", "spots", "mesa", "server-specific" }),
+
+        new("Steam Mods", "Browse installed workshop mods", "/steam-mods", "Mods & Intel",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5 4.5 6.7v6.6L10 16.5l5.5-3.2V6.7L10 3.5Z\"/><path d=\"M10 10V16\"/><path d=\"M4.5 6.7 10 10l5.5-3.3\"/></svg>",
+            new[] { "steam", "workshop", "mods", "installed", "browse" }),
+
+        new("Building", "Foundation raising and lowering tutorials", "/building", "Utilities",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"4\" y=\"4\" width=\"4\" height=\"4\" rx=\"1\"/><rect x=\"12\" y=\"4\" width=\"4\" height=\"4\" rx=\"1\"/><rect x=\"8\" y=\"12\" width=\"4\" height=\"4\" rx=\"1\"/></svg>",
+            new[] { "building", "foundation", "raising", "lowering", "tutorials", "video" }),
+
+        new("Auto Clicker", "Advanced mouse automation tool", "/autoclicker", "Utilities",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5v3\"/><path d=\"M7 5.5h6\"/><path d=\"M10 8.5v8\"/><path d=\"M10 16.5c3 0 4.8-1.8 4.8-4.3 0-1.8-1.1-3.2-2.9-3.7\"/><path d=\"M10 16.5c-3 0-4.8-1.8-4.8-4.3 0-1.8 1.1-3.2 2.9-3.7\"/></svg>",
+            new[] { "autoclicker", "auto", "clicker", "mouse", "automation", "click", "hotkey" }),
+
+        new("Macro / AHK", "Video, refs, scripts for macros", "/crafting-scripts", "Utilities",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"6\" width=\"15\" height=\"8.5\" rx=\"2\"/><path d=\"M5.5 9.5h1\"/><path d=\"M8.5 9.5h1\"/><path d=\"M11.5 9.5h1\"/><path d=\"M14.5 9.5h0.5\"/><path d=\"M5.5 12h5\"/><path d=\"M12.5 12h2.5\"/></svg>",
+            new[] { "macro", "ahk", "autohotkey", "crafting", "scripts", "jitbit" }),
+
+        new("Troubleshoot", "Logging, diagnostics, and quick fixes", "/troubleshoot", "Help & About",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5 16.5 15H3.5L10 3.5Z\"/><path d=\"M10 7.2v4.3\"/><path d=\"M10 13.6h.01\"/></svg>",
+            new[] { "troubleshoot", "diagnostics", "logging", "error", "fix", "debug", "logs" }),
+
+        new("Credits", "Developer information & contact", "/credits", "Help & About",
+            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"10\" cy=\"10\" r=\"6.5\"/><path d=\"M10 8v4\"/><path d=\"M10 6.3h.01\"/></svg>",
+            new[] { "credits", "about", "developer", "contact", "info", "support" }),
+    };
+
+    private List<SearchEntry> FilteredResults
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_query))
+                return AllPages;
+
+            var q = _query.Trim().ToLowerInvariant();
+            var scored = new List<(SearchEntry Entry, int Score)>();
+
+            foreach (var entry in AllPages)
+            {
+                int score = 0;
+
+                // Title exact start match (highest priority)
+                if (entry.Title.StartsWith(q, StringComparison.OrdinalIgnoreCase))
+                    score += 100;
+                // Title contains
+                else if (entry.Title.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    score += 80;
+
+                // Keyword exact match
+                if (entry.Keywords.Any(k => k.Equals(q, StringComparison.OrdinalIgnoreCase)))
+                    score += 90;
+                // Keyword starts with
+                else if (entry.Keywords.Any(k => k.StartsWith(q, StringComparison.OrdinalIgnoreCase)))
+                    score += 60;
+                // Keyword contains
+                else if (entry.Keywords.Any(k => k.Contains(q, StringComparison.OrdinalIgnoreCase)))
+                    score += 40;
+
+                // Description contains
+                if (entry.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    score += 30;
+
+                // Category contains
+                if (entry.Category.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    score += 20;
+
+                if (score > 0)
+                    scored.Add((entry, score));
+            }
+
+            _selectedIndex = 0;
+            return scored.OrderByDescending(s => s.Score).Select(s => s.Entry).ToList();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("registerGlobalSearch", _dotNetRef);
+        }
+
+        if (_isVisible)
+        {
+            try
+            {
+                await _inputRef.FocusAsync();
+            }
+            catch
+            {
+                // Element may not be rendered yet
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void ToggleSearch()
+    {
+        _isVisible = !_isVisible;
+        if (_isVisible)
+        {
+            _query = "";
+            _selectedIndex = 0;
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Close()
+    {
+        _isVisible = false;
+        _query = "";
+        _selectedIndex = 0;
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        var results = FilteredResults;
+
+        switch (e.Key)
+        {
+            case "Escape":
+                Close();
+                break;
+            case "ArrowDown":
+                _selectedIndex = (_selectedIndex + 1) % Math.Max(results.Count, 1);
+                break;
+            case "ArrowUp":
+                _selectedIndex = (_selectedIndex - 1 + Math.Max(results.Count, 1)) % Math.Max(results.Count, 1);
+                break;
+            case "Enter":
+                if (results.Count > 0 && _selectedIndex < results.Count)
+                    NavigateTo(results[_selectedIndex].Route);
+                break;
+        }
+    }
+
+    private void NavigateTo(string route)
+    {
+        Close();
+        Navigation.NavigateTo(route);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("unregisterGlobalSearch");
+        }
+        catch
+        {
+            // JS interop may fail during disposal
+        }
+        _dotNetRef?.Dispose();
+    }
+}

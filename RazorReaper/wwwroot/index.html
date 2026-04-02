@@ -27,6 +27,7 @@
     <link href="css/steam-mods-styles.css" rel="stylesheet" />
     <link href="css/troubleshoot-styles.css" rel="stylesheet" />
     <link href="css/widget-highlights.css" rel="stylesheet" />
+    <link href="css/global-search-styles.css" rel="stylesheet" />
 </head>
 
 <body>
@@ -499,6 +500,35 @@
                 }
             });
         };
+    </script>
+
+    <script>
+        (function () {
+            let _searchRef = null;
+            let _keyHandler = null;
+
+            window.registerGlobalSearch = function (dotNetRef) {
+                _searchRef = dotNetRef;
+                _keyHandler = function (e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (_searchRef) {
+                            _searchRef.invokeMethodAsync('ToggleSearch');
+                        }
+                    }
+                };
+                document.addEventListener('keydown', _keyHandler, true);
+            };
+
+            window.unregisterGlobalSearch = function () {
+                if (_keyHandler) {
+                    document.removeEventListener('keydown', _keyHandler, true);
+                    _keyHandler = null;
+                }
+                _searchRef = null;
+            };
+        })();
     </script>
 
     <script src="js/network-animation.js"></script>
