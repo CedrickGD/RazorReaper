@@ -14,18 +14,23 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate DISCORD_WEBHOOK secret
+      - name: Validate DISCORD_WEBHOOK secrets
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK_2: ${{ secrets.DISCORD_WEBHOOK_2 }}
         run: |
           if [ -z "$DISCORD_WEBHOOK" ]; then
             echo "::error::Missing DISCORD_WEBHOOK repository secret."
             exit 1
           fi
+          if [ -z "$DISCORD_WEBHOOK_2" ]; then
+            echo "::warning::Missing DISCORD_WEBHOOK_2 repository secret. Skipping second webhook."
+          fi
 
       - name: Send Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK_2: ${{ secrets.DISCORD_WEBHOOK_2 }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
@@ -83,4 +88,16 @@ jobs:
             echo "::error::Discord webhook returned HTTP $http_code"
             cat discord_response.txt
             exit 1
+          fi
+
+          if [ -n "$DISCORD_WEBHOOK_2" ]; then
+            http_code2="$(curl -sS -o discord_response2.txt -w "%{http_code}" \
+              -H "Content-Type: application/json" \
+              -d "$payload" \
+              "$DISCORD_WEBHOOK_2")"
+
+            if [ "$http_code2" -lt 200 ] || [ "$http_code2" -ge 300 ]; then
+              echo "::warning::Discord webhook 2 returned HTTP $http_code2"
+              cat discord_response2.txt
+            fi
           fi
