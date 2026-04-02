@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using System.Drawing.Text;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
 
 namespace RazorReaper.Services.Implementations;
 

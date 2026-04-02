@@ -1,14 +1,12 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using RazorReaper.Configuration;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Storage;
-using RazorReaper.Configuration;
 
 namespace RazorReaper.Services.Implementations;
 

@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Devices.Sensors;
 using RazorReaper.Configuration;
 #if WINDOWS
 using Windows.Devices.Geolocation;

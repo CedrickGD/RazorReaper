@@ -1,7 +1,7 @@
-using System.Reflection;
-using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Models;
+using System.Reflection;
+using System.Xml.Linq;
 
 namespace RazorReaper.Services;
 

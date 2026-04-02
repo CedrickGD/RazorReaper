@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using RazorReaper.Models;
+using System.Text.RegularExpressions;
 
 namespace RazorReaper.Services.Implementations;
 

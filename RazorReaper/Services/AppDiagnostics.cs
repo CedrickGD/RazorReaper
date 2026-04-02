@@ -1,7 +1,5 @@
-using System.Globalization;
-using System.IO;
-using Microsoft.Maui.Storage;
 using Serilog;
+using System.Globalization;
 
 namespace RazorReaper.Services;
 
