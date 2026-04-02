@@ -36,56 +36,6 @@
     display: block !important;
 }
 
-/* Search trigger button */
-.search-trigger {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin: 0.85rem 0.75rem 0;
-    padding: 0.55rem 0.8rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
-}
-
-    .search-trigger:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(139, 92, 246, 0.25);
-    }
-
-.search-trigger-icon {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-    color: var(--accent-purple-light);
-    opacity: 0.85;
-}
-
-.search-trigger-text {
-    flex: 1;
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    opacity: 0.5;
-}
-
-.search-trigger-kbd {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.62rem;
-    font-family: var(--font-mono);
-    color: var(--text-secondary);
-    opacity: 0.5;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    line-height: 1.5;
-}
-
 .nav-content {
     display: flex !important;
     flex-direction: column !important;
