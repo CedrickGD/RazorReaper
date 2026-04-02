@@ -96,17 +96,6 @@
     gap: 0.75rem;
 }
 
-.btn-update-download {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(109, 40, 217, 0.18));
-    border-color: rgba(139, 92, 246, 0.5);
-}
-
-.btn-update-download:hover {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(109, 40, 217, 0.28));
-    border-color: var(--accent-purple);
-    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.35);
-}
-
 .update-status {
     display: flex;
     align-items: center;
@@ -194,6 +183,65 @@
     flex-basis: 100%;
     color: var(--text-secondary);
     font-size: 0.85rem;
+}
+
+.update-progress {
+    flex-basis: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.update-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.update-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-purple), rgba(139, 92, 246, 0.7));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.update-progress-label {
+    font-size: 0.78rem;
+    color: var(--accent-purple-light);
+    font-weight: 500;
+}
+
+.update-ready-message {
+    flex-basis: 100%;
+    padding: 0.55rem 0.85rem;
+    border-radius: 8px;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: var(--accent-purple-light);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.update-card-footer {
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+.btn-link-subtle {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-link-subtle:hover {
+    color: var(--accent-purple-light);
 }
 
 .sound-settings-card {

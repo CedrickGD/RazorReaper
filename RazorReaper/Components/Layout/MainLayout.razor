@@ -1,5 +1,9 @@
 ﻿@inherits LayoutComponentBase
 @using RazorReaper.Components.Shared
+@using RazorReaper.Services
+@inject IAutoUpdateManager AutoUpdateManager
+@inject INotificationService NotificationService
+@inject IUpdateService UpdateService
 
 <NotificationContainer />
 <GlobalSearch />
@@ -11,3 +15,15 @@
         @Body
     </main>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var previousVersion = AutoUpdateManager.DetectVersionUpgrade();
+        if (previousVersion != null)
+        {
+            var current = UpdateService.CurrentVersionLabel;
+            NotificationService.ShowSuccess($"Successfully updated to v{current}!");
+        }
+    }
+}

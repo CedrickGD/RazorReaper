@@ -18,6 +18,7 @@
 @inject INotificationService NotificationService
 @inject IFontInstaller FontInstaller
 @inject IUpdateService UpdateService
+@inject IAutoUpdateManager AutoUpdateManager
 @implements IAsyncDisposable
 
 
@@ -40,11 +41,14 @@
                     </div>
                 </div>
                 <div class="update-actions">
+                    <label class="sound-toggle sound-toggle-master">
+                        <input type="checkbox"
+                               checked="@AutoUpdateManager.IsAutoUpdateEnabled"
+                               @onchange="ToggleAutoUpdate" />
+                        <span>Auto-update</span>
+                    </label>
                     <button class="btn-small" @onclick="() => CheckForUpdatesAsync(true)" disabled="@isCheckingForUpdates">
-                        @(isCheckingForUpdates ? "Checking..." : "Check for Update")
-                    </button>
-                    <button class="btn-small btn-update-download" @onclick="DownloadUpdate" disabled="@(!CanDownloadUpdate)">
-                        Download Update
+                        @(isCheckingForUpdates ? "Checking..." : "Check")
                     </button>
                 </div>
             </div>
@@ -67,7 +71,36 @@
                         <span class="update-meta-value">@LastCheckedLabel</span>
                     </div>
                 </div>
+
+                @if (AutoUpdateManager.IsDownloading)
+                {
+                    <div class="update-progress">
+                        <div class="update-progress-bar">
+                            <div class="update-progress-fill" style="width: @(AutoUpdateManager.DownloadProgressPercent ?? 0)%"></div>
+                        </div>
+                        <span class="update-progress-label">Downloading... @(AutoUpdateManager.DownloadProgressPercent ?? 0)%</span>
+                    </div>
+                }
+                else if (AutoUpdateManager.IsInstallerReady)
+                {
+                    <div class="update-ready-message">
+                        v@(AutoUpdateManager.PendingVersion) ready — will install silently when you close the app.
+                    </div>
+                }
+
                 <div class="update-message">@UpdateStatusMessage</div>
+            </div>
+            <div class="update-card-footer">
+                <a href="https://github.com/CedrickGD/RazorReaper/releases/latest"
+                   target="_blank"
+                   class="btn-link-subtle"
+                   data-sound-skip="true">
+                    View releases on GitHub
+                    <svg fill="currentColor" viewBox="0 0 20 20" style="width:12px;height:12px;margin-left:4px;">
+                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                    </svg>
+                </a>
             </div>
         </div>
 
@@ -599,8 +632,6 @@
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
     private UpdateCheckResult? updateResult;
-    private static UpdateCheckResult? cachedUpdateResult;
-    private static bool hasAutoCheckedForUpdates = false;
     private bool isCheckingForUpdates = false;
 
     private int driveCount = 0;
@@ -765,10 +796,11 @@
         if (_isDisposed)
             return;
 
-        if (cachedUpdateResult != null)
+        if (AutoUpdateManager.LastCheckResult != null)
         {
-            updateResult = cachedUpdateResult;
+            updateResult = AutoUpdateManager.LastCheckResult;
         }
+        AutoUpdateManager.StateChanged += OnAutoUpdateStateChanged;
 
         // Start consolidated update timer (updates clock)
         // Set to 1 second for smooth clock updates without excessive overhead
@@ -803,13 +835,6 @@
             lastStorageRefreshUtc = DateTime.UtcNow;
             InvokeAsync(StateHasChanged);
         });
-
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
-        if (!_isDisposed && !hasAutoCheckedForUpdates)
-        {
-            hasAutoCheckedForUpdates = true;
-            await CheckForUpdatesAsync(true);
-        }
 
         await InvokeAsync(StateHasChanged);
     }
@@ -1327,6 +1352,12 @@
     {
         get
         {
+            if (AutoUpdateManager.IsDownloading)
+                return $"Downloading update... {AutoUpdateManager.DownloadProgressPercent ?? 0}%";
+
+            if (AutoUpdateManager.IsInstallerReady)
+                return $"v{AutoUpdateManager.PendingVersion} ready — will install on close.";
+
             if (isCheckingForUpdates)
                 return "Checking for updates...";
 
@@ -1337,7 +1368,11 @@
                 return updateResult.ErrorMessage;
 
             if (updateResult.HasUpdate)
-                return $"Version {updateResult.LatestVersion} is ready to download.";
+            {
+                return AutoUpdateManager.IsAutoUpdateEnabled
+                    ? $"Version {updateResult.LatestVersion} detected — download will start automatically."
+                    : $"Version {updateResult.LatestVersion} available — enable auto-update or visit GitHub.";
+            }
 
             return "You're on the latest version.";
         }
@@ -1359,10 +1394,6 @@
             return updateResult.HasUpdate;
         }
     }
-
-    private bool CanDownloadUpdate => !isCheckingForUpdates
-        && updateResult?.HasUpdate == true
-        && !string.IsNullOrWhiteSpace(updateResult.DownloadUrl);
 
     private async Task CheckForUpdatesAsync(bool showToast)
     {
@@ -1392,7 +1423,6 @@
         }
 
         updateResult = result;
-        cachedUpdateResult = result;
         isCheckingForUpdates = false;
 
         if (showToast && !_isDisposed)
@@ -1418,68 +1448,25 @@
         }
     }
 
-    private bool isDownloadingUpdate;
-
-    private async Task DownloadUpdate()
+    private void ToggleAutoUpdate(ChangeEventArgs e)
     {
-        if (!CanDownloadUpdate || updateResult == null || isDownloadingUpdate)
-            return;
+        var enabled = (bool)(e.Value ?? false);
+        AutoUpdateManager.IsAutoUpdateEnabled = enabled;
 
-        var downloadUrl = updateResult.DownloadUrl;
-        if (string.IsNullOrWhiteSpace(downloadUrl))
+        if (enabled && updateResult?.HasUpdate == true
+            && !AutoUpdateManager.IsInstallerReady
+            && !AutoUpdateManager.IsDownloading)
         {
-            NotificationService.ShowError("Download link is missing.");
-            return;
+            _ = Task.Run(() => AutoUpdateManager.RunStartupCheckAsync());
         }
+    }
 
-        isDownloadingUpdate = true;
-        await InvokeAsync(StateHasChanged);
-
-        try
+    private void OnAutoUpdateStateChanged()
+    {
+        if (!_isDisposed)
         {
-            NotificationService.ShowSuccess("Downloading update — this may take a moment…");
-            ActivityService.AddActivity($"Downloading update v{updateResult.LatestVersion}", "info");
-
-            // Download installer to temp folder
-            using var httpClient = new HttpClient();
-            var tempDir = Path.Combine(Path.GetTempPath(), "RazorReaperUpdate");
-            Directory.CreateDirectory(tempDir);
-            var installerPath = Path.Combine(tempDir, "RazorReaper_Update.exe");
-
-            using (var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
-            {
-                response.EnsureSuccessStatusCode();
-                await using var fs = new FileStream(installerPath, FileMode.Create, FileAccess.Write, FileShare.None);
-                await response.Content.CopyToAsync(fs);
-            }
-
-            // Launch installer silently and exit app so files can be replaced
-            var args = updateResult.InstallerArgs ?? "/SILENT /SUPPRESSMSGBOXES /NORESTART";
-            var process = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = installerPath,
-                    Arguments = args,
-                    UseShellExecute = true
-                }
-            };
-
-            NotificationService.ShowSuccess("Installing update — app will close momentarily…");
-            ActivityService.AddActivity($"Launching silent installer for v{updateResult.LatestVersion}", "info");
-
-            process.Start();
-
-            // Give a brief moment for the UI to show the message, then exit
-            await Task.Delay(1500);
-            Application.Current?.Quit();
-        }
-        catch (Exception ex)
-        {
-            NotificationService.ShowError("Failed to download or install update.");
-            Logger.LogError(ex, "Auto-update failed for v{Version}", updateResult.LatestVersion);
-            isDownloadingUpdate = false;
-            await InvokeAsync(StateHasChanged);
+            updateResult = AutoUpdateManager.LastCheckResult ?? updateResult;
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -2472,6 +2459,7 @@
         Logger.LogDebug("Disposing Home component resources");
 
         _isDisposed = true;
+        AutoUpdateManager.StateChanged -= OnAutoUpdateStateChanged;
 
         updateTimer?.Stop();
         updateTimer?.Dispose();

@@ -6,17 +6,21 @@ namespace RazorReaper
     {
         private static readonly TimeSpan TelemetryShutdownTimeout = TimeSpan.FromSeconds(5);
         private readonly ITelemetryService telemetryService;
+        private readonly IAutoUpdateManager autoUpdateManager;
 
         public App(
             IFontInstaller fontInstaller,
             IScopeModeStartupService scopeModeStartupService,
-            ITelemetryService telemetryService)
+            ITelemetryService telemetryService,
+            IAutoUpdateManager autoUpdateManager)
         {
             this.telemetryService = telemetryService;
+            this.autoUpdateManager = autoUpdateManager;
 
             InitializeComponent();
             _ = Task.Run(() => fontInstaller.EnsurePresetFontsInstalledAsync());
             _ = Task.Run(() => scopeModeStartupService.ApplySavedScopeModeAsync());
+            _ = Task.Run(() => autoUpdateManager.RunStartupCheckAsync());
             _ = this.telemetryService.StartAsync();
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
@@ -38,11 +42,13 @@ namespace RazorReaper
 
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
+            autoUpdateManager.LaunchPendingInstaller();
             FlushTelemetryShutdown();
         }
 
         private void HandleProcessExit(object? sender, EventArgs e)
         {
+            autoUpdateManager.LaunchPendingInstaller();
             FlushTelemetryShutdown();
         }
 
