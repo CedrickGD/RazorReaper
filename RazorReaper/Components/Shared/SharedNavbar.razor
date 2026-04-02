@@ -1,10 +1,20 @@
 @using Microsoft.AspNetCore.Components.Routing
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <nav class="sidebar">
     <div class="brand">
         <img class="brand-logo" src="images/RRlogo.png" alt="Razor Reaper logo" />
+    </div>
+
+    <div class="search-trigger" @onclick="OpenSearch">
+        <svg class="search-trigger-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="9" r="5.5" />
+            <path d="m13.5 13.5 3 3" />
+        </svg>
+        <span class="search-trigger-text">Search...</span>
+        <kbd class="search-trigger-kbd">Ctrl K</kbd>
     </div>
 
     <div class="nav-content">
@@ -238,6 +248,11 @@
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OpenSearch()
+    {
+        await JS.InvokeVoidAsync("triggerGlobalSearch");
     }
 
     private string GetActiveClass(string href)

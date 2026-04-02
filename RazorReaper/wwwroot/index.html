@@ -521,6 +521,12 @@
                 document.addEventListener('keydown', _keyHandler, true);
             };
 
+            window.triggerGlobalSearch = function () {
+                if (_searchRef) {
+                    _searchRef.invokeMethodAsync('ToggleSearch');
+                }
+            };
+
             window.unregisterGlobalSearch = function () {
                 if (_keyHandler) {
                     document.removeEventListener('keydown', _keyHandler, true);
