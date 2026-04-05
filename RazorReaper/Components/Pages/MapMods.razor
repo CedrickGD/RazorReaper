@@ -1,0 +1,919 @@
+@page "/map-mods"
+@using RazorReaper.Models
+@using RazorReaper.Services
+@inject ICustomServerDataService CustomDataService
+@inject INotificationService NotificationService
+
+<header class="page-header map-mods-header">
+    <div class="map-mods-header-content">
+        <div class="map-mods-logo-wrap">
+            <img class="map-mods-logo" src="/images/mesa-logo.png" alt="Mesa server logo" />
+        </div>
+        <div>
+            <h1 class="page-title">Map Mods</h1>
+            <p class="page-subtitle">Mesa Ark' server map mods with custom coordinates and landmarks.</p>
+        </div>
+    </div>
+    <div class="map-mods-header-stats">
+        <div class="map-mods-stat">
+            <span class="map-mods-stat-label">Maps</span>
+            <span class="map-mods-stat-value">@MapCount</span>
+        </div>
+        <div class="map-mods-stat">
+            <span class="map-mods-stat-label">Spots</span>
+            <span class="map-mods-stat-value">@TotalSpotCount</span>
+        </div>
+    </div>
+</header>
+
+<div class="map-mods-layout">
+    <section class="map-mods-category">
+        <div class="map-mods-category-body">
+            @foreach (var map in maps)
+            {
+                <details class="map-mods-map-card" open>
+                    <summary class="map-mods-map-header">
+                        <div class="map-mods-map-heading">
+                            <h2>@map.Name</h2>
+                            @if (!string.IsNullOrWhiteSpace(map.Note))
+                            {
+                                <p>@map.Note</p>
+                            }
+                        </div>
+                        <div class="map-mods-map-meta">
+                            <span class="map-mods-map-count">@(map.Spots.Count + GetMesaExtraSpots(map.Name).Count) spots</span>
+                            <button class="cs-icon-btn small" @onclick="() => OpenAddMesaSpot(map.Name)" @onclick:stopPropagation="true" title="Add spot">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            </button>
+                            <span class="map-mods-map-toggle" aria-hidden="true"></span>
+                        </div>
+                    </summary>
+
+                    <div class="map-mods-grid">
+                        @foreach (var spot in map.Spots)
+                        {
+                            <article class="map-mods-spot">
+                                <div class="map-mods-spot-header">
+                                    <h3>@spot.Name</h3>
+                                    @if (!string.IsNullOrWhiteSpace(spot.Type))
+                                    {
+                                        <span class="map-mods-spot-type">@spot.Type</span>
+                                    }
+                                </div>
+                                <div class="map-mods-coordinates">
+                                    <span class="map-mods-coordinate-label">Lat</span>
+                                    <span class="map-mods-coordinate-value">@spot.Latitude</span>
+                                    <span class="map-mods-coordinate-divider">/</span>
+                                    <span class="map-mods-coordinate-label">Lon</span>
+                                    <span class="map-mods-coordinate-value">@spot.Longitude</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(spot.Note))
+                                {
+                                    <p class="map-mods-spot-note">@spot.Note</p>
+                                }
+                            </article>
+                        }
+                        @foreach (var extra in GetMesaExtraSpots(map.Name))
+                        {
+                            <article class="map-mods-spot">
+                                <div class="map-mods-spot-header">
+                                    <h3>@extra.Name</h3>
+                                    <div class="cs-spot-actions">
+                                        @if (!string.IsNullOrWhiteSpace(extra.Type))
+                                        {
+                                            <span class="map-mods-spot-type">@extra.Type</span>
+                                        }
+                                        <button class="cs-icon-btn tiny" @onclick="() => OpenEditMesaSpot(map.Name, extra)" title="Edit">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                        <button class="cs-icon-btn tiny danger" @onclick="() => ConfirmDeleteMesaSpot(map.Name, extra)" title="Delete">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="map-mods-coordinates">
+                                    <span class="map-mods-coordinate-label">Lat</span>
+                                    <span class="map-mods-coordinate-value">@extra.Latitude</span>
+                                    <span class="map-mods-coordinate-divider">/</span>
+                                    <span class="map-mods-coordinate-label">Lon</span>
+                                    <span class="map-mods-coordinate-value">@extra.Longitude</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(extra.Note))
+                                {
+                                    <p class="map-mods-spot-note">@extra.Note</p>
+                                }
+                            </article>
+                        }
+                    </div>
+                </details>
+            }
+        </div>
+    </section>
+</div>
+
+@* ═══════════════════════════════════════════════════════════════════════ *@
+@* ══ YOUR SERVERS — fully user-managed section below the Mesa block ══ *@
+@* ═══════════════════════════════════════════════════════════════════════ *@
+
+<div class="cs-section">
+    <div class="cs-section-header">
+        <div class="cs-section-title-area">
+            <h2 class="cs-section-title">Your Servers</h2>
+            <p class="cs-section-subtitle">Add your own servers, maps, and base spots.</p>
+        </div>
+        <button class="btn btn-primary cs-add-server-btn" @onclick="OpenAddServer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Server
+        </button>
+    </div>
+
+    @if (customStore != null && customStore.Servers.Count > 0)
+    {
+        @foreach (var server in customStore.Servers)
+        {
+            <div class="cs-server-block">
+                <div class="cs-server-header">
+                    <div class="cs-server-header-left">
+                        <div class="cs-server-logo-wrap">
+                            @if (!string.IsNullOrWhiteSpace(server.LogoDataUrl))
+                            {
+                                <img class="cs-server-logo-img" src="@server.LogoDataUrl" alt="@server.Name logo" />
+                            }
+                            else
+                            {
+                                <span class="cs-server-logo-initials">@GetInitials(server.Name)</span>
+                            }
+                        </div>
+                        <div>
+                            <h3 class="cs-server-name">@server.Name</h3>
+                            <span class="cs-server-stats">@server.Maps.Count maps &middot; @server.Maps.Sum(m => m.Spots.Count) spots</span>
+                        </div>
+                    </div>
+                    <div class="cs-server-actions">
+                        <button class="cs-icon-btn" @onclick="() => OpenAddMap(server)" title="Add map">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <button class="cs-icon-btn" @onclick="() => OpenEditServer(server)" title="Edit server">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button class="cs-icon-btn danger" @onclick="() => ConfirmDeleteServer(server)" title="Delete server">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="cs-maps-body">
+                    @foreach (var map in server.Maps)
+                    {
+                        <details class="map-mods-map-card" open>
+                            <summary class="map-mods-map-header">
+                                <div class="map-mods-map-heading">
+                                    <h2>@map.Name</h2>
+                                    @if (!string.IsNullOrWhiteSpace(map.Note))
+                                    {
+                                        <p>@map.Note</p>
+                                    }
+                                </div>
+                                <div class="map-mods-map-meta">
+                                    <span class="map-mods-map-count">@map.Spots.Count spots</span>
+                                    <button class="cs-icon-btn small" @onclick="() => OpenAddSpot(server, map)" @onclick:stopPropagation="true" title="Add spot">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    </button>
+                                    <button class="cs-icon-btn small" @onclick="() => OpenEditMap(server, map)" @onclick:stopPropagation="true" title="Edit map">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <button class="cs-icon-btn small danger" @onclick="() => ConfirmDeleteMap(server, map)" @onclick:stopPropagation="true" title="Delete map">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    </button>
+                                    <span class="map-mods-map-toggle" aria-hidden="true"></span>
+                                </div>
+                            </summary>
+
+                            <div class="map-mods-grid">
+                                @foreach (var spot in map.Spots)
+                                {
+                                    <article class="map-mods-spot">
+                                        <div class="map-mods-spot-header">
+                                            <h3>@spot.Name</h3>
+                                            <div class="cs-spot-actions">
+                                                @if (!string.IsNullOrWhiteSpace(spot.Type))
+                                                {
+                                                    <span class="map-mods-spot-type">@spot.Type</span>
+                                                }
+                                                <button class="cs-icon-btn tiny" @onclick="() => OpenEditSpot(server, map, spot)" title="Edit">
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                </button>
+                                                <button class="cs-icon-btn tiny danger" @onclick="() => ConfirmDeleteSpot(server, map, spot)" title="Delete">
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="map-mods-coordinates">
+                                            <span class="map-mods-coordinate-label">Lat</span>
+                                            <span class="map-mods-coordinate-value">@spot.Latitude</span>
+                                            <span class="map-mods-coordinate-divider">/</span>
+                                            <span class="map-mods-coordinate-label">Lon</span>
+                                            <span class="map-mods-coordinate-value">@spot.Longitude</span>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(spot.Note))
+                                        {
+                                            <p class="map-mods-spot-note">@spot.Note</p>
+                                        }
+                                    </article>
+                                }
+                            </div>
+                        </details>
+                    }
+
+                    @if (server.Maps.Count == 0)
+                    {
+                        <p class="cs-empty-hint">No maps yet — add one to get started.</p>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="cs-empty-state">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M12 22s8-6 8-12A8 8 0 0 0 4 10c0 6 8 12 8 12Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <p>No custom servers yet. Click <strong>Add Server</strong> to create one.</p>
+        </div>
+    }
+</div>
+
+@* ── Modal overlay ── *@
+@if (modalOpen)
+{
+    <div class="cs-modal-overlay" @onclick="CloseModal">
+        <div class="cs-modal" @onclick:stopPropagation="true">
+            <div class="cs-modal-header">
+                <h3>@modalTitle</h3>
+                <button class="cs-icon-btn" @onclick="CloseModal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            @switch (modalMode)
+            {
+                case ModalMode.AddServer:
+                case ModalMode.EditServer:
+                    <div class="cs-modal-body">
+                        <div class="cs-form-group">
+                            <label>Server Name</label>
+                            <input type="text" @bind="formServerName" placeholder="e.g. INX, Nitrado, MyCluster" />
+                        </div>
+                        <div class="cs-form-group">
+                            <label>Server Logo (optional)</label>
+                            <div class="cs-logo-upload-area">
+                                @if (!string.IsNullOrWhiteSpace(formServerLogo))
+                                {
+                                    <div class="cs-logo-preview-wrap">
+                                        <img class="cs-logo-preview" src="@formServerLogo" alt="Preview" />
+                                        <button class="cs-icon-btn tiny danger" @onclick="ClearLogo" title="Remove">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <label class="cs-logo-dropzone">
+                                        <InputFile OnChange="HandleLogoUpload" accept="image/png,image/jpeg,image/webp,image/gif" />
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        <span>Upload image</span>
+                                    </label>
+                                }
+                                <p class="cs-logo-hint">PNG, JPG, WebP &middot; max 2 MB. Leave empty for auto initials.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cs-modal-footer">
+                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button class="btn btn-primary" @onclick="SaveServer">Save</button>
+                    </div>
+                    break;
+
+                case ModalMode.AddMap:
+                case ModalMode.EditMap:
+                    <div class="cs-modal-body">
+                        <div class="cs-form-group">
+                            <label>Map Name</label>
+                            <input type="text" @bind="formMapName" placeholder="e.g. Ragnarok, The Island" />
+                        </div>
+                        <div class="cs-form-group">
+                            <label>Note (optional)</label>
+                            <input type="text" @bind="formMapNote" placeholder="e.g. Custom caves and landmarks" />
+                        </div>
+                    </div>
+                    <div class="cs-modal-footer">
+                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button class="btn btn-primary" @onclick="SaveMap">Save</button>
+                    </div>
+                    break;
+
+                case ModalMode.AddSpot:
+                case ModalMode.EditSpot:
+                case ModalMode.AddMesaSpot:
+                case ModalMode.EditMesaSpot:
+                    var isMesa = modalMode is ModalMode.AddMesaSpot or ModalMode.EditMesaSpot;
+                    <div class="cs-modal-body">
+                        <div class="cs-form-group">
+                            <label>Spot Name</label>
+                            <input type="text" @bind="formSpotName" placeholder="e.g. Horror Cave" />
+                        </div>
+                        <div class="cs-form-row">
+                            <div class="cs-form-group">
+                                <label>Latitude</label>
+                                <input type="text" @bind="formSpotLat" placeholder="e.g. 50" />
+                            </div>
+                            <div class="cs-form-group">
+                                <label>Longitude</label>
+                                <input type="text" @bind="formSpotLon" placeholder="e.g. 72" />
+                            </div>
+                        </div>
+                        <div class="cs-form-group">
+                            <label>Type</label>
+                            <div class="cs-type-picker">
+                                @foreach (var t in spotTypes)
+                                {
+                                    <button class="cs-type-btn @(formSpotType == t ? "active" : "")"
+                                            @onclick="() => formSpotType = t">@t</button>
+                                }
+                            </div>
+                        </div>
+                        <div class="cs-form-group">
+                            <label>Note (optional)</label>
+                            <input type="text" @bind="formSpotNote" placeholder="Optional notes" />
+                        </div>
+                    </div>
+                    <div class="cs-modal-footer">
+                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button class="btn btn-primary" @onclick="@(isMesa ? SaveMesaSpot : SaveSpot)">Save</button>
+                    </div>
+                    break;
+
+                case ModalMode.ConfirmDelete:
+                    <div class="cs-modal-body">
+                        <p class="cs-confirm-text">@confirmMessage</p>
+                    </div>
+                    <div class="cs-modal-footer">
+                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button class="btn btn-danger" @onclick="ExecuteDelete">Delete</button>
+                    </div>
+                    break;
+            }
+        </div>
+    </div>
+}
+
+@code {
+    // ── Original Mesa data (UNTOUCHED) ──
+    private readonly List<MapModsMap> maps = new()
+    {
+        new MapModsMap
+        {
+            Name = "Scorched Earth",
+            Note = "Desert caves, obelisks, and pillar edits.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Horror Cave", Latitude = "20", Longitude = "11", Type = "Cave" },
+                new MapModsSpot { Name = "(Alien) Cave", Latitude = "50", Longitude = "72", Type = "Cave" },
+                new MapModsSpot { Name = "Egypt Cave", Latitude = "84", Longitude = "14", Type = "Cave" },
+                new MapModsSpot { Name = "Church Cave", Latitude = "78", Longitude = "75", Type = "Cave" },
+                new MapModsSpot { Name = "Large Pillar", Latitude = "54", Longitude = "53", Type = "Landmark" },
+                new MapModsSpot { Name = "Red Ob", Latitude = "76", Longitude = "46", Type = "Obelisk" },
+                new MapModsSpot { Name = "Central Cave", Latitude = "59", Longitude = "48", Type = "Cave" },
+                new MapModsSpot { Name = "Blue Ob", Latitude = "28", Longitude = "29", Type = "Obelisk" }
+            }
+        },
+        new MapModsMap
+        {
+            Name = "Genesis 2",
+            Note = "Custom caves and mission landmarks.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Atlantis Cave (UW Cube)", Latitude = "44", Longitude = "68", Type = "Cave" },
+                new MapModsSpot { Name = "Iron Man Tower", Latitude = "45", Longitude = "75", Type = "Landmark" },
+                new MapModsSpot { Name = "Tek Cave", Latitude = "29", Longitude = "80", Type = "Cave" },
+                new MapModsSpot { Name = "Garden Cave 1", Latitude = "46", Longitude = "90", Type = "Cave" },
+                new MapModsSpot { Name = "Garden Cave 2", Latitude = "46", Longitude = "60", Type = "Cave" },
+                new MapModsSpot { Name = "Tentacle Cave", Latitude = "73", Longitude = "41", Type = "Cave" },
+                new MapModsSpot { Name = "Rockwell Garden", Latitude = "47", Longitude = "8", Type = "Landmark" }
+            }
+        },
+        new MapModsMap
+        {
+            Name = "Crystal Isles",
+            Note = "Cave edits and crystal landmarks.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Olympus Cave", Latitude = "21", Longitude = "76", Type = "Cave" },
+                new MapModsSpot { Name = "(Gold Cave)", Latitude = "53", Longitude = "58", Type = "Cave" },
+                new MapModsSpot { Name = "Dragon Cave", Latitude = "48", Longitude = "75", Type = "Cave" },
+                new MapModsSpot { Name = "Redwood Green", Latitude = "33", Longitude = "27", Type = "Landmark" },
+                new MapModsSpot { Name = "Ice Cave", Latitude = "33", Longitude = "50", Type = "Cave" },
+                new MapModsSpot { Name = "Crystal Cave", Latitude = "60", Longitude = "33", Type = "Cave" }
+            }
+        },
+        new MapModsMap
+        {
+            Name = "Aberration",
+            Note = "Underground caves and plateau edits.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Waterfall Plateau", Latitude = "42", Longitude = "52", Type = "Landmark" },
+                new MapModsSpot { Name = "Waterfall Cave", Latitude = "46", Longitude = "72", Type = "Cave" },
+                new MapModsSpot { Name = "Tentacle Cave", Latitude = "32", Longitude = "62", Type = "Cave" },
+                new MapModsSpot { Name = "Stalker Cave", Latitude = "83", Longitude = "49", Type = "Cave" },
+                new MapModsSpot { Name = "Shadow Cave", Latitude = "55", Longitude = "66", Type = "Cave" },
+                new MapModsSpot { Name = "Rockwell Cave", Latitude = "71", Longitude = "23", Type = "Cave" },
+                new MapModsSpot { Name = "Glowtail", Latitude = "48", Longitude = "27", Type = "Landmark" },
+                new MapModsSpot { Name = "Fleshwalk Cave", Latitude = "50", Longitude = "30", Type = "Cave" },
+                new MapModsSpot { Name = "Fertile Lake Cave", Latitude = "12", Longitude = "40", Type = "Cave" },
+                new MapModsSpot { Name = "Basilisk Plateau", Latitude = "58", Longitude = "54", Type = "Landmark" },
+                new MapModsSpot { Name = "Alpha Tree", Latitude = "32", Longitude = "55", Type = "Landmark" }
+            }
+        },
+        new MapModsMap
+        {
+            Name = "Ragnarok",
+            Note = "Landmark caves, cliffs, and drop downs.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Beaver Cave", Latitude = "32", Longitude = "43", Type = "Cave" },
+                new MapModsSpot { Name = "Brute Cave", Latitude = "36", Longitude = "77", Type = "Cave" },
+                new MapModsSpot { Name = "Canyon Cave", Latitude = "41", Longitude = "42", Type = "Cave" },
+                new MapModsSpot { Name = "Dark Cave", Latitude = "21", Longitude = "42", Type = "Cave" },
+                new MapModsSpot { Name = "Desert Waterfall", Latitude = "55", Longitude = "57", Type = "Landmark" },
+                new MapModsSpot { Name = "Doppey Cave", Latitude = "36", Longitude = "82", Type = "Cave" },
+                new MapModsSpot { Name = "Flooded Cove", Latitude = "63", Longitude = "02", Type = "Landmark" },
+                new MapModsSpot { Name = "Green Obelisk Cliff", Latitude = "93", Longitude = "68", Type = "Obelisk" },
+                new MapModsSpot { Name = "Highlands Cave", Latitude = "18", Longitude = "78", Type = "Cave" },
+                new MapModsSpot { Name = "Ice Lake", Latitude = "40", Longitude = "62", Type = "Landmark" },
+                new MapModsSpot { Name = "Lava Cave", Latitude = "19", Longitude = "65", Type = "Cave" },
+                new MapModsSpot { Name = "Lighthouse", Latitude = "22", Longitude = "86", Type = "Landmark" },
+                new MapModsSpot { Name = "Mushroom Cave", Latitude = "10", Longitude = "23", Type = "Cave" },
+                new MapModsSpot { Name = "Pillar Drop Down", Latitude = "41", Longitude = "29", Type = "Landmark" },
+                new MapModsSpot { Name = "Prison Cave", Latitude = "79", Longitude = "63", Type = "Cave" },
+                new MapModsSpot { Name = "Rifle13", Latitude = "20", Longitude = "24", Type = "POI" },
+                new MapModsSpot { Name = "Triple Waterfall", Latitude = "27", Longitude = "47", Type = "Landmark" },
+                new MapModsSpot { Name = "Viking Bay", Latitude = "22", Longitude = "30", Type = "Landmark" },
+                new MapModsSpot { Name = "Wild West", Latitude = "85", Longitude = "51", Type = "Landmark" }
+            }
+        },
+        new MapModsMap
+        {
+            Name = "The Center",
+            Note = "Overworld and underworld cave edits.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Cross Cave", Latitude = "28", Longitude = "13", Type = "Cave" },
+                new MapModsSpot { Name = "Crouch Bear", Latitude = "26", Longitude = "64", Type = "Landmark" },
+                new MapModsSpot { Name = "FrenchOP", Latitude = "41", Longitude = "55", Type = "POI" },
+                new MapModsSpot { Name = "Lower Redwoods", Latitude = "96", Longitude = "38", Type = "Landmark" },
+                new MapModsSpot { Name = "Minecraft Cave", Latitude = "62", Longitude = "76", Type = "Cave" },
+                new MapModsSpot { Name = "Underworld Crouch", Latitude = "33", Longitude = "62", Type = "Landmark" },
+                new MapModsSpot { Name = "Pearl Cave", Latitude = "15", Longitude = "50", Type = "Cave" },
+                new MapModsSpot { Name = "Redwoods Waterfall", Latitude = "93", Longitude = "68", Type = "Landmark" },
+                new MapModsSpot { Name = "Shadow's Cave", Latitude = "31", Longitude = "52", Type = "Cave" },
+                new MapModsSpot { Name = "Snow North", Latitude = "18", Longitude = "29", Type = "Landmark" },
+                new MapModsSpot { Name = "Snow South", Latitude = "60", Longitude = "22", Type = "Landmark" },
+                new MapModsSpot { Name = "Solo Leveling", Latitude = "80", Longitude = "28", Type = "POI" },
+                new MapModsSpot { Name = "Spider Cave", Latitude = "51", Longitude = "56", Type = "Cave" },
+                new MapModsSpot { Name = "Aberration Cave", Latitude = "46", Longitude = "14", Type = "Cave" },
+                new MapModsSpot { Name = "Ice Castle", Latitude = "34", Longitude = "16", Type = "Landmark" },
+                new MapModsSpot { Name = "Yellow Lunar", Latitude = "85", Longitude = "51", Type = "Landmark" },
+                new MapModsSpot { Name = "Central Cave", Latitude = "41", Longitude = "47", Type = "Cave" },
+                new MapModsSpot { Name = "Castle Cave", Latitude = "72", Longitude = "44", Type = "Cave" },
+                new MapModsSpot { Name = "Bunker Cave", Latitude = "73", Longitude = "34", Type = "Cave" }
+            }
+        },
+        new MapModsMap
+        {
+            Name = "Extinction",
+            Note = "Wasteland caves and dome edits.",
+            Spots = new List<MapModsSpot>
+            {
+                new MapModsSpot { Name = "Unc Cave", Latitude = "18", Longitude = "56", Type = "Cave" },
+                new MapModsSpot { Name = "Vaulted Depths", Latitude = "37", Longitude = "62", Type = "Cave" },
+                new MapModsSpot { Name = "Sulfur Fields", Latitude = "78", Longitude = "09", Type = "Landmark" },
+                new MapModsSpot { Name = "Snakes Bookshelf", Latitude = "49", Longitude = "64", Type = "Landmark" },
+                new MapModsSpot { Name = "Rocket Cave", Latitude = "29", Longitude = "84", Type = "Cave" },
+                new MapModsSpot { Name = "Red Ob", Latitude = "72", Longitude = "67", Type = "Obelisk" },
+                new MapModsSpot { Name = "Imian's Cave", Latitude = "15", Longitude = "29", Type = "Cave" },
+                new MapModsSpot { Name = "Fallout Bunker", Latitude = "63", Longitude = "16", Type = "Landmark" },
+                new MapModsSpot { Name = "Extinction Pipe", Latitude = "48", Longitude = "81", Type = "Landmark" },
+                new MapModsSpot { Name = "Engineer Icy Cave", Latitude = "51", Longitude = "53", Type = "Cave" },
+                new MapModsSpot { Name = "Desert Cave", Latitude = "73", Longitude = "88", Type = "Cave" },
+                new MapModsSpot { Name = "Barracks Cave", Latitude = "36", Longitude = "15", Type = "Cave" }
+            }
+        }
+    };
+
+    private int MapCount => maps.Count;
+    private int TotalSpotCount => maps.Sum(map => map.Spots.Count + GetMesaExtraSpots(map.Name).Count);
+
+    private sealed class MapModsMap
+    {
+        public string Name { get; init; } = "";
+        public string Note { get; init; } = "";
+        public List<MapModsSpot> Spots { get; init; } = new();
+    }
+
+    private sealed class MapModsSpot
+    {
+        public string Name { get; init; } = "";
+        public string Latitude { get; init; } = "";
+        public string Longitude { get; init; } = "";
+        public string Type { get; init; } = "";
+        public string Note { get; init; } = "";
+    }
+
+    // ── Custom servers state ──
+    private static readonly string[] spotTypes = { "Cave", "Landmark", "Obelisk", "POI" };
+
+    private CustomServerStore? customStore;
+
+    private bool modalOpen;
+    private string modalTitle = "";
+    private ModalMode modalMode;
+
+    // Form fields
+    private string formServerName = "";
+    private string formServerLogo = "";
+    private string formMapName = "";
+    private string formMapNote = "";
+    private string formSpotName = "";
+    private string formSpotLat = "";
+    private string formSpotLon = "";
+    private string formSpotType = "Cave";
+    private string formSpotNote = "";
+
+    // Edit targets
+    private CustomServer? targetServer;
+    private CustomMap? targetMap;
+    private CustomSpot? targetSpot;
+    private string? mesaMapTarget;
+
+    // Delete
+    private string confirmMessage = "";
+    private Action? deleteAction;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customStore = await CustomDataService.LoadAsync();
+    }
+
+    // ── Mesa extra spots ──
+
+    private List<CustomSpot> GetMesaExtraSpots(string mapName)
+    {
+        if (customStore?.MesaExtraSpots == null) return new();
+        return customStore.MesaExtraSpots.TryGetValue(mapName, out var list) ? list : new();
+    }
+
+    private void OpenAddMesaSpot(string mapName)
+    {
+        formSpotName = "";
+        formSpotLat = "";
+        formSpotLon = "";
+        formSpotType = "Cave";
+        formSpotNote = "";
+        mesaMapTarget = mapName;
+        targetSpot = null;
+        modalTitle = "Add Spot";
+        modalMode = ModalMode.AddMesaSpot;
+        modalOpen = true;
+    }
+
+    private void OpenEditMesaSpot(string mapName, CustomSpot spot)
+    {
+        formSpotName = spot.Name;
+        formSpotLat = spot.Latitude;
+        formSpotLon = spot.Longitude;
+        formSpotType = spot.Type;
+        formSpotNote = spot.Note;
+        mesaMapTarget = mapName;
+        targetSpot = spot;
+        modalTitle = "Edit Spot";
+        modalMode = ModalMode.EditMesaSpot;
+        modalOpen = true;
+    }
+
+    private async Task SaveMesaSpot()
+    {
+        if (customStore == null || mesaMapTarget == null || string.IsNullOrWhiteSpace(formSpotName)) return;
+
+        if (!customStore.MesaExtraSpots.ContainsKey(mesaMapTarget))
+            customStore.MesaExtraSpots[mesaMapTarget] = new();
+
+        var list = customStore.MesaExtraSpots[mesaMapTarget];
+
+        if (modalMode == ModalMode.AddMesaSpot)
+        {
+            var spot = new CustomSpot
+            {
+                Name = formSpotName.Trim(),
+                Latitude = formSpotLat.Trim(),
+                Longitude = formSpotLon.Trim(),
+                Type = formSpotType,
+                Note = formSpotNote.Trim()
+            };
+            list.Add(spot);
+            customStore.MesaExtraSpots[mesaMapTarget] = list.OrderBy(s => s.Name).ToList();
+            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" added to {mesaMapTarget}.");
+        }
+        else if (targetSpot != null)
+        {
+            targetSpot.Name = formSpotName.Trim();
+            targetSpot.Latitude = formSpotLat.Trim();
+            targetSpot.Longitude = formSpotLon.Trim();
+            targetSpot.Type = formSpotType;
+            targetSpot.Note = formSpotNote.Trim();
+            customStore.MesaExtraSpots[mesaMapTarget] = list.OrderBy(s => s.Name).ToList();
+            NotificationService.ShowSuccess("Spot updated.");
+        }
+
+        await CustomDataService.SaveAsync(customStore);
+        CloseModal();
+    }
+
+    private void ConfirmDeleteMesaSpot(string mapName, CustomSpot spot)
+    {
+        confirmMessage = $"Delete spot \"{spot.Name}\"?";
+        deleteAction = async () =>
+        {
+            if (customStore?.MesaExtraSpots.TryGetValue(mapName, out var list) == true)
+            {
+                list.Remove(spot);
+                await CustomDataService.SaveAsync(customStore);
+            }
+            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" deleted.");
+            StateHasChanged();
+        };
+        modalTitle = "Confirm Delete";
+        modalMode = ModalMode.ConfirmDelete;
+        modalOpen = true;
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
+    }
+
+    // ── Server CRUD ──
+
+    private void OpenAddServer()
+    {
+        formServerName = "";
+        formServerLogo = "";
+        targetServer = null;
+        modalTitle = "Add Server";
+        modalMode = ModalMode.AddServer;
+        modalOpen = true;
+    }
+
+    private void OpenEditServer(CustomServer server)
+    {
+        formServerName = server.Name;
+        formServerLogo = server.LogoDataUrl;
+        targetServer = server;
+        modalTitle = "Edit Server";
+        modalMode = ModalMode.EditServer;
+        modalOpen = true;
+    }
+
+    private async Task SaveServer()
+    {
+        if (customStore == null || string.IsNullOrWhiteSpace(formServerName)) return;
+
+        if (modalMode == ModalMode.AddServer)
+        {
+            var server = new CustomServer
+            {
+                Name = formServerName.Trim(),
+                LogoDataUrl = formServerLogo,
+                Maps = new()
+            };
+            customStore.Servers.Add(server);
+            customStore.Servers = customStore.Servers.OrderBy(s => s.Name).ToList();
+            NotificationService.ShowSuccess($"Server \"{server.Name}\" added.");
+        }
+        else if (targetServer != null)
+        {
+            targetServer.Name = formServerName.Trim();
+            targetServer.LogoDataUrl = formServerLogo;
+            NotificationService.ShowSuccess("Server updated.");
+        }
+
+        await CustomDataService.SaveAsync(customStore);
+        CloseModal();
+    }
+
+    private void ConfirmDeleteServer(CustomServer server)
+    {
+        confirmMessage = $"Delete server \"{server.Name}\" and all its maps and spots?";
+        deleteAction = async () =>
+        {
+            customStore?.Servers.Remove(server);
+            await CustomDataService.SaveAsync(customStore!);
+            NotificationService.ShowSuccess($"Server \"{server.Name}\" deleted.");
+            StateHasChanged();
+        };
+        modalTitle = "Confirm Delete";
+        modalMode = ModalMode.ConfirmDelete;
+        modalOpen = true;
+    }
+
+    // ── Map CRUD ──
+
+    private void OpenAddMap(CustomServer server)
+    {
+        formMapName = "";
+        formMapNote = "";
+        targetServer = server;
+        targetMap = null;
+        modalTitle = "Add Map";
+        modalMode = ModalMode.AddMap;
+        modalOpen = true;
+    }
+
+    private void OpenEditMap(CustomServer server, CustomMap map)
+    {
+        formMapName = map.Name;
+        formMapNote = map.Note;
+        targetServer = server;
+        targetMap = map;
+        modalTitle = "Edit Map";
+        modalMode = ModalMode.EditMap;
+        modalOpen = true;
+    }
+
+    private async Task SaveMap()
+    {
+        if (targetServer == null || string.IsNullOrWhiteSpace(formMapName)) return;
+
+        if (modalMode == ModalMode.AddMap)
+        {
+            var map = new CustomMap { Name = formMapName.Trim(), Note = formMapNote.Trim(), Spots = new() };
+            targetServer.Maps.Add(map);
+            targetServer.Maps = targetServer.Maps.OrderBy(m => m.Name).ToList();
+            NotificationService.ShowSuccess($"Map \"{map.Name}\" added.");
+        }
+        else if (targetMap != null)
+        {
+            targetMap.Name = formMapName.Trim();
+            targetMap.Note = formMapNote.Trim();
+            targetServer.Maps = targetServer.Maps.OrderBy(m => m.Name).ToList();
+            NotificationService.ShowSuccess("Map updated.");
+        }
+
+        await CustomDataService.SaveAsync(customStore!);
+        CloseModal();
+    }
+
+    private void ConfirmDeleteMap(CustomServer server, CustomMap map)
+    {
+        confirmMessage = $"Delete map \"{map.Name}\" and all its spots?";
+        deleteAction = async () =>
+        {
+            server.Maps.Remove(map);
+            await CustomDataService.SaveAsync(customStore!);
+            NotificationService.ShowSuccess($"Map \"{map.Name}\" deleted.");
+            StateHasChanged();
+        };
+        modalTitle = "Confirm Delete";
+        modalMode = ModalMode.ConfirmDelete;
+        modalOpen = true;
+    }
+
+    // ── Spot CRUD ──
+
+    private void OpenAddSpot(CustomServer server, CustomMap map)
+    {
+        formSpotName = "";
+        formSpotLat = "";
+        formSpotLon = "";
+        formSpotType = "Cave";
+        formSpotNote = "";
+        targetServer = server;
+        targetMap = map;
+        targetSpot = null;
+        modalTitle = "Add Spot";
+        modalMode = ModalMode.AddSpot;
+        modalOpen = true;
+    }
+
+    private void OpenEditSpot(CustomServer server, CustomMap map, CustomSpot spot)
+    {
+        formSpotName = spot.Name;
+        formSpotLat = spot.Latitude;
+        formSpotLon = spot.Longitude;
+        formSpotType = spot.Type;
+        formSpotNote = spot.Note;
+        targetServer = server;
+        targetMap = map;
+        targetSpot = spot;
+        modalTitle = "Edit Spot";
+        modalMode = ModalMode.EditSpot;
+        modalOpen = true;
+    }
+
+    private async Task SaveSpot()
+    {
+        if (targetMap == null || string.IsNullOrWhiteSpace(formSpotName)) return;
+
+        if (modalMode == ModalMode.AddSpot)
+        {
+            var spot = new CustomSpot
+            {
+                Name = formSpotName.Trim(),
+                Latitude = formSpotLat.Trim(),
+                Longitude = formSpotLon.Trim(),
+                Type = formSpotType,
+                Note = formSpotNote.Trim()
+            };
+            targetMap.Spots.Add(spot);
+            targetMap.Spots = targetMap.Spots.OrderBy(s => s.Name).ToList();
+            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" added.");
+        }
+        else if (targetSpot != null)
+        {
+            targetSpot.Name = formSpotName.Trim();
+            targetSpot.Latitude = formSpotLat.Trim();
+            targetSpot.Longitude = formSpotLon.Trim();
+            targetSpot.Type = formSpotType;
+            targetSpot.Note = formSpotNote.Trim();
+            targetMap.Spots = targetMap.Spots.OrderBy(s => s.Name).ToList();
+            NotificationService.ShowSuccess("Spot updated.");
+        }
+
+        await CustomDataService.SaveAsync(customStore!);
+        CloseModal();
+    }
+
+    private void ConfirmDeleteSpot(CustomServer server, CustomMap map, CustomSpot spot)
+    {
+        confirmMessage = $"Delete spot \"{spot.Name}\"?";
+        deleteAction = async () =>
+        {
+            map.Spots.Remove(spot);
+            await CustomDataService.SaveAsync(customStore!);
+            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" deleted.");
+            StateHasChanged();
+        };
+        modalTitle = "Confirm Delete";
+        modalMode = ModalMode.ConfirmDelete;
+        modalOpen = true;
+    }
+
+    // ── Logo upload ──
+
+    private async Task HandleLogoUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file.Size > 2 * 1024 * 1024)
+        {
+            NotificationService.ShowError("Image must be under 2 MB.");
+            return;
+        }
+
+        using var stream = file.OpenReadStream(2 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var base64 = Convert.ToBase64String(ms.ToArray());
+        var mime = file.ContentType;
+        if (string.IsNullOrWhiteSpace(mime))
+            mime = file.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
+        formServerLogo = $"data:{mime};base64,{base64}";
+    }
+
+    private void ClearLogo() => formServerLogo = "";
+
+    // ── Helpers ──
+
+    private void CloseModal() => modalOpen = false;
+
+    private void ExecuteDelete()
+    {
+        deleteAction?.Invoke();
+        CloseModal();
+    }
+
+    private enum ModalMode
+    {
+        AddServer,
+        EditServer,
+        AddMap,
+        EditMap,
+        AddSpot,
+        EditSpot,
+        AddMesaSpot,
+        EditMesaSpot,
+        ConfirmDelete
+    }
+}

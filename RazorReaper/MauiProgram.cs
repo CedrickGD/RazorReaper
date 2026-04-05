@@ -205,6 +205,7 @@ namespace RazorReaper
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();
             services.AddSingleton<ITelemetryService, TelemetryService>();
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
+            services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
         }
     }
 }
