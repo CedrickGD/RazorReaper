@@ -2,7 +2,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using System.Globalization;
+using System.Management;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -40,6 +42,7 @@ public sealed class TelemetryService : ITelemetryService
     private bool isStarted;
     private bool configurationWarningLogged;
     private string? installId;
+    private string? hardwareId;
     private string? sessionId;
     private DateTimeOffset sessionStartedAtUtc;
 
@@ -293,10 +296,12 @@ public sealed class TelemetryService : ITelemetryService
 
     private async Task<Dictionary<string, object?>> BuildBaseMetricsAsync(string source, CancellationToken cancellationToken)
     {
+        var hwid = GetOrCreateHardwareId();
         var metrics = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             ["app_name"] = source,
             ["install_id"] = GetOrCreateInstallId(),
+            ["hwid"] = hwid,
             ["machine_name"] = Environment.MachineName,
             ["user_label"] = Environment.MachineName,
             ["framework"] = $".NET {Environment.Version}",
@@ -371,6 +376,79 @@ public sealed class TelemetryService : ITelemetryService
         installId = Guid.NewGuid().ToString("D");
         Preferences.Set(InstallIdPreferenceKey, installId);
         return installId;
+    }
+
+    private string GetOrCreateHardwareId()
+    {
+        if (!string.IsNullOrWhiteSpace(hardwareId))
+        {
+            return hardwareId;
+        }
+
+        try
+        {
+            var components = new StringBuilder();
+
+            // CPU ProcessorId — burned into the chip, survives OS reinstalls and renames
+            try
+            {
+                using var cpu = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor");
+                foreach (var obj in cpu.Get())
+                {
+                    components.Append(obj["ProcessorId"]?.ToString()?.Trim());
+                    break;
+                }
+            }
+            catch
+            {
+                // WMI query may fail on locked-down systems.
+            }
+
+            // Motherboard SerialNumber
+            try
+            {
+                using var board = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BaseBoard");
+                foreach (var obj in board.Get())
+                {
+                    components.Append(obj["SerialNumber"]?.ToString()?.Trim());
+                    break;
+                }
+            }
+            catch
+            {
+                // WMI query may fail on locked-down systems.
+            }
+
+            // BIOS SerialNumber — another hardware-level constant
+            try
+            {
+                using var bios = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
+                foreach (var obj in bios.Get())
+                {
+                    components.Append(obj["SerialNumber"]?.ToString()?.Trim());
+                    break;
+                }
+            }
+            catch
+            {
+                // WMI query may fail on locked-down systems.
+            }
+
+            if (components.Length > 0)
+            {
+                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(components.ToString()));
+                hardwareId = Convert.ToHexString(hash).ToLowerInvariant();
+                return hardwareId;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to generate hardware ID, falling back to install_id.");
+        }
+
+        // Fall back to install_id if hardware queries fail entirely
+        hardwareId = GetOrCreateInstallId();
+        return hardwareId;
     }
 
     private static string SanitizeIdentifier(string? value, string fallback)

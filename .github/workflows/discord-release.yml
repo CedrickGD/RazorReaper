@@ -95,7 +95,8 @@ jobs:
             exit 1
           fi
 
-          if [ -n "$DISCORD_WEBHOOK_2" ]; then
+          # Webhook 2 (updates channel): releases only, skip commits
+          if [ -n "$DISCORD_WEBHOOK_2" ] && [ "$EVENT_NAME" = "release" ]; then
             http_code2="$(curl -sS -o discord_response2.txt -w "%{http_code}" \
               -H "Content-Type: application/json" \
               -d "$payload" \
