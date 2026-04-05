@@ -3,9 +3,12 @@ using System.Text.RegularExpressions;
 
 namespace RazorReaper.Services.Implementations;
 
-public class NotificationService : INotificationService
+public partial class NotificationService : INotificationService
 {
     private const int MaxMessageLength = 180;
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
 
     public event Action<NotificationMessage>? OnNotificationAdded;
     public event Action<string>? OnNotificationRemoved;
@@ -77,7 +80,7 @@ public class NotificationService : INotificationService
         }
 
         var normalized = message.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ");
-        normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+        normalized = WhitespaceRegex().Replace(normalized, " ").Trim();
 
         if (normalized.Length > MaxMessageLength)
         {

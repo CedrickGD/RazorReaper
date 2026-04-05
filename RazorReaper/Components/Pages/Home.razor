@@ -331,7 +331,7 @@
                     <div class="activity-timeline">
                         @foreach (var activity in ActivityService.GetRecentActivities())
                         {
-                            <div class="timeline-item @activity.Type">
+                            <div @key="activity.Timestamp.Ticks" class="timeline-item @activity.Type">
                                 <div class="timeline-marker">
                                     <div class="timeline-dot"></div>
                                 </div>

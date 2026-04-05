@@ -1265,12 +1265,16 @@
         };
     }
 
+    private DotNetObjectReference<Autoclicker>? _dotNetRef;
+
     private async Task StartPickLocation()
     {
         pickingLocation = true;
         StateHasChanged();
 
-        await JSRuntime.InvokeVoidAsync("startLocationPicker", DotNetObjectReference.Create(this));
+        _dotNetRef?.Dispose();
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("startLocationPicker", _dotNetRef);
     }
 
     [JSInvokable]
@@ -1388,7 +1392,9 @@
     {
         pickingLocation = true;
         StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("startLocationPicker", DotNetObjectReference.Create(this));
+        _dotNetRef?.Dispose();
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("startLocationPicker", _dotNetRef);
     }
 
     private void RemovePosition(int index)
@@ -1583,6 +1589,9 @@
         // Cancel and dispose the hotkey monitoring task
         _hotkeyMonitorCts?.Cancel();
         _hotkeyMonitorCts?.Dispose();
+
+        // Dispose JS interop reference
+        _dotNetRef?.Dispose();
 
         // Cleanup mouse hook if active
         if (mouseHookID != IntPtr.Zero)

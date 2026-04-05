@@ -136,7 +136,7 @@
                     <div class="presets-grid">
                         @foreach (var preset in PresetService.GetAllPresets())
                         {
-                            <button class="preset-button @(selectedPreset == preset.Name ? "active" : "")"
+                            <button @key="preset.Name" class="preset-button @(selectedPreset == preset.Name ? "active" : "")"
                                     @onclick="() => HandlePresetClick(preset)">
                                 <div class="preset-info">
                                     <div class="preset-name">@preset.Name</div>
@@ -174,7 +174,7 @@
                         <div class="images-grid">
                             @foreach (var preset in PresetService.GetAllPresets())
                             {
-                                <div class="image-item">
+                                <div @key="preset.Name" class="image-item">
                                     <div class="image-preview">
                                         <img src="@PresetService.GetPresetImagePath(preset.Name)" alt="@preset.Name Preview" />
                                     </div>

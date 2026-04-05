@@ -23,13 +23,13 @@
                 </div>
                 <div class="dino-count">
                     <span>Showing:</span>
-                    <span class="stat-value">@GetFilteredDinos().Count() / @allDinos.Count</span>
+                    <span class="stat-value">@filteredDinos.Count / @allDinos.Count</span>
                 </div>
             </div>
 
             <div class="dino-main">
                 <div class="dino-list-card">
-                    @if (GetFilteredDinos().Any())
+                    @if (filteredDinos.Count > 0)
                     {
                         <div class="dino-table">
                             <div class="table-header">
@@ -40,9 +40,9 @@
                             <div class="table-body">
                                 @{
                                     int rank = 1;
-                                    foreach (var dino in GetFilteredDinos())
+                                    foreach (var dino in filteredDinos)
                                     {
-                                        <div class="table-row">
+                                        <div @key="dino.Name" class="table-row">
                                             <div class="td-rank">@rank</div>
                                             <div class="td-name">
                                                 <span>@dino.Name</span>
@@ -73,12 +73,19 @@
 
 
 @code {
-    private string searchQuery = "";
+    private string _searchQuery = "";
+    private string searchQuery
+    {
+        get => _searchQuery;
+        set { _searchQuery = value; UpdateFilteredDinos(); }
+    }
     private List<DinoPrice> allDinos = new List<DinoPrice>();
+    private List<DinoPrice> filteredDinos = new List<DinoPrice>();
 
     protected override void OnInitialized()
     {
         InitializeDinos();
+        UpdateFilteredDinos();
     }
 
     private void InitializeDinos()
@@ -163,17 +170,16 @@
         allDinos = allDinos.OrderByDescending(d => d.Value).ThenBy(d => d.Name).ToList();
     }
 
-    private IEnumerable<DinoPrice> GetFilteredDinos()
+    private void UpdateFilteredDinos()
     {
-        var filtered = allDinos.AsEnumerable();
-
-        // Apply search filter
-        if (!string.IsNullOrWhiteSpace(searchQuery))
+        if (string.IsNullOrWhiteSpace(_searchQuery))
         {
-            filtered = filtered.Where(d => d.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            filteredDinos = allDinos;
         }
-
-        return filtered;
+        else
+        {
+            filteredDinos = allDinos.Where(d => d.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
     }
 
     private class DinoPrice

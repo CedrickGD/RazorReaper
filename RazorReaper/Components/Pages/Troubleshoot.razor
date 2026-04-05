@@ -140,7 +140,7 @@
                 <div class="troubleshoot-codes-grid">
                     @foreach (var item in DiagnosticCodes)
                     {
-                        <div class="troubleshoot-code-card">
+                        <div @key="item.Code" class="troubleshoot-code-card">
                             <div class="troubleshoot-code">@item.Code</div>
                             <div class="troubleshoot-code-title">@item.Title</div>
                             <div class="troubleshoot-code-desc">@item.Description</div>

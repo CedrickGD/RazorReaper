@@ -1,4 +1,4 @@
-﻿class NetworkAnimation {
+class NetworkAnimation {
     constructor() {
         this.canvas = document.getElementById('network-canvas');
         this.ctx = this.canvas.getContext('2d');
@@ -9,6 +9,7 @@
         this.animationPaused = false;
         this.animationId = null;
         this.time = 0;
+        this._resizeTimer = null;
 
         this.init();
     }
@@ -31,9 +32,28 @@
             this.mouseY = e.clientY;
         });
 
+        // Debounce resize to avoid recreating nodes on every pixel
         window.addEventListener('resize', () => {
-            this.resizeCanvas();
-            this.createNodes();
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = setTimeout(() => {
+                this.resizeCanvas();
+                this.createNodes();
+            }, 150);
+        });
+
+        // Pause animation when window/tab is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.pause();
+            } else if (!this.animationPaused) {
+                this.resume();
+            }
+        });
+
+        // Pause when window loses focus
+        window.addEventListener('blur', () => this.pause());
+        window.addEventListener('focus', () => {
+            if (!this.animationPaused) this.resume();
         });
     }
 
@@ -97,15 +117,25 @@
     }
 
     animate() {
+        // Don't run if paused or hidden
+        if (document.hidden) {
+            this.animationId = null;
+            return;
+        }
+
         this.time += 0.02;
 
         this.ctx.fillStyle = '#0a0a0a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.nodes.forEach((node, i) => {
+        const nodeCount = this.nodes.length;
+
+        for (let i = 0; i < nodeCount; i++) {
+            const node = this.nodes[i];
             const dx = this.mouseX - node.x;
             const dy = this.mouseY - node.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distSq = dx * dx + dy * dy;
+            const distance = Math.sqrt(distSq);
 
             if (distance < 150) {
                 const orbitForce = 0.0006;
@@ -127,7 +157,8 @@
             node.trail.push({ x: node.x, y: node.y, life: 1.0 });
             if (node.trail.length > 8) node.trail.shift();
 
-            node.trail.forEach((point, index) => {
+            for (let t = 0; t < node.trail.length; t++) {
+                const point = node.trail[t];
                 point.life -= 0.15;
                 if (point.life > 0) {
                     const trailSize = node.size * 0.3 * point.life;
@@ -136,7 +167,7 @@
                     this.ctx.fillStyle = `rgba(255, 255, 255, ${point.life * 0.3})`;
                     this.ctx.fill();
                 }
-            });
+            }
 
             const pulseSize = node.size + Math.sin(this.time * 3 + node.pulseOffset) * 0.3;
             this.ctx.beginPath();
@@ -144,24 +175,35 @@
             this.ctx.fillStyle = distance < 80 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
             this.ctx.fill();
 
-            this.nodes.slice(i + 1).forEach(otherNode => {
+            // Only check connections with subsequent nodes (avoid duplicates)
+            // Use squared distance to avoid sqrt in the hot path
+            const connectionDistSq = 130 * 130;
+            const extendedDistSq = 180 * 180;
+
+            for (let j = i + 1; j < nodeCount; j++) {
+                const otherNode = this.nodes[j];
                 const nodeDx = otherNode.x - node.x;
                 const nodeDy = otherNode.y - node.y;
-                const nodeDistance = Math.sqrt(nodeDx * nodeDx + nodeDy * nodeDy);
+                const nodeDistSq = nodeDx * nodeDx + nodeDy * nodeDy;
 
-                const mouseDistToNode = Math.sqrt((this.mouseX - node.x) ** 2 + (this.mouseY - node.y) ** 2);
-                const mouseDistToOther = Math.sqrt((this.mouseX - otherNode.x) ** 2 + (this.mouseY - otherNode.y) ** 2);
+                // Quick reject: skip if too far for any connection
+                if (nodeDistSq > extendedDistSq) continue;
 
-                let connectionDistance = 130;
+                const mouseDistToNodeSq = (this.mouseX - node.x) ** 2 + (this.mouseY - node.y) ** 2;
+                const mouseDistToOtherSq = (this.mouseX - otherNode.x) ** 2 + (this.mouseY - otherNode.y) ** 2;
+
+                let maxDistSq = connectionDistSq;
                 let useElectric = false;
 
-                if (mouseDistToNode < 120 && mouseDistToOther < 120) {
-                    connectionDistance = 180;
+                if (mouseDistToNodeSq < 14400 && mouseDistToOtherSq < 14400) { // 120^2
+                    maxDistSq = extendedDistSq;
                     useElectric = Math.random() < 0.3;
                 }
 
-                if (nodeDistance < connectionDistance) {
-                    const alpha = (1 - nodeDistance / connectionDistance) * 0.4;
+                if (nodeDistSq < maxDistSq) {
+                    const nodeDistance = Math.sqrt(nodeDistSq);
+                    const maxDist = Math.sqrt(maxDistSq);
+                    const alpha = (1 - nodeDistance / maxDist) * 0.4;
                     this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
                     this.ctx.lineWidth = 0.5;
 
@@ -174,8 +216,8 @@
                         this.ctx.stroke();
                     }
                 }
-            });
-        });
+            }
+        }
 
         this.animationId = requestAnimationFrame(() => this.animate());
     }
@@ -183,11 +225,14 @@
     pause() {
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
+            this.animationId = null;
         }
     }
 
     resume() {
-        this.animate();
+        if (!this.animationId) {
+            this.animate();
+        }
     }
 
     destroy() {

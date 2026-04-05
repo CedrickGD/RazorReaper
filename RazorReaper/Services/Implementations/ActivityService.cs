@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using RazorReaper.Models;
-using System.Collections.Concurrent;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -13,7 +12,7 @@ public class ActivityService : IActivityService
 {
     private readonly ILogger<ActivityService> _logger;
     private readonly AppConfiguration _config;
-    private readonly ConcurrentBag<ActivityItem> _activities = new();
+    private readonly List<ActivityItem> _activities = new();
     private readonly object _lock = new();
 
     /// <inheritdoc/>
@@ -39,11 +38,18 @@ public class ActivityService : IActivityService
                 Timestamp = DateTime.Now
             };
 
-            _activities.Add(activity);
-            _logger.LogDebug("Activity added: {Title} (Type: {Type})", title, type);
+            lock (_lock)
+            {
+                _activities.Add(activity);
 
-            // Trim old activities if we exceed the max count
-            TrimActivities();
+                var maxActivities = _config.Monitoring.MaxRecentActivities;
+                if (_activities.Count > maxActivities)
+                {
+                    _activities.RemoveRange(0, _activities.Count - maxActivities);
+                }
+            }
+
+            _logger.LogDebug("Activity added: {Title} (Type: {Type})", title, type);
 
             // Raise event
             ActivityAdded?.Invoke(this, activity);
@@ -59,9 +65,12 @@ public class ActivityService : IActivityService
     {
         try
         {
-            return _activities
-                .OrderByDescending(a => a.Timestamp)
-                .ToList();
+            lock (_lock)
+            {
+                return _activities
+                    .OrderByDescending(a => a.Timestamp)
+                    .ToList();
+            }
         }
         catch (Exception ex)
         {
@@ -84,43 +93,6 @@ public class ActivityService : IActivityService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error clearing activities");
-        }
-    }
-
-    private void TrimActivities()
-    {
-        try
-        {
-            var maxActivities = _config.Monitoring.MaxRecentActivities;
-            if (_activities.Count > maxActivities)
-            {
-                lock (_lock)
-                {
-                    // Get the oldest activities to remove
-                    var toRemove = _activities
-                        .OrderBy(a => a.Timestamp)
-                        .Take(_activities.Count - maxActivities)
-                        .ToList();
-
-                    // Note: ConcurrentBag doesn't have a Remove method, so we recreate it
-                    var toKeep = _activities
-                        .OrderByDescending(a => a.Timestamp)
-                        .Take(maxActivities)
-                        .ToList();
-
-                    _activities.Clear();
-                    foreach (var item in toKeep)
-                    {
-                        _activities.Add(item);
-                    }
-
-                    _logger.LogDebug("Trimmed {Count} old activities", toRemove.Count);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error trimming activities");
         }
     }
 }

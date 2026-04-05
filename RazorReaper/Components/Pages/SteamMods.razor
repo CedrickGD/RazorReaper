@@ -149,7 +149,7 @@
         <section class="steam-mods-list">
             @foreach (var mod in visibleMods)
             {
-                <article class="content-card steam-mods-item-card">
+                <article @key="mod.WorkshopId" class="content-card steam-mods-item-card">
                     <div class="steam-mods-item-main">
                         <div class="steam-mods-item-title-row">
                             <h3>@mod.Title</h3>

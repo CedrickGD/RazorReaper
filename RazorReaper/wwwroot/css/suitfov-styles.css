@@ -138,11 +138,11 @@
 
 @keyframes pulse-purple {
     0%, 100% {
-        box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+        opacity: 0.7;
     }
 
     50% {
-        box-shadow: 0 0 20px rgba(139, 92, 246, 0.8);
+        opacity: 1;
     }
 }
 

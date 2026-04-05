@@ -118,7 +118,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
         try
         {
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {

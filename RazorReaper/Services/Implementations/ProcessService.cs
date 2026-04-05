@@ -41,6 +41,7 @@ public class ProcessService : IProcessService
         {
             var processes = GetProcessesByName(processName);
             bool isRunning = processes.Length > 0;
+            foreach (var p in processes) p.Dispose();
             _logger.LogDebug("Process {ProcessName} running: {IsRunning}", processName, isRunning);
             return isRunning;
         }

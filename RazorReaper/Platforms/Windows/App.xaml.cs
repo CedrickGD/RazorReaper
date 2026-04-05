@@ -22,7 +22,7 @@ namespace RazorReaper.WinUI
             if (!isNewInstance)
             {
                 BringExistingInstanceToFront();
-                Process.GetCurrentProcess().Kill();
+                Environment.Exit(0);
                 return;
             }
 
@@ -31,15 +31,23 @@ namespace RazorReaper.WinUI
 
         private static void BringExistingInstanceToFront()
         {
-            var current = Process.GetCurrentProcess();
-            foreach (var process in Process.GetProcessesByName(current.ProcessName))
+            using var current = Process.GetCurrentProcess();
+            var processes = Process.GetProcessesByName(current.ProcessName);
+            try
             {
-                if (process.Id != current.Id && process.MainWindowHandle != IntPtr.Zero)
+                foreach (var process in processes)
                 {
-                    ShowWindow(process.MainWindowHandle, SW_RESTORE);
-                    SetForegroundWindow(process.MainWindowHandle);
-                    break;
+                    if (process.Id != current.Id && process.MainWindowHandle != IntPtr.Zero)
+                    {
+                        ShowWindow(process.MainWindowHandle, SW_RESTORE);
+                        SetForegroundWindow(process.MainWindowHandle);
+                        break;
+                    }
                 }
+            }
+            finally
+            {
+                foreach (var p in processes) p.Dispose();
             }
         }
 

@@ -221,8 +221,10 @@
         // Check game status every 10 seconds to reduce CPU usage
         statusTimer = new Timer(async _ =>
         {
+            var wasRunning = isGameRunning;
             CheckGameStatus();
-            await InvokeAsync(StateHasChanged);
+            if (wasRunning != isGameRunning)
+                await InvokeAsync(StateHasChanged);
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 

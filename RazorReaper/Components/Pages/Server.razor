@@ -169,7 +169,7 @@
                         {
                             @foreach (var server in servers)
                             {
-                                <div class="server-item @(selectedServer == server ? "selected" : "")" @onclick="() => SelectServer(server)">
+                                <div @key="@($"{server.IpAddress}:{server.Port}")" class="server-item @(selectedServer == server ? "selected" : "")" @onclick="() => SelectServer(server)">
                                     <div class="server-item-content">
                                         <div class="server-status-dot @(server.IsOnline ? "online" : "offline")"></div>
                                         <div class="server-item-info">

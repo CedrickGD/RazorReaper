@@ -33,7 +33,7 @@
         <div class="launch-options-grid">
             @foreach (var option in options)
             {
-                <article class="launch-option-card">
+                <article @key="option.Flag" class="launch-option-card">
                     <button class="launch-option-flag launch-option-flag-btn"
                             @onclick="() => CopyTextAsync(option.Flag)"
                             title="Copy @option.Flag">
