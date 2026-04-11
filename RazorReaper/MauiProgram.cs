@@ -206,6 +206,7 @@ namespace RazorReaper
             services.AddSingleton<ITelemetryService, TelemetryService>();
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
+            services.AddSingleton<ITextureBackupService, TextureBackupService>();
         }
     }
 }

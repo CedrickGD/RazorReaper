@@ -621,8 +621,38 @@ namespace RazorReaper.Components.Pages
                           "turret_sm.uasset",
                           "turret_sm_DM.uasset"
                     }}
+                },
+                ["📦 UI - Inventory Textures"] = new Dictionary<string, string[]>
+                {
+                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures"), Array.Empty<string>() },
+                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures", "FullBigMain"), Array.Empty<string>() },
+                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures", "PanelBigMain"), Array.Empty<string>() }
                 }
             };
+        }
+
+        /// <summary>
+        /// Resolves file arrays: if the array is empty, enumerates all .uasset files in the directory.
+        /// </summary>
+        public static Dictionary<string, string[]> ResolveFiles(Dictionary<string, string[]> folderFiles)
+        {
+            var resolved = new Dictionary<string, string[]>();
+            foreach (var kvp in folderFiles)
+            {
+                if (kvp.Value.Length == 0 && Directory.Exists(kvp.Key))
+                {
+                    resolved[kvp.Key] = Directory.GetFiles(kvp.Key, "*.uasset")
+                        .Select(Path.GetFileName)
+                        .Where(f => f != null)
+                        .Select(f => f!)
+                        .ToArray();
+                }
+                else
+                {
+                    resolved[kvp.Key] = kvp.Value;
+                }
+            }
+            return resolved;
         }
     }
 }
