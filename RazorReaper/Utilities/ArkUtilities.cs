@@ -1,7 +1,7 @@
 using Microsoft.Win32;
 using System.Text.RegularExpressions;
 
-namespace RazorReaper
+namespace RazorReaper.Utilities
 {
     public static class ArkUtilities
     {

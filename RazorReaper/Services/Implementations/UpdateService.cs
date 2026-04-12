@@ -3,7 +3,7 @@ using RazorReaper.Models;
 using System.Reflection;
 using System.Xml.Linq;
 
-namespace RazorReaper.Services;
+namespace RazorReaper.Services.Implementations;
 
 public class UpdateService : IUpdateService
 {

@@ -1,7 +1,7 @@
 using Serilog;
 using System.Globalization;
 
-namespace RazorReaper.Services;
+namespace RazorReaper.Diagnostics;
 
 public sealed record DiagnosticErrorInfo(string Code, string Message, DateTimeOffset Timestamp);
 

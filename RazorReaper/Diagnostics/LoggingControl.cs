@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-namespace RazorReaper.Services;
+namespace RazorReaper.Diagnostics;
 
 public static class LoggingControl
 {

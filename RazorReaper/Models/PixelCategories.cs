@@ -1,4 +1,4 @@
-namespace RazorReaper.Components.Pages
+namespace RazorReaper.Models
 {
     public static class PixelTextureCategories
     {
