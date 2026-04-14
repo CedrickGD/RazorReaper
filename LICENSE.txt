@@ -1,5 +1,5 @@
 Proprietary License Agreement  
-Copyright © 2025 Cedrick Grabe  
+Copyright © 2026 Cedrick Grabe  
 All Rights Reserved
 
 This software and its source code ("the Software") are the intellectual property of Cedrick Grabe. By obtaining, downloading, installing, or using the Software, you agree to the following terms and conditions:
