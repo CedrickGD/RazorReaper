@@ -1,10 +1,19 @@
-/* Navbar Styles - Simplified */
+/* ============================================================================
+ *  Sidebar (navbar)
+ *  - Width driven by --sidebar-width (set by wwwroot/js/navbar.js).
+ *  - Collapsed (rail) state signalled by html[data-sidebar-collapsed].
+ *  - During active drag, html[data-sidebar-resizing] disables transitions.
+ *  - Scrolling happens on .nav-content (NOT .sidebar), so the brand + search
+ *    stay pinned at the top and the icon list can scroll on its own. This also
+ *    means the sidebar itself never establishes a scroll container, so the
+ *    JS-positioned rail-mode flyouts (position: fixed) never get clipped.
+ * ========================================================================== */
 
 .sidebar {
     display: flex !important;
     flex-direction: column !important;
     height: 100vh !important;
-    width: 240px !important;
+    width: var(--sidebar-width) !important;
     background: var(--background-sidebar) !important;
     backdrop-filter: blur(10px) !important;
     border-right: 1px solid var(--border-color) !important;
@@ -12,16 +21,23 @@
     position: fixed;
     left: 0;
     top: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    /* Visible — the resize handle sits at the right edge as an absolutely
+       positioned child and must not get clipped. Nothing else inside the
+       sidebar overflows in practice (groups manage their own scroll). */
+    overflow: visible;
     z-index: 1000;
     box-shadow: 4px 0 20px var(--shadow-dark);
+    transition: width 0.18s ease;
 }
 
+html[data-sidebar-resizing] .sidebar {
+    transition: none !important;
+}
+
+/* --- Brand row (logo only) -------------------------------------------- */
+
 .brand {
-    padding: 1.5rem !important;
+    padding: 1.25rem 1rem !important;
     border-bottom: 1px solid var(--border-color) !important;
     flex-shrink: 0 !important;
     display: flex !important;
@@ -30,13 +46,15 @@
 }
 
 .brand-logo {
-    width: 75px !important;
-    height: 75px !important;
+    width: 70px !important;
+    height: 70px !important;
     object-fit: contain !important;
     display: block !important;
+    transition: width 0.18s ease, height 0.18s ease;
 }
 
-/* Search trigger button */
+/* --- Search trigger --------------------------------------------------- */
+
 .search-trigger {
     display: flex;
     align-items: center;
@@ -49,6 +67,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    flex-shrink: 0;
 }
 
     .search-trigger:hover {
@@ -69,6 +88,9 @@
     font-size: 0.78rem;
     color: var(--text-secondary);
     opacity: 0.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .search-trigger-kbd {
@@ -84,14 +106,34 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     line-height: 1.5;
+    flex-shrink: 0;
 }
+
+/* --- Nav body (scroll container) ------------------------------------- */
 
 .nav-content {
     display: flex !important;
     flex-direction: column !important;
-    flex: 1 !important;
+    flex: 1 1 auto !important;
+    /* CRITICAL: a flex item needs min-height: 0 to allow itself to be smaller
+       than its content. Without this, overflow-y: auto does nothing because
+       the flex item just grows to fit its children. */
+    min-height: 0 !important;
     justify-content: flex-start !important;
-    padding: 1rem 0 !important;
+    padding: 0.85rem 0 1rem !important;
+    gap: 0.15rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Hide scrollbar completely — scroll still works via wheel/touch.
+       Reserving any scrollbar space would push or block the .sidebar-resize-handle. */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.nav-content::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 
 .nav-menu {
@@ -100,41 +142,96 @@
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.45rem !important;
+    gap: 0.3rem !important;
+    overflow: hidden;
+    max-height: 1200px;
+    transition: max-height 0.22s ease, opacity 0.18s ease, margin 0.22s ease;
+    opacity: 1;
 }
 
-.nav-bottom {
-    margin-top: 1.5rem !important;
-    padding-top: 1rem !important;
-    border-top: 1px solid var(--border-color) !important;
+.nav-group {
+    position: relative;
+    padding: 0.2rem 0 0.45rem;
+}
+
+.nav-group + .nav-group {
+    margin-top: 0.1rem;
+}
+
+.nav-group.collapsed .nav-menu {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    pointer-events: none;
+}
+
+.nav-group.collapsed .nav-group-chevron {
+    transform: rotate(-90deg);
 }
 
 .nav-item {
     padding: 0 0.75rem !important;
 }
 
+/* --- Group label (button that collapses the group) ------------------- */
+
 .nav-group-label {
-    margin: 0.85rem 0.95rem 0.15rem !important;
-    padding: 0.25rem 0.15rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: calc(100% - 1.7rem);
+    margin: 0.55rem 0.85rem 0.35rem !important;
+    padding: 0.3rem 0.2rem !important;
     font-size: 0.66rem !important;
     font-weight: 700 !important;
     letter-spacing: 0.09em !important;
     text-transform: uppercase !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: rgba(255, 255, 255, 0.55) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     user-select: none !important;
-    pointer-events: none !important;
+    background: transparent;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.18s ease, border-color 0.18s ease;
 }
 
-.nav-group-label:first-child {
-    margin-top: 0 !important;
+.nav-group:first-child .nav-group-label {
+    margin-top: 0.1rem !important;
 }
+
+.nav-group-label:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-bottom-color: rgba(139, 92, 246, 0.4) !important;
+}
+
+.nav-group-label-text {
+    display: inline-block;
+}
+
+.nav-group-chevron {
+    width: 11px;
+    height: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    transform: rotate(0deg);
+    transition: transform 0.22s ease, color 0.18s ease;
+    flex-shrink: 0;
+}
+
+.nav-group-label:hover .nav-group-chevron {
+    color: var(--accent-purple-light);
+}
+
+/* --- Nav link --------------------------------------------------------- */
 
 .nav-link {
     display: flex !important;
     align-items: center !important;
     gap: 0.75rem !important;
-    padding: 0.75rem 0.9rem !important;
+    padding: 0.7rem 0.9rem !important;
     padding-left: 1.1rem !important;
     color: var(--text-secondary) !important;
     text-decoration: none !important;
@@ -148,6 +245,7 @@
     border-left: 3px solid transparent !important;
     transform: translateX(0);
     box-shadow: none;
+    white-space: nowrap;
 }
 
     .nav-link:focus {
@@ -204,14 +302,228 @@
         box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.4);
     }
 
-.nav-icon {
-    width: 20px !important;
-    height: 20px !important;
-    flex-shrink: 0 !important;
-    transition: transform 0.25s ease !important;
+.nav-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: inherit;
+    transition: transform 0.25s ease;
     opacity: 0.95;
 }
 
-.nav-link:hover .nav-icon {
+.nav-icon-wrap svg {
+    width: 20px !important;
+    height: 20px !important;
+    display: block;
+}
+
+.nav-link:hover .nav-icon-wrap {
     transform: scale(1.1) !important;
+}
+
+.nav-link-label {
+    display: inline-block;
+    opacity: 1;
+    transition: opacity 0.14s ease;
+}
+
+/* --- Resize handle ---------------------------------------------------- */
+/* Intentionally invisible — the sidebar's existing border-right is the only
+   visual edge. We just want the cursor to flip to ew-resize on hover so
+   users can grab it without any UI noise. */
+
+.sidebar-resize-handle {
+    /* Invisible — sidebar's border-right is the only visual edge. We just
+       want the cursor to flip to ew-resize on hover so users can grab it. */
+    position: absolute;
+    right: -4px;
+    top: 0;
+    width: 10px;
+    height: 100%;
+    cursor: ew-resize;
+    z-index: 1010;
+    background: transparent;
+    touch-action: none;
+}
+
+/* ============================================================================
+ *  Rail (collapsed) mode
+ * ========================================================================== */
+
+html[data-sidebar-collapsed] .brand {
+    padding: 0.85rem 0.4rem !important;
+}
+
+html[data-sidebar-collapsed] .brand-logo {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* Search trigger replaced by Ctrl+K hint — hide the inline trigger. */
+html[data-sidebar-collapsed] .search-trigger {
+    display: none;
+}
+
+html[data-sidebar-collapsed] .nav-group-label {
+    display: none !important;
+}
+
+html[data-sidebar-collapsed] .nav-group.collapsed .nav-menu {
+    /* Force-expand items in rail mode; the per-group collapse only applies in expanded mode. */
+    max-height: none;
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+html[data-sidebar-collapsed] .nav-content {
+    padding: 0.6rem 0 0.8rem !important;
+    gap: 0;
+}
+
+html[data-sidebar-collapsed] .nav-group {
+    padding: 0.25rem 0;
+}
+
+html[data-sidebar-collapsed] .nav-group + .nav-group {
+    margin-top: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+html[data-sidebar-collapsed] .nav-menu {
+    gap: 0.25rem !important;
+}
+
+html[data-sidebar-collapsed] .nav-item {
+    padding: 0 0.5rem !important;
+}
+
+html[data-sidebar-collapsed] .nav-link {
+    padding: 0.6rem 0 !important;
+    justify-content: center;
+    border-left: 0 !important;
+    gap: 0;
+}
+
+html[data-sidebar-collapsed] .nav-link::after {
+    display: none;
+}
+
+html[data-sidebar-collapsed] .nav-link:hover {
+    transform: none !important;
+    background-color: rgba(139, 92, 246, 0.10) !important;
+}
+
+html[data-sidebar-collapsed] .nav-link.active {
+    background-color: rgba(139, 92, 246, 0.16) !important;
+}
+
+html[data-sidebar-collapsed] .nav-link-label {
+    display: none;
+}
+
+/* ============================================================================
+ *  Flyout panel (rail mode only)
+ *
+ *  Positioned with JS (position: fixed + style.top/left) so it can escape the
+ *  sidebar's scroll container without getting clipped. Hidden by default; the
+ *  `.flyout-visible` class is added by navbar.js on hover.
+ * ========================================================================== */
+
+.nav-group-flyout {
+    display: none;
+}
+
+html[data-sidebar-collapsed] .nav-group-flyout {
+    display: block;
+    position: fixed;
+    /* top/left assigned by navbar.js */
+    min-width: 220px;
+    max-width: 280px;
+    background: var(--background-sidebar);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 10px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.3);
+    padding: 0.55rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-6px);
+    transition: opacity 0.12s ease, transform 0.16s ease, visibility 0s linear 0.12s;
+    z-index: 1100;
+    pointer-events: none;
+    max-height: 70vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+}
+
+/* Invisible bridge so cursor can slide from rail icon → flyout without losing hover. */
+html[data-sidebar-collapsed] .nav-group-flyout::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -10px;
+    width: 12px;
+    height: 100%;
+}
+
+html[data-sidebar-collapsed] .nav-group-flyout.flyout-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    pointer-events: auto;
+    transition: opacity 0.12s ease, transform 0.16s ease, visibility 0s linear 0s;
+}
+
+.nav-group-flyout-header {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 0.3rem 0.6rem 0.45rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.35rem;
+}
+
+.nav-group-flyout-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.nav-group-flyout-list .nav-link {
+    padding: 0.5rem 0.6rem !important;
+    padding-left: 0.7rem !important;
+    border-left: 2px solid transparent !important;
+    border-radius: 6px !important;
+    font-size: 0.82rem !important;
+    transform: none !important;
+    gap: 0.6rem !important;
+    justify-content: flex-start !important;
+}
+
+.nav-group-flyout-list .nav-link-label {
+    display: inline-block !important;
+}
+
+.nav-group-flyout-list .nav-link::after {
+    display: none;
+}
+
+.nav-group-flyout-list .nav-link:hover {
+    background-color: rgba(139, 92, 246, 0.14) !important;
+    transform: none !important;
+}
+
+.nav-group-flyout-list .nav-link.active {
+    background-color: rgba(139, 92, 246, 0.18) !important;
+    border-left-color: var(--accent-purple-light) !important;
 }

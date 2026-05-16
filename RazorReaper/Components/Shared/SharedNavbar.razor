@@ -1,14 +1,14 @@
 @using Microsoft.AspNetCore.Components.Routing
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
-@implements IDisposable
+@implements IAsyncDisposable
 
-<nav class="sidebar">
+<nav class="sidebar" data-sidebar @ref="_navRef">
     <div class="brand">
         <img class="brand-logo" src="images/RRlogo.png" alt="Razor Reaper logo" />
     </div>
 
-    <div class="search-trigger" @onclick="OpenSearch">
+    <div class="search-trigger" @onclick="OpenSearch" title="Search (Ctrl+K)">
         <svg class="search-trigger-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="9" cy="9" r="5.5" />
             <path d="m13.5 13.5 3 3" />
@@ -18,264 +18,355 @@
     </div>
 
     <div class="nav-content">
-        <ul class="nav-menu">
-            <li class="nav-group-label">Core</li>
-            <li class="nav-item">
-                <a href="/home" class="nav-link @GetActiveClass("/home")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9.5 10 4l7 5.5" />
-                        <path d="M5.5 8.5V16h9V8.5" />
-                        <path d="M8.5 16v-3.5h3V16" />
+        @foreach (var group in NavGroups)
+        {
+            var isCollapsed = IsGroupCollapsed(group.Name);
+            <div class="nav-group @(isCollapsed ? "collapsed" : "")" data-group="@group.Name">
+                <button type="button"
+                        class="nav-group-label"
+                        @onclick="() => ToggleGroupAsync(group.Name)"
+                        aria-expanded="@(!isCollapsed)">
+                    <span class="nav-group-label-text">@group.Name</span>
+                    <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m3.5 5 2.5 2.5L8.5 5" />
                     </svg>
-                    Home
-                </a>
-            </li>
+                </button>
 
-            <li class="nav-item">
-                <a href="/server" class="nav-link @GetActiveClass("/server")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="14" height="5" rx="1.4" />
-                        <rect x="3" y="11" width="14" height="5" rx="1.4" />
-                        <path d="M12.5 6.5h1" />
-                        <path d="M15 6.5h.5" />
-                        <path d="M12.5 13.5h1" />
-                        <path d="M15 13.5h.5" />
-                    </svg>
-                    Server
-                </a>
-            </li>
+                <ul class="nav-menu">
+                    @foreach (var item in group.Items)
+                    {
+                        <li class="nav-item">
+                            <a href="@item.Href" class="nav-link @GetActiveClass(item.Href)" title="@item.Label">
+                                <span class="nav-icon-wrap">
+                                    @((MarkupString)item.IconSvg)
+                                </span>
+                                <span class="nav-link-label">@item.Label</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
 
-            <li class="nav-item">
-                <a href="/game" class="nav-link @GetActiveClass("/game")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2.5" y="4" width="15" height="12" rx="2" />
-                        <path d="M7 8l3 2-3 2" />
-                        <path d="M11.5 12h3" />
-                    </svg>
-                    Game
-                </a>
-            </li>
-
-            <li class="nav-group-label">ARK Tweaks</li>
-            <li class="nav-item">
-                <a href="/ini-changer" class="nav-link @GetActiveClass("/ini-changer")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 5.5h12" />
-                        <path d="M4 10h12" />
-                        <path d="M4 14.5h12" />
-                        <circle cx="7" cy="5.5" r="1.25" />
-                        <circle cx="12.5" cy="10" r="1.25" />
-                        <circle cx="9" cy="14.5" r="1.25" />
-                    </svg>
-                    INI Changer
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/suitfov" class="nav-link @GetActiveClass("/suitfov")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z" />
-                        <circle cx="10" cy="10" r="2.2" />
-                    </svg>
-                    Vision Tools
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/launch-options" class="nav-link @GetActiveClass("/launch-options")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 16.5V3.5" />
-                        <path d="M5 4h8l-1.6 2.6L13 9H5" />
-                    </svg>
-                    Launch Options
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/fonts" class="nav-link @GetActiveClass("/fonts")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 15 10 5l4 10" />
-                        <path d="M7.4 11.5h5.2" />
-                    </svg>
-                    Fonts
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/pixel" class="nav-link @GetActiveClass("/pixel")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10.5 2.5 4 10h5l-.6 7.5L16 10h-5l-.5-7.5Z" />
-                    </svg>
-                    Pixel Glitch
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/paintings" class="nav-link @GetActiveClass("/paintings")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="14" height="12" rx="2" />
-                        <path d="m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7" />
-                        <circle cx="7" cy="7.5" r="1" />
-                    </svg>
-                    Paintings
-                </a>
-            </li>
-
-            <li class="nav-group-label">Mods & Intel</li>
-            <li class="nav-item">
-                <a href="/dino-prices" class="nav-link @GetActiveClass("/dino-prices")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 3H6.5a2 2 0 0 0-2 2v4.5L11 16l5-5-6-8Z" />
-                        <circle cx="7.3" cy="7.3" r="1" />
-                    </svg>
-                    Mutagen Prices
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/oc-bps" class="nav-link @GetActiveClass("/oc-bps")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="4.5" y="3.5" width="11" height="13" rx="2" />
-                        <path d="M8 6h4" />
-                        <path d="M7 9.5h6" />
-                        <path d="M7 12.5h6" />
-                    </svg>
-                    OC BPs
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/bosses" class="nav-link @GetActiveClass("/bosses")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10 3 5 5.8V10c0 3 1.7 5.3 5 6.8 3.3-1.5 5-3.8 5-6.8V5.8L10 3Z" />
-                    </svg>
-                    Bosses
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/map-mods" class="nav-link @GetActiveClass("/map-mods")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10 16s4.8-4.8 4.8-8A4.8 4.8 0 1 0 5.2 8c0 3.2 4.8 8 4.8 8Z" />
-                        <circle cx="10" cy="8" r="1.8" />
-                    </svg>
-                    Map Mods
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/steam-mods" class="nav-link @GetActiveClass("/steam-mods")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10 3.5 4.5 6.7v6.6L10 16.5l5.5-3.2V6.7L10 3.5Z" />
-                        <path d="M10 10V16" />
-                        <path d="M4.5 6.7 10 10l5.5-3.3" />
-                    </svg>
-                    Steam Mods
-                </a>
-            </li>
-
-            <li class="nav-group-label">Utilities</li>
-            <li class="nav-item">
-                <a href="/building" class="nav-link @GetActiveClass("/building")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="4" y="4" width="4" height="4" rx="1" />
-                        <rect x="12" y="4" width="4" height="4" rx="1" />
-                        <rect x="8" y="12" width="4" height="4" rx="1" />
-                    </svg>
-                    Building
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/autoclicker" class="nav-link @GetActiveClass("/autoclicker")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10 3.5v3" />
-                        <path d="M7 5.5h6" />
-                        <path d="M10 8.5v8" />
-                        <path d="M10 16.5c3 0 4.8-1.8 4.8-4.3 0-1.8-1.1-3.2-2.9-3.7" />
-                        <path d="M10 16.5c-3 0-4.8-1.8-4.8-4.3 0-1.8 1.1-3.2 2.9-3.7" />
-                    </svg>
-                    Auto Clicker
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="/crafting-scripts" class="nav-link @GetActiveClass("/crafting-scripts")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2.5" y="6" width="15" height="8.5" rx="2" />
-                        <path d="M5.5 9.5h1" />
-                        <path d="M8.5 9.5h1" />
-                        <path d="M11.5 9.5h1" />
-                        <path d="M14.5 9.5h0.5" />
-                        <path d="M5.5 12h5" />
-                        <path d="M12.5 12h2.5" />
-                    </svg>
-                    Macro / AHK
-                </a>
-            </li>
-
-            <li class="nav-group-label">Help & About</li>
-            <li class="nav-item">
-                <a href="/troubleshoot" class="nav-link @GetActiveClass("/troubleshoot")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10 3.5 16.5 15H3.5L10 3.5Z" />
-                        <path d="M10 7.2v4.3" />
-                        <path d="M10 13.6h.01" />
-                    </svg>
-                    Troubleshoot
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="/credits" class="nav-link @GetActiveClass("/credits")">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="10" cy="10" r="6.5" />
-                        <path d="M10 8v4" />
-                        <path d="M10 6.3h.01" />
-                    </svg>
-                    Credits
-                </a>
-            </li>
-        </ul>
+                @* Rail-mode flyout — shown on hover when the sidebar is collapsed. *@
+                <div class="nav-group-flyout">
+                    <div class="nav-group-flyout-header">@group.Name</div>
+                    <ul class="nav-group-flyout-list">
+                        @foreach (var item in group.Items)
+                        {
+                            <li>
+                                <a href="@item.Href" class="nav-link @GetActiveClass(item.Href)">
+                                    <span class="nav-icon-wrap">
+                                        @((MarkupString)item.IconSvg)
+                                    </span>
+                                    <span class="nav-link-label">@item.Label</span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
     </div>
+
+    @* Drag-to-resize. The pointerdown listener is attached directly to the DOM
+       node via JS after first render (see OnAfterRenderAsync below), bypassing
+       Blazor's event indirection entirely — that turned out to be the difference
+       between events firing and not firing under WebView2. *@
+    <div class="sidebar-resize-handle"
+         title="Drag to resize"
+         @ref="_resizeHandleRef"></div>
 </nav>
 
 @code {
+    private ElementReference _navRef;
+    private ElementReference _resizeHandleRef;
+    private DotNetObjectReference<SharedNavbar>? _dotNetRef;
+    private HashSet<string> _collapsedGroups = new(StringComparer.Ordinal);
+    private bool _initialStateLoaded;
+    private bool _resizeHandleAttached;
+
+    private record NavItem(string Label, string Href, string IconSvg);
+    private record NavGroupDef(string Name, NavItem[] Items);
+
+    // Single source of truth for the nav structure. To add a page, add an entry to the
+    // appropriate group below and (optionally) mirror it in GlobalSearch.razor's AllPages.
+    private static readonly NavGroupDef[] NavGroups = new[]
+    {
+        new NavGroupDef("Core", new[]
+        {
+            new NavItem("Home", "/home", IconHome),
+            new NavItem("Server", "/server", IconServer),
+            new NavItem("Game", "/game", IconGame),
+        }),
+        new NavGroupDef("ARK Tweaks", new[]
+        {
+            new NavItem("INI Changer", "/ini-changer", IconIni),
+            new NavItem("Vision Tools", "/suitfov", IconVision),
+            new NavItem("Launch Options", "/launch-options", IconLaunch),
+            new NavItem("Fonts", "/fonts", IconFonts),
+            new NavItem("Pixel Glitch", "/pixel", IconPixel),
+            new NavItem("Paintings", "/paintings", IconPaintings),
+        }),
+        new NavGroupDef("Mods & Intel", new[]
+        {
+            new NavItem("Mutagen Prices", "/dino-prices", IconMutagen),
+            new NavItem("OC BPs", "/oc-bps", IconBlueprint),
+            new NavItem("Bosses", "/bosses", IconBoss),
+            new NavItem("Map Mods", "/map-mods", IconMap),
+            new NavItem("Steam Mods", "/steam-mods", IconSteamMods),
+        }),
+        new NavGroupDef("Utilities", new[]
+        {
+            new NavItem("Building", "/building", IconBuilding),
+            new NavItem("Auto Clicker", "/autoclicker", IconClicker),
+            new NavItem("Macro / AHK", "/crafting-scripts", IconScript),
+        }),
+        new NavGroupDef("Help & About", new[]
+        {
+            new NavItem("Troubleshoot", "/troubleshoot", IconTroubleshoot),
+            new NavItem("Credits", "/credits", IconCredits),
+        }),
+    };
+
+    private const string IconHome = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 10 4l7 5.5"/><path d="M5.5 8.5V16h9V8.5"/><path d="M8.5 16v-3.5h3V16"/></svg>""";
+    private const string IconServer = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="5" rx="1.4"/><rect x="3" y="11" width="14" height="5" rx="1.4"/><path d="M12.5 6.5h1"/><path d="M15 6.5h.5"/><path d="M12.5 13.5h1"/><path d="M15 13.5h.5"/></svg>""";
+    private const string IconGame = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M7 8l3 2-3 2"/><path d="M11.5 12h3"/></svg>""";
+    private const string IconIni = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h12"/><path d="M4 10h12"/><path d="M4 14.5h12"/><circle cx="7" cy="5.5" r="1.25"/><circle cx="12.5" cy="10" r="1.25"/><circle cx="9" cy="14.5" r="1.25"/></svg>""";
+    private const string IconVision = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z"/><circle cx="10" cy="10" r="2.2"/></svg>""";
+    private const string IconLaunch = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16.5V3.5"/><path d="M5 4h8l-1.6 2.6L13 9H5"/></svg>""";
+    private const string IconFonts = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15 10 5l4 10"/><path d="M7.4 11.5h5.2"/></svg>""";
+    private const string IconPixel = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5 4 10h5l-.6 7.5L16 10h-5l-.5-7.5Z"/></svg>""";
+    private const string IconPaintings = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7"/><circle cx="7" cy="7.5" r="1"/></svg>""";
+    private const string IconMutagen = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3H6.5a2 2 0 0 0-2 2v4.5L11 16l5-5-6-8Z"/><circle cx="7.3" cy="7.3" r="1"/></svg>""";
+    private const string IconBlueprint = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3.5" width="11" height="13" rx="2"/><path d="M8 6h4"/><path d="M7 9.5h6"/><path d="M7 12.5h6"/></svg>""";
+    private const string IconBoss = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 5.8V10c0 3 1.7 5.3 5 6.8 3.3-1.5 5-3.8 5-6.8V5.8L10 3Z"/></svg>""";
+    private const string IconMap = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16s4.8-4.8 4.8-8A4.8 4.8 0 1 0 5.2 8c0 3.2 4.8 8 4.8 8Z"/><circle cx="10" cy="8" r="1.8"/></svg>""";
+    private const string IconSteamMods = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 4.5 6.7v6.6L10 16.5l5.5-3.2V6.7L10 3.5Z"/><path d="M10 10V16"/><path d="M4.5 6.7 10 10l5.5-3.3"/></svg>""";
+    private const string IconBuilding = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="4" height="4" rx="1"/><rect x="12" y="4" width="4" height="4" rx="1"/><rect x="8" y="12" width="4" height="4" rx="1"/></svg>""";
+    private const string IconClicker = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v3"/><path d="M7 5.5h6"/><path d="M10 8.5v8"/><path d="M10 16.5c3 0 4.8-1.8 4.8-4.3 0-1.8-1.1-3.2-2.9-3.7"/><path d="M10 16.5c-3 0-4.8-1.8-4.8-4.3 0-1.8 1.1-3.2 2.9-3.7"/></svg>""";
+    private const string IconScript = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="8.5" rx="2"/><path d="M5.5 9.5h1"/><path d="M8.5 9.5h1"/><path d="M11.5 9.5h1"/><path d="M14.5 9.5h0.5"/><path d="M5.5 12h5"/><path d="M12.5 12h2.5"/></svg>""";
+    private const string IconTroubleshoot = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 16.5 15H3.5L10 3.5Z"/><path d="M10 7.2v4.3"/><path d="M10 13.6h.01"/></svg>""";
+    private const string IconCredits = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 8v4"/><path d="M10 6.3h.01"/></svg>""";
+
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += HandleLocationChanged;
     }
 
-    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _ = InvokeAsync(StateHasChanged);
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("registerNavbar", _dotNetRef);
+            }
+            catch
+            {
+                // JS may not yet be ready in some hosting scenarios; non-fatal.
+            }
+
+            await LoadGroupStateAsync();
+            await AutoExpandActiveGroupAsync();
+        }
+
+        if (!_resizeHandleAttached)
+        {
+            try
+            {
+                // Pass the DOM node to JS; razorReaperNavbar.attachResizeHandle will
+                // bind a native pointerdown listener that starts the drag. We do this
+                // here (vs. @onpointerdown) because Blazor's pointer event path was
+                // not firing reliably for this element in WebView2.
+                await JS.InvokeVoidAsync("razorReaperNavbar.attachResizeHandle", _resizeHandleRef);
+                _resizeHandleAttached = true;
+            }
+            catch
+            {
+                // Will retry on the next render cycle.
+            }
+        }
+    }
+
+    private async Task LoadGroupStateAsync()
+    {
+        if (_initialStateLoaded) return;
+        _initialStateLoaded = true;
+
+        try
+        {
+            foreach (var group in NavGroups)
+            {
+                var collapsed = await JS.InvokeAsync<bool>("razorReaperNavbar.isGroupCollapsed", group.Name);
+                if (collapsed)
+                {
+                    _collapsedGroups.Add(group.Name);
+                }
+            }
+            StateHasChanged();
+        }
+        catch
+        {
+            // JS interop may fail in some hosting scenarios; default to all-expanded.
+        }
+    }
+
+    private Task AutoExpandActiveGroupAsync()
+    {
+        var activeGroup = FindActiveGroup();
+        if (activeGroup is null) return Task.CompletedTask;
+
+        if (_collapsedGroups.Remove(activeGroup))
+        {
+            // Persist the auto-expansion so the user sees their explicit collapse honored
+            // only until they navigate into that group.
+            _ = JS.InvokeVoidAsync("razorReaperNavbar.setGroupCollapsed", activeGroup, false);
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    private string? FindActiveGroup()
+    {
+        var currentPath = NormalizedCurrentPath();
+        foreach (var group in NavGroups)
+        {
+            foreach (var item in group.Items)
+            {
+                if (IsHrefActive(item.Href, currentPath))
+                {
+                    return group.Name;
+                }
+            }
+        }
+        return null;
+    }
+
+    private string NormalizedCurrentPath()
+    {
+        var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        currentPath = currentPath.Split('?', '#')[0];
+        return currentPath.Trim('/');
+    }
+
+    private bool IsGroupCollapsed(string name) => _collapsedGroups.Contains(name);
+
+    private async Task ToggleGroupAsync(string name)
+    {
+        bool nowCollapsed;
+        if (_collapsedGroups.Contains(name))
+        {
+            _collapsedGroups.Remove(name);
+            nowCollapsed = false;
+        }
+        else
+        {
+            _collapsedGroups.Add(name);
+            nowCollapsed = true;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("razorReaperNavbar.setGroupCollapsed", name, nowCollapsed);
+        }
+        catch
+        {
+            // Non-critical if persistence fails.
+        }
+    }
+
+    [JSInvokable]
+    public Task OnExternalCollapseToggle()
+    {
+        // Fires when navbar.js toggles collapsed state (Ctrl+B shortcut or drag past
+        // the collapse threshold). The CSS handles the visual; we re-render so any
+        // bindings driven by collapsed state get a chance to refresh.
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Bridge for the runtime test runner (wwwroot/_tests/test-runner.js).
+    /// Writes a single line to %LOCALAPPDATA%\RazorReaper\Logs\test-results.log
+    /// so JS-side test results survive across launches.
+    /// </summary>
+    [JSInvokable]
+    public Task WriteDiagnostic(string message)
+    {
+        Serilog.Log.Information("WriteDiagnostic called from JS: {Message}", message);
+        try
+        {
+            var dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RazorReaper",
+                "Logs");
+            System.IO.Directory.CreateDirectory(dir);
+            var path = System.IO.Path.Combine(dir, "test-results.log");
+            var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}";
+            System.IO.File.AppendAllText(path, line);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "WriteDiagnostic failed");
+        }
+        return Task.CompletedTask;
     }
 
     private async Task OpenSearch()
     {
-        await JS.InvokeVoidAsync("triggerGlobalSearch");
+        try
+        {
+            await JS.InvokeVoidAsync("triggerGlobalSearch");
+        }
+        catch
+        {
+            // Search palette JS not ready; ignore.
+        }
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await AutoExpandActiveGroupAsync();
+            StateHasChanged();
+        });
     }
 
     private string GetActiveClass(string href)
     {
-        var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
-        currentPath = currentPath.Split('?', '#')[0];
-        var normalizedCurrent = currentPath.Trim('/');
+        return IsHrefActive(href, NormalizedCurrentPath()) ? "active" : "";
+    }
+
+    private static bool IsHrefActive(string href, string normalizedCurrent)
+    {
         var normalizedHref = href.Trim('/');
 
         if (string.IsNullOrEmpty(normalizedCurrent) && normalizedHref.Equals("home", StringComparison.OrdinalIgnoreCase))
-            return "active";
+            return true;
 
         if (string.Equals(normalizedCurrent, normalizedHref, StringComparison.OrdinalIgnoreCase))
-            return "active";
+            return true;
 
         if (normalizedCurrent.StartsWith(normalizedHref + "/", StringComparison.OrdinalIgnoreCase))
-            return "active";
+            return true;
 
-        return "";
+        return false;
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         Navigation.LocationChanged -= HandleLocationChanged;
+
+        try
+        {
+            await JS.InvokeVoidAsync("unregisterNavbar");
+        }
+        catch
+        {
+            // JS interop may fail during disposal.
+        }
+
+        _dotNetRef?.Dispose();
     }
 }

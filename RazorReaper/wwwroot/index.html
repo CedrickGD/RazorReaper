@@ -37,6 +37,10 @@
 
     <canvas id="network-canvas"></canvas>
 
+    <!-- Load navbar runtime early so the saved sidebar width/collapsed state is applied
+         before Blazor paints the first frame (avoids a 240px → user-width jump). -->
+    <script src="js/navbar.js"></script>
+
     <div id="app">Loading...</div>
 
     <div id="startup-error" class="startup-error" aria-live="polite">
@@ -540,5 +544,9 @@
     </script>
 
     <script src="js/network-animation.js"></script>
+
+    <!-- Runtime test runner. Bails out unless _tests/test-config.json has
+         "enabled": true, so end-user installs incur ~zero overhead. -->
+    <script src="_tests/test-runner.js"></script>
 </body>
 </html>
