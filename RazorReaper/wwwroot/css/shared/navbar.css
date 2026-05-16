@@ -427,103 +427,63 @@ html[data-sidebar-collapsed] .nav-link-label {
 }
 
 /* ============================================================================
- *  Flyout panel (rail mode only)
+ *  Rail-mode tooltip
  *
- *  Positioned with JS (position: fixed + style.top/left) so it can escape the
- *  sidebar's scroll container without getting clipped. Hidden by default; the
- *  `.flyout-visible` class is added by navbar.js on hover.
+ *  A single element appended to <body> by navbar.js — positioned via JS so
+ *  it can sit to the right of whichever icon is currently hovered, without
+ *  being clipped by .nav-link / .nav-content overflow rules.
+ *  Styled to match the rest of the app's purple-tinted glass look.
  * ========================================================================== */
 
-.nav-group-flyout {
-    display: none;
-}
-
-html[data-sidebar-collapsed] .nav-group-flyout {
-    display: block;
+.rail-tooltip {
     position: fixed;
-    /* top/left assigned by navbar.js */
-    min-width: 220px;
-    max-width: 280px;
-    background: var(--background-sidebar);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: 10px;
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.3);
-    padding: 0.55rem;
+    z-index: 1200;
+    padding: 0.4rem 0.7rem;
+    background: linear-gradient(180deg, rgba(28, 23, 42, 0.98) 0%, rgba(20, 16, 32, 0.98) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    border-radius: 7px;
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(0, 0, 0, 0.35),
+        0 0 18px rgba(139, 92, 246, 0.18);
+    pointer-events: none;
+    user-select: none;
+    transform: translate(-4px, -50%);
     opacity: 0;
     visibility: hidden;
-    transform: translateX(-6px);
-    transition: opacity 0.12s ease, transform 0.16s ease, visibility 0s linear 0.12s;
-    z-index: 1100;
-    pointer-events: none;
-    max-height: 70vh;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+    transition:
+        opacity 0.10s ease,
+        transform 0.14s ease,
+        visibility 0s linear 0.10s;
 }
 
-/* Invisible bridge so cursor can slide from rail icon → flyout without losing hover. */
-html[data-sidebar-collapsed] .nav-group-flyout::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -10px;
-    width: 12px;
-    height: 100%;
-}
-
-html[data-sidebar-collapsed] .nav-group-flyout.flyout-visible {
+.rail-tooltip.visible {
     opacity: 1;
     visibility: visible;
-    transform: translateX(0);
-    pointer-events: auto;
-    transition: opacity 0.12s ease, transform 0.16s ease, visibility 0s linear 0s;
+    transform: translate(0, -50%);
+    transition:
+        opacity 0.10s ease,
+        transform 0.14s ease,
+        visibility 0s linear 0s;
 }
 
-.nav-group-flyout-header {
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.55);
-    padding: 0.3rem 0.6rem 0.45rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    margin-bottom: 0.35rem;
-}
-
-.nav-group-flyout-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.nav-group-flyout-list .nav-link {
-    padding: 0.5rem 0.6rem !important;
-    padding-left: 0.7rem !important;
-    border-left: 2px solid transparent !important;
-    border-radius: 6px !important;
-    font-size: 0.82rem !important;
-    transform: none !important;
-    gap: 0.6rem !important;
-    justify-content: flex-start !important;
-}
-
-.nav-group-flyout-list .nav-link-label {
-    display: inline-block !important;
-}
-
-.nav-group-flyout-list .nav-link::after {
-    display: none;
-}
-
-.nav-group-flyout-list .nav-link:hover {
-    background-color: rgba(139, 92, 246, 0.14) !important;
-    transform: none !important;
-}
-
-.nav-group-flyout-list .nav-link.active {
-    background-color: rgba(139, 92, 246, 0.18) !important;
-    border-left-color: var(--accent-purple-light) !important;
+/* Subtle arrow on the left edge pointing back at the rail icon. */
+.rail-tooltip::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    transform: translateY(-50%) rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: inherit;
+    border-left: 1px solid rgba(139, 92, 246, 0.35);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.35);
 }

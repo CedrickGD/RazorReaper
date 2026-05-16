@@ -160,6 +160,53 @@
                 reason: 'collapsedDuringDrag=' + collapsedDuringDrag +
                         ' collapsedAfterDrag=' + collapsedAfterDrag
             };
+        },
+
+        // -------------------------------------------------------------
+        // navbar-dblclick-reset : drag the sidebar wider, then double-click
+        // the handle and verify the width resets to DEFAULT_WIDTH (240).
+        // -------------------------------------------------------------
+        'navbar-dblclick-reset': async function () {
+            const handle = document.querySelector('.sidebar-resize-handle');
+            if (!handle) return { pass: false, reason: 'handle element not found' };
+
+            // Start in expanded mode.
+            document.documentElement.removeAttribute('data-sidebar-collapsed');
+
+            // First, drag it to a non-default width so the reset has something to undo.
+            const rect = handle.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+
+            dispatchPointer(handle, 'pointerdown', cx, cy);
+            dispatchMouse(handle, 'mousedown', cx, cy, 0);
+            await nextFrame();
+            dispatchPointer(document, 'pointermove', cx + 70, cy);
+            dispatchMouse(document, 'mousemove', cx + 70, cy);
+            await nextFrame();
+            await nextFrame();
+            dispatchPointer(document, 'pointerup', cx + 70, cy);
+            dispatchMouse(document, 'mouseup', cx + 70, cy, 0);
+            await nextFrame();
+
+            const widthBefore = getCssVarPx('--sidebar-width');
+
+            // Dispatch a dblclick on the resize handle.
+            handle.dispatchEvent(new MouseEvent('dblclick', {
+                bubbles: true, cancelable: true, view: window,
+                clientX: cx, clientY: cy, button: 0
+            }));
+            await nextFrame();
+            await nextFrame();
+
+            const widthAfter = getCssVarPx('--sidebar-width');
+            const collapsedAfter = document.documentElement.hasAttribute('data-sidebar-collapsed');
+
+            return {
+                pass: widthBefore !== 240 && widthAfter === 240 && !collapsedAfter,
+                reason: 'widthBefore=' + widthBefore + ' widthAfter=' + widthAfter +
+                        ' collapsedAfter=' + collapsedAfter
+            };
         }
     };
 
