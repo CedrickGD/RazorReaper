@@ -1,0 +1,8 @@
+{
+  "_comment": "Toggle runtime tests. enabled=true turns the runner on; individual flags toggle specific tests. See ../../../tests/README.md.",
+  "enabled": false,
+  "tests": {
+    "navbar-drag": true,
+    "navbar-drag-collapse": true
+  }
+}
