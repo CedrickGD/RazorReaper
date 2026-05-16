@@ -37,11 +37,11 @@ public class ProcessService : IProcessService
     /// <inheritdoc/>
     public bool IsProcessRunning(string processName)
     {
+        Process[]? processes = null;
         try
         {
-            var processes = GetProcessesByName(processName);
+            processes = GetProcessesByName(processName);
             bool isRunning = processes.Length > 0;
-            foreach (var p in processes) p.Dispose();
             _logger.LogDebug("Process {ProcessName} running: {IsRunning}", processName, isRunning);
             return isRunning;
         }
@@ -50,10 +50,20 @@ public class ProcessService : IProcessService
             _logger.LogError(ex, "Error checking if process is running: {ProcessName}", processName);
             return false;
         }
+        finally
+        {
+            if (processes is not null)
+            {
+                foreach (var p in processes)
+                {
+                    try { p.Dispose(); } catch { /* dispose must never throw out of finally */ }
+                }
+            }
+        }
     }
 
     /// <inheritdoc/>
-    public Process Start(string filePath)
+    public Process? Start(string filePath)
     {
         try
         {
@@ -68,15 +78,14 @@ public class ProcessService : IProcessService
             var process = Process.Start(startInfo);
             if (process == null)
             {
-                _logger.LogWarning("Process.Start returned null for: {FilePath}", filePath);
-                // For URI protocols (steam://), Process.Start may return null but still work
-                // Return a dummy process to indicate success
+                // Shell-executed URIs (steam://, https://, etc.) succeed without a parent process handle.
+                _logger.LogDebug("Process.Start returned null for shell-launched target: {FilePath}", filePath);
                 _ = _telemetryService.TrackEventAsync(
                     "process_start",
                     TelemetryEventStatus.Ok,
-                    "Process launch requested (null handle).",
+                    "Process launch requested (shell-executed URI).",
                     BuildProcessMetrics(filePath, null));
-                return Process.GetCurrentProcess();
+                return null;
             }
 
             _ = _telemetryService.TrackEventAsync(

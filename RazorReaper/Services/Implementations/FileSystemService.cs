@@ -80,7 +80,9 @@ public class FileSystemService : IFileSystemService
         try
         {
             _logger.LogInformation("Opening file in default application: {Path}", path);
-            Process.Start(new ProcessStartInfo
+            // Process.Start returns a Process handle even for shell-executed launches; dispose it
+            // immediately so we don't leak the handle (we don't track lifetime here).
+            using var _ = Process.Start(new ProcessStartInfo
             {
                 FileName = path,
                 UseShellExecute = true

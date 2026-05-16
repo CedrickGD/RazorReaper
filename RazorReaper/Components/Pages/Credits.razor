@@ -1,5 +1,9 @@
 @page "/credits"
 @using System.Diagnostics
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@inject INotificationService NotificationService
+@inject ILogger<Credits> Logger
 
 <header class="page-header">
     <h1 class="page-title">Credits</h1>
@@ -79,23 +83,21 @@
 </div>
 
 @code {
-    private void OpenDiscordServer()
-    {
-        try { Process.Start(new ProcessStartInfo { FileName = "http://discord.gg/TZJm7Rg53d", UseShellExecute = true }); } catch { }
-    }
+    private void OpenDiscordServer() => OpenExternalUrl("http://discord.gg/TZJm7Rg53d", "Discord server");
+    private void OpenDiscordProfile() => OpenExternalUrl("https://discord.com", "Discord");
+    private void OpenYouTube() => OpenExternalUrl("https://youtube.com/@ISG_3332", "YouTube");
+    private void OpenGitHub() => OpenExternalUrl("https://github.com/lappen123test", "GitHub");
 
-    private void OpenDiscordProfile()
+    private void OpenExternalUrl(string url, string label)
     {
-        try { Process.Start(new ProcessStartInfo { FileName = "https://discord.com", UseShellExecute = true }); } catch { }
-    }
-
-    private void OpenYouTube()
-    {
-        try { Process.Start(new ProcessStartInfo { FileName = "https://youtube.com/@ISG_3332", UseShellExecute = true }); } catch { }
-    }
-
-    private void OpenGitHub()
-    {
-        try { Process.Start(new ProcessStartInfo { FileName = "https://github.com/lappen123test", UseShellExecute = true }); } catch { }
+        try
+        {
+            using var _ = Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to open external URL '{Label}': {Url}", label, url);
+            NotificationService.ShowError($"Could not open {label}. Check your default browser settings.");
+        }
     }
 }
