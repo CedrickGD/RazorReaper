@@ -264,9 +264,14 @@
     }
 
     .ini-layout .preset-description {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         color: var(--text-secondary);
-        line-height: 1.3;
+        line-height: 1.25;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .ini-layout .preset-add-button {
@@ -463,7 +468,8 @@
 
     .ini-layout .image-preview {
         width: 100%;
-        height: 100px;
+        aspect-ratio: 16 / 9;
+        background: rgba(0, 0, 0, 0.35);
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -481,12 +487,63 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block;
             transition: transform 0.3s ease;
         }
 
         .ini-layout .image-preview:hover img {
             transform: scale(1.05);
         }
+
+        .ini-layout .image-preview .image-actions {
+            position: absolute;
+            inset: auto 0 0 0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.35rem;
+            padding: 0.4rem;
+            background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.65));
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .ini-layout .image-preview:hover .image-actions,
+        .ini-layout .image-preview:focus-within .image-actions {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .ini-layout .image-action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #fff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+            .ini-layout .image-action-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .ini-layout .image-action-btn:hover {
+                background: rgba(139, 92, 246, 0.55);
+                border-color: rgba(139, 92, 246, 0.85);
+                transform: translateY(-1px);
+            }
+
+            .ini-layout .image-action-btn:focus-visible {
+                outline: 2px solid rgba(139, 92, 246, 0.85);
+                outline-offset: 2px;
+            }
 
     .ini-layout .image-name {
         margin-top: 0.5rem;
@@ -641,11 +698,7 @@
         }
 
         .ini-layout .images-grid {
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        }
-
-        .ini-layout .image-preview {
-            height: 80px;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
         }
 }
 

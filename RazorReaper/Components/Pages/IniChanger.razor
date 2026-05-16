@@ -174,9 +174,25 @@
                         <div class="images-grid">
                             @foreach (var preset in PresetService.GetAllPresets())
                             {
-                                <div @key="preset.Name" class="image-item">
+                                var hasOverride = PresetService.HasCustomImage(preset.Name);
+                                <div @key="@($"{preset.Name}-{imageVersion}")" class="image-item">
                                     <div class="image-preview">
                                         <img src="@PresetService.GetPresetImagePath(preset.Name)" alt="@preset.Name Preview" />
+                                        <div class="image-actions">
+                                            <button type="button" class="image-action-btn" title="Replace image" @onclick="() => ReplacePresetImage(preset)">
+                                                <svg fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            @if (hasOverride)
+                                            {
+                                                <button type="button" class="image-action-btn" title="Reset to default" @onclick="() => ResetPresetImageOverride(preset)">
+                                                    <svg fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            }
+                                        </div>
                                     </div>
                                     <div class="image-name">@preset.Name</div>
                                 </div>
@@ -246,6 +262,9 @@
     private string newPresetContent = "";
     private bool isSavingPreset = false;
     private bool isDeleteMode = false;
+    // Bumped after a preset image override is saved/reset so @key forces a fresh <img> render
+    // (data URL changes need a new DOM node to defeat the WebView's in-memory image cache).
+    private int imageVersion = 0;
 
     private void ToggleImages()
     {
@@ -436,6 +455,71 @@
     private bool IsSavePresetDisabled()
     {
         return isSavingPreset || string.IsNullOrWhiteSpace(newPresetName) || string.IsNullOrWhiteSpace(newPresetContent);
+    }
+
+    private async Task ReplacePresetImage(IniPreset preset)
+    {
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" } }
+            });
+
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = $"Pick image for '{preset.Name}'",
+                FileTypes = fileTypes
+            });
+
+            if (result == null)
+            {
+                return;
+            }
+
+            var ext = Path.GetExtension(result.FileName);
+            await using var stream = await result.OpenReadAsync();
+            var saved = await PresetService.SetPresetImageAsync(preset.Name, stream, ext);
+
+            if (!saved)
+            {
+                NotificationService.ShowError("Failed to save preset image.");
+                return;
+            }
+
+            imageVersion++;
+            NotificationService.ShowSuccess($"Image updated for '{preset.Name}'.");
+            ActivityService.AddActivity($"Preset image updated: {preset.Name}", "success");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error replacing preset image for {Preset}", preset.Name);
+            NotificationService.ShowError($"Image replace failed: {ex.Message}");
+        }
+    }
+
+    private void ResetPresetImageOverride(IniPreset preset)
+    {
+        try
+        {
+            var reset = PresetService.ResetPresetImage(preset.Name);
+            if (!reset)
+            {
+                NotificationService.ShowInfo("No custom image to reset.");
+                return;
+            }
+
+            imageVersion++;
+            NotificationService.ShowSuccess($"Reset image for '{preset.Name}'.");
+            ActivityService.AddActivity($"Preset image reset: {preset.Name}", "info");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error resetting preset image for {Preset}", preset.Name);
+            NotificationService.ShowError($"Image reset failed: {ex.Message}");
+        }
     }
 
     private async Task OpenIniFile()
