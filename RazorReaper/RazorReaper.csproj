@@ -87,5 +87,13 @@
 		</None>
 	</ItemGroup>
 
+	<!-- Built-in INI presets, embedded into the assembly so they ship as a
+	     single file. IniPresetService loads them via Assembly.GetManifestResourceStream. -->
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\Presets\*.ini">
+			<LogicalName>RazorReaper.Presets.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
+
 </Project>
 
