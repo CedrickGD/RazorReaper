@@ -36,7 +36,10 @@
                     @foreach (var item in group.Items)
                     {
                         <li class="nav-item">
-                            <a href="@item.Href" class="nav-link @GetActiveClass(item.Href)" title="@item.Label">
+                            @* No `title` here — we render a themed tooltip via JS in rail mode (see navbar.js / .rail-tooltip).
+                               The native OS tooltip would compete with our custom one. The .nav-link-label span below
+                               provides the source text. *@
+                            <a href="@item.Href" class="nav-link @GetActiveClass(item.Href)">
                                 <span class="nav-icon-wrap">
                                     @((MarkupString)item.IconSvg)
                                 </span>
@@ -45,24 +48,6 @@
                         </li>
                     }
                 </ul>
-
-                @* Rail-mode flyout — shown on hover when the sidebar is collapsed. *@
-                <div class="nav-group-flyout">
-                    <div class="nav-group-flyout-header">@group.Name</div>
-                    <ul class="nav-group-flyout-list">
-                        @foreach (var item in group.Items)
-                        {
-                            <li>
-                                <a href="@item.Href" class="nav-link @GetActiveClass(item.Href)">
-                                    <span class="nav-icon-wrap">
-                                        @((MarkupString)item.IconSvg)
-                                    </span>
-                                    <span class="nav-link-label">@item.Label</span>
-                                </a>
-                            </li>
-                        }
-                    </ul>
-                </div>
             </div>
         }
     </div>
