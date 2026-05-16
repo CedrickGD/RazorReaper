@@ -152,7 +152,9 @@ public class ArkPathProvider : IArkPathProvider
         {
             try
             {
-                var vdfContent = _fileSystem.ReadAllTextAsync(libraryFoldersPath).GetAwaiter().GetResult();
+                // libraryfolders.vdf is a small text file (~few KB). A synchronous read avoids
+                // sync-over-async deadlock risk in the surrounding synchronous API.
+                var vdfContent = File.ReadAllText(libraryFoldersPath);
                 var matches = Regex.Matches(vdfContent, @"""path""\s*""([^""]+)""");
 
                 _logger.LogDebug("Found {Count} additional Steam library folders", matches.Count);

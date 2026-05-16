@@ -6,13 +6,13 @@ public interface ITextureBackupService
     /// Backs up texture files to AppData, then deletes the originals.
     /// </summary>
     /// <returns>Number of files backed up and removed.</returns>
-    Task<int> BackupFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles);
+    Task<int> BackupFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Restores previously backed-up files to their original locations, then removes the backup.
     /// </summary>
     /// <returns>Number of files restored.</returns>
-    Task<int> RestoreFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles);
+    Task<int> RestoreFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks whether a backup exists for the given category.

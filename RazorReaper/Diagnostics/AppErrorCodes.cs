@@ -6,4 +6,5 @@ public static class AppErrorCodes
     public const string UnobservedTaskException = "RR-E1003";
     public const string StartupTimeout = "RR-E1001";
     public const string StartupScriptError = "RR-E1002";
+    public const string StartupTaskFailure = "RR-E1004";
 }

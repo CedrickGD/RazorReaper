@@ -24,9 +24,13 @@ public interface IProcessService
     /// <summary>
     /// Starts a new process with the specified file path.
     /// </summary>
-    /// <param name="filePath">The path to the executable file.</param>
-    /// <returns>The started Process object.</returns>
-    Process Start(string filePath);
+    /// <param name="filePath">The path to the executable file or URI (e.g. steam://...).</param>
+    /// <returns>
+    /// The started <see cref="Process"/> object, or <c>null</c> when launching a shell-executed URI
+    /// scheme (which does not produce a parent process handle). Callers that capture the value are
+    /// responsible for disposing it.
+    /// </returns>
+    Process? Start(string filePath);
 
     /// <summary>
     /// Kills a process.

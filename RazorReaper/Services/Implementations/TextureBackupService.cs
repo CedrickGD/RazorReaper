@@ -17,15 +17,17 @@ public class TextureBackupService : ITextureBackupService
             "TextureBackups");
     }
 
-    public async Task<int> BackupFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles)
+    public Task<int> BackupFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles, CancellationToken cancellationToken = default)
     {
-        return await Task.Run(() =>
+        return Task.Run(() =>
         {
             int count = 0;
             string categoryBackupDir = Path.Combine(_backupRoot, categoryKey);
 
             foreach (var folder in folderFiles)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 string folderPath = folder.Key;
                 if (!Directory.Exists(folderPath))
                     continue;
@@ -35,6 +37,8 @@ public class TextureBackupService : ITextureBackupService
 
                 foreach (string fileName in folder.Value)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (string.IsNullOrEmpty(fileName))
                         continue;
 
@@ -59,12 +63,12 @@ public class TextureBackupService : ITextureBackupService
 
             _logger.LogInformation("Backed up {Count} files for category '{Category}'", count, categoryKey);
             return count;
-        });
+        }, cancellationToken);
     }
 
-    public async Task<int> RestoreFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles)
+    public Task<int> RestoreFilesAsync(string categoryKey, Dictionary<string, string[]> folderFiles, CancellationToken cancellationToken = default)
     {
-        return await Task.Run(() =>
+        return Task.Run(() =>
         {
             int count = 0;
             string categoryBackupDir = Path.Combine(_backupRoot, categoryKey);
@@ -77,6 +81,8 @@ public class TextureBackupService : ITextureBackupService
 
             foreach (var folder in folderFiles)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 string folderPath = folder.Key;
                 string backupSubDir = Path.Combine(categoryBackupDir, MakeRelativeBackupPath(folderPath));
 
@@ -87,6 +93,8 @@ public class TextureBackupService : ITextureBackupService
 
                 foreach (string fileName in folder.Value)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (string.IsNullOrEmpty(fileName))
                         continue;
 
@@ -120,7 +128,7 @@ public class TextureBackupService : ITextureBackupService
 
             _logger.LogInformation("Restored {Count} files for category '{Category}'", count, categoryKey);
             return count;
-        });
+        }, cancellationToken);
     }
 
     public bool IsBackedUp(string categoryKey)

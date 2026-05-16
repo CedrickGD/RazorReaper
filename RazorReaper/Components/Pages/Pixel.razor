@@ -809,7 +809,11 @@
             if (foundPath != null && Directory.Exists(foundPath))
                 arkPath = foundPath;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            // Non-fatal: the page just falls back to the default ARK path. Log so failures surface in support bundles.
+            Logger.LogWarning(ex, "ARK installation auto-detection failed; using default path.");
+        }
     }
 
     private void InitializeTextureCategories()
