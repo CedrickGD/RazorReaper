@@ -558,6 +558,7 @@ public class IniPresetService : IIniPresetService
             BuildPreset("Black",             "black.ini",                  "Black tinted scene."),
             BuildPreset("Hard",              "hard.ini",                   "Raid-grade FPS."),
             BuildPreset("Clear Water Snow North", "clear-water-snow-north.ini", "Snow biome with clear water."),
+            BuildPreset("Very Soft",         "very-soft.ini",              "Soft visuals, gentle FPS bump."),
         };
     }
 
