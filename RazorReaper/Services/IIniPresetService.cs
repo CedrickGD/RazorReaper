@@ -40,4 +40,27 @@ public interface IIniPresetService
     /// <param name="name">The preset name.</param>
     /// <returns>True if the preset was removed; otherwise, false.</returns>
     Task<bool> RemoveCustomPresetAsync(string name);
+
+    /// <summary>
+    /// Replaces the preview image for a preset with a user-provided image. Stored in
+    /// %LOCALAPPDATA%\RazorReaper\PresetImages so it survives app updates.
+    /// </summary>
+    /// <param name="presetName">The preset name.</param>
+    /// <param name="sourceStream">Read-only stream containing the image bytes.</param>
+    /// <param name="extension">File extension including the leading dot (e.g. ".jpg", ".png", ".webp").</param>
+    /// <returns>True if the override was saved; otherwise, false.</returns>
+    Task<bool> SetPresetImageAsync(string presetName, Stream sourceStream, string extension);
+
+    /// <summary>
+    /// Removes the user-provided preview image override for a preset so it reverts to the bundled one.
+    /// </summary>
+    /// <param name="presetName">The preset name.</param>
+    /// <returns>True if an override existed and was removed; otherwise, false.</returns>
+    bool ResetPresetImage(string presetName);
+
+    /// <summary>
+    /// Returns true when the preset currently uses a user-uploaded image override.
+    /// </summary>
+    /// <param name="presetName">The preset name.</param>
+    bool HasCustomImage(string presetName);
 }

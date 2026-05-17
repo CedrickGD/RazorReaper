@@ -365,3 +365,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Worktree-only scratch folder for asset import (not for ship)
+.scratch/
