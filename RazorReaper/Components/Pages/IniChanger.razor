@@ -21,188 +21,228 @@
             <p class="page-subtitle">Manage & optimize ARK configuration presets</p>
         </header>
 
+        @{
+            var activePreset = string.IsNullOrEmpty(selectedPreset) ? null : PresetService.GetPresetByName(selectedPreset);
+            var totalLines = string.IsNullOrEmpty(currentIniContent) ? 0 : currentIniContent.Count(c => c == '\n') + 1;
+            var totalBytes = string.IsNullOrEmpty(currentIniContent) ? 0 : System.Text.Encoding.UTF8.GetByteCount(currentIniContent);
+        }
+
         <div class="ini-layout @(isDeleteMode ? "delete-mode" : "")">
-            <div class="ini-operations-panel">
-                <div class="content-card">
-                    <div class="section-info">
-                        <div class="icon-circle white">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3>File Operations</h3>
-                            <p class="section-description">Load, modify & save BaseDeviceProfiles.ini</p>
-                        </div>
-                    </div>
 
-                    <div class="file-operations">
-                        <button class="ini-btn" @onclick="OpenIniFile">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                            </svg>
-                            Open INI File
-                        </button>
+            @* ============================================================
+               LEFT: Combined Tools widget — File ops + Water Surface
+               ============================================================ *@
+            <aside class="content-card ini-tools-panel">
+                <header class="ini-tools-section-head">
+                    <h3>Tools</h3>
+                    <span class="ini-tools-stat">
+                        <span class="ini-launcher-stat-dot @(string.IsNullOrEmpty(selectedPreset) ? "muted" : "live")"></span>
+                        @(string.IsNullOrEmpty(selectedPreset) ? "No preset" : selectedPreset)
+                    </span>
+                </header>
 
-                        <button class="ini-btn" @onclick="CheckIniFileExists">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                            </svg>
-                            Check Path
-                        </button>
-
-                        <button class="ini-btn" @onclick="SaveChanges">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
-                            </svg>
-                            Save Changes
-                        </button>
-
-                        <button class="ini-btn" @onclick="ClearFile">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                            </svg>
-                            Clear File
-                        </button>
-
-                        <button class="ini-btn" @onclick="ToggleDeleteMode">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                            Remove Preset
-                        </button>
-
-                        <button class="ini-btn" @onclick="DownloadAllPresets">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                            Download INI's
-                        </button>
-                    </div>
+                <div class="ini-tools-buttons">
+                    <button class="ini-btn" @onclick="OpenIniFile">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                        </svg>
+                        Open
+                    </button>
+                    <button class="ini-btn" @onclick="CheckIniFileExists">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        Check Path
+                    </button>
+                    <button class="ini-btn" @onclick="SaveChanges">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+                        </svg>
+                        Save
+                    </button>
+                    <button class="ini-btn" @onclick="ClearFile">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        Clear
+                    </button>
+                    <button class="ini-btn" @onclick="DownloadAllPresets">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Export
+                    </button>
                 </div>
 
-                <div class="content-card">
-                    <div class="section-info">
-                        <div class="icon-circle white">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
+                <div class="ini-tools-divider"></div>
+
+                <header class="ini-tools-section-head">
+                    <h4>Water Surface</h4>
+                </header>
+
+                <div class="ini-tools-water-row">
+                    <button class="ini-btn" @onclick="CheckWaterFiles">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        Check
+                    </button>
+                    <button class="ini-btn ini-btn-danger" @onclick="DeleteWaterSurfaceFiles">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Remove
+                    </button>
+                </div>
+            </aside>
+
+            @* ============================================================
+               MIDDLE: Preset preview widget
+               ============================================================ *@
+            <div class="content-card ini-widget preset-widget">
+                <div class="ini-widget-header">
+                    <h3>Preset</h3>
+                    <span class="ini-widget-pill @(string.IsNullOrEmpty(selectedPreset) ? "muted" : "live")">
+                        <span class="ini-launcher-stat-dot @(string.IsNullOrEmpty(selectedPreset) ? "muted" : "live")"></span>
+                        @(string.IsNullOrEmpty(selectedPreset) ? "None" : "Active")
+                    </span>
+                </div>
+
+                <div class="ini-widget-body">
+                    @if (activePreset != null)
+                    {
+                        <div class="ini-widget-preset-image">
+                            <img src="@PresetService.GetPresetImagePath(activePreset.Name)" alt="@activePreset.Name preview" />
+                            @if (activePreset.IsCustom)
+                            {
+                                <div class="preset-gallery-custom-badge">Custom</div>
+                            }
                         </div>
-                        <div>
-                            <h3>Water Surface</h3>
-                            <p class="section-description">Remove water textures for underwater visibility</p>
-                        </div>
-                    </div>
-
-                    <div class="water-info-clean">
-                        <p>Removes water surface for clear visibility, independent of ini -config.</p>
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap;">
-                            <div class="feature-tag">🔍 Visibility</div>
-                            <div class="feature-tag">⚔️ PvP</div>
-                            <div class="feature-tag">🌊 Clear</div>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <button class="ini-btn" @onclick="CheckWaterFiles">
+                        <div class="ini-widget-preset-name">@activePreset.Name</div>
+                        <p class="ini-widget-preset-desc">@activePreset.Description</p>
+                    }
+                    else
+                    {
+                        <div class="ini-widget-preset-image ini-widget-preset-image-empty">
                             <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
                             </svg>
-                            Check Files
-                        </button>
+                            <span class="ini-widget-empty-hint">@PresetService.GetAllPresets().Count presets ready</span>
+                        </div>
+                        <p class="ini-widget-preset-desc">Pick a tuned configuration from the gallery.</p>
+                    }
+                </div>
 
-                        <button class="ini-btn" @onclick="DeleteWaterSurfaceFiles">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                            Remove Water
-                        </button>
-                    </div>
+                <button class="ini-widget-cta" @onclick="OpenPresetGallery">
+                    Browse Presets
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
 
-                    <div class="restore-info-clean">
-                        <p><strong>Restore:</strong> Verify game integrity through Steam to restore deleted files.</p>
-                    </div>
+            @* ============================================================
+               RIGHT: Embedded INI Editor — full-height textarea, no overlay
+               ============================================================ *@
+            <div class="content-card ini-editor-embedded">
+                <div class="ini-widget-header">
+                    <h3>INI Editor</h3>
+                    <span class="ini-widget-pill muted">@IniEditorStatusLabel()</span>
+                </div>
+                <textarea @bind="currentIniContent"
+                          class="ini-editor-embedded-textarea"
+                          placeholder="Load an INI file or apply a preset to start editing…"
+                          spellcheck="false"></textarea>
+            </div>
+
+        </div>
+
+
+@if (showPresetGallery)
+{
+    <div class="ini-overlay" @onclick="CloseGalleryOverlay">
+        <div class="ini-overlay-container ini-overlay-wide" @onclick:stopPropagation="true">
+            <div class="ini-overlay-header">
+                <div class="ini-overlay-title-block">
+                    <h2 class="ini-overlay-title">INI Preset Gallery</h2>
+                    <span class="ini-overlay-subtitle">@PresetService.GetAllPresets().Count presets · click a card to apply@(isDeleteMode ? " · DELETE MODE" : "")</span>
+                </div>
+                <div class="ini-overlay-header-actions">
+                    <button class="ini-overlay-ghost-btn" @onclick="OpenAddPresetFromGallery" data-tooltip="Create a custom preset" data-tooltip-pos="bottom">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        Add
+                    </button>
+                    <button class="ini-overlay-ghost-btn" @onclick="DownloadAllPresets" data-tooltip="Export all presets as a zip" data-tooltip-pos="bottom">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Export
+                    </button>
+                    <label class="ini-overlay-check @(isDeleteMode ? "is-active" : "")" data-tooltip="Click a custom preset to remove it" data-tooltip-pos="bottom">
+                        <input type="checkbox" checked="@isDeleteMode" @onchange="ToggleDeleteMode" />
+                        <span>Delete mode</span>
+                    </label>
+                    <button class="ini-overlay-close" @onclick="CloseGalleryOverlay" data-tooltip="Close" data-tooltip-pos="bottom">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <div class="ini-main-column">
-                <div class="content-card">
-                    <h3>Configuration Presets</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.8rem; line-height: 1.5;">
-                        Optimized presets for different gameplay scenarios. Each preset is designed for performance and visual quality.
-                    </p>
-
-                    <div class="presets-grid">
-                        @foreach (var preset in PresetService.GetAllPresets())
-                        {
-                            <button @key="preset.Name" class="preset-button @(selectedPreset == preset.Name ? "active" : "")"
-                                    @onclick="() => HandlePresetClick(preset)">
-                                <div class="preset-info">
-                                    <div class="preset-name">@preset.Name</div>
-                                    <div class="preset-description">@preset.Description</div>
-                                </div>
-                            </button>
-                        }
-                        <button class="preset-button preset-add-button" @onclick="OpenAddPresetDialog">
-                            <div class="preset-add-icon">+</div>
-                            <div class="preset-add-text">Add Preset</div>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="content-card ini-content-area">
-                    <h3>INI File Content</h3>
-                    <textarea @bind="currentIniContent"
-                              class="ini-textarea"
-                              placeholder="INI file content will appear here..."></textarea>
-                </div>
-
-                <div class="content-card">
-                    <div class="images-header">
-                        <div>
-                            <h3>Configuration Previews</h3>
-                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.75rem;">Visual examples of each preset</p>
-                        </div>
-                        <button class="images-toggle-btn" @onclick="ToggleImages">
-                            @(showImages ? "▼ Hide" : "▶ Show")
-                        </button>
-                    </div>
-
-                    @if (showImages)
+            <div class="ini-overlay-body @(isDeleteMode ? "delete-mode" : "")">
+                <div class="preset-gallery-grid">
+                    @foreach (var preset in PresetService.GetAllPresets())
                     {
-                        <div class="images-grid">
-                            @foreach (var preset in PresetService.GetAllPresets())
-                            {
-                                var hasOverride = PresetService.HasCustomImage(preset.Name);
-                                <div @key="@($"{preset.Name}-{imageVersion}")" class="image-item">
-                                    <div class="image-preview">
-                                        <img src="@PresetService.GetPresetImagePath(preset.Name)" alt="@preset.Name Preview" />
-                                        <div class="image-actions">
-                                            <button type="button" class="image-action-btn" title="Replace image" @onclick="() => ReplacePresetImage(preset)">
-                                                <svg fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                            @if (hasOverride)
-                                            {
-                                                <button type="button" class="image-action-btn" title="Reset to default" @onclick="() => ResetPresetImageOverride(preset)">
-                                                    <svg fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-                                                    </svg>
-                                                </button>
-                                            }
-                                        </div>
+                        var isActive = selectedPreset == preset.Name;
+                        var hasOverride = PresetService.HasCustomImage(preset.Name);
+                        <div @key="@($"{preset.Name}-{imageVersion}")" class="preset-gallery-card @(isActive ? "active" : "")"
+                             @onclick="() => HandleGalleryCardClick(preset)">
+                            <div class="preset-gallery-image">
+                                <img src="@PresetService.GetPresetImagePath(preset.Name)" alt="@preset.Name preview" />
+                                @if (isActive)
+                                {
+                                    <div class="preset-gallery-active-badge">
+                                        <svg fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        Active
                                     </div>
-                                    <div class="image-name">@preset.Name</div>
+                                }
+                                @if (preset.IsCustom)
+                                {
+                                    <div class="preset-gallery-custom-badge">Custom</div>
+                                }
+                                <div class="preset-gallery-image-actions" @onclick:stopPropagation="true">
+                                    <button type="button" class="preset-gallery-action-btn" data-tooltip="Replace image" @onclick="() => ReplacePresetImage(preset)">
+                                        <svg fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    @if (hasOverride)
+                                    {
+                                        <button type="button" class="preset-gallery-action-btn" data-tooltip="Reset to default" @onclick="() => ResetPresetImageOverride(preset)">
+                                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    }
                                 </div>
-                            }
+                            </div>
+                            <div class="preset-gallery-info">
+                                <div class="preset-gallery-name">@preset.Name</div>
+                                <div class="preset-gallery-desc">@preset.Description</div>
+                            </div>
                         </div>
                     }
                 </div>
             </div>
         </div>
-
+    </div>
+}
 
 @if (showAddPresetDialog)
 {
@@ -255,8 +295,8 @@
 @code {
     private string currentIniContent = "";
     private string selectedPreset = "";
-    private bool showImages = false;
     private bool showAddPresetDialog = false;
+    private bool showPresetGallery = false;
     private string newPresetName = "";
     private string newPresetDescription = "";
     private string newPresetContent = "";
@@ -266,9 +306,59 @@
     // (data URL changes need a new DOM node to defeat the WebView's in-memory image cache).
     private int imageVersion = 0;
 
-    private void ToggleImages()
+    private void OpenPresetGallery()
     {
-        showImages = !showImages;
+        showPresetGallery = true;
+    }
+
+    private void CloseGalleryOverlay()
+    {
+        showPresetGallery = false;
+        // Don't auto-exit delete mode here — user might be mid-curate. Toggle button in header handles it.
+    }
+
+
+    private void OpenAddPresetFromGallery()
+    {
+        // Close the gallery so the Add Preset modal isn't stacked on top.
+        showPresetGallery = false;
+        OpenAddPresetDialog();
+    }
+
+    private async Task HandleGalleryCardClick(IniPreset preset)
+    {
+        if (isDeleteMode)
+        {
+            // Delete mode: route to the existing confirm + remove flow.
+            await HandlePresetClick(preset);
+            return;
+        }
+
+        // Apply mode: load the preset content into the buffer, write it straight to the live ARK
+        // INI file, and close the gallery. This replaces the old manual "Save Changes" button.
+        SelectPreset(preset);
+        showPresetGallery = false;
+        await InvokeAsync(StateHasChanged);
+        await SaveChanges();
+    }
+
+    private string IniEditorStatusLabel()
+    {
+        if (string.IsNullOrEmpty(currentIniContent))
+        {
+            return "Empty buffer";
+        }
+
+        var lineCount = currentIniContent.Count(c => c == '\n') + 1;
+        var byteCount = System.Text.Encoding.UTF8.GetByteCount(currentIniContent);
+        return $"{lineCount:N0} lines · {FormatByteCount(byteCount)}";
+    }
+
+    private static string FormatByteCount(int bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 
     private void OpenAddPresetDialog()
@@ -377,7 +467,6 @@
             selectedPreset = preset.Name;
             currentIniContent = preset.Content;
             showAddPresetDialog = false;
-            showImages = false;
 
             NotificationService.ShowSuccess("Preset saved successfully.");
             ActivityService.AddActivity($"Custom preset saved: {preset.Name}", "success");
@@ -440,7 +529,6 @@
                 selectedPreset = "";
             }
 
-            showImages = false;
             NotificationService.ShowSuccess("Custom preset removed.");
             ActivityService.AddActivity($"Custom preset removed: {preset.Name}", "warning");
             StateHasChanged();
@@ -602,7 +690,6 @@
     private void SelectPreset(IniPreset preset)
     {
         selectedPreset = preset.Name;
-        showImages = false;
         currentIniContent = preset.Content;
         ActivityService.AddActivity($"Preset selected: {preset.Name}", "info");
         Logger.LogInformation("Preset selected: {PresetName}", preset.Name);
