@@ -1,97 +1,407 @@
-﻿@page "/building"
+@page "/building"
 
+<header class="page-header">
+    <h1 class="page-title">Building Techniques</h1>
+    <p class="page-subtitle">Foundation, walls, layouts and meta build patterns from <span class="building-author">Tanster</span></p>
+</header>
 
-        <header class="page-header">
-            <h1 class="page-title">Building Techniques</h1>
-            <p class="page-subtitle">Foundation raising and lowering video tutorials</p>
-        </header>
+<div class="building-layout">
 
-        <div class="building-layout">
-            <div class="building-main-content">
+    <div class="building-main-content">
 
-                <div class="content-card building-tutorial-card">
-                    <div class="tutorial-header">
-                        <div class="tutorial-icon raising">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="tutorial-info">
-                            <h3>Foundation Raising</h3>
-                            <p>Learn how to raise foundations for better building alignment and design</p>
-                        </div>
-                    </div>
-
-                    <div class="video-container">
-                        <video controls preload="none" class="tutorial-video">
-                            <source src="videos/raising.mp4" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-
-                    <div class="tutorial-features">
-                        <span class="feature-badge">📐 Precision Building</span>
-                        <span class="feature-badge">🏗️ Advanced Techniques</span>
-                        <span class="feature-badge">⚡ Quick Method</span>
-                    </div>
+        <section id="snap" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon snap-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 1a1 1 0 011 1v3.586l2.293-2.293a1 1 0 011.414 1.414L11.414 8H15a1 1 0 110 2h-3.586l2.293 2.293a1 1 0 11-1.414 1.414L10 11.414V15a1 1 0 11-2 0v-3.586L5.707 13.707a1 1 0 01-1.414-1.414L6.586 10H3a1 1 0 110-2h3.586L4.293 5.707a1 1 0 011.414-1.414L8 6.586V3a1 1 0 011-1z" /></svg>
                 </div>
-
-                <div class="content-card building-tutorial-card">
-                    <div class="tutorial-header">
-                        <div class="tutorial-icon lowering">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 112 0v11.586l4.293-4.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="tutorial-info">
-                            <h3>Foundation Lowering</h3>
-                            <p>Master the technique of lowering foundations for seamless construction</p>
-                        </div>
-                    </div>
-
-                    <div class="video-container">
-                        <video controls preload="none" class="tutorial-video">
-                            <source src="videos/lowering.mp4" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-
-                    <div class="tutorial-features">
-                        <span class="feature-badge">🔧 Essential Skill</span>
-                        <span class="feature-badge">🎯 Accuracy Focus</span>
-                        <span class="feature-badge">📚 Step-by-Step</span>
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="building-sidebar">
-
-                <div class="content-card">
-                    <h3>Building Tips</h3>
-                    <div class="tips-list">
-                        <div class="tip-item">
-                            <div class="tip-icon">💡</div>
-                            <div class="tip-content">
-                                <h5>Practice Mode</h5>
-                                <p>Use single player to practice these techniques without resource loss</p>
-                            </div>
-                        </div>
-                        <div class="tip-item">
-                            <div class="tip-icon">⚙️</div>
-                            <div class="tip-content">
-                                <h5>Snap Settings</h5>
-                                <p>Adjust structure snap settings for better precision control</p>
-                            </div>
-                        </div>
-                        <div class="tip-item">
-                            <div class="tip-icon">🎮</div>
-                            <div class="tip-content">
-                                <h5>Key Bindings</h5>
-                                <p>Learn the default building hotkeys for faster construction</p>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                    <h2>Perfect Foundation Snap</h2>
+                    <p class="building-section-sub">The base of every build — get foundations lined up perfectly.</p>
                 </div>
             </div>
+
+            <div class="building-dual-grid">
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Foundation Raising</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/raising.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Foundation Lowering</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/lowering.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+        </section>
+
+        <section id="wall" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon wall-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 1v3h4V5H5zm6 0v3h4V5h-4zM5 10v3h4v-3H5zm6 0v3h4v-3h-4zM5 15h10v-1H5v1z"/></svg>
+                </div>
+                <div>
+                    <h2>How to Build a Wall</h2>
+                    <p class="building-section-sub">Stop your turrets from getting blocked — the #1 reason walls fail.</p>
+                </div>
+            </div>
+
+            <div class="building-callout danger">
+                <span>⚠️</span>
+                <p><strong>40% of turrets don't shoot through these wall patterns.</strong> If you've been getting soaked, this is probably why.</p>
+            </div>
+
+            <h3 class="building-subhead">❌ Don't build like this</h3>
+            <div class="building-image-grid two">
+                <figure class="building-figure danger">
+                    <img src="images/building/wall-1-bad-basic.jpg" alt="Basic wrong wall" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Basic wall — turrets get blocked</figcaption>
+                </figure>
+                <figure class="building-figure danger">
+                    <img src="images/building/wall-2-bad-triangle.jpg" alt="Triangle snap wall" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Triangle snap — doesn't snap properly</figcaption>
+                </figure>
+            </div>
+
+            <h3 class="building-subhead">✅ Build like this</h3>
+            <div class="building-image-grid">
+                <figure class="building-figure">
+                    <img src="images/building/wall-3-correct.jpg" alt="Correct wall" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Correct pattern — clear shot lanes</figcaption>
+                </figure>
+                <figure class="building-figure">
+                    <img src="images/building/wall-5-tek-on-ceiling.jpg" alt="Tek on ceiling" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>1 tek + 1 metal. Tek turret on ceiling = more res but small dead angle.</figcaption>
+                </figure>
+                <figure class="building-figure">
+                    <img src="images/building/wall-6-tunnel-turrets.jpg" alt="Tunnel turrets" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Turrets shoot into the tunnel entrance</figcaption>
+                </figure>
+                <figure class="building-figure">
+                    <img src="images/building/wall-7-gens-vault.jpg" alt="Gens with vault drop" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Many gens with vault drops, one above the entrance</figcaption>
+                </figure>
+                <figure class="building-figure">
+                    <img src="images/building/wall-9-floating-turret.jpg" alt="Floating turret only-player" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Floating turret in <em>only player</em> for counter-soak</figcaption>
+                </figure>
+            </div>
+
+            <h3 class="building-subhead">Reference videos</h3>
+            <div class="building-dual-grid">
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Tek + Metal walkthrough</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/wall-4-tek-metal-demo.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Correct build sequence</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/wall-correct-build.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+
+            <ul class="building-checklist">
+                <li>Don't use pillar+ceiling 90% of the time — creates dead angles.</li>
+                <li>Always double-snap your wall with the cliff.</li>
+                <li>Add a gate to counter pushes.</li>
+                <li>Vault drops with gens above and beside the entrance.</li>
+            </ul>
+        </section>
+
+        <section id="layouts" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon layout-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2 0v4h12V5H4zm0 6v4h7v-4H4zm9 0v4h3v-4h-3z"/></svg>
+                </div>
+                <div>
+                    <h2>Base Layouts</h2>
+                    <p class="building-section-sub">Mainfob, towers, cages — the meta floorplans.</p>
+                </div>
+            </div>
+
+            <div class="building-layouts-grid">
+                <article class="building-layout-card">
+                    <div class="building-layout-image-wrap">
+                        <img src="images/building/mainfob-overview.jpg" alt="Mainfob" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    </div>
+                    <div class="building-layout-meta">
+                        <h3>Mainfob</h3>
+                        <p>Fattest to build. Add a TP-Cage and pair it with a warroom/crafting setup.</p>
+                    </div>
+                </article>
+
+                <article class="building-layout-card">
+                    <div class="building-layout-image-wrap">
+                        <img src="images/building/cage-overview.jpg" alt="Cage TP" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    </div>
+                    <div class="building-layout-meta">
+                        <h3>Cage TP</h3>
+                        <p>Rename the TP to <code>CAGE</code>, close it, place walls and ceilings everywhere.</p>
+                    </div>
+                </article>
+
+                <article class="building-layout-card">
+                    <div class="building-layout-image-wrap">
+                        <img src="images/building/tower-overview.jpg" alt="Tower" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    </div>
+                    <div class="building-layout-meta">
+                        <h3>Tower</h3>
+                        <p>Turrets on floor, gens on the side. Doorframes go 1/2 — see reference shots below.</p>
+                    </div>
+                </article>
+
+                <article class="building-layout-card">
+                    <div class="building-layout-image-wrap">
+                        <img src="images/building/underwater-1.jpg" alt="Underwater Tower" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    </div>
+                    <div class="building-layout-meta">
+                        <h3>Underwater Tower</h3>
+                        <p>Fully-snapped underwater tower with vacuum compartments.</p>
+                    </div>
+                </article>
+            </div>
+
+            <details class="building-details">
+                <summary>Tower reference shots</summary>
+                <div class="building-image-grid">
+                    <figure class="building-figure"><img src="images/building/tower-1.jpg" alt="Tower 1" loading="lazy" decoding="async" onclick="rrZoom(this)" /><figcaption>Tower turret floor</figcaption></figure>
+                    <figure class="building-figure"><img src="images/building/tower-doorframe.jpg" alt="Tower doorframe" loading="lazy" decoding="async" onclick="rrZoom(this)" /><figcaption>Doorframe 1/2 trick</figcaption></figure>
+                </div>
+            </details>
+
+            <details class="building-details">
+                <summary>Underwater Tower reference shots</summary>
+                <div class="building-image-grid">
+                    <figure class="building-figure"><img src="images/building/underwater-2.jpg" alt="Underwater 2" loading="lazy" decoding="async" onclick="rrZoom(this)" /></figure>
+                    <figure class="building-figure"><img src="images/building/underwater-4.jpg" alt="Underwater 4" loading="lazy" decoding="async" onclick="rrZoom(this)" /></figure>
+                </div>
+            </details>
+        </section>
+
+        <section id="crafting" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon craft-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M11 17a1 1 0 100-2 1 1 0 000 2zm-7-1a1 1 0 011-1h2a1 1 0 110 2H5a1 1 0 01-1-1zM4 8h12v6H4V8zm2-3a1 1 0 011-1h6a1 1 0 011 1v2H6V5z"/></svg>
+                </div>
+                <div>
+                    <h2>Crafting Setup</h2>
+                    <p class="building-section-sub">Vaults, replicators, hatchframes — clean tek storage layouts.</p>
+                </div>
+            </div>
+
+            <div class="building-dual-grid">
+                <figure class="building-figure">
+                    <img src="images/building/crafting-template.jpg" alt="Crafting template" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption><strong>Starter pack template</strong> — base reference for a build-it crafting setup.</figcaption>
+                </figure>
+                <figure class="building-figure">
+                    <img src="images/building/crafting-repli.jpg" alt="Repli at 3 dedi" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Replicator at 3 dedi-high spacing.</figcaption>
+                </figure>
+            </div>
+
+            <h3 class="building-subhead">Placement walkthroughs</h3>
+            <div class="building-dual-grid">
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Vault on floor</strong> like a cryofridge</div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/crafting-1-vault-place.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Floor vault method</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/crafting-2-floor-vault.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+        </section>
+
+        <section id="spam" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon spam-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M3 3h14v3H3V3zm0 5h14v3H3V8zm0 5h14v3H3v-3z"/></svg>
+                </div>
+                <div>
+                    <h2>Spam Tactics</h2>
+                    <p class="building-section-sub">Spam control sizing + structures that hold ground when offline.</p>
+                </div>
+            </div>
+
+            <h3 class="building-subhead">Sizing reference</h3>
+            <div class="building-dual-grid">
+                <figure class="building-figure">
+                    <img src="images/building/spam-size-2.jpg" alt="Spam size cliff" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Cliff sizing — drop a gen to estimate your spam radius.</figcaption>
+                </figure>
+                <figure class="building-figure">
+                    <img src="images/building/spam-size-3.jpg" alt="Toilette spam" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Toilette can take spam control — same size as foundation.</figcaption>
+                </figure>
+            </div>
+
+            <details class="building-details">
+                <summary>Spam structure book (18 images)</summary>
+                <div class="building-spam-gallery">
+                    <img src="images/building/spam-2.jpg" alt="Spam 2" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-3.jpg" alt="Spam 3" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-4.jpg" alt="Spam 4" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-5.jpg" alt="Spam 5" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-6.jpg" alt="Spam 6" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-7.jpg" alt="Spam 7" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-8.jpg" alt="Spam 8" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-9.jpg" alt="Spam 9" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-10.jpg" alt="Spam 10" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-11.jpg" alt="Spam 11" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-12.jpg" alt="Spam 12" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-13.jpg" alt="Spam 13" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-14.jpg" alt="Spam 14" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-15.jpg" alt="Spam 15" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-16.jpg" alt="Spam 16" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-17.jpg" alt="Spam 17" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-18.jpg" alt="Spam 18" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <img src="images/building/spam-19.jpg" alt="Spam 19" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                </div>
+            </details>
+
+            <ul class="building-checklist">
+                <li>Turret in a vault drop counters M.D.S.M.</li>
+                <li>Pillar in a vault drop = light spam control.</li>
+                <li>Tek bridge: doesn't take spam control while offline.</li>
+                <li>Bubble spam: founda inside takes very long to destroy. Force-shields: size 1 lets you place the second closest one.</li>
+                <li>Founda pillars: need 2 mek or another collision to damage (1 mek isn't enough).</li>
+                <li>Tanster cliff: snap with kav vault, place foundas as high as possible on the cliff with low walls + ceilings underneath, then remove the wall to break the ceilings.</li>
+            </ul>
+        </section>
+
+        <section id="fence" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon fence-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 3l2-2 2 2v2h2V3l2-2 2 2v2h2V3l2-2v18l-2-1h-2v-2h-2v2H8v-2H6v2H4V3z"/></svg>
+                </div>
+                <div>
+                    <h2>Fence Pillars</h2>
+                    <p class="building-section-sub">Cheap to push, easy to destroy — pick your spots wisely.</p>
+                </div>
+            </div>
+
+            <div class="building-fence-grid">
+                <figure class="building-figure compact">
+                    <img src="images/building/fence-pillars-support.png" alt="Metal Fence Support" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Metal Fence Support</figcaption>
+                </figure>
+                <figure class="building-figure compact">
+                    <img src="images/building/fence-pillars-pillar.png" alt="Metal Pillar" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>Metal Pillar</figcaption>
+                </figure>
+                <div class="building-fence-copy">
+                    <p>Perfect for push. Build wherever — they're easy to destroy, so use <strong>Tek Crop Plots</strong> when you need them to survive.</p>
+                    <p>Great for soaking with an FFA Teleporter or pushing with turrets. For turret caps, use <strong>Tek Fence Pillars</strong>.</p>
+                    <p class="building-warning-line">⚠️ Method 2 can count as a floating structure — use carefully.</p>
+                    <a class="building-link" href="https://youtu.be/PjcnB4XYO2k" target="_blank" rel="noopener">▶ How to fence-pillar (YouTube)</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="floating" class="content-card building-section">
+            <div class="building-section-header">
+                <div class="building-section-icon floating-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v8.586l2.293-2.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 11.586V3a1 1 0 011-1zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/></svg>
+                </div>
+                <div>
+                    <h2>Floating Structures</h2>
+                    <p class="building-section-sub">Hatchframe / Transmi / Cryobreeder placement videos.</p>
+                </div>
+            </div>
+
+            <div class="building-triple-grid">
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Floating turrets</strong> via hatchframe</div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/floating-1-turrets.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Floating vault drop</strong> via hatchframe</div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/floating-2-vault.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Floating hatchframe</strong> with Transmi/Cryobreeder</div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/floating-3-hatchframe.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+            <p class="building-section-copy">Adding turrets to a floating hatchframe can flip it into <em>illegal</em> floating — see below.</p>
+        </section>
+
+        <section id="illegal" class="content-card building-section building-section-danger">
+            <div class="building-section-header">
+                <div class="building-section-icon illegal-icon">
+                    <img src="images/building/illegal-icon.png" alt="Illegal" />
+                </div>
+                <div>
+                    <h2>Illegal Floating Methods</h2>
+                    <p class="building-section-sub">Pillar + fish net, hatchframe + trapdoor, kav/S+ fridge snaps.</p>
+                </div>
+            </div>
+
+            <div class="building-callout danger">
+                <span>🚫</span>
+                <p>Server rules vary. These methods abuse snap-points and may be wiped by admins. Reference only.</p>
+            </div>
+
+            <div class="building-triple-grid">
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Pillar + fish net</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/illegal-1-pillar-fishnet.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Hatchframe + trapdoor</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/illegal-2-hatchframe.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="building-media-card">
+                    <div class="building-media-label"><strong>Snap with Kav / S+ fridge</strong></div>
+                    <video controls preload="metadata" class="building-video">
+                        <source src="videos/building/illegal-3-snap-kav.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <div class="building-sidebar">
+
+        <div class="content-card building-nav-card">
+            <h3>On this page</h3>
+            <nav class="building-nav">
+                <a href="javascript:void(0)" onclick="document.getElementById('snap').scrollIntoView({behavior:'smooth',block:'start'})">Perfect Foundation Snap</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('wall').scrollIntoView({behavior:'smooth',block:'start'})">How to Build a Wall</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('layouts').scrollIntoView({behavior:'smooth',block:'start'})">Base Layouts</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('crafting').scrollIntoView({behavior:'smooth',block:'start'})">Crafting Setup</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('spam').scrollIntoView({behavior:'smooth',block:'start'})">Spam Tactics</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('fence').scrollIntoView({behavior:'smooth',block:'start'})">Fence Pillars</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('floating').scrollIntoView({behavior:'smooth',block:'start'})">Floating Structures</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('illegal').scrollIntoView({behavior:'smooth',block:'start'})" class="danger">Illegal Methods ⚠️</a>
+            </nav>
         </div>
+
+        <div class="content-card building-credit-card">
+            <h3>Source</h3>
+            <p>All build patterns on this page come from <strong>Tanster</strong> in the Custom ARK Discord <code>#build</code> channel.</p>
+            <p class="building-credit-meta">Curated and re-rendered for offline reference.</p>
+        </div>
+
+    </div>
+</div>

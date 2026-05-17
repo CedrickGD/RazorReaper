@@ -1,0 +1,10 @@
+@*
+    Global click-to-zoom image lightbox.
+    Mounted once via MainLayout. Any page can opt-in with:
+        <img src="..." onclick="rrZoom(this)" />
+    Logic lives in wwwroot/js/lightbox.js, styling in wwwroot/css/shared/lightbox.css.
+*@
+
+<div id="rr-lightbox" class="rr-lightbox" onclick="rrCloseZoom(event)">
+    <img id="rr-lightbox-img" src="" alt="" />
+</div>

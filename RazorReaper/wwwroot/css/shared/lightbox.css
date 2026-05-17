@@ -1,0 +1,50 @@
+/* Global image lightbox overlay. Mounted once via <ImageLightbox />. */
+
+/* theme.css sets `img { pointer-events: none }` site-wide to block drag-drop.
+   Re-enable clicks for any image that opts into the lightbox via onclick=rrZoom. */
+img[onclick] {
+    pointer-events: auto !important;
+}
+
+.rr-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.94);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    backdrop-filter: blur(6px);
+    animation: rrLightboxFadeIn 0.2s ease;
+}
+
+    .rr-lightbox.open {
+        display: flex;
+    }
+
+    .rr-lightbox img {
+        max-width: 96vw;
+        max-height: 96vh;
+        object-fit: contain;
+        border-radius: 6px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        cursor: default;
+    }
+
+    .rr-lightbox::after {
+        content: "✕ click anywhere or press Esc to close";
+        position: absolute;
+        bottom: 1.2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        pointer-events: none;
+    }
+
+@keyframes rrLightboxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
