@@ -1,11 +1,20 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using RazorReaper.Services;
+using WinRT.Interop;
 
 namespace RazorReaper.WinUI
 {
     public partial class App : MauiWinUIApplication
     {
         private static Mutex? _mutex;
+        private AppWindow? _mainAppWindow;
+        private bool _wiredCrosshairTray;
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -27,6 +36,73 @@ namespace RazorReaper.WinUI
             }
 
             this.InitializeComponent();
+        }
+
+        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        {
+            base.OnLaunched(args);
+            // Defer to next tick — MAUI hasn't built the window yet when OnLaunched fires.
+            DispatcherQueue.GetForCurrentThread().TryEnqueue(() => TryWireMainWindow());
+        }
+
+        private void TryWireMainWindow()
+        {
+            if (_wiredCrosshairTray) return;
+
+            // Find the MAUI WinUI window
+            var mauiWindow = Microsoft.Maui.Controls.Application.Current?.Windows.FirstOrDefault();
+            var winUiWindow = mauiWindow?.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+            if (winUiWindow == null)
+            {
+                // Try again next tick — Handler is sometimes built lazily.
+                DispatcherQueue.GetForCurrentThread().TryEnqueue(() => TryWireMainWindow());
+                return;
+            }
+
+            var hwnd = WindowNative.GetWindowHandle(winUiWindow);
+            var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
+            _mainAppWindow = AppWindow.GetFromWindowId(windowId);
+            // Capture the UI thread's dispatcher up front — the tray callback fires on the overlay's
+            // STA thread, which has no WinUI dispatcher of its own, so DispatcherQueue.GetForCurrentThread()
+            // from inside the callback would return null and silently no-op.
+            var uiDispatcher = winUiWindow.DispatcherQueue;
+
+            // Intercept the X button — hide the window and keep the process alive so the overlay
+            // and tray icon survive. The user quits explicitly via the tray's Quit menu item.
+            _mainAppWindow.Closing += (sender, e) =>
+            {
+                e.Cancel = true;
+                sender.Hide();
+            };
+
+            // Wire the tray callbacks. Service was constructed during MAUI startup; resolve from DI.
+            var services = IPlatformApplication.Current?.Services;
+            var crosshair = services?.GetService<ICrosshairService>();
+            if (crosshair == null) return;
+
+            crosshair.ShowAppRequested += () =>
+            {
+                uiDispatcher.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        _mainAppWindow?.Show();
+                        // SW_RESTORE handles both hidden and minimized states; AppWindow.Show alone
+                        // sometimes leaves the window de-activated behind other apps.
+                        ShowWindow(hwnd, SW_RESTORE);
+                        SetForegroundWindow(hwnd);
+                    }
+                    catch { /* window already gone */ }
+                });
+            };
+
+            crosshair.QuitRequested += () =>
+            {
+                // Hard exit — we want the overlay, tray icon, and everything else torn down.
+                Environment.Exit(0);
+            };
+
+            _wiredCrosshairTray = true;
         }
 
         private static void BringExistingInstanceToFront()

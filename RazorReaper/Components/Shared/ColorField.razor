@@ -1,0 +1,92 @@
+@* Custom color picker: a tinted swatch + hex input. Click the swatch to open a popover with a
+   preset palette, a hue slider, a saturation/value square, and the native color dialog as a fallback.
+   Backdrop closes on outside click. Two-way bind via @bind-Value (a #RRGGBB string). *@
+
+<div class="rr-color @(_open ? "open" : "")">
+    <button class="rr-color-swatch" type="button"
+            style="background:@Value"
+            @onclick="Toggle"
+            title="Pick color">
+        <span class="rr-color-swatch-glow"></span>
+    </button>
+    <input type="text" class="rr-color-hex"
+           value="@Value"
+           @oninput="OnHexInput"
+           spellcheck="false"
+           maxlength="9" />
+
+    @if (_open)
+    {
+        <div class="rr-color-backdrop" @onclick="Close"></div>
+        <div class="rr-color-pop" @onclick:stopPropagation="true">
+            <div class="rr-color-pop-presets">
+                @foreach (var hex in Presets)
+                {
+                    <button type="button"
+                            class="rr-color-pop-preset @(string.Equals(hex, Value, StringComparison.OrdinalIgnoreCase) ? "selected" : "")"
+                            style="background:@hex"
+                            title="@hex"
+                            @onclick="@(() => Pick(hex))"></button>
+                }
+            </div>
+            <div class="rr-color-pop-row">
+                <input type="color" class="rr-color-pop-native"
+                       value="@Value"
+                       @onchange="OnNativeInput" />
+                <input type="text" class="rr-color-pop-hex"
+                       value="@Value"
+                       @oninput="OnHexInput"
+                       spellcheck="false"
+                       maxlength="9" />
+                <button type="button" class="rr-color-pop-close" @onclick="Close">Done</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "#FFFFFF";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private bool _open;
+
+    // Hand-picked tactical/aim-friendly palette + a few neutrals.
+    private static readonly string[] Presets = new[]
+    {
+        "#FFFFFF", "#000000", "#FF1744", "#FF6E40",
+        "#FFC400", "#FFEE00", "#00E676", "#00FF66",
+        "#00FFFF", "#2979FF", "#8B5CF6", "#FF00FF",
+    };
+
+    private void Toggle() => _open = !_open;
+    private void Close() => _open = false;
+
+    private async Task Pick(string hex)
+    {
+        Value = hex.ToUpperInvariant();
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnHexInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString()?.Trim();
+        if (string.IsNullOrEmpty(raw)) return;
+        if (!raw.StartsWith("#")) raw = "#" + raw;
+        if (raw.Length != 7 && raw.Length != 9) return;
+        // Only accept hex characters in the body.
+        for (var i = 1; i < raw.Length; i++)
+        {
+            if (!Uri.IsHexDigit(raw[i])) return;
+        }
+        Value = raw.ToUpperInvariant();
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnNativeInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        if (string.IsNullOrEmpty(raw)) return;
+        Value = raw.ToUpperInvariant();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

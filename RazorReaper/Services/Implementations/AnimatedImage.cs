@@ -1,0 +1,192 @@
+using System.Drawing;
+using System.Drawing.Imaging;
+using Bitmap = System.Drawing.Bitmap;
+using Graphics = System.Drawing.Graphics;
+using Image = System.Drawing.Image;
+
+namespace RazorReaper.Services.Implementations;
+
+/// <summary>
+/// Holds a static image or an animated multi-frame image (GIF, animated PNG) with no quality loss.
+///
+/// Two storage modes, chosen at load time:
+///  • <b>Eager</b> (used for single-frame images): the bitmap is decoded once into memory and the
+///    source stream is closed immediately. Fast subsequent FrameAt() calls.
+///  • <b>Lazy</b> (used for animated images): the compressed source bytes are kept in memory and
+///    each frame is decoded on demand. Memory at any moment ≈ compressed size + one decoded
+///    frame, which is the only way to honour the "no quality loss" rule without OOMing on the
+///    huge GIFs the user occasionally throws in.
+///
+/// Disposal frees the eager frames (or the source + cached frame) — nothing else holds them.
+/// </summary>
+internal sealed class AnimatedImage : IDisposable
+{
+    private const int PropertyTagFrameDelay = 0x5100;
+
+    // Eager mode storage
+    private readonly Bitmap[]? _eagerFrames;
+
+    // Lazy mode storage. The MemoryStream must outlive the Image — GDI+ reads from it lazily on
+    // SelectActiveFrame, so closing the stream would invalidate the source.
+    private readonly Image? _lazySource;
+    private readonly MemoryStream? _lazyStream;
+    private readonly object _lazyLock = new();
+    private int _lazyCurrentIndex = -1;
+    private Bitmap? _lazyCurrentFrame;
+
+    public int FrameCount { get; }
+    public int[] DelaysMs { get; }
+    public int TotalMs { get; }
+    public bool IsAnimated => FrameCount > 1;
+    public int Width { get; }
+    public int Height { get; }
+
+    private AnimatedImage(Bitmap[] frames, int[] delays)
+    {
+        _eagerFrames = frames;
+        DelaysMs = delays;
+        TotalMs = Math.Max(1, delays.Sum());
+        FrameCount = frames.Length;
+        Width = frames[0].Width;
+        Height = frames[0].Height;
+    }
+
+    private AnimatedImage(Image source, MemoryStream stream, int frameCount, int[] delays)
+    {
+        _lazySource = source;
+        _lazyStream = stream;
+        FrameCount = frameCount;
+        DelaysMs = delays;
+        TotalMs = Math.Max(1, delays.Sum());
+        Width = source.Width;
+        Height = source.Height;
+    }
+
+    public Bitmap FrameAt(DateTime startUtc)
+    {
+        if (FrameCount <= 1)
+        {
+            return _eagerFrames != null ? _eagerFrames[0] : GetLazyFrame(0);
+        }
+
+        var elapsed = (long)Math.Max(0, (DateTime.UtcNow - startUtc).TotalMilliseconds);
+        var t = elapsed % TotalMs;
+        long acc = 0;
+        int frameIdx = FrameCount - 1;
+        for (int i = 0; i < FrameCount; i++)
+        {
+            acc += DelaysMs[i];
+            if (t < acc) { frameIdx = i; break; }
+        }
+        return _eagerFrames != null ? _eagerFrames[frameIdx] : GetLazyFrame(frameIdx);
+    }
+
+    private Bitmap GetLazyFrame(int index)
+    {
+        lock (_lazyLock)
+        {
+            if (_lazyCurrentIndex == index && _lazyCurrentFrame != null)
+                return _lazyCurrentFrame;
+
+            _lazyCurrentFrame?.Dispose();
+            _lazySource!.SelectActiveFrame(FrameDimension.Time, index);
+            _lazyCurrentFrame = CopyTo32bpp(_lazySource);
+            _lazyCurrentIndex = index;
+            return _lazyCurrentFrame;
+        }
+    }
+
+    public static AnimatedImage Load(string path)
+    {
+        // Read fully into a MemoryStream so the source Image isn't tied to an open file handle.
+        // GDI+ requires the stream to stay alive for the lifetime of the Image — owning it here
+        // means callers can safely move/delete the file once the import has happened.
+        var bytes = File.ReadAllBytes(path);
+        var ms = new MemoryStream(bytes, writable: false);
+        var src = Image.FromStream(ms);
+
+        var fd = FrameDimension.Time;
+        var frameCount = SafeGetFrameCount(src, fd);
+
+        if (frameCount <= 1)
+        {
+            // Single frame — decode eagerly and drop the source. No quality loss possible.
+            try
+            {
+                var bmp = CopyTo32bpp(src);
+                src.Dispose();
+                ms.Dispose();
+                return new AnimatedImage(new[] { bmp }, new[] { 0 });
+            }
+            catch
+            {
+                src.Dispose();
+                ms.Dispose();
+                throw;
+            }
+        }
+
+        // Animated — lazy mode. Source + stream live with the AnimatedImage and only one
+        // decoded frame is in memory at a time.
+        var delays = ReadFrameDelays(src, frameCount);
+        return new AnimatedImage(src, ms, frameCount, delays);
+    }
+
+    private static int SafeGetFrameCount(Image src, FrameDimension fd)
+    {
+        try { return src.GetFrameCount(fd); }
+        catch { return 1; }
+    }
+
+    private static int[] ReadFrameDelays(Image src, int frameCount)
+    {
+        // Default to 100ms (10 fps) if delays are missing or zero — that's what most browsers do.
+        var delays = new int[frameCount];
+        for (int i = 0; i < frameCount; i++) delays[i] = 100;
+
+        try
+        {
+            if (Array.IndexOf(src.PropertyIdList, PropertyTagFrameDelay) < 0) return delays;
+            var p = src.GetPropertyItem(PropertyTagFrameDelay);
+            if (p?.Value == null) return delays;
+            for (int i = 0; i < frameCount && i * 4 + 4 <= p.Value.Length; i++)
+            {
+                var cs = BitConverter.ToInt32(p.Value, i * 4);
+                if (cs <= 0) continue;
+                // centiseconds → ms; floor at 20ms so a malformed GIF can't burn the CPU.
+                delays[i] = Math.Max(20, cs * 10);
+            }
+        }
+        catch
+        {
+            // Use the 100ms defaults.
+        }
+        return delays;
+    }
+
+    private static Bitmap CopyTo32bpp(Image src)
+    {
+        // Decode at the source's native dimensions — no shrinking. This is the "preserve original
+        // quality" path the user explicitly asked for. Memory bound comes from lazy mode keeping
+        // only one frame live at a time, not from downsampling.
+        var bmp = new Bitmap(src.Width, src.Height, PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(bmp);
+        g.DrawImage(src, 0, 0, src.Width, src.Height);
+        return bmp;
+    }
+
+    public void Dispose()
+    {
+        if (_eagerFrames != null)
+        {
+            foreach (var f in _eagerFrames) f.Dispose();
+        }
+        lock (_lazyLock)
+        {
+            _lazyCurrentFrame?.Dispose();
+            _lazyCurrentFrame = null;
+            _lazySource?.Dispose();
+            _lazyStream?.Dispose();
+        }
+    }
+}

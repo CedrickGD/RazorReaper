@@ -208,6 +208,7 @@ namespace RazorReaper
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
+            services.AddSingleton<ICrosshairService, CrosshairService>();
         }
     }
 }

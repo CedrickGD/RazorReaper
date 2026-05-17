@@ -1,0 +1,892 @@
+@page "/crosshair"
+@using System.IO
+@using System.Timers
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@using RazorReaper.Models
+@using RazorReaper.Components.Shared
+@implements IDisposable
+
+@inject ICrosshairService CrosshairSvc
+@inject INotificationService Notifications
+@inject ILogger<Crosshair> Logger
+
+<header class="page-header crosshair-page-header">
+    <h1 class="page-title">Crosshair</h1>
+    <p class="page-subtitle">Always-on-top overlay with editor, presets, animations &amp; image imports — runs from the tray.</p>
+</header>
+
+<div class="crosshair-layout">
+    <div class="control-panel">
+        <div class="content-card overlay-status-card @(CrosshairSvc.IsOverlayActive ? "is-active" : "")">
+            <div class="overlay-status-row">
+                <div class="overlay-status-info">
+                    <span class="overlay-pulse @(CrosshairSvc.IsOverlayActive ? "on" : "off")"></span>
+                    <div>
+                        <div class="overlay-status-title">@(CrosshairSvc.IsOverlayActive ? "Overlay active" : "Overlay off")</div>
+                        <div class="overlay-status-sub">@StatusSubLine</div>
+                    </div>
+                </div>
+                <button class="rr-pill-btn @(CrosshairSvc.IsOverlayActive ? "danger" : "primary")" @onclick="ToggleOverlay">
+                    @(CrosshairSvc.IsOverlayActive ? "Stop overlay" : "Start overlay")
+                </button>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-title-row">
+                <h3>Shape</h3>
+            </div>
+            <div class="seg-control type-seg">
+                @foreach (var t in AllTypes)
+                {
+                    <button class="seg-btn @(profile.Type == t ? "active" : "")" @onclick="@(() => SetType(t))">
+                        <span class="seg-glyph">@TypeGlyph(t)</span>
+                        <span>@TypeLabel(t)</span>
+                    </button>
+                }
+            </div>
+
+            @if (profile.Type == CrosshairType.Image)
+            {
+                <div class="field">
+                    <label class="field-label">Image</label>
+                    <div class="row-flex gap-sm align-center">
+                        <button class="rr-pill-btn ghost" @onclick="PickImage">
+                            @(string.IsNullOrEmpty(profile.ImagePath) ? "Choose…" : "Replace…")
+                        </button>
+                        @if (!string.IsNullOrEmpty(profile.ImagePath))
+                        {
+                            <span class="image-name">@System.IO.Path.GetFileName(profile.ImagePath)</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="content-card">
+            <h3>@(profile.Type == CrosshairType.Image ? "Sizing" : "Colors")</h3>
+            @if (profile.Type != CrosshairType.Image)
+            {
+                <div class="row-2">
+                    <div class="field">
+                        <label class="field-label">Body</label>
+                        <ColorField Value="@profile.Color" ValueChanged="@(v => { profile.Color = v; Push(); })" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Outline</label>
+                        <div class="row-flex gap-sm">
+                            <ColorField Value="@profile.OutlineColor" ValueChanged="@(v => { profile.OutlineColor = v; Push(); })" />
+                            <div class="num-stepper">
+                                <input type="number" class="num-input tight" min="0" max="8" value="@profile.OutlineThickness"
+                                       @oninput="@((e) => UpdateInt(v => profile.OutlineThickness = v, e.Value, 0, 8))" />
+                                <span class="num-suffix">px</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (profile.Type == CrosshairType.Image)
+            {
+                <div class="field">
+                    <label class="field-label">Size: <strong>@profile.ImageScale%</strong></label>
+                    <input type="range" class="rr-slider" min="5" max="500" step="1" value="@profile.ImageScale"
+                           @oninput="@((e) => UpdateInt(v => profile.ImageScale = v, e.Value, 5, 500))" />
+                </div>
+            }
+            else
+            {
+                <div class="row-2">
+                    <div class="field">
+                        <label class="field-label">Size: <strong>@profile.Size</strong></label>
+                        <input type="range" class="rr-slider" min="1" max="150" step="1" value="@profile.Size"
+                               @oninput="@((e) => UpdateInt(v => profile.Size = v, e.Value, 1, 150))" />
+                    </div>
+                    @if (profile.Type != CrosshairType.Dot)
+                    {
+                        <div class="field">
+                            <label class="field-label">Thickness: <strong>@profile.Thickness</strong></label>
+                            <input type="range" class="rr-slider" min="1" max="20" step="1" value="@profile.Thickness"
+                                   @oninput="@((e) => UpdateInt(v => profile.Thickness = v, e.Value, 1, 20))" />
+                        </div>
+                    }
+                </div>
+
+                @if (profile.Type is CrosshairType.Cross or CrosshairType.TStyle)
+                {
+                    <div class="field">
+                        <label class="field-label">Gap: <strong>@profile.Gap</strong></label>
+                        <input type="range" class="rr-slider" min="-10" max="60" step="1" value="@profile.Gap"
+                               @oninput="@((e) => UpdateInt(v => profile.Gap = v, e.Value, -10, 60))" />
+                    </div>
+                }
+            }
+
+            <div class="field">
+                <label class="field-label">Opacity: <strong>@profile.Opacity%</strong></label>
+                <input type="range" class="rr-slider" min="0" max="100" step="1" value="@profile.Opacity"
+                       @oninput="@((e) => UpdateInt(v => profile.Opacity = v, e.Value, 0, 100))" />
+            </div>
+        </div>
+
+        @if (profile.Type is CrosshairType.Cross or CrosshairType.Circle or CrosshairType.Dot)
+        {
+            <div class="content-card">
+                <h3>Center dot</h3>
+                <div class="row-flex gap-md align-center">
+                    <Switch Value="@profile.ShowDot" ValueChanged="@(v => { profile.ShowDot = v; Push(); })"
+                            Label="@(profile.Type == CrosshairType.Dot ? "Always on" : "Enabled")"
+                            Disabled="@(profile.Type == CrosshairType.Dot)" />
+                    @if (profile.ShowDot || profile.Type == CrosshairType.Dot)
+                    {
+                        <div class="field flex-1">
+                            <label class="field-label">Dot size: <strong>@profile.DotSize</strong></label>
+                            <input type="range" class="rr-slider" min="1" max="30" step="1" value="@profile.DotSize"
+                                   @oninput="@((e) => UpdateInt(v => profile.DotSize = v, e.Value, 1, 30))" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (profile.Type is CrosshairType.Cross)
+        {
+            <div class="content-card">
+                <h3>Lines</h3>
+                <div class="line-toggles">
+                    <Switch Compact="true" Value="@profile.ShowTopLine"    ValueChanged="@(v => { profile.ShowTopLine = v; Push(); })"    Label="Top" />
+                    <Switch Compact="true" Value="@profile.ShowBottomLine" ValueChanged="@(v => { profile.ShowBottomLine = v; Push(); })" Label="Bottom" />
+                    <Switch Compact="true" Value="@profile.ShowLeftLine"   ValueChanged="@(v => { profile.ShowLeftLine = v; Push(); })"   Label="Left" />
+                    <Switch Compact="true" Value="@profile.ShowRightLine"  ValueChanged="@(v => { profile.ShowRightLine = v; Push(); })"  Label="Right" />
+                </div>
+            </div>
+        }
+
+        <div class="content-card">
+            <h3>Position</h3>
+            <div class="field">
+                <label class="field-label">Monitor</label>
+                <select class="rr-select" value="@profile.MonitorDeviceName"
+                        @onchange="@((e) => SelectMonitor(e.Value?.ToString() ?? string.Empty))">
+                    @foreach (var m in monitors)
+                    {
+                        <option value="@m.DeviceName">@m.FriendlyName @(m.IsPrimary ? "· primary" : "")</option>
+                    }
+                </select>
+            </div>
+            <div class="row-2">
+                <div class="field">
+                    <label class="field-label">X offset</label>
+                    <div class="num-stepper">
+                        <input type="number" class="num-input" min="-3000" max="3000" step="1" value="@profile.OffsetX"
+                               @oninput="@((e) => UpdateInt(v => profile.OffsetX = v, e.Value, -3000, 3000))" />
+                        <span class="num-suffix">px</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="field-label">Y offset</label>
+                    <div class="num-stepper">
+                        <input type="number" class="num-input" min="-3000" max="3000" step="1" value="@profile.OffsetY"
+                               @oninput="@((e) => UpdateInt(v => profile.OffsetY = v, e.Value, -3000, 3000))" />
+                        <span class="num-suffix">px</span>
+                    </div>
+                </div>
+            </div>
+            <p class="muted-line">Hold the up/down chevrons inside the number boxes to step continuously.</p>
+            <div class="position-actions">
+                <button class="rr-pill-btn ghost sm" @onclick="CenterOffsets">Recenter</button>
+            </div>
+
+            <div class="field">
+                <label class="field-label">Rotation: <strong>@profile.Rotation°</strong></label>
+                <input type="range" class="rr-slider" min="0" max="359" step="1" value="@profile.Rotation"
+                       @oninput="@((e) => UpdateInt(v => profile.Rotation = v, e.Value, 0, 359))" />
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h3>Motion</h3>
+            <div class="seg-control">
+                @foreach (var a in AllAnimations)
+                {
+                    <button class="seg-btn @(profile.Animation == a ? "active" : "")" @onclick="@(() => SetAnimation(a))">
+                        @a.ToString()
+                    </button>
+                }
+            </div>
+            @if (profile.Animation != CrosshairAnimation.None || profile.Rainbow)
+            {
+                <div class="field">
+                    <label class="field-label">Speed: <strong>@profile.AnimationSpeed</strong></label>
+                    <input type="range" class="rr-slider" min="1" max="10" step="1" value="@profile.AnimationSpeed"
+                           @oninput="@((e) => UpdateInt(v => profile.AnimationSpeed = v, e.Value, 1, 10))" />
+                </div>
+            }
+            <Switch Value="@profile.Rainbow" ValueChanged="@(v => { profile.Rainbow = v; Push(); })" Label="Rainbow color cycle" />
+        </div>
+
+    </div>
+
+    <div class="status-panel">
+        <div class="content-card preview-card">
+            <div class="card-title-row">
+                <h3>Live preview</h3>
+                <span class="preview-meta">@PreviewMetaLine</span>
+            </div>
+            <div class="preview-frame">
+                <div class="preview-stage">
+                    @if (!string.IsNullOrEmpty(previewSrc))
+                    {
+                        <img src="@previewSrc" class="preview-image" alt="Crosshair preview" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h3>Presets</h3>
+            <div class="preset-grid">
+                @foreach (var preset in builtIns)
+                {
+                    <button class="preset-card" @onclick="@(() => ApplyProfile(preset))">
+                        <div class="preset-name">@preset.Name</div>
+                        <div class="preset-meta">@preset.Type @(preset.Animation != CrosshairAnimation.None ? $"· {preset.Animation}" : "") @(preset.Rainbow ? "· Rainbow" : "")</div>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="content-card">
+            <h3>Your profiles</h3>
+            @if (saved.Count == 0)
+            {
+                <p class="muted-line">No saved profiles yet. Tweak the editor, then save below.</p>
+            }
+            else
+            {
+                <div class="saved-list">
+                    @foreach (var sp in saved)
+                    {
+                        <div class="saved-row">
+                            <button class="saved-load" @onclick="@(() => ApplyProfile(sp))">
+                                <span class="saved-name">@sp.Name</span>
+                                <span class="saved-meta">@sp.Type</span>
+                            </button>
+                            <button class="rr-pill-btn ghost sm danger" @onclick="@(() => DeleteSaved(sp.Id))">Delete</button>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="save-row">
+                <input type="text" placeholder="New profile name…" @bind="newProfileName" class="rr-input" />
+                <button class="rr-pill-btn primary" @onclick="SaveCurrent" disabled="@string.IsNullOrWhiteSpace(newProfileName)">Save</button>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-title-row">
+                <h3>Library</h3>
+                <div class="row-flex gap-sm">
+                    <button class="rr-pill-btn ghost sm" @onclick="OpenImportsFolder">Open folder</button>
+                    <button class="rr-pill-btn ghost sm" @onclick="CopyImportsPath" title="Copy the imports folder path to clipboard">Copy path</button>
+                </div>
+            </div>
+            @if (library.Count == 0)
+            {
+                <p class="muted-line">Imported images live here. Use the Import options below.</p>
+            }
+            else
+            {
+                <div class="library-grid">
+                    @foreach (var img in library)
+                    {
+                        var thumb = LibraryThumb(img);
+                        var isActive = string.Equals(profile.ImagePath, img, StringComparison.OrdinalIgnoreCase) && profile.Type == CrosshairType.Image;
+                        <div class="library-item @(isActive ? "selected" : "")">
+                            <button class="library-pick" @onclick="@(() => UseLibraryImage(img))" title="@System.IO.Path.GetFileName(img)">
+                                @if (!string.IsNullOrEmpty(thumb))
+                                {
+                                    <img src="@thumb" />
+                                }
+                                else
+                                {
+                                    <span class="library-no-thumb">?</span>
+                                }
+                            </button>
+                            <button class="library-delete" @onclick="@(() => DeleteLibraryImage(img))" title="Delete">×</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="content-card">
+            <h3>Import</h3>
+            <div class="import-grid">
+                <button class="rr-pill-btn ghost" @onclick="ImportImageFile">
+                    Import image (PNG / JPG / GIF / BMP)
+                </button>
+                <button class="rr-pill-btn ghost" @onclick="ImportWorkshopFile">
+                    Import Crosshair X workshop file
+                </button>
+                <button class="rr-pill-btn ghost" @onclick="ImportWorkshopFolder">
+                    Import Crosshair X workshop folder
+                </button>
+            </div>
+
+            <div class="code-import">
+                <label class="field-label code-import-label">From game code (Valorant / CSGO)</label>
+                <div class="row-flex gap-sm align-center">
+                    <input type="text" class="rr-input code-input"
+                           placeholder="Paste a Valorant string or CSGO-XXXXX-… code"
+                           @bind="codeInput" @bind:event="oninput"
+                           @onkeydown="OnCodeKeyDown" />
+                    <button class="rr-pill-btn primary" @onclick="ImportCode" disabled="@string.IsNullOrWhiteSpace(codeInput)">Import</button>
+                </div>
+                <p class="muted-line">
+                    Best-effort parse — covers color, length, thickness, gap, dot &amp; outline. Press <kbd>Enter</kbd> to import.
+                </p>
+            </div>
+
+            <button class="guide-toggle" @onclick="@(() => guideOpen = !guideOpen)">
+                <span class="chev @(guideOpen ? "open" : "")">▸</span>
+                <span>How do I find a crosshair to import?</span>
+            </button>
+            @if (guideOpen)
+            {
+                <div class="guide-body">
+                    <div class="guide-item">
+                        <div class="guide-title">Image file (any game)</div>
+                        <div class="guide-text">Use <strong>Import image</strong>. Animated GIFs play frame-by-frame. PNGs with transparency render cleanly with per-pixel alpha.</div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-title">Steam Workshop (Crosshair X)</div>
+                        <div class="guide-text">
+                            In Steam: Library → Crosshair X → right-click → Properties → Installed Files → Browse → open <code>workshop</code>.
+                            Either drag a <code>.png</code> directly in via <strong>Import image</strong>, or hand the folder to <strong>Import workshop folder</strong> — we'll pick the first image and parse any config alongside it.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-title">Valorant</div>
+                        <div class="guide-text">
+                            In-game: Settings → Crosshair → top-right <strong>⬆ Export profile code</strong>. Paste the whole string above
+                            (looks like <code>0;P;c;5;u;FFFFFFFF;h;0;m;1;0l;4;…</code>). Sites like <em>valorant.crosshairs.gg</em> or <em>liquidpedia</em> share these too.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-title">CS2 / CSGO</div>
+                        <div class="guide-text">
+                            In-game: console → <code>cl_crosshair_sharecode</code> shows your code (<code>CSGO-XXXXX-XXXXX-…</code>).
+                            Or grab one from <em>csgo-stats.net</em> / <em>pro crosshair</em> sites and paste above.
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="content-card">
+            <h3>Hotkey</h3>
+            <div class="row-flex gap-sm align-center">
+                <span class="field-label flex-1 m-0">Toggle overlay</span>
+                <button class="hotkey-btn @(recordingHotkey ? "recording" : "")"
+                        @onclick="StartRecordHotkey"
+                        @onkeydown="CaptureHotkey"
+                        @onkeydown:preventDefault="true"
+                        tabindex="0">
+                    @(recordingHotkey ? "Press a key…" : (string.IsNullOrEmpty(hotkeyLabel) ? "(none)" : hotkeyLabel))
+                </button>
+                <button class="rr-pill-btn ghost sm" @onclick="ClearHotkey" disabled="@string.IsNullOrEmpty(hotkeyLabel)">Clear</button>
+            </div>
+            <p class="muted-line">Works globally — even while a game has focus. Default F8.</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CrosshairProfile profile = new();
+    private IReadOnlyList<CrosshairProfile> builtIns = Array.Empty<CrosshairProfile>();
+    private IReadOnlyList<CrosshairProfile> saved = Array.Empty<CrosshairProfile>();
+    private IReadOnlyList<MonitorInfo> monitors = Array.Empty<MonitorInfo>();
+    private string previewSrc = "";
+    private string newProfileName = "";
+    private bool recordingHotkey;
+    private string hotkeyLabel = "F8";
+    private string codeInput = "";
+    private bool guideOpen;
+    private List<string> library = new();
+    private readonly Dictionary<string, string> thumbCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private System.Timers.Timer? _animTimer;
+    private DateTime _animStart = DateTime.UtcNow;
+
+    private static readonly CrosshairType[] AllTypes = (CrosshairType[])Enum.GetValues(typeof(CrosshairType));
+    private static readonly CrosshairAnimation[] AllAnimations = (CrosshairAnimation[])Enum.GetValues(typeof(CrosshairAnimation));
+
+    private string StatusSubLine => CrosshairSvc.IsOverlayActive
+        ? $"{TypeLabel(profile.Type)} · {profile.Color.ToUpper()} · {(profile.Animation == CrosshairAnimation.None && !profile.Rainbow ? "static" : "animated")}"
+        : $"Press {(string.IsNullOrEmpty(hotkeyLabel) ? "Start overlay" : hotkeyLabel)} to enable.";
+
+    private string PreviewMetaLine
+    {
+        get
+        {
+            var parts = new List<string> { TypeLabel(profile.Type) };
+            if (profile.Type != CrosshairType.Image)
+            {
+                if (profile.Type != CrosshairType.Dot) parts.Add($"{profile.Size}px × {profile.Thickness}");
+                else parts.Add($"{profile.DotSize}px");
+                if (profile.Type is CrosshairType.Cross or CrosshairType.TStyle) parts.Add($"gap {profile.Gap}");
+            }
+            if (profile.Opacity != 100) parts.Add($"{profile.Opacity}%");
+            if (profile.Animation != CrosshairAnimation.None) parts.Add(profile.Animation.ToString().ToLowerInvariant());
+            if (profile.Rainbow) parts.Add("rainbow");
+            return string.Join(" · ", parts);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        CrosshairSvc.Changed += OnServiceChanged;
+        ReadFromService();
+        RefreshPreview();
+        EnsureAnimTimer();
+    }
+
+    private void OnServiceChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            ReadFromService();
+            RefreshPreview();
+            EnsureAnimTimer();
+            StateHasChanged();
+        });
+    }
+
+    private void ReadFromService()
+    {
+        profile = CrosshairSvc.ActiveProfile.Clone();
+        profile.Id = CrosshairSvc.ActiveProfile.Id;
+        profile.IsBuiltIn = false;
+        builtIns = CrosshairSvc.GetBuiltInPresets();
+        saved = CrosshairSvc.GetSavedProfiles();
+        monitors = CrosshairSvc.GetMonitors();
+        if (string.IsNullOrEmpty(profile.MonitorDeviceName) && monitors.Count > 0)
+        {
+            var primary = monitors.FirstOrDefault(m => m.IsPrimary) ?? monitors[0];
+            profile.MonitorDeviceName = primary.DeviceName;
+        }
+        var hk = CrosshairSvc.GetHotkey();
+        hotkeyLabel = hk.Label;
+        RefreshLibrary();
+    }
+
+    private void RefreshLibrary()
+    {
+        library = CrosshairSvc.GetImportedImagePaths().ToList();
+        // Drop thumb cache entries that no longer have a backing file (after delete).
+        var present = new HashSet<string>(library, StringComparer.OrdinalIgnoreCase);
+        var dead = thumbCache.Keys.Where(k => !present.Contains(k)).ToList();
+        foreach (var k in dead) thumbCache.Remove(k);
+    }
+
+    private string LibraryThumb(string path)
+    {
+        if (thumbCache.TryGetValue(path, out var cached)) return cached;
+        var bytes = CrosshairSvc.RenderThumbnailPng(path);
+        if (bytes == null) return "";
+        var url = "data:image/png;base64," + Convert.ToBase64String(bytes);
+        thumbCache[path] = url;
+        return url;
+    }
+
+    private void UseLibraryImage(string path)
+    {
+        CrosshairSvc.UseImportedImage(path);
+        ReadFromService();
+        RefreshPreview();
+        EnsureAnimTimer();
+    }
+
+    private void DeleteLibraryImage(string path)
+    {
+        if (CrosshairSvc.DeleteImportedImage(path))
+        {
+            thumbCache.Remove(path);
+            RefreshLibrary();
+            ReadFromService();
+            RefreshPreview();
+            EnsureAnimTimer();
+            Notifications.ShowInfo("Deleted from library.");
+        }
+    }
+
+    private void OpenImportsFolder() => CrosshairSvc.OpenImportsFolder();
+
+    private async Task CopyImportsPath() => await CrosshairSvc.CopyImportsFolderPathAsync();
+
+    private void Push()
+    {
+        CrosshairSvc.UpdateActive(profile);
+        RefreshPreview();
+        EnsureAnimTimer();
+    }
+
+    private double GetPhase()
+    {
+        if (profile.Animation == CrosshairAnimation.None && !profile.Rainbow) return 0.25;
+        var speed = Math.Clamp(profile.AnimationSpeed, 1, 10);
+        var period = 5.0 / speed;
+        var seconds = (DateTime.UtcNow - _animStart).TotalSeconds;
+        return (seconds / period) % 1.0;
+    }
+
+    private void RefreshPreview()
+    {
+        try
+        {
+            var bytes = CrosshairSvc.RenderPreviewPng(GetPhase());
+            previewSrc = "data:image/png;base64," + Convert.ToBase64String(bytes);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Crosshair preview render failed");
+        }
+    }
+
+    // Drive the preview animation when a shape animation or rainbow is active. We deliberately do
+    // NOT tick the preview for animated GIFs — re-encoding a PNG and bouncing a fresh data URL
+    // through the DOM at 25 Hz was the main reason the editor froze during slider drags. The
+    // overlay continues to animate the GIF at full speed; the preview shows the first frame as a
+    // static snapshot.
+    private void EnsureAnimTimer()
+    {
+        var needsAnim = (profile.Type != CrosshairType.Image)
+            && (profile.Animation != CrosshairAnimation.None || profile.Rainbow);
+        if (needsAnim)
+        {
+            if (_animTimer != null) return;
+            _animTimer = new System.Timers.Timer(40) { AutoReset = true };
+            _animTimer.Elapsed += AnimTick;
+            _animTimer.Start();
+        }
+        else
+        {
+            _animTimer?.Stop();
+            _animTimer?.Dispose();
+            _animTimer = null;
+        }
+    }
+
+    private void AnimTick(object? sender, ElapsedEventArgs e)
+    {
+        _ = InvokeAsync(() =>
+        {
+            RefreshPreview();
+            StateHasChanged();
+        });
+    }
+
+    private void SetType(CrosshairType t)
+    {
+        profile.Type = t;
+        if (t == CrosshairType.Dot) profile.ShowDot = true;
+        Push();
+    }
+
+    private void SetAnimation(CrosshairAnimation a)
+    {
+        profile.Animation = a;
+        Push();
+    }
+
+    private void UpdateInt(Action<int> setter, object? raw, int min, int max)
+    {
+        if (raw is null) return;
+        if (!int.TryParse(raw.ToString(), out var v)) return;
+        v = Math.Clamp(v, min, max);
+        setter(v);
+        Push();
+    }
+
+    private void SelectMonitor(string deviceName)
+    {
+        profile.MonitorDeviceName = deviceName;
+        Push();
+    }
+
+    private void CenterOffsets()
+    {
+        profile.OffsetX = 0;
+        profile.OffsetY = 0;
+        Push();
+    }
+
+    private void NudgeOffset(int dx, int dy)
+    {
+        profile.OffsetX = Math.Clamp(profile.OffsetX + dx, -3000, 3000);
+        profile.OffsetY = Math.Clamp(profile.OffsetY + dy, -3000, 3000);
+        Push();
+    }
+
+    private void ApplyProfile(CrosshairProfile p)
+    {
+        CrosshairSvc.LoadProfile(p);
+        ReadFromService();
+        RefreshPreview();
+        EnsureAnimTimer();
+        Notifications.ShowInfo($"Loaded '{p.Name}'.");
+    }
+
+    private async Task SaveCurrent()
+    {
+        if (string.IsNullOrWhiteSpace(newProfileName)) return;
+        var name = newProfileName.Trim();
+        var ok = await CrosshairSvc.SaveAsAsync(name);
+        if (ok)
+        {
+            Notifications.ShowSuccess($"Saved '{name}'.");
+            newProfileName = "";
+            saved = CrosshairSvc.GetSavedProfiles();
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteSaved(string id)
+    {
+        var ok = await CrosshairSvc.DeleteSavedAsync(id);
+        if (ok)
+        {
+            saved = CrosshairSvc.GetSavedProfiles();
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleOverlay()
+    {
+        CrosshairSvc.ToggleOverlay();
+        StateHasChanged();
+    }
+
+    private async Task PickImage()
+    {
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".png", ".jpg", ".jpeg", ".gif", ".bmp" } }
+            });
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Pick a crosshair image",
+                FileTypes = fileTypes
+            });
+            if (result == null) return;
+
+            await using var stream = await result.OpenReadAsync();
+            var stored = await CrosshairSvc.ImportImageAsync(stream, result.FileName);
+            if (stored != null)
+            {
+                // UseImportedImage handles the right-size-scale step in one place so picker imports
+                // and library re-selects behave identically.
+                CrosshairSvc.UseImportedImage(stored);
+                ReadFromService();
+                RefreshPreview();
+                EnsureAnimTimer();
+                Notifications.ShowSuccess("Image imported.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Image picker failed");
+            Notifications.ShowError($"Image picker failed: {ex.Message}");
+        }
+    }
+
+    private async Task ImportImageFile() => await PickImage();
+
+    private async Task ImportCode()
+    {
+        if (string.IsNullOrWhiteSpace(codeInput)) return;
+        var imported = CrosshairSvc.ImportFromCode(codeInput.Trim());
+        if (imported == null) return;
+
+        CrosshairSvc.LoadProfile(imported);
+
+        // Auto-save under a generated name so the user doesn't lose the import. They can rename via
+        // delete-and-re-save, but the most common workflow is "paste code → it shows up in profiles".
+        var stamp = DateTime.Now.ToString("HH:mm");
+        var saveName = $"{imported.Name} {stamp}";
+        await CrosshairSvc.SaveAsAsync(saveName);
+
+        ReadFromService();
+        RefreshPreview();
+        EnsureAnimTimer();
+        codeInput = "";
+        // Surface the parsed values so it's obvious what landed (and easy to spot when a code
+        // parses but values look wrong).
+        Notifications.ShowSuccess(
+            $"Saved '{saveName}' · {imported.Type} · {imported.Color} · size {imported.Size} · thick {imported.Thickness} · gap {imported.Gap} · {imported.Opacity}%");
+    }
+
+    private async Task OnCodeKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ImportCode();
+    }
+
+    private async Task ImportWorkshopFile()
+    {
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".json", ".ini", ".cfg", ".txt", ".crosshair" } }
+            });
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Pick a workshop file",
+                FileTypes = fileTypes
+            });
+            if (result == null) return;
+            var imported = await CrosshairSvc.ImportWorkshopAsync(result.FullPath);
+            if (imported != null)
+            {
+                CrosshairSvc.LoadProfile(imported);
+                ReadFromService();
+                RefreshPreview();
+                EnsureAnimTimer();
+                Notifications.ShowSuccess($"Imported '{imported.Name}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Workshop file import failed");
+            Notifications.ShowError($"Workshop import failed: {ex.Message}");
+        }
+    }
+
+    private async Task ImportWorkshopFolder()
+    {
+        try
+        {
+            var folder = await PickFolderAsync();
+            if (string.IsNullOrWhiteSpace(folder)) return;
+            var imported = await CrosshairSvc.ImportWorkshopAsync(folder);
+            if (imported != null)
+            {
+                CrosshairSvc.LoadProfile(imported);
+                ReadFromService();
+                RefreshPreview();
+                EnsureAnimTimer();
+                Notifications.ShowSuccess($"Imported '{imported.Name}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Workshop folder import failed");
+            Notifications.ShowError($"Workshop import failed: {ex.Message}");
+        }
+    }
+
+    private static async Task<string?> PickFolderAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+
+        var windows = Microsoft.Maui.Controls.Application.Current?.Windows;
+        if (windows == null || windows.Count == 0) return null;
+
+        var window = windows[0].Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+        if (window == null) return null;
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    private void StartRecordHotkey() => recordingHotkey = true;
+
+    private void ClearHotkey()
+    {
+        CrosshairSvc.SetHotkey("", 0, false, false, false);
+        hotkeyLabel = "";
+    }
+
+    private void CaptureHotkey(KeyboardEventArgs e)
+    {
+        if (!recordingHotkey) return;
+        if (string.IsNullOrEmpty(e.Key) || e.Key is "Control" or "Shift" or "Alt" or "Meta") return;
+
+        var vk = TranslateKeyToVk(e.Key, e.Code);
+        if (vk == 0) return;
+
+        var label = BuildHotkeyLabel(e.Key, e.CtrlKey, e.AltKey, e.ShiftKey);
+        CrosshairSvc.SetHotkey(label, vk, e.CtrlKey, e.AltKey, e.ShiftKey);
+        hotkeyLabel = label;
+        recordingHotkey = false;
+        StateHasChanged();
+    }
+
+    private static string BuildHotkeyLabel(string key, bool ctrl, bool alt, bool shift)
+    {
+        var parts = new List<string>();
+        if (ctrl) parts.Add("Ctrl");
+        if (alt) parts.Add("Alt");
+        if (shift) parts.Add("Shift");
+        parts.Add(NormalizeKeyName(key));
+        return string.Join(" + ", parts);
+    }
+
+    private static string NormalizeKeyName(string key) => key.Length == 1 ? key.ToUpperInvariant() : key;
+
+    private static int TranslateKeyToVk(string key, string code)
+    {
+        if (key.StartsWith("F", StringComparison.OrdinalIgnoreCase) && int.TryParse(key.AsSpan(1), out var fn) && fn is >= 1 and <= 24)
+            return 0x6F + fn;
+
+        if (key.Length == 1)
+        {
+            var c = char.ToUpperInvariant(key[0]);
+            if (c >= 'A' && c <= 'Z') return c;
+            if (c >= '0' && c <= '9') return c;
+        }
+
+        return key switch
+        {
+            "ArrowUp" => 0x26, "ArrowDown" => 0x28, "ArrowLeft" => 0x25, "ArrowRight" => 0x27,
+            "Insert" => 0x2D, "Delete" => 0x2E, "Home" => 0x24, "End" => 0x23,
+            "PageUp" => 0x21, "PageDown" => 0x22, " " => 0x20, "Tab" => 0x09, "Enter" => 0x0D,
+            _ => 0
+        };
+    }
+
+    private static string TypeLabel(CrosshairType t) => t switch
+    {
+        CrosshairType.Cross => "Cross",
+        CrosshairType.Dot => "Dot",
+        CrosshairType.Circle => "Circle",
+        CrosshairType.TStyle => "T-Style",
+        CrosshairType.Image => "Image",
+        _ => t.ToString()
+    };
+
+    private static string TypeGlyph(CrosshairType t) => t switch
+    {
+        CrosshairType.Cross => "+",
+        CrosshairType.Dot => "·",
+        CrosshairType.Circle => "○",
+        CrosshairType.TStyle => "⊥",
+        CrosshairType.Image => "🖼",
+        _ => "+"
+    };
+
+    public void Dispose()
+    {
+        CrosshairSvc.Changed -= OnServiceChanged;
+        _animTimer?.Stop();
+        _animTimer?.Dispose();
+        _animTimer = null;
+    }
+}

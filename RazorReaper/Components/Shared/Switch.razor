@@ -1,0 +1,33 @@
+@* Custom toggle switch — replaces native checkbox+button-style toggles across the crosshair editor.
+   Two-way bind via @bind-Value (or pass ValueChanged manually). Label is optional. *@
+
+<label class="rr-switch @(Compact ? "rr-switch-compact" : "") @CssClass">
+    <input type="checkbox"
+           checked="@Value"
+           disabled="@Disabled"
+           @onchange="OnToggle" />
+    <span class="rr-switch-track">
+        <span class="rr-switch-thumb"></span>
+    </span>
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="rr-switch-label">@Label</span>
+    }
+</label>
+
+@code {
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string CssClass { get; set; } = "";
+
+    private async Task OnToggle(ChangeEventArgs e)
+    {
+        var v = e.Value is bool b ? b : (e.Value?.ToString() == "true");
+        if (v == Value) return;
+        Value = v;
+        await ValueChanged.InvokeAsync(v);
+    }
+}
