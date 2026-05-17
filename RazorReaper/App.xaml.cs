@@ -64,7 +64,9 @@ namespace RazorReaper
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
             SafeInvoke(() => autoUpdateManager.LaunchPendingInstaller());
-            FlushTelemetryShutdown();
+            // Fire-and-forget so the window disappears instantly when the user clicks X.
+            // ProcessExit performs the bounded synchronous wait as a backstop.
+            _ = Task.Run(FlushTelemetryShutdown);
         }
 
         private void HandleProcessExit(object? sender, EventArgs e)
