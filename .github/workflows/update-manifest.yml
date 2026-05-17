@@ -1,0 +1,61 @@
+name: Update update.xml on release
+
+on:
+  release:
+    types:
+      - released
+
+permissions:
+  contents: write
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch update.xml
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # v1.4.3 -> 1.4.3 -> 1.4.3.0
+          tag_clean="${TAG_NAME#v}"
+          xml_version="${tag_clean}.0"
+
+          installer_url="https://github.com/${REPO}/releases/download/${TAG_NAME}/RazorReaper-Setup.exe"
+          changelog_url="https://github.com/${REPO}/releases/tag/${TAG_NAME}"
+
+          sed -i \
+            -e "s|<version>.*</version>|<version>${xml_version}</version>|" \
+            -e "s|<url>.*</url>|<url>${installer_url}</url>|" \
+            -e "s|<changelog>.*</changelog>|<changelog>${changelog_url}</changelog>|" \
+            update.xml
+
+          echo "--- Updated update.xml ---"
+          cat update.xml
+
+      - name: Commit and push
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet update.xml; then
+            echo "update.xml already at ${TAG_NAME} - nothing to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add update.xml
+          git commit -m "Bump update.xml to ${TAG_NAME} [skip ci]"
+          git push origin master
