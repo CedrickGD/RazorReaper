@@ -29,11 +29,11 @@ It is meant to keep the useful stuff in one place: game tweaks, config handling,
 
 ### ARK Tweaks
 
-- `INI Changer` for loading, editing, saving, importing, and exporting presets
+- `INI Changer` 3-column workspace with a built-in preset gallery, plus loading, editing, saving, importing, and exporting
 - `Vision Tools` for suit/FOV style visibility helpers
 - `Launch Options` management
 - `Fonts` page with preset font switching
-- `Pixel Glitch` texture utility tools
+- `Pixel Glitch` texture utility tools with backup + revert support
 - `Paintings` helpers for `MyPaintings` workflow and preset handling
 
 ### Mods & Intel
@@ -46,9 +46,14 @@ It is meant to keep the useful stuff in one place: game tweaks, config handling,
 
 ### Utilities
 
-- `Building` references and technique helpers
+- `Building` references with build guides and a fullscreen image lightbox
 - `Auto Clicker`
 - `Troubleshoot` and `Credits`
+
+### UI
+
+- Resizable, collapsible sidebar with rail mode and themed tooltips
+- Silent background auto-updates (toggleable from the `Home` page)
 
 ---
 
@@ -62,7 +67,7 @@ It is meant to keep the useful stuff in one place: game tweaks, config handling,
 ### Install
 
 1. Open the [latest release](https://github.com/CedrickGD/RazorReaper/releases/latest)
-2. Download the **`RazorReaper.exe`** installer from the release assets
+2. Download the **`RazorReaper-Setup.exe`** installer from the release assets
 3. Run the installer
 4. Finish setup and launch RazorReaper
 
@@ -71,7 +76,8 @@ It is meant to keep the useful stuff in one place: game tweaks, config handling,
 
 ### Updating
 
-- RazorReaper can point you to newer releases
+- RazorReaper checks for updates automatically on launch and installs them silently when you close the app
+- The auto-update toggle lives on the `Home` page if you'd rather manage updates manually
 - Manual updates are simple: download the newest release installer and run it
 
 ---
@@ -83,17 +89,14 @@ If you want to build it yourself:
 ### Requirements for source build
 
 - Windows 10 or Windows 11
-- .NET SDK `9.0.306` x64
+- .NET SDK `10.0` x64
 - Visual Studio 2022 with .NET MAUI workload
-
-Direct SDK download:  
-[dotnet-sdk-9.0.306-win-x64.exe](https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.306/dotnet-sdk-9.0.306-win-x64.exe)
 
 ### Commands
 
 ```powershell
 dotnet build RazorReaper.sln
-dotnet run --project RazorReaper/RazorReaper.csproj -f net9.0-windows10.0.19041.0
+dotnet run --project RazorReaper/RazorReaper.csproj -f net10.0-windows10.0.19041.0
 ```
 
 ---
