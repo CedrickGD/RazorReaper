@@ -7,6 +7,10 @@ public interface ICrosshairService
     /// <summary>Fired any time the active profile or visibility changes (from any source — UI, hotkey, etc).</summary>
     event Action? Changed;
 
+    /// <summary>Fired only when the imported-images set changes (import or delete). Subscribers
+    /// can refresh their library view without having to re-scan disk on every profile tweak.</summary>
+    event Action? LibraryChanged;
+
     /// <summary>Fired when the tray icon asks to bring the main app window back into view.</summary>
     event Action? ShowAppRequested;
 
@@ -56,14 +60,11 @@ public interface ICrosshairService
     /// <summary>Render a square thumbnail (letterboxed) of an imported image for the library grid.</summary>
     byte[]? RenderThumbnailPng(string imagePath, int size = 72);
 
-    /// <summary>Open the imported-images folder in Explorer.</summary>
-    void OpenImportsFolder();
-
     /// <summary>Copy the imported-images folder path to the system clipboard.</summary>
     Task<bool> CopyImportsFolderPathAsync();
 
-    /// <summary>Absolute path to the imported-images folder (so the UI can display it for the
-    /// user to copy/paste when the Explorer launch is being uncooperative).</summary>
+    /// <summary>Absolute path to the imported-images folder. Shown to the user as plain text
+    /// in the editor so they can copy/paste it anywhere if they need shell access.</summary>
     string ImportsFolderPath { get; }
 
     /// <summary>Delete an imported image from disk. If it was the active image, clears the profile.</summary>

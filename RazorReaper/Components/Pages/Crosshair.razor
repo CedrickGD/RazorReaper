@@ -1,4 +1,5 @@
 @page "/crosshair"
+@using System.Diagnostics
 @using System.IO
 @using System.Timers
 @using Microsoft.Extensions.Logging
@@ -289,13 +290,13 @@
             <div class="card-title-row">
                 <h3>Library</h3>
                 <div class="row-flex gap-sm">
-                    <button class="rr-pill-btn ghost sm" @onclick="OpenImportsFolder">Open folder</button>
+                    <button class="rr-pill-btn ghost sm" @onclick="OpenImportsFolder" title="Open the library folder in Windows Explorer">Open folder</button>
                     <button class="rr-pill-btn ghost sm" @onclick="CopyImportsPath" title="Copy the imports folder path to clipboard">Copy path</button>
                 </div>
             </div>
             @if (library.Count == 0)
             {
-                <p class="muted-line">Imported images live here. Use the Import options below.</p>
+                <p class="muted-line">Imported images appear here. Use the Import options below.</p>
             }
             else
             {
@@ -449,7 +450,9 @@
     protected override void OnInitialized()
     {
         CrosshairSvc.Changed += OnServiceChanged;
+        CrosshairSvc.LibraryChanged += OnLibraryChanged;
         ReadFromService();
+        RefreshLibrary();
         RefreshPreview();
         EnsureAnimTimer();
     }
@@ -461,6 +464,17 @@
             ReadFromService();
             RefreshPreview();
             EnsureAnimTimer();
+            StateHasChanged();
+        });
+    }
+
+    private void OnLibraryChanged()
+    {
+        // Library updates are independent of profile changes — refresh just the list, no
+        // preview re-render or timer churn.
+        _ = InvokeAsync(() =>
+        {
+            RefreshLibrary();
             StateHasChanged();
         });
     }
@@ -480,7 +494,6 @@
         }
         var hk = CrosshairSvc.GetHotkey();
         hotkeyLabel = hk.Label;
-        RefreshLibrary();
     }
 
     private void RefreshLibrary()
@@ -514,16 +527,40 @@
     {
         if (CrosshairSvc.DeleteImportedImage(path))
         {
+            // Service raises LibraryChanged (refreshes our list + thumb cleanup) and Changed
+            // when the active profile was using this image (RefreshPreview etc).
             thumbCache.Remove(path);
-            RefreshLibrary();
-            ReadFromService();
-            RefreshPreview();
-            EnsureAnimTimer();
             Notifications.ShowInfo("Deleted from library.");
         }
     }
 
-    private void OpenImportsFolder() => CrosshairSvc.OpenImportsFolder();
+    private void OpenImportsFolder()
+    {
+        // Same pattern as Paintings.OpenMyPaintingsFolder — proven to work elsewhere in this app.
+        try
+        {
+            var folderPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RazorReaper", "Crosshairs", "Images");
+
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = folderPath,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Open library folder failed");
+            Notifications.ShowError($"Error opening folder: {ex.Message}");
+        }
+    }
 
     private async Task CopyImportsPath() => await CrosshairSvc.CopyImportsFolderPathAsync();
 
@@ -885,6 +922,7 @@
     public void Dispose()
     {
         CrosshairSvc.Changed -= OnServiceChanged;
+        CrosshairSvc.LibraryChanged -= OnLibraryChanged;
         _animTimer?.Stop();
         _animTimer?.Dispose();
         _animTimer = null;

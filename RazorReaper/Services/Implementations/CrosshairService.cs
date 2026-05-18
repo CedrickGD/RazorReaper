@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Models;
@@ -30,6 +29,12 @@ public class CrosshairService : ICrosshairService, IDisposable
     private CrosshairProfile _active;
     private bool _overlayActive;
 
+    // Session-level library cache. Populated once at startup (one disk enumeration) and
+    // mutated explicitly on Import/Delete — never re-scanned just because the active
+    // profile changed. Slider tweaks must not touch disk.
+    private readonly object _libraryLock = new();
+    private List<string> _libraryCache = new();
+
     private readonly CrosshairOverlayWindow _overlay;
 
     // Preview-side image cache. Decoded once per ImagePath; reused across rapid preview re-renders
@@ -56,6 +61,7 @@ public class CrosshairService : ICrosshairService, IDisposable
     private bool _hotkeyCtrl, _hotkeyAlt, _hotkeyShift;
 
     public event Action? Changed;
+    public event Action? LibraryChanged;
     public event Action? ShowAppRequested;
     public event Action? QuitRequested;
 
@@ -82,6 +88,10 @@ public class CrosshairService : ICrosshairService, IDisposable
         {
             _logger.LogError(ex, "Failed to create crosshair storage dir at {Dir}", _rootDir);
         }
+
+        // One eager disk scan at startup. From here on the library list lives in memory and
+        // is only mutated by Import/Delete — no re-enumeration on every Changed event.
+        RebuildLibraryCache();
 
         _active = BuiltIns[0].Clone();
         _active.IsBuiltIn = false;
@@ -340,6 +350,12 @@ public class CrosshairService : ICrosshairService, IDisposable
             {
                 await source.CopyToAsync(fs);
             }
+
+            // Append to the in-memory library cache and notify subscribers. Avoids a full
+            // disk re-enumeration just to learn about the one file we just wrote.
+            lock (_libraryLock) { _libraryCache.Insert(0, dest); }
+            LibraryChanged?.Invoke();
+
             return dest;
         }
         catch (Exception ex)
@@ -425,19 +441,37 @@ public class CrosshairService : ICrosshairService, IDisposable
 
     public IReadOnlyList<string> GetImportedImagePaths()
     {
+        // Serve from the in-memory cache. No disk I/O on the hot path — callers like the
+        // editor page hit this repeatedly during normal interaction and we don't want a
+        // folder enumeration on every slider tweak.
+        lock (_libraryLock)
+        {
+            return _libraryCache.ToList();
+        }
+    }
+
+    /// <summary>One-time disk scan that seeds the in-memory library cache. Called from the
+    /// constructor at startup and (if ever needed) on explicit user-initiated refresh.
+    /// Import/Delete mutate the cache directly — they don't go through here.</summary>
+    private void RebuildLibraryCache()
+    {
+        List<string> scanned;
         try
         {
-            if (!Directory.Exists(_imagesDir)) return Array.Empty<string>();
-            return Directory.EnumerateFiles(_imagesDir)
-                .Where(f => AllowedImageExt.Contains(Path.GetExtension(f).ToLowerInvariant()))
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .ToList();
+            scanned = Directory.Exists(_imagesDir)
+                ? Directory.EnumerateFiles(_imagesDir)
+                    .Where(f => AllowedImageExt.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .ToList()
+                : new List<string>();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to list imported images");
-            return Array.Empty<string>();
+            scanned = new List<string>();
         }
+        lock (_libraryLock) { _libraryCache = scanned; }
+        LibraryChanged?.Invoke();
     }
 
     public byte[]? RenderThumbnailPng(string imagePath, int size = 72)
@@ -475,134 +509,6 @@ public class CrosshairService : ICrosshairService, IDisposable
         }
     }
 
-    public void OpenImportsFolder()
-    {
-        // Kick off async work — the WinRT launcher and StorageFolder calls are async-only.
-        // Fire-and-forget; the user clicks a button, the result is "did a window appear",
-        // and any failure surfaces as a notification.
-        _ = OpenImportsFolderInternalAsync();
-    }
-
-    private async Task OpenImportsFolderInternalAsync()
-    {
-        Directory.CreateDirectory(_imagesDir);
-
-        // Canonicalise — handles a missing trailing slash, ./.. components, case quirks, etc.
-        // The "Der Pfad ist nicht verfügbar" dialog we kept hitting was showing a malformed path
-        // (literal space in the middle) which is a strong hint that something between us and
-        // Explorer is munging the string. Path.GetFullPath gives us a known-clean canonical form.
-        string path;
-        try { path = Path.GetFullPath(_imagesDir); }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetFullPath failed for {Path}", _imagesDir);
-            _notifications.ShowError("Couldn't resolve folder path.");
-            return;
-        }
-
-        if (!Directory.Exists(path))
-        {
-            _notifications.ShowError($"Folder missing: {path}");
-            return;
-        }
-
-        _logger.LogInformation("Open folder: {Path}", path);
-
-        // Strategy 1 — WinRT Launcher. This is the modern, canonical API for "open this folder".
-        // It does *not* go through our process; the shell launches Explorer on its end with the
-        // right verb and arguments. Bypasses every command-line-parsing quirk Process.Start has.
-        try
-        {
-            var folder = await Windows.Storage.StorageFolder.GetFolderFromPathAsync(path);
-            if (folder != null)
-            {
-                var ok = await Windows.System.Launcher.LaunchFolderAsync(folder);
-                _logger.LogInformation("LaunchFolderAsync → {Ok}", ok);
-                if (ok) return;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "WinRT LaunchFolderAsync threw");
-        }
-
-        // Strategy 2 — Shell PIDL. Same call Explorer uses internally when you double-click a
-        // folder in another Explorer window.
-        if (TryOpenViaShellPidl(path)) return;
-
-        // Strategy 3 — explorer.exe with the path as a single positional argument (canonicalised).
-        if (TryProcess("explorer.exe", $"\"{path}\"")) return;
-
-        // Last resort — copy path to clipboard so the user can paste it themselves.
-        _notifications.ShowError("Couldn't open Explorer. Path copied to clipboard — paste it into the Explorer address bar.");
-        await CopyImportsFolderPathAsync();
-    }
-
-    private bool TryOpenViaShellPidl(string path)
-    {
-        IntPtr pidl = IntPtr.Zero;
-        try
-        {
-            // SHParseDisplayName turns a path into a shell PIDL. If the path resolves, the rest
-            // bypasses any command-line dispatch quirks.
-            var hr = SHParseDisplayName(path, IntPtr.Zero, out pidl, 0, out _);
-            if (hr != 0 || pidl == IntPtr.Zero)
-            {
-                _logger.LogWarning("SHParseDisplayName returned 0x{Hr:X} for {Path}", hr, path);
-                return false;
-            }
-            var openHr = SHOpenFolderAndSelectItems(pidl, 0, IntPtr.Zero, 0);
-            if (openHr != 0)
-            {
-                _logger.LogWarning("SHOpenFolderAndSelectItems returned 0x{Hr:X}", openHr);
-                return false;
-            }
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Shell PIDL open threw");
-            return false;
-        }
-        finally
-        {
-            if (pidl != IntPtr.Zero) CoTaskMemFree(pidl);
-        }
-    }
-
-    private bool TryProcess(string file, string args)
-    {
-        try
-        {
-            using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = file,
-                Arguments = args,
-                UseShellExecute = false,
-            });
-            return p != null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Process.Start({File} {Args}) threw", file, args);
-            return false;
-        }
-    }
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int SHParseDisplayName(
-        [MarshalAs(UnmanagedType.LPWStr)] string pszName,
-        IntPtr pbc,
-        out IntPtr ppidl,
-        uint sfgaoIn,
-        out uint psfgaoOut);
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int SHOpenFolderAndSelectItems(IntPtr pidlFolder, uint cidl, IntPtr apidl, uint dwFlags);
-
-    [DllImport("ole32.dll")]
-    private static extern void CoTaskMemFree(IntPtr pv);
-
     public string ImportsFolderPath => _imagesDir;
 
     public async Task<bool> CopyImportsFolderPathAsync()
@@ -620,17 +526,6 @@ public class CrosshairService : ICrosshairService, IDisposable
             return false;
         }
     }
-
-    private const int SW_SHOWNORMAL = 1;
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-    private static extern IntPtr ShellExecuteW(
-        IntPtr hwnd,
-        string lpOperation,
-        string lpFile,
-        string? lpParameters,
-        string? lpDirectory,
-        int nShowCmd);
 
     public bool DeleteImportedImage(string path)
     {
@@ -651,6 +546,13 @@ public class CrosshairService : ICrosshairService, IDisposable
             }
 
             File.Delete(path);
+
+            // Drop from the library cache and notify subscribers.
+            lock (_libraryLock)
+            {
+                _libraryCache.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            }
+            LibraryChanged?.Invoke();
 
             // If the active profile was using this image, drop it so the overlay stops trying to draw a
             // deleted file. We don't switch type — user may want to import a replacement right after.
