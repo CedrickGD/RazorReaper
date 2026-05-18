@@ -92,11 +92,11 @@
             {
                 <div class="field">
                     <label class="field-label">Size: <strong>@profile.ImageScale%</strong></label>
-                    <input type="range" class="rr-slider" min="5" max="500" step="1" value="@profile.ImageScale"
-                           @oninput="@((e) => UpdateInt(v => profile.ImageScale = v, e.Value, 5, 500))" />
+                    <input type="range" class="rr-slider" min="1" max="500" step="1" value="@profile.ImageScale"
+                           @oninput="@((e) => UpdateInt(v => profile.ImageScale = v, e.Value, 1, 500))" />
                 </div>
             }
-            else
+            else if (profile.Type != CrosshairType.Pixel)
             {
                 <div class="row-2">
                     <div class="field">
@@ -148,6 +148,58 @@
                         </div>
                     }
                 </div>
+            </div>
+        }
+
+        @if (profile.Type == CrosshairType.Pixel)
+        {
+            <div class="content-card">
+                <h3>Pixel art</h3>
+                <div class="pixel-toolbar">
+                    <div class="row-flex gap-sm align-center">
+                        <label class="field-label m-0">Grid:</label>
+                        @foreach (var gs in PixelGridChoices)
+                        {
+                            var size = gs;
+                            <button class="rr-pill-btn sm @(profile.PixelGridSize == size ? "primary" : "ghost")"
+                                    @onclick="@(() => SetPixelGridSize(size))">@size×@size</button>
+                        }
+                    </div>
+                    <div class="row-flex gap-sm align-center">
+                        <button class="rr-pill-btn ghost sm" @onclick="ClearPixelArt" title="Erase everything">Clear</button>
+                        <button class="rr-pill-btn ghost sm" @onclick="InvertPixelArt" title="Flip every cell">Invert</button>
+                        <button class="rr-pill-btn ghost sm" @onclick="LoadPixelPlus" title="Plus pattern">＋</button>
+                        <button class="rr-pill-btn ghost sm" @onclick="LoadPixelDot" title="Single centre pixel">·</button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="field-label">Pixel size: <strong>@profile.DotSize</strong></label>
+                    <input type="range" class="rr-slider" min="1" max="30" step="1" value="@profile.DotSize"
+                           @oninput="@((e) => UpdateInt(v => profile.DotSize = v, e.Value, 1, 30))" />
+                </div>
+
+                <div class="pixel-grid-wrap">
+                    <div class="pixel-grid"
+                         style="--grid: @profile.PixelGridSize"
+                         @onmouseup="StopPixelPaint"
+                         @onmouseleave="StopPixelPaint">
+                        @for (int r = 0; r < profile.PixelGridSize; r++)
+                        {
+                            for (int c = 0; c < profile.PixelGridSize; c++)
+                            {
+                                var idx = r * profile.PixelGridSize + c;
+                                var on = idx < profile.PixelArtData.Length && profile.PixelArtData[idx] == '1';
+                                var isCenter = r == profile.PixelGridSize / 2 && c == profile.PixelGridSize / 2;
+                                <div class="pixel-cell @(on ? "on" : "") @(isCenter ? "center" : "")"
+                                     style="@(on ? $"background:{profile.Color}" : "")"
+                                     @onmousedown="@(() => StartPixelPaint(idx, !on))"
+                                     @onmouseenter="@(() => PaintPixelIfDragging(idx))"></div>
+                            }
+                        }
+                    </div>
+                </div>
+                <p class="muted-line">Click or drag to paint. Body colour and outline come from the Colors card; the marked centre cell is the aim point.</p>
             </div>
         }
 
@@ -327,7 +379,7 @@
             <h3>Import</h3>
             <div class="import-grid">
                 <button class="rr-pill-btn ghost" @onclick="ImportImageFile">
-                    Import image (PNG / JPG / GIF / BMP)
+                    Import image or video
                 </button>
                 <button class="rr-pill-btn ghost" @onclick="ImportWorkshopFile">
                     Import Crosshair X workshop file
@@ -418,6 +470,12 @@
     private bool guideOpen;
     private List<string> library = new();
     private readonly Dictionary<string, string> thumbCache = new(StringComparer.OrdinalIgnoreCase);
+    // Paths whose thumbnail decode already failed (e.g., a file with .png extension but
+    // WEBP bytes inside). Without this, every Blazor re-render re-calls RenderThumbnailPng
+    // on the broken file and hammers System.Drawing → System.Drawing logs an exception →
+    // re-render → repeat. Once a path is in this set we just render the "?" placeholder
+    // without ever touching disk again.
+    private readonly HashSet<string> thumbFailed = new(StringComparer.OrdinalIgnoreCase);
 
     private System.Timers.Timer? _animTimer;
     private DateTime _animStart = DateTime.UtcNow;
@@ -436,8 +494,8 @@
             var parts = new List<string> { TypeLabel(profile.Type) };
             if (profile.Type != CrosshairType.Image)
             {
-                if (profile.Type != CrosshairType.Dot) parts.Add($"{profile.Size}px × {profile.Thickness}");
-                else parts.Add($"{profile.DotSize}px");
+                if (profile.Type is CrosshairType.Dot or CrosshairType.Pixel) parts.Add($"{profile.DotSize}px");
+                else parts.Add($"{profile.Size}px × {profile.Thickness}");
                 if (profile.Type is CrosshairType.Cross or CrosshairType.TStyle) parts.Add($"gap {profile.Gap}");
             }
             if (profile.Opacity != 100) parts.Add($"{profile.Opacity}%");
@@ -499,17 +557,23 @@
     private void RefreshLibrary()
     {
         library = CrosshairSvc.GetImportedImagePaths().ToList();
-        // Drop thumb cache entries that no longer have a backing file (after delete).
+        // Drop thumb cache + failure-set entries that no longer have a backing file
+        // (after delete) — keeps both maps bounded.
         var present = new HashSet<string>(library, StringComparer.OrdinalIgnoreCase);
-        var dead = thumbCache.Keys.Where(k => !present.Contains(k)).ToList();
-        foreach (var k in dead) thumbCache.Remove(k);
+        foreach (var k in thumbCache.Keys.Where(k => !present.Contains(k)).ToList()) thumbCache.Remove(k);
+        foreach (var k in thumbFailed.Where(k => !present.Contains(k)).ToList()) thumbFailed.Remove(k);
     }
 
     private string LibraryThumb(string path)
     {
         if (thumbCache.TryGetValue(path, out var cached)) return cached;
+        if (thumbFailed.Contains(path)) return "";
         var bytes = CrosshairSvc.RenderThumbnailPng(path);
-        if (bytes == null) return "";
+        if (bytes == null)
+        {
+            thumbFailed.Add(path);
+            return "";
+        }
         var url = "data:image/png;base64," + Convert.ToBase64String(bytes);
         thumbCache[path] = url;
         return url;
@@ -527,9 +591,15 @@
     {
         if (CrosshairSvc.DeleteImportedImage(path))
         {
-            // Service raises LibraryChanged (refreshes our list + thumb cleanup) and Changed
-            // when the active profile was using this image (RefreshPreview etc).
+            // Drop our per-page caches for this path.
             thumbCache.Remove(path);
+            thumbFailed.Remove(path);
+            // The service also raises LibraryChanged which would refresh us asynchronously
+            // via InvokeAsync — but we call RefreshLibrary + StateHasChanged inline here as
+            // a safety net so the thumbnail disappears the instant the user clicks the X,
+            // even if the event dispatch is delayed by another in-flight render.
+            RefreshLibrary();
+            StateHasChanged();
             Notifications.ShowInfo("Deleted from library.");
         }
     }
@@ -593,16 +663,17 @@
         }
     }
 
-    // Drive the preview animation when a shape animation or rainbow is active. We deliberately do
-    // NOT tick the preview for animated GIFs — re-encoding a PNG and bouncing a fresh data URL
-    // through the DOM at 25 Hz was the main reason the editor froze during slider drags. The
-    // overlay continues to animate the GIF at full speed; the preview shows the first frame as a
-    // static snapshot.
+    // Drive the preview animation when a shape animation/rainbow is active OR when the active
+    // image source is multi-frame (animated GIF / video frame sequence). For the multi-frame
+    // case the renderer picks the right frame per tick; we just need to keep re-rendering so
+    // the editor pane shows live playback instead of a static first frame.
     private void EnsureAnimTimer()
     {
-        var needsAnim = (profile.Type != CrosshairType.Image)
+        var needsShapeAnim = profile.Type != CrosshairType.Image
             && (profile.Animation != CrosshairAnimation.None || profile.Rainbow);
-        if (needsAnim)
+        var needsImageAnim = profile.Type == CrosshairType.Image
+            && CrosshairSvc.HasAnimatedActiveImage;
+        if (needsShapeAnim || needsImageAnim)
         {
             if (_animTimer != null) return;
             _animTimer = new System.Timers.Timer(40) { AutoReset = true };
@@ -629,8 +700,136 @@
     private void SetType(CrosshairType t)
     {
         profile.Type = t;
-        if (t == CrosshairType.Dot) profile.ShowDot = true;
+        // Dot and Pixel are "the dot IS the shape" types — force ShowDot so they actually render.
+        if (t is CrosshairType.Dot or CrosshairType.Pixel) profile.ShowDot = true;
         Push();
+    }
+
+    // ─── Pixel-art editor ───────────────────────────────────────────────────
+    private static readonly int[] PixelGridChoices = new[] { 8, 16, 24, 32 };
+    private bool _pixelPainting;
+    private bool _pixelPaintValue;
+
+    private void SetPixelGridSize(int size)
+    {
+        if (size == profile.PixelGridSize) return;
+        // Resize the pixel grid by sampling old cells into the new grid coordinates so the
+        // drawing is preserved as best as possible across resolution changes.
+        var oldSize = Math.Max(1, profile.PixelGridSize);
+        var newSize = Math.Max(1, size);
+        var newData = new char[newSize * newSize];
+        for (int i = 0; i < newData.Length; i++) newData[i] = '0';
+        var oldData = profile.PixelArtData ?? "";
+        for (int r = 0; r < newSize; r++)
+        {
+            for (int c = 0; c < newSize; c++)
+            {
+                var or_ = (int)Math.Floor(r * (double)oldSize / newSize);
+                var oc = (int)Math.Floor(c * (double)oldSize / newSize);
+                var oIdx = or_ * oldSize + oc;
+                if (oIdx >= 0 && oIdx < oldData.Length && oldData[oIdx] == '1')
+                    newData[r * newSize + c] = '1';
+            }
+        }
+        profile.PixelGridSize = newSize;
+        profile.PixelArtData = new string(newData);
+        Push();
+    }
+
+    private void ClearPixelArt()
+    {
+        var len = profile.PixelGridSize * profile.PixelGridSize;
+        profile.PixelArtData = new string('0', len);
+        Push();
+    }
+
+    private void InvertPixelArt()
+    {
+        var len = profile.PixelGridSize * profile.PixelGridSize;
+        var src = profile.PixelArtData ?? "";
+        var buf = new char[len];
+        for (int i = 0; i < len; i++)
+        {
+            var c = i < src.Length ? src[i] : '0';
+            buf[i] = c == '1' ? '0' : '1';
+        }
+        profile.PixelArtData = new string(buf);
+        Push();
+    }
+
+    private void LoadPixelDot()
+    {
+        var size = profile.PixelGridSize;
+        var len = size * size;
+        var buf = new char[len];
+        for (int i = 0; i < len; i++) buf[i] = '0';
+        var centre = (size / 2) * size + (size / 2);
+        if (centre < len) buf[centre] = '1';
+        profile.PixelArtData = new string(buf);
+        Push();
+    }
+
+    private void LoadPixelPlus()
+    {
+        var size = profile.PixelGridSize;
+        var len = size * size;
+        var buf = new char[len];
+        for (int i = 0; i < len; i++) buf[i] = '0';
+        var mid = size / 2;
+        // Cardinals + centre — a tidy 5-pixel plus sign.
+        void Set(int r, int c)
+        {
+            if (r >= 0 && r < size && c >= 0 && c < size) buf[r * size + c] = '1';
+        }
+        Set(mid, mid);
+        Set(mid - 1, mid);
+        Set(mid + 1, mid);
+        Set(mid, mid - 1);
+        Set(mid, mid + 1);
+        profile.PixelArtData = new string(buf);
+        Push();
+    }
+
+    private void StartPixelPaint(int idx, bool toState)
+    {
+        _pixelPainting = true;
+        _pixelPaintValue = toState;
+        SetPixelCell(idx, toState);
+        Push();
+    }
+
+    private void PaintPixelIfDragging(int idx)
+    {
+        if (!_pixelPainting) return;
+        if (SetPixelCell(idx, _pixelPaintValue))
+        {
+            // Push during drag so the preview / overlay reflect the brush stroke live.
+            // The overlay update is cheap (pure GDI+ fill) and we redraw the small grid div.
+            Push();
+        }
+    }
+
+    private void StopPixelPaint() => _pixelPainting = false;
+
+    /// <summary>Set one cell in the PixelArtData string. Returns true if the cell actually changed.</summary>
+    private bool SetPixelCell(int idx, bool on)
+    {
+        var len = profile.PixelGridSize * profile.PixelGridSize;
+        if (idx < 0 || idx >= len) return false;
+        var src = profile.PixelArtData ?? "";
+        // Grow the data string to grid length if it's been left short (initial state).
+        if (src.Length < len)
+        {
+            var pad = new char[len];
+            for (int i = 0; i < len; i++) pad[i] = i < src.Length ? src[i] : '0';
+            src = new string(pad);
+        }
+        var want = on ? '1' : '0';
+        if (src[idx] == want) return false;
+        var chars = src.ToCharArray();
+        chars[idx] = want;
+        profile.PixelArtData = new string(chars);
+        return true;
     }
 
     private void SetAnimation(CrosshairAnimation a)
@@ -711,9 +910,20 @@
     {
         try
         {
+            // Accept every format SkiaSharp can decode in addition to the System.Drawing-native
+            // four, plus common video containers (MP4/WebM/MOV/AVI/MKV/M4V) — the import path
+            // transcodes anything non-native to PNG before storage (and pulls a still frame out
+            // of videos via Windows.Media.Editing) so downstream rendering doesn't need to care
+            // about format diversity.
             var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
             {
-                { DevicePlatform.WinUI, new[] { ".png", ".jpg", ".jpeg", ".gif", ".bmp" } }
+                { DevicePlatform.WinUI, new[]
+                    {
+                        ".png", ".jpg", ".jpeg", ".gif", ".bmp",
+                        ".webp", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif",
+                        ".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v",
+                    }
+                }
             });
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
@@ -906,18 +1116,30 @@
         CrosshairType.Circle => "Circle",
         CrosshairType.TStyle => "T-Style",
         CrosshairType.Image => "Image",
+        CrosshairType.Pixel => "Pixel",
         _ => t.ToString()
     };
 
-    private static string TypeGlyph(CrosshairType t) => t switch
+    // Inline SVGs render cleanly at every font size and theme. The previous mix of
+    // text glyphs ("+", "·", "○", "⊥") + an emoji ("🖼") rendered inconsistently —
+    // emoji fonts vary by OS and made the Image button look like a tiny black square.
+    private static MarkupString TypeGlyph(CrosshairType t) => new MarkupString(t switch
     {
-        CrosshairType.Cross => "+",
-        CrosshairType.Dot => "·",
-        CrosshairType.Circle => "○",
-        CrosshairType.TStyle => "⊥",
-        CrosshairType.Image => "🖼",
-        _ => "+"
-    };
+        CrosshairType.Cross =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'><path d='M8 2v12M2 8h12'/></svg>",
+        CrosshairType.Dot =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='currentColor'><circle cx='8' cy='8' r='2.2'/></svg>",
+        CrosshairType.Circle =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.6'><circle cx='8' cy='8' r='5.4'/></svg>",
+        CrosshairType.TStyle =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'><path d='M2 4h12M8 4v10'/></svg>",
+        CrosshairType.Image =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.3' stroke-linejoin='round'><rect x='2' y='3.2' width='12' height='9.6' rx='1.4'/><circle cx='5.6' cy='6.6' r='1.1' fill='currentColor' stroke='none'/><path d='M2.5 11l3-2.5 2.7 2.3 2-1.6 3.3 2.4'/></svg>",
+        CrosshairType.Pixel =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='currentColor' shape-rendering='crispEdges'><rect x='6' y='6' width='4' height='4'/></svg>",
+        _ =>
+            "<svg viewBox='0 0 16 16' width='16' height='16' fill='none' stroke='currentColor' stroke-width='1.6'><path d='M8 2v12M2 8h12'/></svg>"
+    });
 
     public void Dispose()
     {

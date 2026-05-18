@@ -76,6 +76,12 @@
 		<PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
 		<PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
 		<PackageReference Include="System.Drawing.Common" Version="10.0.8" />
+		<!-- SkiaSharp decodes WEBP, HEIF/HEIC, AVIF, TIFF, ICO and other formats that
+		     System.Drawing can't handle natively. We use it on the import path to
+		     transcode anything non-native into a PNG the rest of the GDI+ pipeline
+		     (thumbnails, preview, overlay) can render unchanged. -->
+		<PackageReference Include="SkiaSharp" Version="3.119.0" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.0" />
 	</ItemGroup>
 
 	<ItemGroup>

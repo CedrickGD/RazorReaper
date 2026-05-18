@@ -299,7 +299,7 @@
     }
 
     .crosshair-layout .type-seg {
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
     }
 
     .crosshair-layout .seg-btn {
@@ -332,11 +332,72 @@
         }
 
     .crosshair-layout .seg-glyph {
-        font-size: 1.1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         line-height: 1;
         color: inherit;
         opacity: 0.9;
     }
+
+        .crosshair-layout .seg-glyph svg {
+            width: 16px;
+            height: 16px;
+        }
+
+    /* ── Pixel-art grid editor ──────────────────────────────────────────── */
+
+    .crosshair-layout .pixel-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .crosshair-layout .pixel-grid-wrap {
+        display: flex;
+        justify-content: center;
+        margin: 0.6rem 0;
+    }
+
+    .crosshair-layout .pixel-grid {
+        display: grid;
+        grid-template-columns: repeat(var(--grid, 16), 1fr);
+        width: min(320px, 100%);
+        aspect-ratio: 1 / 1;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(139, 92, 246, 0.25);
+        border-radius: 8px;
+        overflow: hidden;
+        /* Disable text selection so click-drag paints cells instead of selecting text. */
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .crosshair-layout .pixel-cell {
+        background: transparent;
+        outline: 0.5px solid rgba(255, 255, 255, 0.04);
+        cursor: pointer;
+        transition: background 0.05s linear;
+    }
+
+        .crosshair-layout .pixel-cell:hover {
+            outline-color: rgba(139, 92, 246, 0.55);
+        }
+
+        .crosshair-layout .pixel-cell.on {
+            /* `style="background:..."` from the Razor side wins — this is just the fallback. */
+            background: var(--accent-purple);
+        }
+
+        /* Subtle marker on the centre cell so the user can find the aim point at any
+           grid size without counting rows. Drawn as an inner outline so painting the
+           cell still shows the body colour underneath. */
+        .crosshair-layout .pixel-cell.center {
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+        }
 
     /* ── Custom slider (track + fill + thumb) ────────────────────────────── */
 
@@ -605,10 +666,15 @@
     }
 
     .rr-color-pop {
+        /* Absolute-positioned relative to .rr-color (position:relative). The earlier
+           `position: fixed` attempt was trapped by ancestor stacking contexts at weird
+           coordinates; absolute works correctly now that `will-change: transform` was
+           removed from .content-card, so the popover paints on top of everything
+           regardless of which card it's in. */
         position: absolute;
-        z-index: 91;
         top: calc(100% + 6px);
         left: 0;
+        z-index: 1000;
         min-width: 248px;
         padding: 0.85rem;
         background: rgba(20, 20, 26, 0.98);
@@ -617,6 +683,13 @@
         box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(6px);
         animation: rrColorPopIn 0.14s ease-out;
+    }
+
+    /* Flip the popover upward when the swatch is near the bottom of the visible area —
+       toggled by ColorField.razor at open time based on rrColorMeasureFlip(). */
+    .rr-color.flip-up .rr-color-pop {
+        top: auto;
+        bottom: calc(100% + 6px);
     }
 
     @keyframes rrColorPopIn {

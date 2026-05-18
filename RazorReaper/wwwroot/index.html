@@ -545,6 +545,22 @@
         })();
     </script>
 
+    <script>
+        // Decides whether the colour-picker popover should flip upward (open above the
+        // swatch instead of below) based on the available room. Pure layout query — no
+        // top/left math, since the popover is absolutely positioned relative to its
+        // swatch wrapper. Called by Components/Shared/ColorField.razor on every open.
+        window.rrColorMeasureFlip = function (swatchEl, popHeight) {
+            if (!swatchEl) return false;
+            var rect = swatchEl.getBoundingClientRect();
+            var vh = window.innerHeight || document.documentElement.clientHeight;
+            var spaceBelow = vh - rect.bottom;
+            var spaceAbove = rect.top;
+            // Flip up if below-room is too tight AND there's more space above.
+            return spaceBelow < popHeight && spaceAbove > spaceBelow;
+        };
+    </script>
+
     <script src="js/network-animation.js"></script>
     <script src="js/lightbox.js"></script>
 

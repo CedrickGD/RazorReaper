@@ -1,11 +1,15 @@
 @* Custom color picker: a tinted swatch + hex input. Click the swatch to open a popover with a
    preset palette, a hue slider, a saturation/value square, and the native color dialog as a fallback.
-   Backdrop closes on outside click. Two-way bind via @bind-Value (a #RRGGBB string). *@
+   Backdrop closes on outside click. Two-way bind via @bind-Value (a #RRGGBB string).
+   Popover is fixed-positioned with viewport-aware top/left computed on open via rrColorMeasurePop
+   so it never overhangs other widgets or the window edge. *@
+@inject IJSRuntime JS
 
-<div class="rr-color @(_open ? "open" : "")">
+<div class="rr-color @(_open ? "open" : "") @(_flipUp ? "flip-up" : "")">
     <button class="rr-color-swatch" type="button"
             style="background:@Value"
             @onclick="Toggle"
+            @ref="_swatchEl"
             title="Pick color">
         <span class="rr-color-swatch-glow"></span>
     </button>
@@ -18,7 +22,8 @@
     @if (_open)
     {
         <div class="rr-color-backdrop" @onclick="Close"></div>
-        <div class="rr-color-pop" @onclick:stopPropagation="true">
+        <div class="rr-color-pop"
+             @onclick:stopPropagation="true">
             <div class="rr-color-pop-presets">
                 @foreach (var hex in Presets)
                 {
@@ -49,6 +54,13 @@
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
     private bool _open;
+    private bool _flipUp;
+    private ElementReference _swatchEl;
+
+    // Approximate popover height for the flip decision — matches the CSS .rr-color-pop
+    // (presets row + native picker row + padding). Slightly oversized is safer than
+    // undersized; flipping a touch early is preferable to overflowing the viewport.
+    private const double PopHeight = 240;
 
     // Hand-picked tactical/aim-friendly palette + a few neutrals.
     private static readonly string[] Presets = new[]
@@ -58,7 +70,23 @@
         "#00FFFF", "#2979FF", "#8B5CF6", "#FF00FF",
     };
 
-    private void Toggle() => _open = !_open;
+    private async Task Toggle()
+    {
+        if (_open)
+        {
+            _open = false;
+            return;
+        }
+        try
+        {
+            _flipUp = await JS.InvokeAsync<bool>("rrColorMeasureFlip", _swatchEl, PopHeight);
+        }
+        catch
+        {
+            _flipUp = false;
+        }
+        _open = true;
+    }
     private void Close() => _open = false;
 
     private async Task Pick(string hex)

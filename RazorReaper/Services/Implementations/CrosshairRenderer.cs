@@ -107,6 +107,9 @@ internal static class CrosshairRenderer
             case CrosshairType.Image:
                 DrawImage(g, profile, sizeMul, cachedImage, alpha);
                 break;
+            case CrosshairType.Pixel:
+                DrawPixel(g, profile, sizeMul, bodyColor, outlineColor);
+                break;
         }
     }
 
@@ -136,6 +139,9 @@ internal static class CrosshairRenderer
             {
                 CrosshairType.Dot => Math.Max(profile.DotSize * 6, 32),
                 CrosshairType.Circle => profile.Size * 4 + profile.OutlineThickness * 4 + 16,
+                CrosshairType.Pixel =>
+                    Math.Max((Math.Max(1, profile.PixelGridSize) + 1) * Math.Max(1, profile.DotSize)
+                             + profile.OutlineThickness * 4 + 8, 32),
                 _ => (profile.Size + Math.Max(0, profile.Gap)) * 2 + profile.Thickness * 2 + profile.OutlineThickness * 4 + 16
             };
         }
@@ -290,6 +296,89 @@ internal static class CrosshairRenderer
             new RectangleF(0, 0, cachedImage.Width, cachedImage.Height),
             GraphicsUnit.Pixel,
             attrs);
+    }
+
+    private static void DrawPixel(Graphics g, CrosshairProfile p, double sizeMul, Color body, Color outline)
+    {
+        // Pixel-art crosshair. PixelArtData is a row-major '0'/'1' grid of size NxN where
+        // N = PixelGridSize; every '1' becomes a sharp DotSize-px block. Empty data → fall
+        // back to a single centre pixel so a freshly-picked Pixel type still renders.
+        var gridSize = Math.Max(1, p.PixelGridSize);
+        var scale = Math.Max(1, (int)Math.Round(p.DotSize * sizeMul));
+        var data = p.PixelArtData ?? string.Empty;
+
+        // Save AA/interp modes; pixel art wants crisp, integer-aligned blocks.
+        var savedSmoothing = g.SmoothingMode;
+        var savedPixelOffset = g.PixelOffsetMode;
+        var savedInterp = g.InterpolationMode;
+        try
+        {
+            g.SmoothingMode = SmoothingMode.None;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+
+            // World origin sits at the GEOMETRIC CENTRE of the cell flagged as "centre" in
+            // the editor — which is cell (halfCells, halfCells). That means the cell's
+            // top-left corner must be at (-scale/2, -scale/2), not (0, 0). Without this
+            // shift the rendered crosshair lands ½-cell down and right of the aim point
+            // and the marked centre cell visibly diverges from the rendered centre.
+            var halfCells = gridSize / 2;
+            // Shift every cell so cell (halfCells, halfCells) is centred on the origin.
+            var originShiftX = -scale / 2f;
+            var originShiftY = -scale / 2f;
+
+            // If the user hasn't painted anything yet, draw a single centre pixel so the
+            // crosshair is visible. Same outline-rect logic as a populated grid.
+            var noData = string.IsNullOrEmpty(data) || data.IndexOf('1') < 0;
+
+            using var bodyBrush = new SolidBrush(body);
+            using var outlineBrush = p.OutlineThickness > 0 ? new SolidBrush(outline) : null;
+            var ot = Math.Max(0, p.OutlineThickness);
+
+            if (noData)
+            {
+                if (outlineBrush != null)
+                    g.FillRectangle(outlineBrush, originShiftX - ot, originShiftY - ot, scale + ot * 2, scale + ot * 2);
+                g.FillRectangle(bodyBrush, originShiftX, originShiftY, scale, scale);
+                return;
+            }
+
+            // Two-pass paint: outline first (so it doesn't overdraw body of adjacent cells),
+            // then bodies. Outline is drawn per-cell because adjacent-cell outlines don't need
+            // to merge into one big rectangle — pixel art typically has gaps.
+            if (outlineBrush != null)
+            {
+                for (int r = 0; r < gridSize; r++)
+                {
+                    for (int c = 0; c < gridSize; c++)
+                    {
+                        var idx = r * gridSize + c;
+                        if (idx >= data.Length || data[idx] != '1') continue;
+                        var x = (c - halfCells) * scale + originShiftX;
+                        var y = (r - halfCells) * scale + originShiftY;
+                        g.FillRectangle(outlineBrush, x - ot, y - ot, scale + ot * 2, scale + ot * 2);
+                    }
+                }
+            }
+
+            for (int r = 0; r < gridSize; r++)
+            {
+                for (int c = 0; c < gridSize; c++)
+                {
+                    var idx = r * gridSize + c;
+                    if (idx >= data.Length || data[idx] != '1') continue;
+                    var x = (c - halfCells) * scale + originShiftX;
+                    var y = (r - halfCells) * scale + originShiftY;
+                    g.FillRectangle(bodyBrush, x, y, scale, scale);
+                }
+            }
+        }
+        finally
+        {
+            g.SmoothingMode = savedSmoothing;
+            g.PixelOffsetMode = savedPixelOffset;
+            g.InterpolationMode = savedInterp;
+        }
     }
 
     private static void DrawCenterDot(Graphics g, CrosshairProfile p, Color body, Color outline)

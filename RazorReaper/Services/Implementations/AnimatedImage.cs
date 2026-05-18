@@ -98,6 +98,16 @@ internal sealed class AnimatedImage : IDisposable
 
     public static AnimatedImage Load(string path)
     {
+        // Video imports land as `<guid>.frames` directories full of numbered PNGs plus a
+        // small manifest. Load that as a multi-frame sequence in eager mode — the PNGs are
+        // already at modest resolution and the frame count is capped at import time, so
+        // holding them all in memory is fine and avoids the per-frame disk seek cost the
+        // overlay's animation tick would otherwise eat.
+        if (Directory.Exists(path) && path.EndsWith(".frames", StringComparison.OrdinalIgnoreCase))
+        {
+            return LoadFromFramesFolder(path);
+        }
+
         // Read fully into a MemoryStream so the source Image isn't tied to an open file handle.
         // GDI+ requires the stream to stay alive for the lifetime of the Image — owning it here
         // means callers can safely move/delete the file once the import has happened.
@@ -130,6 +140,49 @@ internal sealed class AnimatedImage : IDisposable
         // decoded frame is in memory at a time.
         var delays = ReadFrameDelays(src, frameCount);
         return new AnimatedImage(src, ms, frameCount, delays);
+    }
+
+    private static AnimatedImage LoadFromFramesFolder(string folder)
+    {
+        // Frame files are named with zero-padded indices ("0000.png", "0001.png", …). Sorting
+        // by filename gives the correct playback order without parsing.
+        var frameFiles = Directory.GetFiles(folder, "*.png")
+            .Where(f => Path.GetFileNameWithoutExtension(f).All(char.IsDigit))
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToArray();
+        if (frameFiles.Length == 0)
+            throw new InvalidDataException($"No frame PNGs found in '{folder}'.");
+
+        // Manifest carries the per-frame delay (uniform across the sequence in our writer).
+        // Tiny ad-hoc parse — no JSON dependency needed for two integer fields.
+        int delayMs = 80;
+        var manifestPath = Path.Combine(folder, "manifest.json");
+        if (File.Exists(manifestPath))
+        {
+            try
+            {
+                var json = File.ReadAllText(manifestPath);
+                var match = System.Text.RegularExpressions.Regex.Match(json, "\"frameDelayMs\"\\s*:\\s*(\\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var ms) && ms > 0)
+                    delayMs = Math.Max(20, ms);
+            }
+            catch { /* keep the 80 ms default */ }
+        }
+
+        var frames = new Bitmap[frameFiles.Length];
+        var delays = new int[frameFiles.Length];
+        for (int i = 0; i < frameFiles.Length; i++)
+        {
+            // ReadAllBytes + Image.FromStream so we don't hold a file handle on each frame —
+            // ImportImageAsync may be re-extracting into the same folder later if we ever
+            // support video re-encode.
+            var bytes = File.ReadAllBytes(frameFiles[i]);
+            using var ms = new MemoryStream(bytes, writable: false);
+            using var src = Image.FromStream(ms);
+            frames[i] = CopyTo32bpp(src);
+            delays[i] = delayMs;
+        }
+        return new AnimatedImage(frames, delays);
     }
 
     private static int SafeGetFrameCount(Image src, FrameDimension fd)

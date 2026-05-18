@@ -44,6 +44,10 @@ public class CrosshairService : ICrosshairService, IDisposable
     private AnimatedImage? _previewImage;
     private string? _previewImagePath;
     private bool _previewLoadInFlight;
+    // Paths that already failed to decode (e.g., a file with .png extension but WEBP bytes).
+    // Without this set, EnsurePreviewImage would re-fire Changed → page re-renders → fires
+    // EnsurePreviewImage again → re-fails in a tight loop that locks the UI thread.
+    private readonly HashSet<string> _previewLoadFailed = new(StringComparer.OrdinalIgnoreCase);
     private readonly DateTime _previewStart = DateTime.UtcNow;
     // Cap the preview canvas tight. The editor pane is ~260px on screen — rendering at 1024+ just
     // to scale down in the browser makes the per-tick PNG-encode + base64 work an order of
@@ -271,7 +275,7 @@ public class CrosshairService : ICrosshairService, IDisposable
     {
         if (snapshot.Type != CrosshairType.Image
             || string.IsNullOrWhiteSpace(snapshot.ImagePath)
-            || !File.Exists(snapshot.ImagePath))
+            || !ImageSourceExists(snapshot.ImagePath))
         {
             lock (_previewImageLock)
             {
@@ -289,7 +293,10 @@ public class CrosshairService : ICrosshairService, IDisposable
         lock (_previewImageLock)
         {
             var matches = string.Equals(_previewImagePath, snapshot.ImagePath, StringComparison.OrdinalIgnoreCase);
-            if (!matches && !_previewLoadInFlight)
+            // Skip the load attempt entirely if this path has already failed once — re-attempting
+            // would re-fire Changed and trigger another EnsurePreviewImage on every render tick.
+            var alreadyFailed = _previewLoadFailed.Contains(snapshot.ImagePath);
+            if (!matches && !_previewLoadInFlight && !alreadyFailed)
             {
                 _previewLoadInFlight = true;
                 loadPath = snapshot.ImagePath;
@@ -305,20 +312,31 @@ public class CrosshairService : ICrosshairService, IDisposable
                 try { loaded = AnimatedImage.Load(loadPath); }
                 catch (Exception ex) { err = ex; }
 
+                bool firstFailure = false;
                 lock (_previewImageLock)
                 {
                     _previewImage?.Dispose();
                     _previewImage = loaded;
                     _previewImagePath = loaded != null ? loadPath : null;
                     _previewLoadInFlight = false;
+                    if (loaded == null)
+                    {
+                        firstFailure = _previewLoadFailed.Add(loadPath);
+                    }
                 }
 
-                if (err != null)
+                if (err != null && firstFailure)
                 {
+                    // Log + notify on the FIRST failure only. Subsequent EnsurePreviewImage calls
+                    // with the same path now short-circuit via _previewLoadFailed.
                     _logger.LogWarning(err, "Preview image load failed for {Path}", loadPath);
                     try { _notifications.ShowError($"Couldn't load image: {err.Message}"); } catch { }
                 }
-                Changed?.Invoke();
+
+                // Only re-render when we actually loaded something. A failed load already cleared
+                // the cache; firing Changed on failure would just trigger another render cycle
+                // (and previously another decode attempt) for no benefit.
+                if (loaded != null) Changed?.Invoke();
             });
         }
     }
@@ -338,25 +356,80 @@ public class CrosshairService : ICrosshairService, IDisposable
     {
         try
         {
-            var ext = (Path.GetExtension(fileName) ?? "").ToLowerInvariant();
-            if (!AllowedImageExt.Contains(ext))
+            // Read the full payload — we need to sniff the real format before deciding how to
+            // store it (extensions lie: WEBP files often arrive as .png from clipboard/screenshot
+            // tools), and we may need to re-encode via SkiaSharp anyway.
+            using var ms = new MemoryStream();
+            await source.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            if (bytes.Length == 0)
             {
-                _notifications.ShowError($"Unsupported image type: {ext}");
+                _notifications.ShowError("Image file is empty.");
                 return null;
             }
-            Directory.CreateDirectory(_imagesDir);
-            var dest = Path.Combine(_imagesDir, $"{Guid.NewGuid():N}{ext}");
-            await using (var fs = File.Create(dest))
+
+            // Native formats — keep as-is. System.Drawing handles these directly, and that
+            // preserves animation for GIFs and alpha for PNGs without a transcode round-trip.
+            var nativeExt = SniffNativeImageExtension(bytes);
+            if (nativeExt != null)
             {
-                await source.CopyToAsync(fs);
+                return await SaveImportedAsync(bytes, nativeExt);
             }
 
-            // Append to the in-memory library cache and notify subscribers. Avoids a full
-            // disk re-enumeration just to learn about the one file we just wrote.
-            lock (_libraryLock) { _libraryCache.Insert(0, dest); }
-            LibraryChanged?.Invoke();
+            // Video container — extract a frame sequence via Windows.Media, save as a folder of
+            // PNGs that the AnimatedImage loader knows how to read. We can't transcode straight to
+            // animated GIF because System.Drawing's GIF encoder doesn't let us set per-frame delays,
+            // so we use our own on-disk frame-sequence format (a `.frames` directory + manifest).
+            if (SniffVideoExtension(bytes) != null)
+            {
+                _notifications.ShowInfo("Extracting video frames…");
+                var framesFolder = await TryExtractVideoFramesToFolderAsync(bytes, fileName);
+                if (framesFolder == null)
+                {
+                    _notifications.ShowError($"Couldn't extract frames from '{fileName}'. Try converting it to PNG/GIF first.");
+                    return null;
+                }
+                lock (_libraryLock) { _libraryCache.Insert(0, framesFolder); }
+                LibraryChanged?.Invoke();
+                _notifications.ShowSuccess("Video imported.");
+                return framesFolder;
+            }
 
-            return dest;
+            // Anything else (WEBP, HEIF/HEIC, AVIF, TIFF, ICO, …) — try SkiaSharp.
+            // It decodes a much wider format set; we re-encode the result to PNG so the
+            // rest of the pipeline (System.Drawing-based thumbnail / preview / overlay)
+            // works without any per-format branching downstream.
+            //
+            // While we have the pixel buffer, we also auto-crop fully-transparent borders
+            // so the image's bounds match its visible content. Crosshair PNGs from random
+            // sources often have huge transparent canvases with the design in one corner —
+            // without cropping, the preview centres the *canvas*, which makes the visible
+            // design look off-centre. Cropping makes "centre the image" mean "centre the
+            // crosshair" for the user.
+            byte[]? pngBytes = null;
+            try
+            {
+                using var skBitmap = SkiaSharp.SKBitmap.Decode(bytes);
+                if (skBitmap != null)
+                {
+                    using var cropped = AutoCropTransparentBorders(skBitmap);
+                    using var skImage = SkiaSharp.SKImage.FromBitmap(cropped ?? skBitmap);
+                    using var skData = skImage.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                    pngBytes = skData.ToArray();
+                }
+            }
+            catch (Exception skEx)
+            {
+                _logger.LogWarning(skEx, "SkiaSharp transcode failed for {File}", fileName);
+            }
+
+            if (pngBytes == null || pngBytes.Length == 0)
+            {
+                _notifications.ShowError($"Couldn't decode '{fileName}' — unrecognised image format.");
+                return null;
+            }
+
+            return await SaveImportedAsync(pngBytes, ".png");
         }
         catch (Exception ex)
         {
@@ -364,6 +437,276 @@ public class CrosshairService : ICrosshairService, IDisposable
             _notifications.ShowError($"Image import failed: {ex.Message}");
             return null;
         }
+    }
+
+    private async Task<string?> SaveImportedAsync(byte[] bytes, string ext)
+    {
+        Directory.CreateDirectory(_imagesDir);
+        var dest = Path.Combine(_imagesDir, $"{Guid.NewGuid():N}{ext}");
+        await File.WriteAllBytesAsync(dest, bytes);
+
+        // Append to the in-memory library cache and notify subscribers. Avoids a full
+        // disk re-enumeration just to learn about the one file we just wrote.
+        lock (_libraryLock) { _libraryCache.Insert(0, dest); }
+        LibraryChanged?.Invoke();
+
+        return dest;
+    }
+
+    /// <summary>Crop fully-transparent rows/columns off the edges of an SKBitmap. Returns a new
+    /// bitmap containing just the bounding box of opaque pixels, or null if the source is fully
+    /// transparent or already tight (in which case the caller keeps using the original). This is
+    /// how we make "image bounds == content bounds" for the crosshair preview/overlay.</summary>
+    private static SkiaSharp.SKBitmap? AutoCropTransparentBorders(SkiaSharp.SKBitmap src)
+    {
+        if (src.Width == 0 || src.Height == 0) return null;
+        // No alpha channel → every pixel is opaque → nothing to crop.
+        if (src.ColorType != SkiaSharp.SKColorType.Rgba8888
+            && src.ColorType != SkiaSharp.SKColorType.Bgra8888
+            && src.AlphaType == SkiaSharp.SKAlphaType.Opaque)
+            return null;
+
+        int minX = src.Width, minY = src.Height, maxX = -1, maxY = -1;
+
+        // Find the tight bounding box of non-transparent pixels. We pull pixel data once
+        // via GetPixels() rather than calling GetPixel() in a hot loop — that API resolves
+        // colours through a colour-management pipeline and is several orders of magnitude
+        // slower for a per-pixel sweep.
+        var pixels = src.Pixels; // SKColor[] — RGBA, premultiplied or unpremultiplied per AlphaType.
+        for (int y = 0; y < src.Height; y++)
+        {
+            int rowStart = y * src.Width;
+            for (int x = 0; x < src.Width; x++)
+            {
+                if (pixels[rowStart + x].Alpha != 0)
+                {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+
+        // Fully transparent — don't crop to a zero-size; let the caller render the original.
+        if (maxX < 0) return null;
+        // Already tight — no work to do.
+        if (minX == 0 && minY == 0 && maxX == src.Width - 1 && maxY == src.Height - 1) return null;
+
+        int newW = maxX - minX + 1;
+        int newH = maxY - minY + 1;
+        var cropped = new SkiaSharp.SKBitmap(newW, newH, src.ColorType, src.AlphaType);
+        using (var canvas = new SkiaSharp.SKCanvas(cropped))
+        {
+            canvas.Clear(SkiaSharp.SKColors.Transparent);
+            canvas.DrawBitmap(src, new SkiaSharp.SKRect(minX, minY, maxX + 1, maxY + 1),
+                                   new SkiaSharp.SKRect(0, 0, newW, newH));
+        }
+        return cropped;
+    }
+
+    /// <summary>Detect common video container formats by magic bytes. Returns the canonical
+    /// extension when the payload looks like a video we can ask Windows.Media.Editing to read,
+    /// or null otherwise. We don't try to be exhaustive — just the formats people actually drop
+    /// onto a crosshair editor.</summary>
+    private static string? SniffVideoExtension(byte[] bytes)
+    {
+        if (bytes.Length < 16) return null;
+        // MP4 / MOV / M4V — ISO base media file: 4 size bytes, then "ftyp", then a brand.
+        if (bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70)
+        {
+            // "qt  " brand → MOV; everything else → MP4 family.
+            if (bytes[8] == 0x71 && bytes[9] == 0x74) return ".mov";
+            return ".mp4";
+        }
+        // WebM / MKV — EBML signature 1A 45 DF A3.
+        if (bytes[0] == 0x1A && bytes[1] == 0x45 && bytes[2] == 0xDF && bytes[3] == 0xA3)
+        {
+            return ".webm";
+        }
+        // AVI — RIFF…AVI .
+        if (bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46
+            && bytes[8] == 0x41 && bytes[9] == 0x56 && bytes[10] == 0x49 && bytes[11] == 0x20)
+        {
+            return ".avi";
+        }
+        return null;
+    }
+
+    // Playback rate for video imports. No cap on total frame count or duration — extraction
+    // runs until the end of the clip. 24 fps is the sweet spot between smoothness and disk
+    // usage; users who want more can re-encode their source at higher FPS before importing.
+    private const int VideoTargetFps = 24;
+
+    /// <summary>Pull a sequence of frames out of an in-memory video payload via Windows.Media.Editing
+    /// and write them to a per-import folder named <c>&lt;guid&gt;.frames</c> under the library directory.
+    /// Each frame is decoded once via SkiaSharp and re-encoded as PNG so dimensions and pixel format
+    /// stay consistent across frames (which the AnimatedImage frame loader relies on).
+    /// Returns the absolute folder path on success, or null if extraction failed entirely.</summary>
+    private async Task<string?> TryExtractVideoFramesToFolderAsync(byte[] videoBytes, string sourceFileName)
+    {
+        var sourceExt = Path.GetExtension(sourceFileName);
+        if (string.IsNullOrEmpty(sourceExt)) sourceExt = ".mp4";
+        var tempPath = Path.Combine(Path.GetTempPath(), $"rr_video_import_{Guid.NewGuid():N}{sourceExt}");
+        string? destFolder = null;
+        try
+        {
+            await File.WriteAllBytesAsync(tempPath, videoBytes);
+
+            var storageFile = await Windows.Storage.StorageFile.GetFileFromPathAsync(tempPath);
+            var clip = await Windows.Media.Editing.MediaClip.CreateFromFileAsync(storageFile);
+            var composition = new Windows.Media.Editing.MediaComposition();
+            composition.Clips.Add(clip);
+
+            var duration = clip.OriginalDuration;
+            var frameDelayMs = (int)Math.Round(1000.0 / VideoTargetFps);
+            // Full clip — no max frame count, no max duration. The user explicitly asked for
+            // uncapped video imports; if a 10-minute video pulls 14,000 frames, that's their
+            // call (and their disk).
+            var frameCount = Math.Max(1, (int)Math.Ceiling(duration.TotalMilliseconds / frameDelayMs));
+
+            Directory.CreateDirectory(_imagesDir);
+            destFolder = Path.Combine(_imagesDir, $"{Guid.NewGuid():N}.frames");
+            Directory.CreateDirectory(destFolder);
+
+            int? frameWidth = null, frameHeight = null;
+            int written = 0;
+            for (int i = 0; i < frameCount; i++)
+            {
+                var ts = TimeSpan.FromMilliseconds((double)i * frameDelayMs);
+                if (ts > duration) break;
+
+                byte[]? rawFrame = null;
+                try
+                {
+                    var thumbnail = await composition.GetThumbnailAsync(
+                        ts, 0, 0, Windows.Media.Editing.VideoFramePrecision.NearestFrame);
+                    using var dataReader = new Windows.Storage.Streams.DataReader(thumbnail.GetInputStreamAt(0));
+                    var size = (uint)thumbnail.Size;
+                    await dataReader.LoadAsync(size);
+                    rawFrame = new byte[size];
+                    dataReader.ReadBytes(rawFrame);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Video frame {Index} extraction failed", i);
+                    continue;
+                }
+
+                try
+                {
+                    using var skBitmap = SkiaSharp.SKBitmap.Decode(rawFrame);
+                    if (skBitmap == null) continue;
+                    // Lock all frames to the first frame's dimensions. Some decoders return mildly
+                    // different sizes per frame and that would make the renderer flicker between
+                    // canvas allocations.
+                    frameWidth ??= skBitmap.Width;
+                    frameHeight ??= skBitmap.Height;
+                    SkiaSharp.SKBitmap? normalized = null;
+                    try
+                    {
+                        if (skBitmap.Width != frameWidth || skBitmap.Height != frameHeight)
+                        {
+                            normalized = new SkiaSharp.SKBitmap(frameWidth!.Value, frameHeight!.Value, skBitmap.ColorType, skBitmap.AlphaType);
+                            using var canvas = new SkiaSharp.SKCanvas(normalized);
+                            canvas.Clear(SkiaSharp.SKColors.Transparent);
+                            canvas.DrawBitmap(skBitmap,
+                                new SkiaSharp.SKRect(0, 0, skBitmap.Width, skBitmap.Height),
+                                new SkiaSharp.SKRect(0, 0, frameWidth.Value, frameHeight.Value));
+                        }
+                        var encodeFrom = normalized ?? skBitmap;
+                        using var skImage = SkiaSharp.SKImage.FromBitmap(encodeFrom);
+                        using var skData = skImage.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                        var framePath = Path.Combine(destFolder, $"{i:0000}.png");
+                        await File.WriteAllBytesAsync(framePath, skData.ToArray());
+                        written++;
+                    }
+                    finally
+                    {
+                        normalized?.Dispose();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Video frame {Index} encode failed", i);
+                }
+            }
+
+            if (written == 0)
+            {
+                try { Directory.Delete(destFolder, true); } catch { /* best-effort */ }
+                return null;
+            }
+
+            // Tiny manifest: just the frame delay. The AnimatedImage loader reads it back when
+            // building the playback timeline. Lives alongside the PNGs so the folder is self-contained.
+            var manifestPath = Path.Combine(destFolder, "manifest.json");
+            await File.WriteAllTextAsync(manifestPath,
+                $"{{\"frameDelayMs\":{frameDelayMs},\"frameCount\":{written}}}");
+
+            return destFolder;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Video frame extraction failed for {File}", sourceFileName);
+            if (destFolder != null) { try { Directory.Delete(destFolder, true); } catch { /* best-effort */ } }
+            return null;
+        }
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
+        }
+    }
+
+    /// <summary>True if <paramref name="path"/> is an extracted video-frame folder we own
+    /// (created by <see cref="TryExtractVideoFramesToFolderAsync"/>).</summary>
+    private static bool IsFramesFolder(string path)
+        => !string.IsNullOrEmpty(path)
+           && path.EndsWith(".frames", StringComparison.OrdinalIgnoreCase)
+           && Directory.Exists(path);
+
+    /// <summary>True if the path points at something we still know how to render — either a
+    /// regular image file or a frames folder. Replaces ad-hoc File.Exists checks scattered
+    /// through the service so adding more storage modes later only touches this one method.</summary>
+    private static bool ImageSourceExists(string path)
+        => !string.IsNullOrEmpty(path) && (File.Exists(path) || IsFramesFolder(path));
+
+    /// <summary>For a regular image path, returns the path itself. For a frames folder, returns
+    /// the path of the first frame PNG (used by single-frame consumers like the thumbnail and
+    /// default-scale calculator). Returns null if nothing usable is on disk.</summary>
+    private static string? FirstFrameFile(string path)
+    {
+        if (File.Exists(path)) return path;
+        if (!IsFramesFolder(path)) return null;
+        var first = Directory.EnumerateFiles(path, "*.png")
+            .Where(f => Path.GetFileNameWithoutExtension(f).All(char.IsDigit))
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .FirstOrDefault();
+        return first;
+    }
+
+    /// <summary>Detect the real format of an image payload by its magic bytes. Returns the
+    /// canonical extension (".png" / ".jpg" / ".gif" / ".bmp") on match, or null if the
+    /// bytes don't look like one of the formats System.Drawing handles natively. Non-native
+    /// formats (WEBP, HEIF, AVIF, TIFF, ICO …) take the SkiaSharp transcode path instead.</summary>
+    private static string? SniffNativeImageExtension(byte[] bytes)
+    {
+        if (bytes.Length < 12) return null;
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47
+            && bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A)
+            return ".png";
+        // JPEG: FF D8 FF
+        if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
+            return ".jpg";
+        // GIF: "GIF87a" or "GIF89a"
+        if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38
+            && (bytes[4] == 0x37 || bytes[4] == 0x39) && bytes[5] == 0x61)
+            return ".gif";
+        // BMP: "BM"
+        if (bytes[0] == 0x42 && bytes[1] == 0x4D)
+            return ".bmp";
+        return null;
     }
 
     public async Task<CrosshairProfile?> ImportWorkshopAsync(string path)
@@ -458,12 +801,24 @@ public class CrosshairService : ICrosshairService, IDisposable
         List<string> scanned;
         try
         {
-            scanned = Directory.Exists(_imagesDir)
-                ? Directory.EnumerateFiles(_imagesDir)
-                    .Where(f => AllowedImageExt.Contains(Path.GetExtension(f).ToLowerInvariant()))
-                    .OrderByDescending(File.GetLastWriteTimeUtc)
-                    .ToList()
-                : new List<string>();
+            if (Directory.Exists(_imagesDir))
+            {
+                var files = Directory.EnumerateFiles(_imagesDir)
+                    .Where(f => AllowedImageExt.Contains(Path.GetExtension(f).ToLowerInvariant()));
+                // Video imports land as `<guid>.frames` subdirectories — include them so they show up
+                // in the library alongside regular image files.
+                var folders = Directory.EnumerateDirectories(_imagesDir)
+                    .Where(d => d.EndsWith(".frames", StringComparison.OrdinalIgnoreCase));
+                scanned = files.Concat(folders)
+                    .OrderByDescending(p => Directory.Exists(p)
+                        ? Directory.GetLastWriteTimeUtc(p)
+                        : File.GetLastWriteTimeUtc(p))
+                    .ToList();
+            }
+            else
+            {
+                scanned = new List<string>();
+            }
         }
         catch (Exception ex)
         {
@@ -478,8 +833,10 @@ public class CrosshairService : ICrosshairService, IDisposable
     {
         try
         {
-            if (!File.Exists(imagePath)) return null;
-            using var fs = File.OpenRead(imagePath);
+            // For a frames folder, thumbnail off the first frame. For a regular image, use it directly.
+            var actual = FirstFrameFile(imagePath);
+            if (actual == null) return null;
+            using var fs = File.OpenRead(actual);
             using var src = Image.FromStream(fs);
             // For animated images we just thumbnail the first frame — keeps the grid snappy and the
             // library card from ballooning the DOM with megabytes of base64 GIF data.
@@ -531,7 +888,8 @@ public class CrosshairService : ICrosshairService, IDisposable
     {
         try
         {
-            if (!File.Exists(path)) return false;
+            var isFolder = IsFramesFolder(path);
+            if (!isFolder && !File.Exists(path)) return false;
 
             // Clear preview cache if it points at this file — otherwise we'd hold a file lock
             // (and the file would be re-rendered with a stale image hanging in memory).
@@ -543,9 +901,15 @@ public class CrosshairService : ICrosshairService, IDisposable
                     _previewImage = null;
                     _previewImagePath = null;
                 }
+                // Also forget any prior failure for this path — a re-import to the same GUID
+                // would be a brand-new asset.
+                _previewLoadFailed.Remove(path);
             }
 
-            File.Delete(path);
+            if (isFolder)
+                Directory.Delete(path, recursive: true);
+            else
+                File.Delete(path);
 
             // Drop from the library cache and notify subscribers.
             lock (_libraryLock)
@@ -584,7 +948,7 @@ public class CrosshairService : ICrosshairService, IDisposable
 
     public void UseImportedImage(string path)
     {
-        if (!File.Exists(path))
+        if (!ImageSourceExists(path))
         {
             _notifications.ShowError("That image is no longer on disk.");
             return;
@@ -610,11 +974,13 @@ public class CrosshairService : ICrosshairService, IDisposable
     {
         try
         {
-            using var fs = File.OpenRead(path);
+            var actual = FirstFrameFile(path);
+            if (actual == null) return 100;
+            using var fs = File.OpenRead(actual);
             using var src = Image.FromStream(fs);
             var maxDim = Math.Max(src.Width, src.Height);
             if (maxDim <= 128) return 100;
-            return Math.Clamp((int)Math.Round(128.0 / maxDim * 100.0), 5, 100);
+            return Math.Clamp((int)Math.Round(128.0 / maxDim * 100.0), 1, 100);
         }
         catch
         {
@@ -874,8 +1240,15 @@ public class CrosshairService : ICrosshairService, IDisposable
         }
     }
 
+    // Native (System.Drawing-decodable) first, SkiaSharp-decoded fallback next, video
+    // containers last. Used to filter library-folder scans and workshop-bundle imports
+    // so we don't try to pull in random non-image files. ImportImageAsync transcodes
+    // non-native formats to PNG on the import path; video files have a single frame
+    // pulled out via Windows.Media.Editing before going through that same path.
     private static readonly HashSet<string> AllowedImageExt = new(StringComparer.OrdinalIgnoreCase)
-        { ".png", ".jpg", ".jpeg", ".bmp", ".gif" };
+        { ".png", ".jpg", ".jpeg", ".bmp", ".gif",
+          ".webp", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif",
+          ".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v" };
 
     private static readonly HashSet<string> ConfigExt = new(StringComparer.OrdinalIgnoreCase)
         { ".json", ".ini", ".cfg", ".txt", ".crosshair" };

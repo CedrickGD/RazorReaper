@@ -6,7 +6,8 @@ public enum CrosshairType
     Dot,
     Circle,
     TStyle,
-    Image
+    Image,
+    Pixel
 }
 
 public enum CrosshairAnimation
@@ -60,6 +61,13 @@ public class CrosshairProfile
     public string? ImagePath { get; set; }
     public int ImageScale { get; set; } = 100;     // 10..400
 
+    // Pixel-art crosshair (CrosshairType.Pixel). PixelGridSize is the grid dimension
+    // (NxN cells); PixelArtData is a string of '0'/'1' chars of length PixelGridSize²,
+    // row-major. Empty string = "no pixel painted yet" → the renderer falls back to a
+    // single centre pixel so the crosshair is still visible.
+    public int PixelGridSize { get; set; } = 16;
+    public string PixelArtData { get; set; } = "";
+
     public CrosshairProfile Clone()
     {
         return new CrosshairProfile
@@ -89,7 +97,9 @@ public class CrosshairProfile
             AnimationSpeed = AnimationSpeed,
             Rainbow = Rainbow,
             ImagePath = ImagePath,
-            ImageScale = ImageScale
+            ImageScale = ImageScale,
+            PixelGridSize = PixelGridSize,
+            PixelArtData = PixelArtData,
         };
     }
 }

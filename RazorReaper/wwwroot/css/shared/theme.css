@@ -172,7 +172,9 @@ html[data-sidebar-resizing] .main-content::before {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
     overflow: hidden !important;
-    will-change: transform;
+    /* NB: do NOT add `will-change: transform` here — it creates a stacking context
+       that traps `position: fixed` descendants (e.g. ColorField's popover) inside
+       this card's paint layer. The card was already smooth without it. */
 }
 
 
