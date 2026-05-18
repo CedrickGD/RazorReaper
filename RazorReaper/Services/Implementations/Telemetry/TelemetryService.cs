@@ -1,18 +1,20 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using RazorReaper.Configuration;
 using System.Globalization;
-using System.Management;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using RazorReaper.Configuration;
 
 namespace RazorReaper.Services.Implementations;
 
-public sealed class TelemetryService : ITelemetryService
+/// <summary>
+/// Ships allowlisted telemetry events (session start/end, app errors) to the configured
+/// HTTP endpoint. Stateless formatting and validation live in <see cref="TelemetryFormatting"/>;
+/// identity (install/hardware ids) lives in the <c>TelemetryService.Identity.cs</c> partial.
+/// </summary>
+public sealed partial class TelemetryService : ITelemetryService
 {
     private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
     private const string SessionStartEventName = "session_start";
@@ -20,7 +22,6 @@ public sealed class TelemetryService : ITelemetryService
     private const string AppErrorEventName = "app_error";
     private const int MinTimeoutSeconds = 3;
     private const int MaxTimeoutSeconds = 60;
-    private static readonly Regex InvalidIdentifierChars = new("[^a-zA-Z0-9._:-]", RegexOptions.Compiled);
     private static readonly HashSet<string> AllowedEventNames = new(StringComparer.OrdinalIgnoreCase)
     {
         SessionStartEventName,
@@ -66,7 +67,7 @@ public sealed class TelemetryService : ITelemetryService
             return;
         }
 
-        if (!HasValidConfiguration(settings, out var configurationError))
+        if (!TelemetryFormatting.HasValidConfiguration(settings, out var configurationError))
         {
             LogConfigurationWarning(configurationError);
             return;
@@ -149,13 +150,13 @@ public sealed class TelemetryService : ITelemetryService
             return;
         }
 
-        if (!HasValidConfiguration(settings, out var configurationError))
+        if (!TelemetryFormatting.HasValidConfiguration(settings, out var configurationError))
         {
             LogConfigurationWarning(configurationError);
             return;
         }
 
-        var normalizedEventName = SanitizeIdentifier(eventName, "event").ToLowerInvariant();
+        var normalizedEventName = TelemetryFormatting.SanitizeIdentifier(eventName, "event").ToLowerInvariant();
         if (!AllowedEventNames.Contains(normalizedEventName))
         {
             return;
@@ -188,9 +189,9 @@ public sealed class TelemetryService : ITelemetryService
             source,
             normalizedEventName,
             DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
-            ToStatusText(status),
+            TelemetryFormatting.ToStatusText(status),
             metricPayload,
-            NormalizeMessage(message));
+            TelemetryFormatting.NormalizeMessage(message));
 
         var requestBody = JsonSerializer.Serialize(payload, SerializerOptions);
         using var request = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint)
@@ -204,43 +205,14 @@ public sealed class TelemetryService : ITelemetryService
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var client = httpClientFactory.CreateClient("RazorReaperTelemetry");
-        client.Timeout = TimeSpan.FromSeconds(Clamp(settings.RequestTimeoutSeconds, MinTimeoutSeconds, MaxTimeoutSeconds));
+        client.Timeout = TimeSpan.FromSeconds(TelemetryFormatting.Clamp(settings.RequestTimeoutSeconds, MinTimeoutSeconds, MaxTimeoutSeconds));
 
         try
         {
             using var response = await client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                var responseText = await SafeReadResponseAsync(response, cancellationToken);
-                var statusCode = (int)response.StatusCode;
-
-                if (statusCode >= 300 && statusCode < 400)
-                {
-                    var location = response.Headers.Location?.ToString() ?? "n/a";
-                    logger.LogWarning(
-                        "Telemetry push redirected ({StatusCode}) for service {Service}. Endpoint may be Access-protected. Location: {Location}. Response: {Response}",
-                        statusCode,
-                        normalizedEventName,
-                        location,
-                        Truncate(responseText, 200));
-                    return;
-                }
-
-                if (statusCode is 401 or 403)
-                {
-                    logger.LogWarning(
-                        "Telemetry push unauthorized ({StatusCode}) for service {Service}. Verify telemetry token matches backend ingest secret. Response: {Response}",
-                        statusCode,
-                        normalizedEventName,
-                        Truncate(responseText, 200));
-                    return;
-                }
-
-                logger.LogWarning(
-                    "Telemetry push failed ({StatusCode}) for service {Service}. Response: {Response}",
-                    statusCode,
-                    normalizedEventName,
-                    Truncate(responseText, 200));
+                await LogFailedResponseAsync(response, normalizedEventName, cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -253,29 +225,38 @@ public sealed class TelemetryService : ITelemetryService
         }
     }
 
-    private static bool HasValidConfiguration(TelemetrySettings settings, out string error)
+    private async Task LogFailedResponseAsync(HttpResponseMessage response, string normalizedEventName, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(settings.Endpoint))
+        var responseText = await TelemetryFormatting.SafeReadResponseAsync(response, cancellationToken);
+        var statusCode = (int)response.StatusCode;
+
+        if (statusCode >= 300 && statusCode < 400)
         {
-            error = "Telemetry endpoint is missing.";
-            return false;
+            var location = response.Headers.Location?.ToString() ?? "n/a";
+            logger.LogWarning(
+                "Telemetry push redirected ({StatusCode}) for service {Service}. Endpoint may be Access-protected. Location: {Location}. Response: {Response}",
+                statusCode,
+                normalizedEventName,
+                location,
+                TelemetryFormatting.Truncate(responseText, 200));
+            return;
         }
 
-        if (!Uri.TryCreate(settings.Endpoint, UriKind.Absolute, out var endpointUri) ||
-            (endpointUri.Scheme != Uri.UriSchemeHttp && endpointUri.Scheme != Uri.UriSchemeHttps))
+        if (statusCode is 401 or 403)
         {
-            error = "Telemetry endpoint must be a valid HTTP/HTTPS URL.";
-            return false;
+            logger.LogWarning(
+                "Telemetry push unauthorized ({StatusCode}) for service {Service}. Verify telemetry token matches backend ingest secret. Response: {Response}",
+                statusCode,
+                normalizedEventName,
+                TelemetryFormatting.Truncate(responseText, 200));
+            return;
         }
 
-        if (string.IsNullOrWhiteSpace(settings.AppKey))
-        {
-            error = "Telemetry AppKey is missing.";
-            return false;
-        }
-
-        error = string.Empty;
-        return true;
+        logger.LogWarning(
+            "Telemetry push failed ({StatusCode}) for service {Service}. Response: {Response}",
+            statusCode,
+            normalizedEventName,
+            TelemetryFormatting.Truncate(responseText, 200));
     }
 
     private void LogConfigurationWarning(string message)
@@ -290,9 +271,7 @@ public sealed class TelemetryService : ITelemetryService
     }
 
     private string BuildSource(TelemetrySettings settings)
-    {
-        return SanitizeIdentifier(settings.AppName, "razorreaper");
-    }
+        => TelemetryFormatting.SanitizeIdentifier(settings.AppName, "razorreaper");
 
     private async Task<Dictionary<string, object?>> BuildBaseMetricsAsync(string source, CancellationToken cancellationToken)
     {
@@ -358,176 +337,4 @@ public sealed class TelemetryService : ITelemetryService
 
         return Math.Max(0, (int)(DateTimeOffset.UtcNow - sessionStartedAtUtc).TotalSeconds);
     }
-
-    private string GetOrCreateInstallId()
-    {
-        if (!string.IsNullOrWhiteSpace(installId))
-        {
-            return installId;
-        }
-
-        var existing = Preferences.Get(InstallIdPreferenceKey, string.Empty);
-        if (!string.IsNullOrWhiteSpace(existing) && Guid.TryParse(existing, out var existingGuid))
-        {
-            installId = existingGuid.ToString("D");
-            return installId;
-        }
-
-        installId = Guid.NewGuid().ToString("D");
-        Preferences.Set(InstallIdPreferenceKey, installId);
-        return installId;
-    }
-
-    private string GetOrCreateHardwareId()
-    {
-        if (!string.IsNullOrWhiteSpace(hardwareId))
-        {
-            return hardwareId;
-        }
-
-        try
-        {
-            var components = new StringBuilder();
-
-            // CPU ProcessorId — burned into the chip, survives OS reinstalls and renames
-            try
-            {
-                using var cpu = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor");
-                foreach (var obj in cpu.Get())
-                {
-                    components.Append(obj["ProcessorId"]?.ToString()?.Trim());
-                    break;
-                }
-            }
-            catch
-            {
-                // WMI query may fail on locked-down systems.
-            }
-
-            // Motherboard SerialNumber
-            try
-            {
-                using var board = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BaseBoard");
-                foreach (var obj in board.Get())
-                {
-                    components.Append(obj["SerialNumber"]?.ToString()?.Trim());
-                    break;
-                }
-            }
-            catch
-            {
-                // WMI query may fail on locked-down systems.
-            }
-
-            // BIOS SerialNumber — another hardware-level constant
-            try
-            {
-                using var bios = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
-                foreach (var obj in bios.Get())
-                {
-                    components.Append(obj["SerialNumber"]?.ToString()?.Trim());
-                    break;
-                }
-            }
-            catch
-            {
-                // WMI query may fail on locked-down systems.
-            }
-
-            if (components.Length > 0)
-            {
-                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(components.ToString()));
-                hardwareId = Convert.ToHexString(hash).ToLowerInvariant();
-                return hardwareId;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to generate hardware ID, falling back to install_id.");
-        }
-
-        // Fall back to install_id if hardware queries fail entirely
-        hardwareId = GetOrCreateInstallId();
-        return hardwareId;
-    }
-
-    private static string SanitizeIdentifier(string? value, string fallback)
-    {
-        var normalized = (value ?? string.Empty).Trim();
-        normalized = normalized.Replace(' ', '_');
-        normalized = InvalidIdentifierChars.Replace(normalized, "_");
-        while (normalized.Contains("__", StringComparison.Ordinal))
-        {
-            normalized = normalized.Replace("__", "_", StringComparison.Ordinal);
-        }
-
-        if (normalized.Length > 64)
-        {
-            normalized = normalized[..64];
-        }
-
-        return string.IsNullOrWhiteSpace(normalized) ? fallback : normalized;
-    }
-
-    private static string? NormalizeMessage(string? message)
-    {
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return null;
-        }
-
-        var normalized = message.Trim();
-        return normalized.Length <= 500 ? normalized : normalized[..500];
-    }
-
-    private static string ToStatusText(TelemetryEventStatus status)
-    {
-        return status switch
-        {
-            TelemetryEventStatus.Ok => "ok",
-            TelemetryEventStatus.Degraded => "degraded",
-            TelemetryEventStatus.Down => "down",
-            _ => "ok"
-        };
-    }
-
-    private static int Clamp(int value, int min, int max)
-    {
-        if (value < min)
-        {
-            return min;
-        }
-
-        return value > max ? max : value;
-    }
-
-    private static async Task<string> SafeReadResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await response.Content.ReadAsStringAsync(cancellationToken);
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
-
-    private static string Truncate(string text, int maxLength)
-    {
-        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
-        {
-            return text;
-        }
-
-        return text[..maxLength];
-    }
-
-    private sealed record CanonicalTelemetryPayload(
-        [property: JsonPropertyName("source")] string Source,
-        [property: JsonPropertyName("service")] string Service,
-        [property: JsonPropertyName("timestamp")] string Timestamp,
-        [property: JsonPropertyName("status")] string Status,
-        [property: JsonPropertyName("metrics")] Dictionary<string, object?> Metrics,
-        [property: JsonPropertyName("message")] string? Message);
 }
