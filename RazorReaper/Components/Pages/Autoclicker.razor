@@ -2,419 +2,266 @@
 @using System.Runtime.InteropServices
 @using System.Timers
 @using System.Drawing
+@using System.Diagnostics
+@using System.Threading
+@using Microsoft.Extensions.Logging
+@using Microsoft.Maui.Storage
 @using RazorReaper.Services
+@using RazorReaper.Components.Shared
 @inject IJSRuntime JSRuntime
 @inject IActivityService ActivityService
+@inject ILogger<Autoclicker> Logger
 @implements IDisposable
 
- 
-        <header class="page-header">
-            <h1 class="page-title">Auto Clicker</h1>
-            <p class="page-subtitle">Advanced mouse automation tool</p>
-        </header>
+<header class="page-header autoclicker-page-header">
+    <h1 class="page-title">Auto Clicker</h1>
+    <p class="page-subtitle">Advanced mouse automation tool</p>
+</header>
 
-        <div class="autoclicker-layout">
-            <div class="control-panel">
-                <div class="content-card">
-                    <h3>Click Settings</h3>
+@* Mirrors the INI Changer 3-column workspace: viewport-height grid,
+   each card is `content-card ini-widget` with `ini-widget-header` (h3 + pill). *@
+<div class="autoclicker-layout ini-layout crosshair-layout">
 
-                    <div class="setting-group">
-                        <label class="setting-label">Click Interval</label>
-                        <div class="interval-inputs">
-                            <div class="time-input-group">
-                                <input type="number" @bind="hours" min="0" max="99" class="time-input" />
-                                <span class="time-label">Hours</span>
-                            </div>
-                            <div class="time-input-group">
-                                <input type="number" @bind="minutes" min="0" max="59" class="time-input" />
-                                <span class="time-label">Minutes</span>
-                            </div>
-                            <div class="time-input-group">
-                                <input type="number" @bind="seconds" min="0" max="59" class="time-input" />
-                                <span class="time-label">Seconds</span>
-                            </div>
-                            <div class="time-input-group">
-                                <input type="number" @bind="milliseconds" min="0" max="999" class="time-input" />
-                                <span class="time-label">Milliseconds</span>
-                            </div>
-                        </div>
-                    </div>
+    @* ── LEFT: TIMING ──────────────────────────────────────────────────── *@
+    <div class="content-card ini-widget ac-widget @(isRunning ? "is-running" : "")">
+        <div class="ini-widget-header">
+            <h3>
+                <svg class="ac-widget-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10" cy="11" r="6.5" />
+                    <path d="M10 8v3.2l2 1.2" />
+                    <path d="M8 3h4" />
+                </svg>
+                Timing
+            </h3>
+            <span class="ini-widget-pill @(isRunning ? "live" : "muted")">
+                <span class="ini-launcher-stat-dot @(isRunning ? "live" : "muted")"></span>
+                @(isRunning ? "Running" : "Idle")
+            </span>
+        </div>
 
-                    <div class="setting-group">
-                        <label class="setting-label">Mouse Button</label>
-                        <div class="button-select">
-                            <button class="select-btn @(mouseButton == MouseButton.Left ? "active" : "")"
-                                    @onclick="() => mouseButton = MouseButton.Left">
-                                Left
-                            </button>
-                            <button class="select-btn @(mouseButton == MouseButton.Middle ? "active" : "")"
-                                    @onclick="() => mouseButton = MouseButton.Middle">
-                                Middle
-                            </button>
-                            <button class="select-btn @(mouseButton == MouseButton.Right ? "active" : "")"
-                                    @onclick="() => mouseButton = MouseButton.Right">
-                                Right
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <label class="setting-label">Click Type</label>
-                        <div class="button-select">
-                            <button class="select-btn @(clickType == ClickType.Single ? "active" : "")"
-                                    @onclick="() => clickType = ClickType.Single">
-                                Single
-                            </button>
-                            <button class="select-btn @(clickType == ClickType.Double ? "active" : "")"
-                                    @onclick="() => clickType = ClickType.Double">
-                                Double
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <label class="setting-label">Repeat</label>
-                        <div class="repeat-options">
-                            <div class="radio-group">
-                                <input type="radio" id="repeat-infinite" name="repeat" checked="@IsRepeatModeInfinite()"
-                                       @onchange="() => repeatMode = RepeatMode.Infinite" />
-                                <label for="repeat-infinite">Repeat until stopped</label>
-                            </div>
-                            <div class="radio-group">
-                                <input type="radio" id="repeat-count" name="repeat" checked="@IsRepeatModeCount()"
-                                       @onchange="() => repeatMode = RepeatMode.Count" />
-                                <label for="repeat-count">Repeat</label>
-                                <input type="number" @bind="repeatCount" min="1" max="999999" class="repeat-input"
-                                       disabled="@IsRepeatCountDisabled()" />
-                                <span>times</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <label class="setting-label">Click Randomization</label>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="enable-randomization" @bind="enableRandomization" />
-                            <label for="enable-randomization">Enable random delay variance (anti-detection)</label>
-                        </div>
-                        @if (enableRandomization)
-                        {
-                            <div class="randomization-settings">
-                                <div class="slider-group">
-                                    <label>Variance: +/- @randomVarianceMs ms</label>
-                                    <input type="range" min="0" max="500" step="10" @bind="randomVarianceMs" class="slider" />
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <div class="setting-group">
-                        <label class="setting-label">Click Mode</label>
-                        <div class="button-select">
-                            <button class="select-btn @(clickMode == ClickMode.Continuous ? "active" : "")"
-                                    @onclick="() => clickMode = ClickMode.Continuous">
-                                Continuous
-                            </button>
-                            <button class="select-btn @(clickMode == ClickMode.Burst ? "active" : "")"
-                                    @onclick="() => clickMode = ClickMode.Burst">
-                                Burst
-                            </button>
-                        </div>
-                        @if (clickMode == ClickMode.Burst)
-                        {
-                            <div class="burst-settings">
-                                <div class="burst-input-group">
-                                    <label>Clicks per burst:</label>
-                                    <input type="number" @bind="burstClickCount" min="1" max="1000" class="burst-input" />
-                                </div>
-                                <div class="burst-input-group">
-                                    <label>Pause between bursts (seconds):</label>
-                                    <input type="number" @bind="burstPauseSeconds" min="0" max="300" class="burst-input" />
-                                </div>
-                            </div>
-                        }
-                    </div>
+        <div class="ini-widget-body">
+            <div class="interval-row">
+                <div class="interval-cell">
+                    <input type="number" class="interval-input" min="0" max="99" @bind="hours" />
+                    <span class="interval-tag">h</span>
                 </div>
-
-                <div class="content-card">
-                    <h3>Hotkey</h3>
-
-                    <div class="hotkey-group">
-                        <div class="hotkey-item">
-                            <span class="hotkey-label">Start/Stop Hotkey</span>
-                            <button class="hotkey-btn @(recordingKey ? "recording" : "")"
-                                    @onclick="StartHotkeyRecording"
-                                    @onkeydown="CaptureHotkey"
-                                    @onkeydown:preventDefault="true"
-                                    tabindex="0">
-                                @(recordingKey ? "Press any key..." : hotkey)
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="hotkey-info">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                        </svg>
-                        <span>Current hotkey: @hotkey (works globally)</span>
-                    </div>
+                <div class="interval-cell">
+                    <input type="number" class="interval-input" min="0" max="59" @bind="minutes" />
+                    <span class="interval-tag">m</span>
                 </div>
-
-                <div class="control-buttons">
-                    <button class="btn btn-primary @(isRunning ? "btn-stop" : "btn-start")"
-                            @onclick="ToggleClicking" disabled="@IsStartButtonDisabled()">
-                        @(isRunning ? "Stop" : "Start") (@hotkey)
-                    </button>
-                    <button class="btn btn-secondary" @onclick="ResetStats">
-                        Reset
-                    </button>
+                <div class="interval-cell">
+                    <input type="number" class="interval-input" min="0" max="59" @bind="seconds" />
+                    <span class="interval-tag">s</span>
+                </div>
+                <div class="interval-cell">
+                    <input type="number" class="interval-input" min="0" max="999" @bind="milliseconds" />
+                    <span class="interval-tag">ms</span>
+                </div>
+            </div>
+            <div class="interval-row">
+                <div class="interval-cell wide">
+                    <input type="number" class="interval-input" min="1" max="500" @bind="clickHoldMs" />
+                    <span class="interval-tag">hold (ms)</span>
+                </div>
+                <div class="interval-cell wide">
+                    <input type="number" class="interval-input" min="0" max="60" @bind="preStartDelaySeconds" />
+                    <span class="interval-tag">pre-delay (s)</span>
                 </div>
             </div>
 
-            <div class="status-panel">
-                <div class="content-card">
-                    <h3>Click Position</h3>
-
-                    <div class="position-options">
-                        <div class="radio-group">
-                            <input type="radio" id="pos-current" name="position" checked="@IsPositionModeCurrent()"
-                                   @onchange="() => positionMode = PositionMode.Current" />
-                            <label for="pos-current">Current cursor position</label>
-                        </div>
-                        <div class="radio-group">
-                            <input type="radio" id="pos-fixed" name="position" checked="@IsPositionModeFixed()"
-                                   @onchange="() => { positionMode = PositionMode.Fixed; }" />
-                            <label for="pos-fixed">Fixed position</label>
-                        </div>
-                        <div class="radio-group">
-                            <input type="radio" id="pos-multi" name="position" checked="@IsPositionModeMulti()"
-                                   @onchange="() => { positionMode = PositionMode.Multi; }" />
-                            <label for="pos-multi">Multiple positions</label>
-                        </div>
-                    </div>
-
-                    @if (positionMode == PositionMode.Fixed)
-                    {
-                        <div class="position-controls">
-                            <div class="coord-inputs">
-                                <div class="coord-group">
-                                    <label>X:</label>
-                                    <input type="number" @bind="fixedX" class="coord-input" />
-                                </div>
-                                <div class="coord-group">
-                                    <label>Y:</label>
-                                    <input type="number" @bind="fixedY" class="coord-input" />
-                                </div>
-                            </div>
-                            <button class="pick-btn" @onclick="StartPickLocation" disabled="@IsPickingLocation()">
-                                <svg fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                                </svg>
-                                @(pickingLocation ? "Click anywhere..." : "Pick Location")
-                            </button>
-                        </div>
-                    }
-
-                    @if (positionMode == PositionMode.Multi)
-                    {
-                        <div class="multi-position-controls">
-                            <div class="positions-list">
-                                @if (multiPositions.Count == 0)
-                                {
-                                    <div class="no-positions">
-                                        <p>No positions added yet</p>
-                                    </div>
-                                }
-                                else
-                                {
-                                    @foreach (var (pos, index) in multiPositions.Select((p, i) => (p, i)))
-                                    {
-                                        <div class="position-item">
-                                            <span class="position-number">@(index + 1)</span>
-                                            <span class="position-coords">X: @pos.X, Y: @pos.Y</span>
-                                            <button class="btn-remove" @onclick="() => RemovePosition(index)">
-                                                <svg fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    }
-                                }
-                            </div>
-                            <button class="pick-btn" @onclick="StartPickMultiLocation" disabled="@IsPickingLocation()">
-                                <svg fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                                </svg>
-                                @(pickingLocation ? "Click anywhere..." : "Add Position")
-                            </button>
-                        </div>
-                    }
-
-                    <div class="current-position">
-                        <span class="position-label">Current Mouse Position:</span>
-                        <span class="position-value">X: @currentMouseX, Y: @currentMouseY</span>
+            <div class="field">
+                <label class="field-label">Repeat</label>
+                <div class="seg-control">
+                    <button class="seg-btn @(repeatMode == RepeatMode.Infinite ? "active" : "")"
+                            @onclick="() => repeatMode = RepeatMode.Infinite">Until stopped</button>
+                    <button class="seg-btn @(repeatMode == RepeatMode.Count ? "active" : "")"
+                            @onclick="() => repeatMode = RepeatMode.Count">Fixed count</button>
+                </div>
+            </div>
+            @if (repeatMode == RepeatMode.Count)
+            {
+                <div class="interval-row">
+                    <div class="interval-cell wide">
+                        <input type="number" class="interval-input" min="1" max="999999" @bind="repeatCount" />
+                        <span class="interval-tag">clicks</span>
                     </div>
                 </div>
+                <div class="progress-bar"><div class="progress-fill" style="width: @(GetProgressPercentage())%"></div></div>
+            }
 
-                <div class="content-card autoclicker-status-card @(isRunning ? "active" : "")">
-                    <div class="autoclicker-status-header">
-                        <div class="autoclicker-status-indicator @(isRunning ? "running" : "stopped")"></div>
-                        <h3>Status</h3>
-                    </div>
-
-                    <div class="status-info">
-                        <div class="status-row">
-                            <span>State:</span>
-                            <span class="status-value @(isRunning ? "text-green" : "text-red")">
-                                @(isRunning ? "Running" : "Stopped")
-                            </span>
-                        </div>
-                        <div class="status-row">
-                            <span>Clicks:</span>
-                            <span class="status-value">@clickCount</span>
-                        </div>
-                        @if (repeatMode == RepeatMode.Count)
-                        {
-                            <div class="status-row">
-                                <span>Progress:</span>
-                                <span class="status-value">@clickCount / @repeatCount</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: @(GetProgressPercentage())%"></div>
-                            </div>
-                        }
-                        <div class="status-row">
-                            <span>Interval:</span>
-                            <span class="status-value">@GetIntervalDisplay()</span>
-                        </div>
-                        @if (isRunning && nextClickTime != null)
-                        {
-                            <div class="status-row">
-                                <span>Next Click:</span>
-                                <span class="status-value">@GetNextClickTime()</span>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <div class="content-card">
-                    <h3>Profiles</h3>
-                    <div class="profile-controls">
-                        <select class="profile-select" @onchange="LoadProfile">
-                            <option value="">Select a profile...</option>
-                            @foreach (var profile in savedProfiles)
-                            {
-                                <option value="@profile.Name">@profile.Name</option>
-                            }
-                        </select>
-                        <div class="profile-buttons">
-                            <button class="btn-small" @onclick="ShowSaveProfileDialog">Save</button>
-                            <button class="btn-small" @onclick="ShowDeleteProfileDialog" disabled="@IsDeleteProfileDisabled()">Delete</button>
-                        </div>
-                    </div>
-                    @if (showSaveDialog)
-                    {
-                        <div class="profile-dialog">
-                            <input type="text" @bind="newProfileName" placeholder="Profile name..." class="profile-input" />
-                            <div class="dialog-buttons">
-                                <button class="btn-small" @onclick="SaveCurrentProfile">Save</button>
-                                <button class="btn-small" @onclick="() => showSaveDialog = false">Cancel</button>
-                            </div>
-                        </div>
-                    }
-                    @if (showDeleteDialog)
-                    {
-                        <div class="profile-dialog">
-                            <select class="profile-select" @bind="selectedProfileName">
-                                <option value="">Select profile to delete...</option>
-                                @foreach (var profile in savedProfiles)
-                                {
-                                    <option value="@profile.Name">@profile.Name</option>
-                                }
-                            </select>
-                            <div class="dialog-buttons">
-                                <button class="btn-small" @onclick="DeleteProfile" disabled="@IsDeleteButtonDisabled()">Delete</button>
-                                <button class="btn-small" @onclick="() => showDeleteDialog = false">Cancel</button>
-                            </div>
-                        </div>
-                    }
-                </div>
-
-                <div class="content-card">
-                    <h3>Session Statistics</h3>
-                    <div class="status-info">
-                        <div class="status-row">
-                            <span>Total Clicks:</span>
-                            <span class="status-value">@sessionTotalClicks</span>
-                        </div>
-                        <div class="status-row">
-                            <span>Session Time:</span>
-                            <span class="status-value">@GetSessionTime()</span>
-                        </div>
-                        <div class="status-row">
-                            <span>Average CPS:</span>
-                            <span class="status-value">@GetAverageCPS()</span>
-                        </div>
-                    </div>
-                    <div class="heatmap-button-container">
-                        <button class="btn btn-secondary" @onclick="ShowHeatmap" disabled="@IsHeatmapDisabled()">
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
-                            </svg>
-                            View Heatmap (@clickHistory.Count clicks)
-                        </button>
-                    </div>
-                </div>
+            <div class="ac-cps-line">
+                <span class="ac-cps-num">@GetEstimatedCps()</span>
+                <span class="ac-cps-unit">cps</span>
+                <span class="ac-cps-sep">·</span>
+                <span class="ac-cps-sub">@GetIntervalDisplay()</span>
             </div>
         </div>
 
+        <div class="ac-cta-row">
+            <button class="ini-widget-cta @(isRunning ? "danger" : "")"
+                    @onclick="ToggleClicking" disabled="@IsStartButtonDisabled()">
+                @(isRunning ? "Stop" : "Start") · @hotkey
+            </button>
+            <button class="rr-pill-btn ghost sm" @onclick="ResetStats">Reset</button>
+        </div>
+    </div>
 
-@if (showHeatmapModal)
-{
-    <div class="modal-overlay" @onclick="CloseHeatmap">
-        <div class="modal-content heatmap-modal" @onclick:stopPropagation="true">
-            <div class="modal-header">
-                <h2>Click Heatmap</h2>
-                <button class="modal-close" @onclick="CloseHeatmap">
-                    <svg fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                </button>
+    @* ── MIDDLE: CLICK ─────────────────────────────────────────────────── *@
+    <div class="content-card ini-widget ac-widget">
+        <div class="ini-widget-header">
+            <h3>
+                <svg class="ac-widget-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 3v3" />
+                    <path d="M7 5h6" />
+                    <path d="M10 8v8" />
+                    <path d="M10 16c2.8 0 4.6-1.7 4.6-4.1 0-1.7-1-3-2.7-3.5" />
+                    <path d="M10 16c-2.8 0-4.6-1.7-4.6-4.1 0-1.7 1-3 2.7-3.5" />
+                </svg>
+                Click
+            </h3>
+            <span class="ini-widget-pill">@mouseButton · @clickType</span>
+        </div>
+
+        <div class="ini-widget-body">
+            <div class="field">
+                <label class="field-label">Button</label>
+                <div class="seg-control">
+                    <button class="seg-btn @(mouseButton == MouseButton.Left ? "active" : "")"
+                            @onclick="() => mouseButton = MouseButton.Left">Left</button>
+                    <button class="seg-btn @(mouseButton == MouseButton.Middle ? "active" : "")"
+                            @onclick="() => mouseButton = MouseButton.Middle">Middle</button>
+                    <button class="seg-btn @(mouseButton == MouseButton.Right ? "active" : "")"
+                            @onclick="() => mouseButton = MouseButton.Right">Right</button>
+                </div>
             </div>
-            <div class="modal-body">
-                <div class="heatmap-controls">
-                    <div class="heatmap-stats">
-                        <div class="heatmap-stat">
-                            <span>Total Clicks:</span>
-                            <span>@clickHistory.Count</span>
-                        </div>
-                        <div class="heatmap-stat">
-                            <span>Unique Positions:</span>
-                            <span>@GetUniquePositions()</span>
-                        </div>
-                        <div class="heatmap-stat">
-                            <span>Time Range:</span>
-                            <span>@GetTimeRange()</span>
-                        </div>
+            <div class="field">
+                <label class="field-label">Type</label>
+                <div class="seg-control">
+                    <button class="seg-btn @(clickType == ClickType.Single ? "active" : "")"
+                            @onclick="() => clickType = ClickType.Single">Single</button>
+                    <button class="seg-btn @(clickType == ClickType.Double ? "active" : "")"
+                            @onclick="() => clickType = ClickType.Double">Double</button>
+                </div>
+            </div>
+            <div class="field">
+                <label class="field-label">Mode</label>
+                <div class="seg-control">
+                    <button class="seg-btn @(clickMode == ClickMode.Continuous ? "active" : "")"
+                            @onclick="() => clickMode = ClickMode.Continuous">Continuous</button>
+                    <button class="seg-btn @(clickMode == ClickMode.Burst ? "active" : "")"
+                            @onclick="() => clickMode = ClickMode.Burst">Burst</button>
+                </div>
+            </div>
+            @if (clickMode == ClickMode.Burst)
+            {
+                <div class="row-2">
+                    <div class="field">
+                        <label class="field-label">Clicks/burst</label>
+                        <input type="number" class="rr-input num-input" min="1" max="1000" @bind="burstClickCount" />
                     </div>
-                    <div class="heatmap-actions">
-                        <button class="btn-small" @onclick="ClearHeatmapData">Clear Data</button>
-                        <button class="btn-small" @onclick="ExportHeatmapData">Export CSV</button>
+                    <div class="field">
+                        <label class="field-label">Pause (s)</label>
+                        <input type="number" class="rr-input num-input" min="0" max="300" @bind="burstPauseSeconds" />
                     </div>
                 </div>
-                <div class="heatmap-canvas-container">
-                    <canvas id="heatmapCanvas" width="1920" height="1080"></canvas>
+            }
+            <Switch Value="@enableRandomization"
+                    ValueChanged="@((bool v) => enableRandomization = v)"
+                    Label="Randomize variance" />
+            @if (enableRandomization)
+            {
+                <div class="field">
+                    <label class="field-label">Variance: <strong>±@randomVarianceMs ms</strong></label>
+                    <input type="range" class="rr-slider" min="0" max="500" step="10" @bind="randomVarianceMs" />
                 </div>
-                <div class="heatmap-legend">
-                    <span>Cold (1)</span>
-                    <div class="legend-gradient"></div>
-                    <span>Hot (@GetMaxClicksAtPosition())</span>
+            }
+        </div>
+    </div>
+
+    @* ── RIGHT: TARGET ─────────────────────────────────────────────────── *@
+    <div class="content-card ini-widget ac-widget">
+        <div class="ini-widget-header">
+            <h3>
+                <svg class="ac-widget-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10" cy="10" r="6.2" />
+                    <path d="M10 2v3" />
+                    <path d="M10 15v3" />
+                    <path d="M2 10h3" />
+                    <path d="M15 10h3" />
+                    <circle cx="10" cy="10" r="1.2" fill="currentColor" />
+                </svg>
+                Target
+            </h3>
+            <span class="ini-widget-pill">@positionMode</span>
+        </div>
+
+        <div class="ini-widget-body">
+            <div class="field">
+                <label class="field-label">Position</label>
+                <div class="seg-control">
+                    <button class="seg-btn @(positionMode == PositionMode.Current ? "active" : "")"
+                            @onclick="() => positionMode = PositionMode.Current">Cursor</button>
+                    <button class="seg-btn @(positionMode == PositionMode.Fixed ? "active" : "")"
+                            @onclick="() => positionMode = PositionMode.Fixed">Fixed</button>
+                    <button class="seg-btn @(positionMode == PositionMode.Multi ? "active" : "")"
+                            @onclick="() => positionMode = PositionMode.Multi">Multi</button>
                 </div>
+            </div>
+            @if (positionMode == PositionMode.Fixed)
+            {
+                <div class="row-2">
+                    <div class="field">
+                        <label class="field-label">X</label>
+                        <input type="number" class="rr-input num-input" @bind="fixedX" />
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Y</label>
+                        <input type="number" class="rr-input num-input" @bind="fixedY" />
+                    </div>
+                </div>
+                <button class="rr-pill-btn ghost sm" @onclick="StartPickLocation" disabled="@IsPickingLocation()">
+                    @(pickingLocation ? "Click anywhere…" : "Pick location")
+                </button>
+            }
+            @if (positionMode == PositionMode.Multi)
+            {
+                <div class="positions-list">
+                    @if (multiPositions.Count == 0)
+                    {
+                        <p class="muted-line">No positions yet.</p>
+                    }
+                    else
+                    {
+                        @foreach (var (pos, index) in multiPositions.Select((p, i) => (p, i)))
+                        {
+                            <div class="position-item">
+                                <span class="position-number">@(index + 1)</span>
+                                <span class="position-coords">@pos.X, @pos.Y</span>
+                                <button class="rr-pill-btn ghost sm danger" @onclick="() => RemovePosition(index)">×</button>
+                            </div>
+                        }
+                    }
+                </div>
+                <button class="rr-pill-btn ghost sm" @onclick="StartPickMultiLocation" disabled="@IsPickingLocation()">
+                    @(pickingLocation ? "Click anywhere…" : "Add position")
+                </button>
+            }
+            <p class="muted-line">Cursor: @currentMouseX, @currentMouseY</p>
+
+            <div class="field">
+                <label class="field-label">Hotkey</label>
+                <button class="hotkey-btn full-width @(recordingKey ? "recording" : "")"
+                        @onclick="StartHotkeyRecording"
+                        @onkeydown="CaptureHotkey"
+                        @onkeydown:preventDefault="true"
+                        tabindex="0">
+                    @(recordingKey ? "Press a key…" : hotkey)
+                </button>
             </div>
         </div>
     </div>
-}
+
+</div>
 
 @code {
     public enum MouseButton { Left, Middle, Right }
@@ -423,10 +270,26 @@
     public enum PositionMode { Current, Fixed, Multi }
     public enum ClickMode { Continuous, Burst }
 
+    // Short summary line shown under the status title.
+    private string StatusSubLine => isRunning
+        ? $"{GetIntervalDisplay()} · {mouseButton} · {clickType}{(repeatMode == RepeatMode.Count ? $" · {clickCount}/{repeatCount}" : $" · {clickCount} clicks")}"
+        : $"Press {hotkey} to start · {GetIntervalDisplay()}";
+
     private int hours = 0;
     private int minutes = 0;
     private int seconds = 1;
     private int milliseconds = 0;
+
+    // OP Auto Clicker-compatible defaults: 5ms hold, no pre-start delay.
+    private int clickHoldMs = 5;
+    private int preStartDelaySeconds = 0;
+
+    // Tight loop concurrency / pacing
+    private readonly SemaphoreSlim _clickGate = new(1, 1);
+    private int _ticksSinceUiYield;
+    private bool _timerResolutionRaised;
+    // Per-session cancellation — cancelled in StopClicking to interrupt in-flight Task.Delays.
+    private CancellationTokenSource? _clickCts;
 
     private MouseButton mouseButton = MouseButton.Left;
     private ClickType clickType = ClickType.Single;
@@ -444,9 +307,6 @@
     private int randomVarianceMs = 100;
     private Random random = new Random();
 
-    private int sessionTotalClicks = 0;
-    private DateTime sessionStartTime = DateTime.Now;
-
     // Multi-position
     private List<POINT> multiPositions = new List<POINT>();
     private int currentPositionIndex = 0;
@@ -457,21 +317,10 @@
     private int burstPauseSeconds = 2;
     private int currentBurstCount = 0;
 
-    // Profiles
-    private List<ClickProfile> savedProfiles = new List<ClickProfile>();
-    private bool showSaveDialog = false;
-    private bool showDeleteDialog = false;
-    private string newProfileName = "";
-    private string selectedProfileName = "";
-
-    // Heatmap
-    private List<ClickRecord> clickHistory = new List<ClickRecord>();
-    private bool showHeatmapModal = false;
-
     private bool isRunning = false;
     private int clickCount = 0;
-    private Timer? clickTimer;
-    private Timer? mouseTrackingTimer;
+    private System.Timers.Timer? clickTimer;
+    private System.Timers.Timer? mouseTrackingTimer;
     private DateTime? nextClickTime;
     private ElapsedEventHandler? timerEventHandler;
 
@@ -483,8 +332,9 @@
 
     private const string HOTKEY_STORAGE_KEY = "AutoclickerHotkey";
     private const string HOTKEY_CODE_STORAGE_KEY = "AutoclickerHotkeyCode";
-    private const string PROFILES_STORAGE_KEY = "AutoclickerProfiles";
-    private const int HOTKEY_COOLDOWN_MS = 2000; // 2 seconds
+    // Short debounce — long enough to avoid a single tap registering twice from the
+    // 50ms poll loop, but short enough that the user can hit Start then Stop rapidly.
+    private const int HOTKEY_COOLDOWN_MS = 250;
 
     private CancellationTokenSource? _hotkeyMonitorCts;
     private bool _hasInitialized = false;
@@ -519,6 +369,12 @@
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")]
+    private static extern uint TimeBeginPeriod(uint uMilliseconds);
+
+    [DllImport("winmm.dll", EntryPoint = "timeEndPeriod")]
+    private static extern uint TimeEndPeriod(uint uMilliseconds);
 
     private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
@@ -619,13 +475,17 @@
 
     private async Task InitializeAsync()
     {
+        // NOTE: timeBeginPeriod(1) is now raised in StartClicking and dropped in StopClicking.
+        // Holding it page-wide affected the whole OS's timing — battery drain, other apps' timers
+        // running hotter. Scope it to the actual clicking session.
+
+        // Load persisted preferences (interval, hold, pre-delay, etc.)
+        LoadSettings();
+
         // Load saved hotkey from localStorage
         await LoadSavedHotkey();
 
-        // Load saved profiles from localStorage
-        await LoadSavedProfiles();
-
-        mouseTrackingTimer = new Timer(100);
+        mouseTrackingTimer = new System.Timers.Timer(100);
         mouseTrackingTimer.Elapsed += UpdateMousePosition;
         mouseTrackingTimer.Start();
 
@@ -633,6 +493,42 @@
         _ = Task.Run(() => MonitorHotkey(_hotkeyMonitorCts.Token));
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadSettings()
+    {
+        try
+        {
+            hours = Preferences.Get("ac.hours", hours);
+            minutes = Preferences.Get("ac.minutes", minutes);
+            seconds = Preferences.Get("ac.seconds", seconds);
+            milliseconds = Preferences.Get("ac.ms", milliseconds);
+            clickHoldMs = Preferences.Get("ac.holdms", clickHoldMs);
+            preStartDelaySeconds = Preferences.Get("ac.predelay", preStartDelaySeconds);
+            repeatCount = Preferences.Get("ac.repeatcount", repeatCount);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Autoclicker LoadSettings failed");
+        }
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            Preferences.Set("ac.hours", hours);
+            Preferences.Set("ac.minutes", minutes);
+            Preferences.Set("ac.seconds", seconds);
+            Preferences.Set("ac.ms", milliseconds);
+            Preferences.Set("ac.holdms", clickHoldMs);
+            Preferences.Set("ac.predelay", preStartDelaySeconds);
+            Preferences.Set("ac.repeatcount", repeatCount);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Autoclicker SaveSettings failed");
+        }
     }
 
     private async Task LoadSavedHotkey()
@@ -662,39 +558,6 @@
         {
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", HOTKEY_STORAGE_KEY, hotkey);
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", HOTKEY_CODE_STORAGE_KEY, currentHotkeyCode.ToString());
-        }
-        catch
-        {
-            // Ignore save errors
-        }
-    }
-
-    private async Task LoadSavedProfiles()
-    {
-        try
-        {
-            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", PROFILES_STORAGE_KEY);
-            if (!string.IsNullOrEmpty(json))
-            {
-                var profiles = System.Text.Json.JsonSerializer.Deserialize<List<ClickProfile>>(json);
-                if (profiles != null)
-                {
-                    savedProfiles = profiles;
-                }
-            }
-        }
-        catch
-        {
-            // Ignore load errors
-        }
-    }
-
-    private async Task SaveProfiles()
-    {
-        try
-        {
-            var json = System.Text.Json.JsonSerializer.Serialize(savedProfiles);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", PROFILES_STORAGE_KEY, json);
         }
         catch
         {
@@ -821,8 +684,8 @@
             // Set lastHotkeyPress to NOW to enforce cooldown period
             lastHotkeyPress = DateTime.Now;
 
-            // Wait longer before re-enabling hotkey to prevent immediate trigger
-            await Task.Delay(1000);
+            // Brief gate so the keypress that just bound the hotkey doesn't immediately trigger it.
+            await Task.Delay(200);
             hotkeyEnabled = true;
 
             StateHasChanged();
@@ -998,6 +861,18 @@
         return parts.Count > 0 ? string.Join(" ", parts) : "0ms";
     }
 
+    /// <summary>Estimated clicks-per-second from the current interval. Forces
+    /// invariant culture so the decimal separator is "." not "," regardless
+    /// of the user's system locale.</summary>
+    private string GetEstimatedCps()
+    {
+        var ms = GetTotalMilliseconds();
+        if (ms < 1) return "—";
+        var cps = 1000.0 / ms;
+        string fmt = cps >= 100 ? "F0" : (cps >= 10 ? "F1" : "F2");
+        return cps.ToString(fmt, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     private double GetProgressPercentage()
     {
         if (repeatMode != RepeatMode.Count || repeatCount == 0) return 0;
@@ -1029,6 +904,37 @@
 
         isRunning = true;
         clickCount = 0;
+        _ticksSinceUiYield = 0;
+
+        // Per-session cancellation source — wakes Task.Delays immediately on Stop so the
+        // click loop bails within ~1ms instead of waiting for the next hold/interval boundary.
+        _clickCts?.Dispose();
+        _clickCts = new CancellationTokenSource();
+
+        // Raise system timer resolution to 1ms ONLY while clicking. Dropped on stop so the
+        // OS goes back to normal power-friendly timing the moment the user is done.
+        if (!_timerResolutionRaised)
+        {
+            try { TimeBeginPeriod(1); _timerResolutionRaised = true; }
+            catch { /* old Windows: ignore */ }
+        }
+
+        // Persist current settings so they survive a restart.
+        SaveSettings();
+
+        // Pre-start delay (countdown) — interruptible via the per-session token.
+        if (preStartDelaySeconds > 0)
+        {
+            try
+            {
+                await Task.Delay(preStartDelaySeconds * 1000, _clickCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            if (!isRunning) return;
+        }
 
         var interval = GetTotalMilliseconds();
 
@@ -1040,10 +946,12 @@
         }
         else
         {
-            clickTimer = new Timer(interval);
+            clickTimer = new System.Timers.Timer(interval);
 
-            // Store the event handler so we can properly unsubscribe later
-            timerEventHandler = async (sender, e) => await PerformClick();
+            // Store the event handler so we can properly unsubscribe later.
+            // Semaphore gate drops overlapping ticks instead of queuing — same pattern
+            // OP Auto Clicker uses to stay sub-ms without thread storms.
+            timerEventHandler = OnClickTimerElapsed;
             clickTimer.Elapsed += timerEventHandler;
 
             clickTimer.AutoReset = true;
@@ -1060,17 +968,41 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async void OnClickTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        // WaitAsync(0) returns false immediately if the previous tick hasn't finished;
+        // dropping the tick is correct here — queuing would build up a backlog and crash.
+        if (!await _clickGate.WaitAsync(0)) return;
+        try
+        {
+            await PerformClick();
+        }
+        finally
+        {
+            _clickGate.Release();
+        }
+    }
+
     private async Task RandomizedClickLoop()
     {
+        var sw = new Stopwatch();
         while (isRunning)
         {
+            // Honor Count repeat mode the same way the timer path does.
+            if (repeatMode == RepeatMode.Count && clickCount >= repeatCount)
+            {
+                await InvokeAsync(() => StopClicking());
+                break;
+            }
+
+            sw.Restart();
             await PerformClick();
 
             if (!isRunning) break;
 
             var baseInterval = GetTotalMilliseconds();
             var variance = random.Next(-randomVarianceMs, randomVarianceMs + 1);
-            var actualInterval = Math.Max(10, baseInterval + variance); // Minimum 10ms
+            var actualInterval = Math.Max(1, baseInterval + variance); // Floor 1 ms
 
             await InvokeAsync(() =>
             {
@@ -1078,7 +1010,15 @@
                 StateHasChanged();
             });
 
-            await Task.Delay((int)actualInterval);
+            // Stopwatch-based self-correcting pacing: subtract actual click time from
+            // the configured interval so we don't drift on long sessions.
+            var elapsedMs = sw.ElapsedMilliseconds;
+            var remaining = (int)Math.Max(0, actualInterval - elapsedMs);
+            if (remaining > 0)
+            {
+                try { await Task.Delay(remaining, _clickCts?.Token ?? CancellationToken.None); }
+                catch (OperationCanceledException) { break; }
+            }
         }
     }
 
@@ -1086,6 +1026,11 @@
     {
         isRunning = false;
         nextClickTime = null;
+
+        // Cancel the per-session token first — this wakes any in-flight Task.Delay
+        // inside PerformClick / RandomizedClickLoop so they exit immediately instead of
+        // waiting out the remaining hold-ms or interval. THIS is what makes stop feel instant.
+        try { _clickCts?.Cancel(); } catch { }
 
         // Immediately stop and dispose timer
         if (clickTimer != null)
@@ -1103,6 +1048,17 @@
             clickTimer = null;
         }
 
+        // Drop the global 1ms timer resolution boost — the OS goes back to its default
+        // (~15.6ms) so other apps and the system itself stop running their timers hot.
+        if (_timerResolutionRaised)
+        {
+            try { TimeEndPeriod(1); } catch { }
+            _timerResolutionRaised = false;
+        }
+
+        // Persist any setting changes the user made during the session.
+        SaveSettings();
+
         // Log activity
         ActivityService.AddActivity($"Autoclicker stopped ({clickCount} clicks performed)", "info");
 
@@ -1119,9 +1075,10 @@
         {
             if (currentBurstCount >= burstClickCount)
             {
-                // Pause between bursts
+                // Pause between bursts — interruptible by Stop.
                 currentBurstCount = 0;
-                await Task.Delay(burstPauseSeconds * 1000);
+                try { await Task.Delay(burstPauseSeconds * 1000, _clickCts?.Token ?? CancellationToken.None); }
+                catch (OperationCanceledException) { return; }
                 if (!isRunning) return;
             }
         }
@@ -1150,24 +1107,34 @@
                 int clickX = currentPos.X;
                 int clickY = currentPos.Y;
 
-                // Determine click position based on mode
+                // Determine click position based on mode.
+                // SetCursorPos is synchronous on Windows — no Task.Delay needed.
+                // NOTE: we do NOT restore the cursor back to the user's original position
+                // after each click. That restoration was what made the screen unusable —
+                // at high CPS the cursor was flying back and forth between the user's hand
+                // and the target. OP Auto Clicker / Crosshair X behavior is "cursor stays
+                // at the click target until you move it yourself" which is much saner.
                 if (positionMode == PositionMode.Fixed)
                 {
                     clickX = fixedX;
                     clickY = fixedY;
                     SetCursorPos(clickX, clickY);
-                    await Task.Delay(10);
                 }
                 else if (positionMode == PositionMode.Multi && multiPositions.Count > 0)
                 {
-                    var pos = multiPositions[currentPositionIndex];
+                    // Single-position mode: always use index 0, skip cycling.
+                    int idx = multiPositions.Count == 1
+                        ? 0
+                        : currentPositionIndex;
+                    var pos = multiPositions[idx];
                     clickX = pos.X;
                     clickY = pos.Y;
                     SetCursorPos(clickX, clickY);
-                    await Task.Delay(10);
 
-                    // Move to next position
-                    currentPositionIndex = (currentPositionIndex + 1) % multiPositions.Count;
+                    if (multiPositions.Count > 1)
+                    {
+                        currentPositionIndex = (currentPositionIndex + 1) % multiPositions.Count;
+                    }
                 }
 
                 // Check if still running before clicking
@@ -1175,48 +1142,31 @@
 
                 var (downFlag, upFlag) = GetMouseEventFlags();
 
-                // Use SendInput for proper system-wide clicks
-                SendMouseInput(downFlag);
-                await Task.Delay(50);
+                // Use SendInput for proper system-wide clicks.
+                // clickHoldMs is the down→up gap; default 5 ms matches OP Auto Clicker.
+                int hold = Math.Max(1, clickHoldMs);
+                var token = _clickCts?.Token ?? CancellationToken.None;
 
-                // Check if still running
+                SendMouseInput(downFlag);
+                try { await Task.Delay(hold, token); } catch (OperationCanceledException) { return; }
+
                 if (!isRunning) return;
 
                 SendMouseInput(upFlag);
 
                 if (clickType == ClickType.Double && isRunning)
                 {
-                    await Task.Delay(50);
+                    try { await Task.Delay(hold, token); } catch (OperationCanceledException) { return; }
                     if (!isRunning) return;
                     SendMouseInput(downFlag);
-                    await Task.Delay(50);
+                    try { await Task.Delay(hold, token); } catch (OperationCanceledException) { return; }
                     if (!isRunning) return;
                     SendMouseInput(upFlag);
-                }
-
-                if ((positionMode == PositionMode.Fixed || positionMode == PositionMode.Multi) && isRunning)
-                {
-                    SetCursorPos(currentPos.X, currentPos.Y);
-                }
-
-                // Record click for heatmap
-                clickHistory.Add(new ClickRecord
-                {
-                    X = clickX,
-                    Y = clickY,
-                    Timestamp = DateTime.Now
-                });
-
-                // Keep only last 10000 clicks
-                if (clickHistory.Count > 10000)
-                {
-                    clickHistory.RemoveAt(0);
                 }
 
                 await InvokeAsync(() =>
                 {
                     clickCount++;
-                    sessionTotalClicks++;
                     currentBurstCount++;
 
                     if (isRunning && !enableRandomization)
@@ -1232,10 +1182,17 @@
 
                     StateHasChanged();
                 });
+
+                // Yield to the UI thread periodically so 1000+ CPS doesn't freeze the page.
+                if (++_ticksSinceUiYield >= 50)
+                {
+                    _ticksSinceUiYield = 0;
+                    await Task.Yield();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Click error: {ex.Message}");
+                Logger.LogError(ex, "Autoclicker click loop error");
             }
         });
     }
@@ -1360,31 +1317,11 @@
         // Reset all stats
         clickCount = 0;
         nextClickTime = null;
-        sessionTotalClicks = 0;
-        sessionStartTime = DateTime.Now;
 
         // Reset cooldown to allow immediate restart
         lastHotkeyPress = DateTime.MinValue;
 
         StateHasChanged();
-    }
-
-    private string GetSessionTime()
-    {
-        var elapsed = DateTime.Now - sessionStartTime;
-        if (elapsed.TotalHours >= 1)
-            return $"{elapsed.Hours}h {elapsed.Minutes}m {elapsed.Seconds}s";
-        if (elapsed.TotalMinutes >= 1)
-            return $"{elapsed.Minutes}m {elapsed.Seconds}s";
-        return $"{elapsed.Seconds}s";
-    }
-
-    private string GetAverageCPS()
-    {
-        var elapsed = DateTime.Now - sessionStartTime;
-        if (elapsed.TotalSeconds < 1) return "0.0";
-        var cps = sessionTotalClicks / elapsed.TotalSeconds;
-        return cps.ToString("F1");
     }
 
     // Multi-position methods
@@ -1406,180 +1343,6 @@
         }
     }
 
-    // Profile methods
-    private void ShowSaveProfileDialog()
-    {
-        showSaveDialog = true;
-        newProfileName = "";
-        StateHasChanged();
-    }
-
-    private void ShowDeleteProfileDialog()
-    {
-        showDeleteDialog = true;
-        selectedProfileName = "";
-        StateHasChanged();
-    }
-
-    private async Task DeleteProfile()
-    {
-        if (string.IsNullOrWhiteSpace(selectedProfileName)) return;
-
-        savedProfiles.RemoveAll(p => p.Name == selectedProfileName);
-        await SaveProfiles();
-        showDeleteDialog = false;
-        ActivityService.AddActivity($"Profile '{selectedProfileName}' deleted", "warning");
-        StateHasChanged();
-    }
-
-    private async Task SaveCurrentProfile()
-    {
-        if (string.IsNullOrWhiteSpace(newProfileName)) return;
-
-        var profile = new ClickProfile
-        {
-            Name = newProfileName,
-            Hours = hours,
-            Minutes = minutes,
-            Seconds = seconds,
-            Milliseconds = milliseconds,
-            MouseButton = mouseButton,
-            ClickType = clickType,
-            RepeatMode = repeatMode,
-            RepeatCount = repeatCount,
-            PositionMode = positionMode,
-            FixedX = fixedX,
-            FixedY = fixedY,
-            MultiPositions = new List<POINT>(multiPositions),
-            EnableRandomization = enableRandomization,
-            RandomVarianceMs = randomVarianceMs,
-            ClickMode = clickMode,
-            BurstClickCount = burstClickCount,
-            BurstPauseSeconds = burstPauseSeconds
-        };
-
-        // Remove existing profile with same name
-        savedProfiles.RemoveAll(p => p.Name == newProfileName);
-        savedProfiles.Add(profile);
-        await SaveProfiles();
-
-        showSaveDialog = false;
-        ActivityService.AddActivity($"Profile '{newProfileName}' saved", "success");
-        StateHasChanged();
-    }
-
-    private void LoadProfile(ChangeEventArgs e)
-    {
-        var profileName = e.Value?.ToString();
-        if (string.IsNullOrEmpty(profileName)) return;
-
-        var profile = savedProfiles.FirstOrDefault(p => p.Name == profileName);
-        if (profile == null) return;
-
-        hours = profile.Hours;
-        minutes = profile.Minutes;
-        seconds = profile.Seconds;
-        milliseconds = profile.Milliseconds;
-        mouseButton = profile.MouseButton;
-        clickType = profile.ClickType;
-        repeatMode = profile.RepeatMode;
-        repeatCount = profile.RepeatCount;
-        positionMode = profile.PositionMode;
-        fixedX = profile.FixedX;
-        fixedY = profile.FixedY;
-        multiPositions = new List<POINT>(profile.MultiPositions);
-        enableRandomization = profile.EnableRandomization;
-        randomVarianceMs = profile.RandomVarianceMs;
-        clickMode = profile.ClickMode;
-        burstClickCount = profile.BurstClickCount;
-        burstPauseSeconds = profile.BurstPauseSeconds;
-
-        ActivityService.AddActivity($"Profile '{profileName}' loaded", "info");
-        StateHasChanged();
-    }
-
-    // Heatmap methods
-    private async Task ShowHeatmap()
-    {
-        showHeatmapModal = true;
-        StateHasChanged();
-        await Task.Delay(100); // Let modal render
-        await RenderHeatmap();
-    }
-
-    private void CloseHeatmap()
-    {
-        showHeatmapModal = false;
-        StateHasChanged();
-    }
-
-    private async Task RenderHeatmap()
-    {
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("renderHeatmap", clickHistory.Select(c => new { c.X, c.Y }).ToList());
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Heatmap render error: {ex.Message}");
-        }
-    }
-
-    private int GetUniquePositions()
-    {
-        return clickHistory.Select(c => $"{c.X},{c.Y}").Distinct().Count();
-    }
-
-    private string GetTimeRange()
-    {
-        if (clickHistory.Count == 0) return "N/A";
-        var span = clickHistory.Last().Timestamp - clickHistory.First().Timestamp;
-        if (span.TotalHours >= 1)
-            return $"{(int)span.TotalHours}h {span.Minutes}m";
-        if (span.TotalMinutes >= 1)
-            return $"{(int)span.TotalMinutes}m {span.Seconds}s";
-        return $"{span.Seconds}s";
-    }
-
-    private int GetMaxClicksAtPosition()
-    {
-        if (clickHistory.Count == 0) return 0;
-        return clickHistory.GroupBy(c => $"{c.X},{c.Y}").Max(g => g.Count());
-    }
-
-    private void ClearHeatmapData()
-    {
-        clickHistory.Clear();
-        ActivityService.AddActivity("Click heatmap data cleared", "warning");
-        StateHasChanged();
-    }
-
-    private async Task ExportHeatmapData()
-    {
-        try
-        {
-            if (clickHistory.Count == 0)
-            {
-                ActivityService.AddActivity("No heatmap data to export", "warning");
-                return;
-            }
-
-            var csv = "X,Y,Timestamp\n" + string.Join("\n", clickHistory.Select(c => $"{c.X},{c.Y},{c.Timestamp:yyyy-MM-dd HH:mm:ss}"));
-            var filename = $"heatmap_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-
-            // Save to Downloads folder
-            var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-            var fullPath = Path.Combine(downloadsPath, filename);
-
-            await File.WriteAllTextAsync(fullPath, csv);
-            ActivityService.AddActivity($"Heatmap exported to {fullPath}", "success");
-        }
-        catch (Exception ex)
-        {
-            ActivityService.AddActivity($"Export failed: {ex.Message}", "warning");
-        }
-    }
-
     public void Dispose()
     {
         StopClicking();
@@ -1593,6 +1356,20 @@
         // Dispose JS interop reference
         _dotNetRef?.Dispose();
 
+        // Release the click gate
+        try { _clickGate.Dispose(); } catch { }
+
+        // Dispose the per-session cancellation token.
+        try { _clickCts?.Dispose(); } catch { }
+        _clickCts = null;
+
+        // Restore default Windows timer resolution if we raised it
+        if (_timerResolutionRaised)
+        {
+            try { TimeEndPeriod(1); } catch { }
+            _timerResolutionRaised = false;
+        }
+
         // Cleanup mouse hook if active
         if (mouseHookID != IntPtr.Zero)
         {
@@ -1602,45 +1379,6 @@
     }
 
     // Helper methods for boolean attributes
-    private bool IsRepeatModeInfinite() => repeatMode == RepeatMode.Infinite;
-    private bool IsRepeatModeCount() => repeatMode == RepeatMode.Count;
-    private bool IsRepeatCountDisabled() => repeatMode != RepeatMode.Count;
     private bool IsStartButtonDisabled() => !IsValidInterval();
-    private bool IsPositionModeCurrent() => positionMode == PositionMode.Current;
-    private bool IsPositionModeFixed() => positionMode == PositionMode.Fixed;
-    private bool IsPositionModeMulti() => positionMode == PositionMode.Multi;
     private bool IsPickingLocation() => pickingLocation;
-    private bool IsDeleteProfileDisabled() => savedProfiles.Count == 0;
-    private bool IsDeleteButtonDisabled() => string.IsNullOrEmpty(selectedProfileName);
-    private bool IsHeatmapDisabled() => clickHistory.Count == 0;
-
-    // Helper classes
-    public class ClickProfile
-    {
-        public string Name { get; set; } = "";
-        public int Hours { get; set; }
-        public int Minutes { get; set; }
-        public int Seconds { get; set; }
-        public int Milliseconds { get; set; }
-        public MouseButton MouseButton { get; set; }
-        public ClickType ClickType { get; set; }
-        public RepeatMode RepeatMode { get; set; }
-        public int RepeatCount { get; set; }
-        public PositionMode PositionMode { get; set; }
-        public int FixedX { get; set; }
-        public int FixedY { get; set; }
-        public List<POINT> MultiPositions { get; set; } = new List<POINT>();
-        public bool EnableRandomization { get; set; }
-        public int RandomVarianceMs { get; set; }
-        public ClickMode ClickMode { get; set; }
-        public int BurstClickCount { get; set; }
-        public int BurstPauseSeconds { get; set; }
-    }
-
-    public class ClickRecord
-    {
-        public int X { get; set; }
-        public int Y { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
 }

@@ -6,6 +6,10 @@ namespace RazorReaper.Services.Implementations;
 public partial class NotificationService : INotificationService
 {
     private const int MaxMessageLength = 180;
+    private const int DefaultSuccessDurationMs = 3500;
+    private const int DefaultErrorDurationMs = 5000;
+    private const int DefaultWarningDurationMs = 4500;
+    private const int DefaultInfoDurationMs = 3500;
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegex();
@@ -13,7 +17,7 @@ public partial class NotificationService : INotificationService
     public event Action<NotificationMessage>? OnNotificationAdded;
     public event Action<string>? OnNotificationRemoved;
 
-    public void ShowSuccess(string message, int durationMs = 3500)
+    public void ShowSuccess(string message, int durationMs = DefaultSuccessDurationMs)
     {
         var notification = new NotificationMessage
         {
@@ -24,7 +28,7 @@ public partial class NotificationService : INotificationService
         AddNotification(notification);
     }
 
-    public void ShowError(string message, int durationMs = 5000)
+    public void ShowError(string message, int durationMs = DefaultErrorDurationMs)
     {
         var notification = new NotificationMessage
         {
@@ -35,7 +39,7 @@ public partial class NotificationService : INotificationService
         AddNotification(notification);
     }
 
-    public void ShowWarning(string message, int durationMs = 4500)
+    public void ShowWarning(string message, int durationMs = DefaultWarningDurationMs)
     {
         var notification = new NotificationMessage
         {
@@ -46,7 +50,7 @@ public partial class NotificationService : INotificationService
         AddNotification(notification);
     }
 
-    public void ShowInfo(string message, int durationMs = 3500)
+    public void ShowInfo(string message, int durationMs = DefaultInfoDurationMs)
     {
         var notification = new NotificationMessage
         {

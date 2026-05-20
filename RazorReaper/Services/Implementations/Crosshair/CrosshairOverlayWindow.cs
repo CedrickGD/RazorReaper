@@ -87,6 +87,15 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         };
         _uiThread.SetApartmentState(ApartmentState.STA);
         _uiThread.Start();
+        // WARNING: This blocks the calling thread until the overlay's STA message loop is ready.
+        // Currently Start() is invoked from CrosshairService's constructor, which is resolved by
+        // DI — the resolution thread depends on the first injector and may be the main app UI
+        // thread. Blocking the UI thread here risks a perceptible freeze (rare) or, worst case,
+        // deadlock if the message loop needs to interact back with the UI thread before signalling.
+        // TODO: revisit — either resolve CrosshairService asynchronously from a known background
+        // context, or replace this with an awaited TaskCompletionSource so the caller chooses
+        // sync-vs-async. Until then, the bounded wait below at least bounds the freeze window.
+        System.Diagnostics.Debug.WriteLine("[CrosshairOverlayWindow] Start(): blocking caller until message loop ready — verify caller is on a background thread.");
         _started.Wait();
     }
 
@@ -140,7 +149,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         if (pathChanged)
         {
             var pathToLoad = newPath!;
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 AnimatedImage? loaded = null;
                 try { loaded = AnimatedImage.Load(pathToLoad); }
@@ -166,7 +175,12 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
                 {
                     PostMessage(_hwnd, WM_USER_UPDATE, IntPtr.Zero, IntPtr.Zero);
                 }
-            });
+            })
+            .ContinueWith(t =>
+            {
+                if (t.IsFaulted && t.Exception != null)
+                    System.Diagnostics.Debug.WriteLine($"CrosshairOverlay background task failed: {t.Exception.GetBaseException().Message}");
+            }, TaskScheduler.Default);
         }
     }
 
@@ -190,6 +204,12 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         try
         {
             _uiThreadId = GetCurrentThreadId();
+            // Per-monitor DPI awareness so window coordinates are correct on mixed-DPI multi-
+            // monitor setups (otherwise the layered window can land off-centre on a non-primary
+            // monitor with a different scale factor). Must run on this thread before any window
+            // is created from it. Older Windows builds lack the API — swallow and continue.
+            try { SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); }
+            catch { /* pre-Win10 1607 — overlay still works, just without per-monitor DPI */ }
             EnsureClassRegistered();
 
             _hwnd = CreateWindowEx(
@@ -275,6 +295,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
                 MaybeAnimate();
                 return IntPtr.Zero;
             case WM_HOTKEY:
+                if (ShouldDebounceHotkey()) return IntPtr.Zero;
                 try { _onHotkeyToggle(); }
                 catch (Exception ex) { _logger.LogWarning(ex, "Crosshair hotkey callback threw"); }
                 return IntPtr.Zero;

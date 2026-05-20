@@ -269,4 +269,11 @@ internal sealed partial class CrosshairOverlayWindow
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);
+
+    // Per-monitor DPI awareness so the overlay's screen positions stay correct on mixed-DPI
+    // multi-monitor setups. SetThreadDpiAwarenessContext was added in Windows 10 1607 — call
+    // sites must tolerate the EntryPointNotFoundException on older OS versions.
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+    private static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new IntPtr(-4);
 }

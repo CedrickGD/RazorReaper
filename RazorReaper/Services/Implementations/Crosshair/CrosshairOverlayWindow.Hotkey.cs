@@ -10,6 +10,21 @@ namespace RazorReaper.Services.Implementations;
 /// </summary>
 internal sealed partial class CrosshairOverlayWindow
 {
+    // Auto-repeat (or a rapid double-tap) on the toggle hotkey would otherwise flicker the
+    // overlay on/off several times per frame. 200 ms is below human-perceptible repeat lag but
+    // well clear of OS key-repeat intervals (typical 30 ms..50 ms).
+    private DateTime _lastHotkeyTimeUtc = DateTime.MinValue;
+    private const int HotkeyDebounceMs = 200;
+
+    /// <summary>True if the WM_HOTKEY just observed is within the debounce window of the last one.</summary>
+    internal bool ShouldDebounceHotkey()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - _lastHotkeyTimeUtc).TotalMilliseconds < HotkeyDebounceMs) return true;
+        _lastHotkeyTimeUtc = now;
+        return false;
+    }
+
     public void RegisterHotkey(int virtualKey, bool ctrl, bool alt, bool shift)
     {
         if (_hwnd == IntPtr.Zero) return;

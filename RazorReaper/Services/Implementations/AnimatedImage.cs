@@ -62,14 +62,19 @@ internal sealed class AnimatedImage : IDisposable
         Height = source.Height;
     }
 
-    public Bitmap FrameAt(DateTime startUtc)
+    public Bitmap FrameAt(DateTime startUtc, double speedMultiplier = 1.0)
     {
         if (FrameCount <= 1)
         {
             return _eagerFrames != null ? _eagerFrames[0] : GetLazyFrame(0);
         }
 
-        var elapsed = (long)Math.Max(0, (DateTime.UtcNow - startUtc).TotalMilliseconds);
+        // speedMultiplier > 1 plays faster, < 1 plays slower. Clamp lower so a near-zero
+        // multiplier doesn't freeze the GIF entirely; upper bound stops a runaway slider from
+        // burning through frames faster than the animation tick can render them.
+        var mul = Math.Clamp(speedMultiplier, 0.1, 10.0);
+        var elapsedMs = (DateTime.UtcNow - startUtc).TotalMilliseconds * mul;
+        var elapsed = (long)Math.Max(0, elapsedMs);
         var t = elapsed % TotalMs;
         long acc = 0;
         int frameIdx = FrameCount - 1;
@@ -117,6 +122,9 @@ internal sealed class AnimatedImage : IDisposable
 
         var fd = FrameDimension.Time;
         var frameCount = SafeGetFrameCount(src, fd);
+        // Some malformed/corrupt files report 0 frames — fall through to the single-frame path
+        // rather than divide-by-zero a few lines later when computing TotalMs.
+        if (frameCount <= 0) frameCount = 1;
 
         if (frameCount <= 1)
         {

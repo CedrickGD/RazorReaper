@@ -1926,7 +1926,9 @@
         return displayName.Trim();
     }
 
-    private void LoadWiFiInfo()
+    private void LoadWiFiInfo() => _ = LoadWiFiInfoAsync();
+
+    private async Task LoadWiFiInfoAsync()
     {
         try
         {
@@ -1966,7 +1968,9 @@
                     return;
                 }
 
-                if (!Task.WaitAll(new Task[] { outputTask, errorTask }, 2000))
+                var readBoth = Task.WhenAll(outputTask, errorTask);
+                var readCompleted = await Task.WhenAny(readBoth, Task.Delay(2000));
+                if (readCompleted != readBoth)
                 {
                     Logger.LogDebug("WiFi detection output read timed out");
                     wifiName = "Timed Out";
@@ -1974,8 +1978,8 @@
                     return;
                 }
 
-                var output = outputTask.GetAwaiter().GetResult();
-                var error = errorTask.GetAwaiter().GetResult();
+                var output = await outputTask;
+                var error = await errorTask;
 
                 if (!string.IsNullOrWhiteSpace(error))
                 {

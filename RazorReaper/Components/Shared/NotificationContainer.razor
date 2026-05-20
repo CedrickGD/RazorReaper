@@ -55,50 +55,71 @@
     protected override void OnInitialized()
     {
         _autoRemoveCts = new CancellationTokenSource();
-        NotificationService.OnNotificationAdded += HandleNotificationAdded;
-        NotificationService.OnNotificationRemoved += HandleNotificationRemoved;
+        NotificationService.OnNotificationAdded += OnNotificationAddedSync;
+        NotificationService.OnNotificationRemoved += OnNotificationRemovedSync;
     }
 
-    private async void HandleNotificationAdded(NotificationMessage notification)
+    private void OnNotificationAddedSync(NotificationMessage n) => _ = HandleNotificationAddedAsync(n);
+    private void OnNotificationRemovedSync(string id) => _ = HandleNotificationRemovedAsync(id);
+
+    private async Task HandleNotificationAddedAsync(NotificationMessage notification)
     {
-        if (notifications.Count >= MaxNotifications)
+        try
         {
-            NotificationService.RemoveNotification(notifications[0].Id);
-        }
-
-        notifications.Add(notification);
-        await InvokeAsync(StateHasChanged);
-        await PlayNotificationSoundAsync();
-
-        // Auto-remove after duration - run on background thread to avoid UI blocking
-        _ = Task.Run(async () =>
-        {
-            try
+            if (notifications.Count >= MaxNotifications)
             {
-                if (_autoRemoveCts != null && !_autoRemoveCts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(notification.DurationMs, _autoRemoveCts.Token);
+                NotificationService.RemoveNotification(notifications[0].Id);
+            }
 
-                    if (!_autoRemoveCts.Token.IsCancellationRequested)
+            notifications.Add(notification);
+            await InvokeAsync(StateHasChanged);
+            await PlayNotificationSoundAsync();
+
+            // Auto-remove after duration - run on background thread to avoid UI blocking
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    if (_autoRemoveCts != null && !_autoRemoveCts.Token.IsCancellationRequested)
                     {
-                        await InvokeAsync(() => RemoveNotification(notification.Id));
+                        await Task.Delay(notification.DurationMs, _autoRemoveCts.Token);
+
+                        if (!_autoRemoveCts.Token.IsCancellationRequested)
+                        {
+                            await InvokeAsync(() => RemoveNotification(notification.Id));
+                        }
                     }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                // Component was disposed, ignore
-            }
-        });
+                catch (OperationCanceledException)
+                {
+                    // Component was disposed, ignore
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Notification auto-remove failed: {ex.Message}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[NotificationContainer] HandleNotificationAddedAsync failed: {ex}");
+        }
     }
 
-    private async void HandleNotificationRemoved(string id)
+    private async Task HandleNotificationRemovedAsync(string id)
     {
-        var notification = notifications.FirstOrDefault(n => n.Id == id);
-        if (notification != null)
+        try
         {
-            notifications.Remove(notification);
-            await InvokeAsync(StateHasChanged);
+            var notification = notifications.FirstOrDefault(n => n.Id == id);
+            if (notification != null)
+            {
+                notifications.Remove(notification);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[NotificationContainer] HandleNotificationRemovedAsync failed: {ex}");
         }
     }
 
@@ -113,9 +134,10 @@
         {
             await JSRuntime.InvokeVoidAsync("playNotificationSound");
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore sound playback errors.
+            // Sound playback failures should not bubble up.
+            System.Diagnostics.Debug.WriteLine($"Notification sound failed: {ex.Message}");
         }
     }
 
@@ -124,7 +146,7 @@
         _autoRemoveCts?.Cancel();
         _autoRemoveCts?.Dispose();
 
-        NotificationService.OnNotificationAdded -= HandleNotificationAdded;
-        NotificationService.OnNotificationRemoved -= HandleNotificationRemoved;
+        NotificationService.OnNotificationAdded -= OnNotificationAddedSync;
+        NotificationService.OnNotificationRemoved -= OnNotificationRemovedSync;
     }
 }

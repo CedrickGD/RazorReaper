@@ -109,6 +109,14 @@ internal static partial class CrosshairRenderer
         DrawCross(g, clone, sizeMul, body, outline);
     }
 
+    // Per-thread cached ImageAttributes for the opacity matrix path. Re-creating a ColorMatrix
+    // + ImageAttributes every frame is ~150 µs of LOH churn (and the GDI+ object allocation
+    // burns a syscall) — on a 30 Hz overlay with a translucent GIF that's measurable. Caching
+    // per-thread keeps thread-safety simple since the renderer is called concurrently from the
+    // overlay UI thread and the Blazor preview thread.
+    [ThreadStatic] private static float _cachedOpacity;
+    [ThreadStatic] private static ImageAttributes? _cachedOpacityAttrs;
+
     private static void DrawImage(Graphics g, CrosshairProfile p, double sizeMul, Bitmap? cachedImage, int alpha)
     {
         if (cachedImage == null) return;
@@ -128,23 +136,30 @@ internal static partial class CrosshairRenderer
         }
 
         var a = alpha / 255f;
-        var matrix = new ColorMatrix(new[]
+        // Rebuild only when opacity changes — the ColorMatrix is otherwise stable across renders.
+        // 1/255f epsilon is the smallest opacity step the alpha byte can resolve.
+        if (_cachedOpacityAttrs == null || Math.Abs(_cachedOpacity - a) > (1f / 255f))
         {
-            new float[] {1, 0, 0, 0, 0},
-            new float[] {0, 1, 0, 0, 0},
-            new float[] {0, 0, 1, 0, 0},
-            new float[] {0, 0, 0, a, 0},
-            new float[] {0, 0, 0, 0, 1}
-        });
-        using var attrs = new ImageAttributes();
-        attrs.SetColorMatrix(matrix);
+            _cachedOpacityAttrs?.Dispose();
+            var matrix = new ColorMatrix(new[]
+            {
+                new float[] {1, 0, 0, 0, 0},
+                new float[] {0, 1, 0, 0, 0},
+                new float[] {0, 0, 1, 0, 0},
+                new float[] {0, 0, 0, a, 0},
+                new float[] {0, 0, 0, 0, 1}
+            });
+            _cachedOpacityAttrs = new ImageAttributes();
+            _cachedOpacityAttrs.SetColorMatrix(matrix);
+            _cachedOpacity = a;
+        }
 
         g.DrawImage(
             cachedImage,
             new[] { new PointF(dest.Left, dest.Top), new PointF(dest.Right, dest.Top), new PointF(dest.Left, dest.Bottom) },
             new RectangleF(0, 0, cachedImage.Width, cachedImage.Height),
             GraphicsUnit.Pixel,
-            attrs);
+            _cachedOpacityAttrs);
     }
 
     private static void DrawPixel(Graphics g, CrosshairProfile p, double sizeMul, Color body, Color outline)

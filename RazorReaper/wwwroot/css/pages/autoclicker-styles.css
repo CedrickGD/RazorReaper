@@ -1,422 +1,240 @@
-﻿.autoclicker-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    height: auto;
-    min-height: calc(100vh - 200px);
+/* Auto Clicker — uses the INI Changer 3-widget pattern (.ini-layout, .ini-widget,
+   .ini-widget-header, .ini-widget-pill, .ini-widget-body, .ini-widget-cta). All
+   the visual styling for those classes lives in ini-changer-styles.css so we
+   only override grid-template-columns (3 equal bars instead of 195px / 290px / 1fr)
+   and add a handful of autoclicker-specific element styles. */
+
+/* Equal 3-column grid that fills the viewport (matches INI Changer's behavior).
+   Widgets are stretched to row height; content inside each widget distributes
+   via flex so the Timing CTA pins to the bottom and bodies fill the middle. */
+.autoclicker-layout.ini-layout {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: calc(100vh - 240px);
+    min-height: 460px;
+    align-items: stretch;
 }
 
-    .autoclicker-layout .control-panel,
-    .autoclicker-layout .status-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
+/* ── Widget visual polish: subtle top accent + icon next to h3 ────────── */
 
-    .autoclicker-layout .setting-group {
-        margin-bottom: 1.5rem;
-    }
-
-        .autoclicker-layout .setting-group:last-child {
-            margin-bottom: 0;
-        }
-
-    .autoclicker-layout .setting-label {
-        display: block;
-        color: var(--text-primary);
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
-    }
-
-    .autoclicker-layout .interval-inputs {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.75rem;
-    }
-
-    .autoclicker-layout .time-input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .autoclicker-layout .time-input {
-        width: 100%;
-        padding: 0.5rem;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 6px;
-        color: var(--text-primary);
-        text-align: center;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-    }
-
-        .autoclicker-layout .time-input:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.4);
-            background: rgba(0, 0, 0, 0.4);
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
-        }
-
-    .autoclicker-layout .time-label {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        text-align: center;
-    }
-
-    .autoclicker-layout .button-select {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .autoclicker-layout .select-btn {
-        flex: 1;
-        padding: 0.75rem;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 8px;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        font-weight: 500;
-        position: relative;
-        overflow: hidden;
-    }
-
-        .autoclicker-layout .select-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
-        }
-
-        .autoclicker-layout .select-btn.active {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
-            border-color: var(--accent-purple);
-            color: var(--accent-purple);
-            font-weight: 600;
-        }
-
-            .autoclicker-layout .select-btn.active::after {
-                content: '✓';
-                position: absolute;
-                top: 0.25rem;
-                right: 0.5rem;
-                font-size: 0.75rem;
-            }
-
-    .autoclicker-layout .repeat-options {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .autoclicker-layout .radio-group {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-        .autoclicker-layout .radio-group input[type="radio"] {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--accent-purple);
-            cursor: pointer;
-        }
-
-        .autoclicker-layout .radio-group label {
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            cursor: pointer;
-        }
-
-    .autoclicker-layout .repeat-input {
-        width: 80px;
-        padding: 0.25rem 0.5rem;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-        color: var(--text-primary);
-        text-align: center;
-        margin: 0 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-        .autoclicker-layout .repeat-input:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-    .autoclicker-layout .hotkey-group {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .autoclicker-layout .hotkey-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0;
-    }
-
-    .autoclicker-layout .hotkey-label {
-        color: var(--text-primary);
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-
-    .autoclicker-layout .hotkey-btn {
-        padding: 0.5rem 1rem;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 6px;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-width: 120px;
-        font-family: var(--font-mono);
-        font-weight: 600;
-    }
-
-    .autoclicker-layout .hotkey-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.3);
-        transform: translateY(-1px);
-    }
-
-    .autoclicker-layout .hotkey-btn.recording {
-        background: rgba(139, 92, 246, 0.12);
-        border-color: rgba(139, 92, 246, 0.5);
-        color: var(--text-primary);
-    }
-
-    .autoclicker-layout .hotkey-info {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        background: rgba(139, 92, 246, 0.1);
-        border: 1px solid rgba(139, 92, 246, 0.3);
-        border-radius: 8px;
-        margin-top: 1rem;
-    }
-
-        .autoclicker-layout .hotkey-info svg {
-            width: 16px;
-            height: 16px;
-            color: var(--accent-purple);
-            flex-shrink: 0;
-        }
-
-        .autoclicker-layout .hotkey-info span {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            line-height: 1.4;
-        }
-
-    .autoclicker-layout .position-options {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-
-    .autoclicker-layout .position-controls {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .autoclicker-layout .coord-inputs {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .autoclicker-layout .coord-group {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex: 1;
-    }
-
-        .autoclicker-layout .coord-group label {
-            color: var(--text-secondary);
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-    .autoclicker-layout .coord-input {
-        flex: 1;
-        padding: 0.5rem;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-        color: var(--text-primary);
-        text-align: center;
-        font-family: var(--font-mono);
-        transition: all 0.3s ease;
-    }
-
-        .autoclicker-layout .coord-input:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.4);
-            background: rgba(0, 0, 0, 0.4);
-        }
-
-    .autoclicker-layout .pick-btn {
-        width: 100%;
-        padding: 0.75rem;
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
-        border: 1px solid var(--accent-purple);
-        border-radius: 8px;
-        color: var(--accent-purple);
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        font-weight: 500;
-        position: relative;
-        overflow: hidden;
-    }
-
-        .autoclicker-layout .pick-btn:hover {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.2));
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-        }
-
-        .autoclicker-layout .pick-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .autoclicker-layout .pick-btn svg {
-            width: 18px;
-            height: 18px;
-        }
-
-    .autoclicker-layout .current-position {
-        margin-top: 1rem;
-        padding: 0.75rem;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 6px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .autoclicker-layout .position-label {
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-    }
-
-    .autoclicker-layout .position-value {
-        color: var(--text-primary);
-        font-family: var(--font-mono);
-        font-weight: 500;
-    }
-
-.autoclicker-status-card {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
+.autoclicker-layout .ac-widget {
     position: relative;
     overflow: hidden;
 }
 
-    .autoclicker-status-card.active {
-        border-color: var(--accent-purple);
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(139, 92, 246, 0.02));
-    }
+.autoclicker-layout .ac-widget.is-running {
+    border-color: rgba(139, 92, 246, 0.55) !important;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25);
+}
 
-.autoclicker-status-header {
+.autoclicker-layout .ini-widget-header {
+    margin-bottom: 0.5rem;
+}
+
+.autoclicker-layout .ini-widget-header h3 {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
+    gap: 0.45rem;
 }
 
-    .autoclicker-status-header h3 {
-        margin: 0;
-        color: var(--text-primary);
-    }
-
-.autoclicker-status-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    position: relative;
+.autoclicker-layout .ac-widget-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--accent-purple);
+    opacity: 0.9;
 }
 
-    .autoclicker-status-indicator.running {
-        background: var(--accent-purple);
-        box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
-        animation: autoclicker-pulse 2s infinite;
-    }
+/* ── Live CPS readout — clean inline line, no boxy sticker ────────────── */
 
-    .autoclicker-status-indicator.stopped {
-        background: var(--accent-red);
-        box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
-    }
-
-@keyframes autoclicker-pulse {
-    0% {
-        opacity: 0.7;
-    }
-
-    50% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 0.7;
-    }
-}
-
-.autoclicker-layout .status-info {
+.autoclicker-layout .ac-cps-line {
+    margin-top: auto;
+    padding: 0.5rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
-
-.autoclicker-layout .status-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.autoclicker-layout .status-value {
-    color: var(--text-primary);
-    font-weight: 600;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.4rem;
     font-family: var(--font-mono);
 }
 
-    .autoclicker-layout .status-value.text-green {
-        color: var(--accent-purple);
+.autoclicker-layout .ac-cps-num {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+
+.autoclicker-layout .ac-widget.is-running .ac-cps-num {
+    color: var(--accent-purple-light, #c4b5fd);
+}
+
+.autoclicker-layout .ac-cps-unit {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.autoclicker-layout .ac-cps-sep {
+    color: var(--text-secondary);
+    opacity: 0.35;
+    font-size: 0.7rem;
+}
+
+.autoclicker-layout .ac-cps-sub {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.65;
+}
+
+/* Body fills the available vertical space inside each widget so the page
+   feels intentional even when a widget only has a few rows of content. */
+.autoclicker-layout .ini-widget-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ── CTA row at the bottom of the TIMING widget (Start + Reset) ──────── */
+.autoclicker-layout .ac-cta-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+    .autoclicker-layout .ac-cta-row .ini-widget-cta {
+        flex: 1;
+        margin: 0;
     }
 
-    .autoclicker-layout .status-value.text-red {
-        color: var(--accent-red);
+    .autoclicker-layout .ac-cta-row .ini-widget-cta.danger {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.1));
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #fecaca;
     }
+
+/* ── Compact interval widget — 4 small inputs inline ─────────────────── */
+
+.autoclicker-layout .interval-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.autoclicker-layout .interval-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.3rem 0.4rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    min-width: 0;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+    .autoclicker-layout .interval-cell:focus-within {
+        border-color: rgba(139, 92, 246, 0.55);
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+    .autoclicker-layout .interval-cell.wide {
+        flex: 1.5;
+    }
+
+.autoclicker-layout .interval-input {
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: right;
+    padding: 0;
+    -moz-appearance: textfield;
+}
+
+.autoclicker-layout .interval-input::-webkit-outer-spin-button,
+.autoclicker-layout .interval-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.autoclicker-layout .interval-tag {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: lowercase;
+    flex-shrink: 0;
+    opacity: 0.75;
+}
+
+/* ── field + label spacing inside widgets ─────────────────────────────── */
+
+.autoclicker-layout .field {
+    margin-bottom: 0.55rem;
+}
+
+.autoclicker-layout .field:last-child {
+    margin-bottom: 0;
+}
+
+.autoclicker-layout .field-label {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    opacity: 0.88;
+    letter-spacing: 0.02em;
+}
+
+/* ── Segmented control sizing (slightly tighter than crosshair defaults) ─ */
+
+.autoclicker-layout .seg-control {
+    padding: 0.18rem !important;
+    gap: 0.18rem !important;
+    margin-bottom: 0 !important;
+    border-radius: 7px !important;
+}
+
+.autoclicker-layout .seg-btn {
+    padding: 0.32rem 0.4rem !important;
+    font-size: 0.74rem !important;
+    border-radius: 5px !important;
+}
+
+/* ── Numeric / text inputs — compact ─────────────────────────────────── */
+
+.autoclicker-layout .rr-input,
+.autoclicker-layout .num-input,
+.autoclicker-layout .rr-select {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.85rem !important;
+}
+
+/* ── Progress bar shown in Fixed-count repeat mode ────────────────────── */
 
 .autoclicker-layout .progress-bar {
     width: 100%;
-    height: 6px;
-    background: rgba(0, 0, 0, 0.3);
+    height: 5px;
+    background: rgba(0, 0, 0, 0.35);
     border-radius: 3px;
     overflow: hidden;
-    position: relative;
+    margin-top: 0.25rem;
 }
 
 .autoclicker-layout .progress-fill {
@@ -424,469 +242,94 @@
     background: linear-gradient(90deg, var(--accent-purple), var(--accent-purple-light));
     border-radius: 3px;
     transition: width 0.3s ease;
-    position: relative;
 }
 
-.autoclicker-layout .control-buttons {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
-    margin-top: 1.5rem;
-}
+/* ── Hotkey button — full-width inside its field ──────────────────────── */
 
-.autoclicker-layout .control-buttons .btn {
-    padding: 0.85rem 1.25rem;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    min-height: 44px;
-    text-transform: none;
-}
-
-.autoclicker-layout .control-buttons .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-.autoclicker-layout .btn-start {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.08));
-    color: var(--text-primary);
-    border: 1px solid rgba(139, 92, 246, 0.4);
-    box-shadow: none;
-}
-
-.autoclicker-layout .btn-start:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.15));
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(139, 92, 246, 0.25);
-    border-color: var(--accent-purple);
-}
-
-.autoclicker-layout .btn-stop {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.08));
-    color: var(--text-primary);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    box-shadow: none;
-}
-
-.autoclicker-layout .btn-stop:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(239, 68, 68, 0.15));
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.25);
-    border-color: var(--accent-red);
-}
-
-.autoclicker-layout .btn-secondary {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-primary);
+.autoclicker-layout .hotkey-btn {
+    padding: 0.4rem 0.75rem !important;
+    font-size: 0.85rem !important;
+    font-family: var(--font-mono);
+    background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: none;
-    padding: 0.85rem 1.1rem;
-    min-width: 110px;
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
 }
 
-.autoclicker-layout .btn-secondary:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.12);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+.autoclicker-layout .hotkey-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.3);
 }
 
-@media (max-width: 1024px) {
-    .autoclicker-layout {
-        grid-template-columns: 1fr;
-    }
-
-        .autoclicker-layout .control-panel {
-            order: 2;
-        }
-
-        .autoclicker-layout .status-panel {
-            order: 1;
-        }
+.autoclicker-layout .hotkey-btn.recording {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.6);
 }
 
-@media (max-width: 768px) {
-    .autoclicker-layout .interval-inputs {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .autoclicker-layout .button-select {
-        flex-direction: column;
-    }
-
-    .autoclicker-layout .control-buttons {
-        grid-template-columns: 1fr;
-    }
-
-    .autoclicker-layout .coord-inputs {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .autoclicker-layout .hotkey-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-
-    .autoclicker-layout .hotkey-btn {
-        width: 100%;
-    }
+.autoclicker-layout .hotkey-btn.full-width {
+    width: 100%;
+    min-width: 0;
 }
 
-/* Multi-position styles */
-.multi-position-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.positions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 200px;
-    overflow-y: auto;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-}
-
-.no-positions {
-    text-align: center;
-    padding: 2rem;
+.autoclicker-layout .muted-line {
+    font-size: 0.7rem !important;
+    margin: 0.35rem 0 0 !important;
     color: var(--text-secondary);
+    opacity: 0.7;
 }
 
-.position-item {
+/* ── Multi-position list ─────────────────────────────────────────────── */
+
+.autoclicker-layout .positions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    margin: 0.45rem 0;
+}
+
+.autoclicker-layout .position-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
+    gap: 0.45rem;
+    padding: 0.3rem 0.45rem;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 5px;
 }
 
-.position-number {
-    width: 24px;
-    height: 24px;
+.autoclicker-layout .position-number {
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--accent-purple);
     color: white;
     border-radius: 50%;
-    font-size: 0.85rem;
-    font-weight: bold;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
 }
 
-.position-coords {
+.autoclicker-layout .position-coords {
     flex: 1;
     color: var(--text-primary);
     font-family: var(--font-mono);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
-.btn-remove {
-    padding: 0.4rem;
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    border-radius: 6px;
-    color: #ef4444;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-remove:hover {
-    background: rgba(239, 68, 68, 0.3);
-    border-color: #ef4444;
-}
-
-.btn-remove svg {
-    width: 16px;
-    height: 16px;
-    display: block;
-}
-
-.burst-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-}
-
-.burst-input-group {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}
-
-.burst-input-group label {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.burst-input {
-    width: 100px;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    text-align: right;
-}
-
-/* Profile styles */
-.profile-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.profile-select {
-    width: 100%;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    cursor: pointer;
-}
-
-.profile-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.profile-dialog {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-}
-
-.profile-input {
-    width: 100%;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    margin-bottom: 0.75rem;
-}
-
-.dialog-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-/* Heatmap modal styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(5px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: var(--background-dark);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    max-width: 90vw;
-    max-height: 90vh;
-    overflow: auto;
-}
-
-.heatmap-modal {
-    width: 1200px;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h2 {
-    margin: 0;
-    color: var(--text-primary);
-}
-
-.modal-close {
-    padding: 0.5rem;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.modal-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-}
-
-.modal-close svg {
-    width: 20px;
-    height: 20px;
-    display: block;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.heatmap-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.heatmap-stats {
-    display: flex;
-    gap: 2rem;
-}
-
-.heatmap-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.heatmap-stat span:first-child {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-
-.heatmap-stat span:last-child {
-    font-size: 1.25rem;
-    font-weight: bold;
-    color: var(--accent-purple);
-}
-
-.heatmap-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.heatmap-canvas-container {
-    background: #000;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 1rem;
-}
-
-.heatmap-canvas-container canvas {
-    display: block;
-    width: 100%;
-    height: auto;
-}
-
-.heatmap-legend {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-}
-
-.legend-gradient {
-    width: 200px;
-    height: 20px;
-    background: linear-gradient(to right, rgb(0, 127, 255), rgb(255, 200, 0), rgb(255, 0, 0));
-    border-radius: 4px;
-}
-
-.heatmap-button-container {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-.heatmap-button-container button {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.heatmap-button-container button svg {
-    width: 16px;
-    height: 16px;
-}
-
-.checkbox-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.checkbox-group input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-.checkbox-group label {
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.randomization-settings, .slider-group {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-}
-
-.slider {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.2);
-    outline: none;
-    margin-top: 0.5rem;
-}
-
-.slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--accent-purple);
-    cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--accent-purple);
-    cursor: pointer;
-    border: none;
+/* Collapse to 1 column only at very narrow widths so users always see the
+   `| TIMING | CLICK | TARGET |` row at default window size. */
+@media (max-width: 720px) {
+    .autoclicker-layout.ini-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
 }

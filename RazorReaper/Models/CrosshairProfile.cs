@@ -98,7 +98,10 @@ public class CrosshairProfile
             Rainbow = Rainbow,
             ImagePath = ImagePath,
             ImageScale = ImageScale,
-            PixelGridSize = PixelGridSize,
+            // PixelGridSize is sourced from JSON profiles and the editor preset chooser — clamp
+            // here so a corrupted profile (or a future preset typo) can't push the renderer past
+            // a 64x64 grid (4096 cells per render) or below the 4x4 minimum the editor relies on.
+            PixelGridSize = Math.Clamp(PixelGridSize, 4, 64),
             PixelArtData = PixelArtData,
         };
     }

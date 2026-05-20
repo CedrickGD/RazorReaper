@@ -23,11 +23,18 @@ public partial class CrosshairService
 
         lock (_previewImageLock)
         {
-            var frame = _previewImage?.FrameAt(_previewStart);
-            // PreviewMaxBound keeps the editor pane render cheap. Source images render at native
-            // resolution into a small canvas via DrawImage — bicubic downscale is fast enough that
-            // the per-tick cost stays comfortably under one frame's budget.
-            var canvasSize = CrosshairRenderer.ComputeCanvasSize(snapshot, frame, PreviewMaxBound);
+            // AnimationSpeed drives GIF/video playback in lockstep with the shape phase so the
+            // editor preview reflects what the overlay will do at the same speed setting.
+            var imageSpeed = Math.Clamp(snapshot.AnimationSpeed, 1, 10) / 5.0;
+            var frame = _previewImage?.FrameAt(_previewStart, imageSpeed);
+            // The overlay clamps its canvas to the active monitor's smaller dimension; if the
+            // preview ignores that and clamps to PreviewMaxBound instead, the preview hits its
+            // ceiling well before the overlay does and at high scales the editor pane looks
+            // much smaller than what actually appears on screen. Match the overlay's bound and
+            // then scale down to the preview pane, so the preview is proportionally identical.
+            var monitorBound = ResolvePreviewMonitorBound(snapshot);
+            var previewBound = ComputePreviewBound(monitorBound);
+            var canvasSize = CrosshairRenderer.ComputeCanvasSize(snapshot, frame, previewBound);
             if (_previewRenderBuffer == null || _previewRenderBufferSize != canvasSize)
             {
                 _previewRenderBuffer?.Dispose();
@@ -127,5 +134,46 @@ public partial class CrosshairService
                 return _previewImage?.IsAnimated == true;
             }
         }
+    }
+
+    /// <summary>
+    /// Returns the smaller monitor dimension the overlay would use for this profile, so the
+    /// preview's ComputeCanvasSize is bounded by the same ceiling as the overlay's. Falls back
+    /// to a reasonable default if no monitor is available (e.g., headless test contexts).
+    /// </summary>
+    private int ResolvePreviewMonitorBound(CrosshairProfile snapshot)
+    {
+        try
+        {
+            var monitors = _overlay.GetMonitors();
+            MonitorInfo? target = null;
+            if (!string.IsNullOrEmpty(snapshot.MonitorDeviceName))
+            {
+                target = monitors.FirstOrDefault(m => string.Equals(
+                    m.DeviceName, snapshot.MonitorDeviceName, StringComparison.OrdinalIgnoreCase));
+            }
+            target ??= monitors.FirstOrDefault(m => m.IsPrimary) ?? monitors.FirstOrDefault();
+            if (target != null) return Math.Min(target.Width, target.Height);
+        }
+        catch { /* fall through */ }
+        return 1080;
+    }
+
+    /// <summary>
+    /// Down-scale the overlay's monitor bound to a preview-pane-friendly size. Picking the
+    /// bound at <c>monitorBound / PreviewDivisor</c> (clamped to PreviewMaxBound and the
+    /// renderer's ceiling) means the preview's canvas grows in proportion to the overlay's
+    /// — so the editor pane shows a faithful miniature instead of clipping at a fixed 384
+    /// while the live overlay scales much larger.
+    /// </summary>
+    private static int ComputePreviewBound(int monitorBound)
+    {
+        if (monitorBound <= 0) return PreviewMaxBound;
+        // A 1080-px monitor / 3 = 360, a 1440-px monitor / 3 = 480, etc. We then clamp to
+        // PreviewMaxBound on the low side (keeps small monitors usable) and the renderer's
+        // hard cap on the high side. The browser scales the PNG into the editor pane.
+        const int PreviewDivisor = 3;
+        var scaled = Math.Max(PreviewMaxBound, monitorBound / PreviewDivisor);
+        return Math.Min(scaled, CrosshairRenderer.MaxCanvasSize);
     }
 }

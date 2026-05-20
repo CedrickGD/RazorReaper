@@ -484,8 +484,9 @@
                 arkPath = "";
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Debug.WriteLine($"Paintings folder check failed: {ex.Message}");
             folderExists = false;
             fileCount = 0;
             folderPath = "";
@@ -503,8 +504,9 @@
                 fileCount = files.Length;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Debug.WriteLine($"Paintings file count failed: {ex.Message}");
             fileCount = 0;
         }
     }

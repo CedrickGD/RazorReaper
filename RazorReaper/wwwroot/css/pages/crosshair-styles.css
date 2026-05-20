@@ -3,20 +3,6 @@
    layout so we can fit the whole editor without scrolling on a 1080p screen.
 */
 
-.crosshair-page-header {
-    margin-bottom: 1.5rem !important;
-    padding-bottom: 0.85rem !important;
-}
-
-    .crosshair-page-header .page-title {
-        font-size: 1.85rem !important;
-        margin-bottom: 0.15rem !important;
-    }
-
-    .crosshair-page-header .page-subtitle {
-        font-size: 0.92rem !important;
-    }
-
 .crosshair-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

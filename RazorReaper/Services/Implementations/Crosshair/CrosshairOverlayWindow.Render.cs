@@ -3,6 +3,9 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using RazorReaper.Models;
 using Color = System.Drawing.Color;
+// Maui implicit usings ambiguate Graphics — alias to System.Drawing.Graphics so Graphics.FromImage
+// resolves the same way the sibling partials use it.
+using Graphics = System.Drawing.Graphics;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -64,7 +67,10 @@ internal sealed partial class CrosshairOverlayWindow
         var monitor = ResolveMonitor(profile.MonitorDeviceName);
 
         var phase = ComputePhase(profile);
-        var imageFrame = animated?.FrameAt(_animationStart);
+        // AnimationSpeed (1..10, default 5) drives both shape phase and GIF/video playback so
+        // the two stay in sync. 5 → 1.0× (native), 1 → 0.2×, 10 → 2.0×.
+        var imageSpeed = Math.Clamp(profile.AnimationSpeed, 1, 10) / 5.0;
+        var imageFrame = animated?.FrameAt(_animationStart, imageSpeed);
         // Never let the overlay exceed the active monitor's smaller dimension — that's the
         // physical ceiling the user actually wants ("not bigger than one monitor").
         var monitorBound = Math.Min(monitor.Width, monitor.Height);
@@ -78,6 +84,13 @@ internal sealed partial class CrosshairOverlayWindow
             _renderBufferSize = canvasSize;
         }
         var bmp = _renderBuffer;
+        // Defensive clear before handing the buffer to the renderer. RenderInto clears as part
+        // of its own setup, but if a future early-return path skips that clear we'd otherwise
+        // push stale pixels (or a partial frame) to the layered window. Cheap on a pooled buffer.
+        using (var clearG = Graphics.FromImage(bmp))
+        {
+            clearG.Clear(Color.Transparent);
+        }
         CrosshairRenderer.RenderInto(bmp, profile, phase, imageFrame);
 
         var screenX = monitor.X + monitor.Width / 2 - bmp.Width / 2 + profile.OffsetX;

@@ -13,6 +13,9 @@
     border-radius: 16px;
     padding: 1.75rem 2rem;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    /* Same float-in animation as `.content-card` (theme.css) so the Credits page
+       enters with the same feel as every other route. */
+    animation: fadeInUp 0.6s ease-out;
 }
 
 /* ── Developer card ── */

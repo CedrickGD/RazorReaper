@@ -535,7 +535,12 @@
             }
 
             // Open folder in Windows Explorer
-            System.Diagnostics.Process.Start("explorer.exe", fontFolderPath);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{fontFolderPath}\"",
+                UseShellExecute = true
+            });
 
             NotificationService.ShowSuccess("Opened font folder in Explorer!");
             ActivityService.AddActivity("Opened font folder", "info");

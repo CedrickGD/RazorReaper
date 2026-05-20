@@ -98,7 +98,7 @@ internal sealed class SteamWorkshopApiClient
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Failed to fetch Steam metadata for workshop batch starting at {Offset}", offset);
+                _logger.LogWarning(ex, "Steam workshop batch request failed (continuing with partial data) at offset {Offset}", offset);
             }
         }
 

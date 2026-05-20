@@ -676,7 +676,10 @@
         if (needsShapeAnim || needsImageAnim)
         {
             if (_animTimer != null) return;
-            _animTimer = new System.Timers.Timer(40) { AutoReset = true };
+            // 50 ms (20 Hz) preview tick — barely-perceptibly slower than the previous 40 ms
+            // (25 Hz) but trims the per-tick PNG-encode + base64 work by ~20% when the editor
+            // pane is the only thing watching. Live overlay still runs at its own 30 Hz.
+            _animTimer = new System.Timers.Timer(50) { AutoReset = true };
             _animTimer.Elapsed += AnimTick;
             _animTimer.Start();
         }
