@@ -6,10 +6,12 @@ namespace RazorReaper.Services.Implementations;
 /// <summary>
 /// Per-preset image override storage. Each preset can have a single user-supplied image saved
 /// under <c>LocalAppData/RazorReaper/PresetImages/&lt;slug&gt;.&lt;ext&gt;</c>. Overrides win
-/// over the bundled <c>wwwroot/images/presets/&lt;slug&gt;.jpg</c> image when reading.
+/// over the bundled <c>wwwroot/images/presets/&lt;slug&gt;.&lt;ext&gt;</c> image when reading.
 /// </summary>
 public partial class IniPresetService
 {
+    private const string DefaultPresetImage = "/images/presets/default.png";
+
     /// <inheritdoc/>
     public string GetPresetImagePath(string presetName)
     {
@@ -17,7 +19,7 @@ public partial class IniPresetService
         {
             if (string.IsNullOrWhiteSpace(presetName))
             {
-                return "/images/presets/default.jpg";
+                return DefaultPresetImage;
             }
 
             var slug = ToSlug(presetName);
@@ -34,16 +36,23 @@ public partial class IniPresetService
                 }
             }
 
-            // 2) Bundled preset image (shipped under wwwroot/images/presets).
-            var relativePath = $"/images/presets/{slug}.jpg";
-            var physicalPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "presets", $"{slug}.jpg");
+            // 2) Bundled preset image (shipped under wwwroot/images/presets). Try each
+            //    supported extension so authors can drop PNG/JPG/WEBP without code changes.
+            var bundledDir = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "presets");
+            foreach (var ext in AllowedImageExtensions)
+            {
+                if (File.Exists(Path.Combine(bundledDir, $"{slug}{ext}")))
+                {
+                    return $"/images/presets/{slug}{ext}";
+                }
+            }
 
-            return File.Exists(physicalPath) ? relativePath : "/images/presets/default.jpg";
+            return DefaultPresetImage;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting image path for preset: {PresetName}", presetName);
-            return "/images/presets/default.jpg";
+            return DefaultPresetImage;
         }
     }
 

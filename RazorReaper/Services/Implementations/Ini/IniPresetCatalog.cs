@@ -20,12 +20,12 @@ internal static class IniPresetCatalog
             BuildPreset("Hard Stalker",      "hard-stalker.ini",           "Long-range PvP visibility."),
             BuildPreset("Soft",              "soft.ini",                   "Balanced look and FPS."),
             BuildPreset("Black Spyglass",    "black-spyglass.ini",         "Dark with Spyglass tweaks."),
-            BuildPreset("Contenant Creator", "contenant-creator.ini",      "Content creator tuning."),
+            BuildPreset("Content Creator",   "content-creator.ini",        "Content creator tuning."),
             BuildPreset("Stalker",           "stalker.ini",                "Player/dino spotting."),
-            BuildPreset("Black",             "black.ini",                  "Black tinted scene."),
+            BuildPreset("Black Semi Hard",   "black-semi-hard.ini",        "Black tinted scene."),
             BuildPreset("Hard",              "hard.ini",                   "Raid-grade FPS."),
             BuildPreset("Clear Water Snow North", "clear-water-snow-north.ini", "Snow biome with clear water."),
-            BuildPreset("Very Soft",         "very-soft.ini",              "Soft visuals, gentle FPS bump."),
+            BuildPreset("Semi Soft",         "semi-soft.ini",              "Soft visuals, gentle FPS bump."),
         };
     }
 
