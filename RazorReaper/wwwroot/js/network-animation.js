@@ -41,19 +41,15 @@ class NetworkAnimation {
             }, 150);
         });
 
-        // Pause animation when window/tab is hidden
+        // When visibility changes, reschedule with the correct timer
+        // (rAF is throttled/paused while hidden; setTimeout keeps ticking).
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.pause();
-            } else if (!this.animationPaused) {
-                this.resume();
+            if (this.animationId !== null) {
+                cancelAnimationFrame(this.animationId);
+                clearTimeout(this.animationId);
+                this.animationId = null;
+                this.scheduleNextFrame();
             }
-        });
-
-        // Pause when window loses focus
-        window.addEventListener('blur', () => this.pause());
-        window.addEventListener('focus', () => {
-            if (!this.animationPaused) this.resume();
         });
     }
 
@@ -70,8 +66,8 @@ class NetworkAnimation {
             this.nodes.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                vx: (Math.random() - 0.5) * 0.6,
-                vy: (Math.random() - 0.5) * 0.6,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5,
                 size: Math.random() * 0.8 + 0.4,
                 pulseOffset: Math.random() * Math.PI * 2,
                 trail: []
@@ -117,13 +113,7 @@ class NetworkAnimation {
     }
 
     animate() {
-        // Don't run if paused or hidden
-        if (document.hidden) {
-            this.animationId = null;
-            return;
-        }
-
-        this.time += 0.02;
+        this.time += 0.017;
 
         this.ctx.fillStyle = '#0a0a0a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -219,18 +209,30 @@ class NetworkAnimation {
             }
         }
 
-        this.animationId = requestAnimationFrame(() => this.animate());
+        this.scheduleNextFrame();
+    }
+
+    scheduleNextFrame() {
+        // rAF gets throttled to ~1Hz (or paused entirely) when the document is
+        // hidden — fall back to setTimeout so the animation keeps running while
+        // the app is tabbed out / minimized.
+        if (document.hidden) {
+            this.animationId = setTimeout(() => this.animate(), 33);
+        } else {
+            this.animationId = requestAnimationFrame(() => this.animate());
+        }
     }
 
     pause() {
-        if (this.animationId) {
+        if (this.animationId !== null) {
             cancelAnimationFrame(this.animationId);
+            clearTimeout(this.animationId);
             this.animationId = null;
         }
     }
 
     resume() {
-        if (!this.animationId) {
+        if (this.animationId === null) {
             this.animate();
         }
     }
