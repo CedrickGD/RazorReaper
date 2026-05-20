@@ -63,4 +63,18 @@ public interface IIniPresetService
     /// </summary>
     /// <param name="presetName">The preset name.</param>
     bool HasCustomImage(string presetName);
+
+    /// <summary>
+    /// Returns the name of the most-recently applied preset, or null if none has been remembered
+    /// (first run, or persistence file missing/unreadable). Used by the editor to restore the
+    /// hero preview between sessions.
+    /// </summary>
+    string? GetLastAppliedPresetName();
+
+    /// <summary>
+    /// Records the name of a preset that was just applied to the live INI. Persisted to
+    /// LocalAppData so the next session can restore it.
+    /// </summary>
+    /// <param name="presetName">The preset name. Empty or whitespace clears the record.</param>
+    void SetLastAppliedPresetName(string presetName);
 }

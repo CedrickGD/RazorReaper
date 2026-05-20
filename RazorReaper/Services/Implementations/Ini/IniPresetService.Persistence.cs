@@ -24,6 +24,74 @@ public partial class IniPresetService
         return Path.Combine(basePath, "RazorReaper", CustomImagesFolderName);
     }
 
+    private static string GetLastAppliedPresetPath()
+    {
+        var basePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(basePath, "RazorReaper", "Presets", "last-applied.txt");
+    }
+
+    /// <inheritdoc/>
+    public string? GetLastAppliedPresetName()
+    {
+        try
+        {
+            var path = GetLastAppliedPresetPath();
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            var name = File.ReadAllText(path).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            // Only return it if the preset still exists in the current catalog — names may
+            // have been renamed or removed between sessions.
+            lock (_presetLock)
+            {
+                return _presets.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    ? name
+                    : null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read last-applied preset name");
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void SetLastAppliedPresetName(string presetName)
+    {
+        try
+        {
+            var path = GetLastAppliedPresetPath();
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            if (string.IsNullOrWhiteSpace(presetName))
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+                return;
+            }
+
+            File.WriteAllText(path, presetName.Trim());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist last-applied preset name");
+        }
+    }
+
     private void LoadCustomPresets()
     {
         try

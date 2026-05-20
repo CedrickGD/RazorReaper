@@ -16,6 +16,18 @@
         document.body.style.overflow = 'hidden';
     };
 
+    // Callable from Blazor (JSRuntime.InvokeVoidAsync("rrZoomUrl", src, alt)).
+    window.rrZoomUrl = function (src, alt) {
+        if (!src) return;
+        var overlay = getOverlay();
+        var img = getImg();
+        if (!overlay || !img) return;
+        img.src = src;
+        img.alt = alt || '';
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    };
+
     window.rrCloseZoom = function (e) {
         // Clicking the actual <img> inside the overlay should not close.
         if (e && e.target && e.target.id === 'rr-lightbox-img') return;
