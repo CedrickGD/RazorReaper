@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Release tag to point update.xml at (e.g. v1.4.3)"
+        description: "Release tag to point update.xml at (e.g. v1.4.4)"
         required: true
         type: string
 
@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # v1.4.3 -> 1.4.3 -> 1.4.3.0
+          # v1.4.4 -> 1.4.4 -> 1.4.4.0
           tag_clean="${TAG_NAME#v}"
           xml_version="${tag_clean}.0"
 
