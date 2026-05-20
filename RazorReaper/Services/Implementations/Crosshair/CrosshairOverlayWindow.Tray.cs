@@ -88,8 +88,9 @@ internal sealed partial class CrosshairOverlayWindow
         var mouseMsg = (uint)LowWord(lParam);
         switch (mouseMsg)
         {
+            case WM_LBUTTONUP:
             case WM_LBUTTONDBLCLK:
-                SafeInvoke(_onTrayShowApp, "tray double-click → show app");
+                SafeInvoke(_onTrayShowApp, "tray left-click → show app");
                 break;
             case WM_CONTEXTMENU:
             case WM_RBUTTONUP:
@@ -98,17 +99,40 @@ internal sealed partial class CrosshairOverlayWindow
         }
     }
 
+    private static bool s_darkMenusEnabled;
+
+    private static void TryEnableDarkMenus()
+    {
+        if (s_darkMenusEnabled) return;
+        try
+        {
+            // uxtheme ordinal 135 = SetPreferredAppMode. AllowDark (1) makes Win32 popup
+            // menus follow the system dark-mode setting — so on Win11 dark mode the tray
+            // menu picks up the native dark/rounded look instead of the legacy white menu.
+            SetPreferredAppMode(1);
+            FlushMenuThemes();
+        }
+        catch
+        {
+            // Pre-Win10 1903 or future API change — fall back to default system styling.
+        }
+        // Set unconditionally so we don't keep retrying on older OS versions.
+        s_darkMenusEnabled = true;
+    }
+
     private void ShowTrayMenu()
     {
+        TryEnableDarkMenus();
+
         IntPtr menu = CreatePopupMenu();
         if (menu == IntPtr.Zero) return;
 
         var overlayActive = false;
         try { overlayActive = _isOverlayActive(); } catch { }
 
-        AppendMenu(menu, MF_STRING | (overlayActive ? MF_CHECKED : 0), CmdToggleOverlay, overlayActive ? "Hide overlay" : "Show overlay");
-        AppendMenu(menu, MF_SEPARATOR, 0, null);
         AppendMenu(menu, MF_STRING, CmdOpenApp, "Open Razor Reaper");
+        AppendMenu(menu, MF_SEPARATOR, 0, null);
+        AppendMenu(menu, MF_STRING | (overlayActive ? MF_CHECKED : 0), CmdToggleOverlay, overlayActive ? "Hide overlay" : "Show overlay");
         AppendMenu(menu, MF_SEPARATOR, 0, null);
         AppendMenu(menu, MF_STRING, CmdQuit, "Quit");
 

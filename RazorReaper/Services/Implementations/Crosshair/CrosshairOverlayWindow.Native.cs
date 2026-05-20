@@ -16,6 +16,7 @@ internal sealed partial class CrosshairOverlayWindow
     private const int WM_HOTKEY = 0x0312;
     private const int WM_COMMAND = 0x0111;
     private const int WM_CONTEXTMENU = 0x007B;
+    private const int WM_LBUTTONUP = 0x0202;
     private const int WM_LBUTTONDBLCLK = 0x0203;
     private const int WM_RBUTTONUP = 0x0205;
     private const int WM_USER_UPDATE = 0x0400 + 1;
@@ -260,6 +261,14 @@ internal sealed partial class CrosshairOverlayWindow
 
     [DllImport("user32.dll")]
     private static extern bool DestroyMenu(IntPtr hMenu);
+
+    // Undocumented uxtheme ordinals (Win10 1903+) — opt Win32 popup menus into the
+    // system dark theme. EntryPointNotFoundException on older OS is caught at call site.
+    [DllImport("uxtheme.dll", EntryPoint = "#135", SetLastError = true)]
+    private static extern int SetPreferredAppMode(int preferredAppMode);
+
+    [DllImport("uxtheme.dll", EntryPoint = "#136")]
+    private static extern void FlushMenuThemes();
 
     [DllImport("user32.dll")]
     private static extern bool TrackPopupMenu(IntPtr hMenu, uint uFlags, int x, int y, int nReserved, IntPtr hWnd, IntPtr prcRect);
