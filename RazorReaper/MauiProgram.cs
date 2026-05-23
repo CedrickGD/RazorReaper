@@ -211,6 +211,7 @@ namespace RazorReaper
             services.AddSingleton<ICrosshairService, CrosshairService>();
             services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
             services.AddSingleton<IMemoryPatcherService, MemoryPatcherService>();
+            services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
         }
     }
 }
