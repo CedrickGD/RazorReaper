@@ -209,6 +209,8 @@ namespace RazorReaper
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
             services.AddSingleton<ICrosshairService, CrosshairService>();
+            services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
+            services.AddSingleton<IMemoryPatcherService, MemoryPatcherService>();
         }
     }
 }
