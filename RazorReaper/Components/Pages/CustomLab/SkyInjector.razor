@@ -1,14 +1,732 @@
-@* Phase 1 placeholder. Real UI lands in Phase 4 (service layer first in Phase 3). *@
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Components.Shared
+@using RazorReaper.Models
+@using RazorReaper.Services
 
-<div class="lab-placeholder">
-    <div class="lab-placeholder-icon">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 13a3 3 0 0 1 3-3 4 4 0 0 1 7.8-1A3.2 3.2 0 0 1 17 12.2 2.8 2.8 0 0 1 14.2 15H5.5A2.5 2.5 0 0 1 3 13Z" />
-        </svg>
+@inject ISkyInjectorService Injector
+@inject ICustomLabSettingsService LabSettings
+@inject INotificationService Notifications
+@inject IProcessService ProcessService
+@inject ILogger<SkyInjector> Logger
+@implements IDisposable
+
+<div class="lab-injector">
+    @* ── Status badge ─────────────────────────────────────────────── *@
+    <div class="injector-status @(_hasBackup ? "injected" : "")">
+        <div class="injector-status-icon">
+            @if (_hasBackup)
+            {
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm-1 11.4-3.7-3.7 1.4-1.4L9 10.6l4.3-4.3 1.4 1.4L9 13.4Z" />
+                </svg>
+            }
+            else
+            {
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 3a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0V6a1 1 0 0 1 1-1Zm0 9.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+                </svg>
+            }
+        </div>
+        <div class="injector-status-text">
+            <div class="injector-status-title">@(_hasBackup ? "Sky injected" : "Original")</div>
+            <div class="injector-status-sub">
+                @if (_hasBackup)
+                {
+                    <span>ARK is running with your custom sky. Restore to revert to the original.</span>
+                }
+                else
+                {
+                    <span>No backups on disk yet. Pick an image or color and inject.</span>
+                }
+            </div>
+        </div>
     </div>
-    <h3>Sky Injector</h3>
-    <p>
-        Tab unlocked. The full Sky Injector UI ships in a later update — for now this confirms the lock
-        gate works end to end.
-    </p>
+
+    <div class="injector-grid">
+        @* ── Source card ─────────────────────────────────────────── *@
+        <div class="lab-card injector-source-card">
+            <div class="lab-card-header">
+                <div class="lab-icon-badge accent">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="14" height="12" rx="2" />
+                        <path d="m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7" />
+                        <circle cx="7" cy="7.5" r="1" />
+                    </svg>
+                </div>
+                <div>
+                    <h3>Sky source</h3>
+                    <p>Pick an image to tile across the sky, or choose a flat color.</p>
+                </div>
+            </div>
+
+            <div class="lab-card-content">
+                <div class="injector-mode">
+                    <button type="button"
+                            class="injector-mode-btn @(_options.Mode == SkyInjectionMode.Image ? "active" : "")"
+                            @onclick="() => SetMode(SkyInjectionMode.Image)">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="14" height="12" rx="2" />
+                            <path d="m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7" />
+                        </svg>
+                        Image file
+                    </button>
+                    <button type="button"
+                            class="injector-mode-btn @(_options.Mode == SkyInjectionMode.SolidColor ? "active" : "")"
+                            @onclick="() => SetMode(SkyInjectionMode.SolidColor)">
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                            <circle cx="10" cy="10" r="6.5" />
+                        </svg>
+                        Solid color
+                    </button>
+                </div>
+
+                @if (_options.Mode == SkyInjectionMode.Image)
+                {
+                    <div class="injector-file-row">
+                        <button type="button" class="lab-btn primary" @onclick="PickImage" disabled="@_busy">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="5" width="14" height="11" rx="2" />
+                                <path d="M3 9h14" />
+                                <path d="M10 12v4" />
+                                <path d="M8 14h4" />
+                            </svg>
+                            Browse…
+                        </button>
+                        <div class="injector-file-path" title="@(_options.ImagePath ?? "")">
+                            @if (string.IsNullOrEmpty(_options.ImagePath))
+                            {
+                                <span class="injector-file-empty">No image selected</span>
+                            }
+                            else
+                            {
+                                <span>@System.IO.Path.GetFileName(_options.ImagePath)</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="injector-color-row">
+                        <ColorField @bind-Value="_options.HexColor" />
+                        <span class="injector-color-label">Sky color</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ── Options card ────────────────────────────────────────── *@
+        <div class="lab-card injector-options-card">
+            <div class="lab-card-header">
+                <div class="lab-icon-badge">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 6h8" /><path d="M4 10h12" /><path d="M4 14h6" />
+                        <circle cx="14" cy="6" r="1.4" />
+                        <circle cx="6" cy="14" r="1.4" />
+                    </svg>
+                </div>
+                <div>
+                    <h3>Options</h3>
+                    <p>Tweak how the image is mapped onto the sky.</p>
+                </div>
+            </div>
+
+            <div class="lab-card-content">
+                <div class="lab-settings-row">
+                    <div class="lab-settings-label">
+                        <div class="lab-settings-title">Flip vertically</div>
+                        <p class="lab-settings-desc">
+                            Use if your image has the sky at the top and ground at the bottom — ARK's coordinate
+                            system flips it otherwise.
+                        </p>
+                    </div>
+                    <label class="lab-switch">
+                        <input type="checkbox"
+                               checked="@_options.FlipVertically"
+                               disabled="@(_options.Mode != SkyInjectionMode.Image || _busy)"
+                               @onchange="e => _options.FlipVertically = e.Value is bool b && b" />
+                        <span class="lab-switch-slider"></span>
+                    </label>
+                </div>
+
+                <div class="lab-settings-row">
+                    <div class="lab-settings-label">
+                        <div class="lab-settings-title">Tile size</div>
+                        <p class="lab-settings-desc">
+                            1× shows the full image as the sky. 2× through 4× repeat the image to make
+                            it look smaller / more zoomed in.
+                        </p>
+                    </div>
+                    <select class="injector-select"
+                            value="@_options.TileSize"
+                            @onchange="OnTileChanged"
+                            disabled="@(_options.Mode != SkyInjectionMode.Image || _busy)">
+                        <option value="1">1× — normal</option>
+                        <option value="2">2× — 2 by 2 tiles</option>
+                        <option value="3">3× — 3 by 3 tiles</option>
+                        <option value="4">4× — 4 by 4 tiles (very small)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Actions ─────────────────────────────────────────────────── *@
+    <div class="injector-actions">
+        <button type="button"
+                class="injector-action-btn primary"
+                @onclick="InjectAsync"
+                disabled="@(!CanInject)">
+            @if (_busy && _lastAction == "inject")
+            {
+                <span class="injector-spinner"></span>
+                <span>Injecting…</span>
+            }
+            else
+            {
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 10h12" />
+                    <path d="M10 4l6 6-6 6" />
+                </svg>
+                <span>Inject sky</span>
+            }
+        </button>
+
+        <button type="button"
+                class="injector-action-btn danger"
+                @onclick="RestoreAsync"
+                disabled="@(!CanRestore)">
+            @if (_busy && _lastAction == "restore")
+            {
+                <span class="injector-spinner"></span>
+                <span>Restoring…</span>
+            }
+            else
+            {
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 6V3" /><path d="M4 6h3" />
+                    <path d="M4 6a7 7 0 1 1-2 4.9" />
+                </svg>
+                <span>Restore original sky</span>
+            }
+        </button>
+    </div>
+
+    @* ── Status log ──────────────────────────────────────────────── *@
+    <div class="injector-log">
+        <div class="injector-log-header">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3.5" y="3.5" width="13" height="13" rx="1.5" />
+                <path d="M6.5 7.5h7M6.5 10h7M6.5 12.5h4" />
+            </svg>
+            <span>Output</span>
+            @if (_logLines.Count > 0)
+            {
+                <button type="button" class="injector-log-clear" @onclick="ClearLog">Clear</button>
+            }
+        </div>
+        <div class="injector-log-body">
+            @if (_logLines.Count == 0)
+            {
+                <div class="injector-log-empty">Ready. Pick an image or color, then click <strong>Inject sky</strong>.</div>
+            }
+            else
+            {
+                @foreach (var line in _logLines)
+                {
+                    <div class="injector-log-line @line.Kind">@line.Text</div>
+                }
+            }
+        </div>
+    </div>
+
+    @* ── Coverage ────────────────────────────────────────────────── *@
+    <div class="injector-coverage">
+        <div class="injector-coverage-header">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 16s4.8-4.8 4.8-8A4.8 4.8 0 1 0 5.2 8c0 3.2 4.8 8 4.8 8Z" />
+                <circle cx="10" cy="8" r="1.8" />
+            </svg>
+            <strong>Maps covered</strong>
+        </div>
+        <p class="injector-coverage-list">
+            The Island · Scorched Earth · Aberration · Extinction · Genesis · Genesis 2 (NEW)
+            · The Center · Ragnarok · Valguero · Crystal Isles · Lost Island
+        </p>
+        <p class="injector-coverage-caveat">
+            <strong>Fjordur</strong> uses a different sky system and is not covered. Nighttime on some
+            maps is hardcoded — your sky will only show during day phases there.
+        </p>
+        <p class="injector-coverage-jump">
+            Curious about risks? <button type="button" class="injector-link" @onclick="JumpToReadMe">Read Me</button>
+            · prefer to manage settings? <button type="button" class="injector-link" @onclick="JumpToSettings">Settings</button>
+        </p>
+    </div>
 </div>
+
+<style>
+    /* Page-specific styles live here; shared chrome (.lab-card / .lab-btn / .lab-switch / ...) is in custom-lab-styles.css */
+
+    .lab-injector { max-width: 960px; display: grid; gap: 1.25rem; }
+
+    .injector-status {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--glass-hover);
+        border-left: 4px solid var(--text-secondary);
+        border-radius: 10px;
+    }
+
+    .injector-status.injected {
+        border-left-color: var(--accent-purple);
+        background: rgba(139, 92, 246, 0.06);
+    }
+
+    .injector-status-icon {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .injector-status-icon svg { width: 28px; height: 28px; }
+
+    .injector-status.injected .injector-status-icon { color: var(--accent-purple-light); }
+
+    .injector-status-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.15rem;
+    }
+
+    .injector-status-sub {
+        font-size: 0.86rem;
+        color: rgba(255, 255, 255, 0.65);
+    }
+
+    .injector-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 1rem;
+    }
+
+    .injector-mode {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+        padding: 0.25rem;
+        background: var(--glass-bg);
+        border-radius: 8px;
+    }
+
+    .injector-mode-btn {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.75rem;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .injector-mode-btn svg { width: 16px; height: 16px; }
+
+    .injector-mode-btn:hover { color: var(--text-primary); }
+
+    .injector-mode-btn.active {
+        background: var(--glass-hover);
+        color: var(--text-primary);
+    }
+
+    .injector-file-row {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+    }
+
+    .injector-file-path {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0.75rem;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-hover);
+        border-radius: 6px;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .injector-file-empty { color: var(--text-secondary); font-style: italic; }
+
+    .injector-color-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
+    .injector-color-label {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .injector-select {
+        padding: 0.45rem 0.7rem;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-hover);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.88rem;
+        cursor: pointer;
+        min-width: 200px;
+    }
+
+    .injector-select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .injector-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .injector-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 1.4rem;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .injector-action-btn svg { width: 17px; height: 17px; }
+
+    .injector-action-btn.primary {
+        background: var(--gradient-primary);
+        color: var(--text-primary);
+        border-color: rgba(139, 92, 246, 0.4);
+    }
+
+    .injector-action-btn.primary:hover:not(:disabled) {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+    }
+
+    .injector-action-btn.danger {
+        background: rgba(231, 84, 84, 0.12);
+        border-color: rgba(231, 84, 84, 0.35);
+        color: #ff9a9a;
+    }
+
+    .injector-action-btn.danger:hover:not(:disabled) {
+        background: rgba(231, 84, 84, 0.2);
+    }
+
+    .injector-action-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .injector-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: injectorSpin 0.7s linear infinite;
+    }
+
+    @@keyframes injectorSpin { to { transform: rotate(360deg); } }
+
+    .injector-log {
+        background: #0a0a14;
+        border: 1px solid var(--glass-hover);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .injector-log-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 0.9rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--glass-hover);
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.75);
+    }
+
+    .injector-log-header svg { width: 14px; height: 14px; }
+
+    .injector-log-clear {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0.15rem 0.45rem;
+        border-radius: 4px;
+    }
+
+    .injector-log-clear:hover { color: var(--text-primary); background: var(--glass-bg); }
+
+    .injector-log-body {
+        max-height: 240px;
+        overflow-y: auto;
+        padding: 0.7rem 0.9rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        line-height: 1.55;
+    }
+
+    .injector-log-empty {
+        color: rgba(255, 255, 255, 0.4);
+        font-family: var(--font-primary);
+        font-style: italic;
+    }
+
+    .injector-log-line {
+        white-space: pre-wrap;
+        color: rgba(255, 255, 255, 0.75);
+    }
+
+    .injector-log-line.success { color: #6ee06e; }
+    .injector-log-line.error { color: #ff9a9a; }
+    .injector-log-line.warn { color: #ffd479; }
+    .injector-log-line.info { color: var(--accent-purple-light); }
+
+    .injector-coverage {
+        padding: 0.85rem 1rem;
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px solid var(--glass-hover);
+        border-radius: 10px;
+        font-size: 0.86rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .injector-coverage-header {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 0.4rem;
+        color: var(--text-primary);
+    }
+
+    .injector-coverage-header svg { width: 16px; height: 16px; }
+
+    .injector-coverage-list { margin: 0 0 0.5rem 0; line-height: 1.5; }
+    .injector-coverage-caveat { margin: 0 0 0.5rem 0; line-height: 1.5; }
+    .injector-coverage-caveat strong { color: #ffd479; }
+
+    .injector-coverage-jump {
+        margin: 0.6rem 0 0 0;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 0.83rem;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .injector-link {
+        background: transparent;
+        border: none;
+        color: var(--accent-purple-light);
+        font-size: inherit;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .injector-link:hover { color: var(--text-primary); }
+</style>
+
+@code {
+    [Parameter] public EventCallback OnJumpToReadMe { get; set; }
+    [Parameter] public EventCallback OnJumpToSettings { get; set; }
+
+    private readonly SkyInjectionOptions _options = new();
+    private readonly List<LogLine> _logLines = new();
+    private bool _hasBackup;
+    private bool _busy;
+    private string? _lastAction;
+
+    private bool CanInject =>
+        !_busy
+        && LabSettings.Current.MasterEnabled
+        && LabSettings.Current.Accepted
+        && (_options.Mode == SkyInjectionMode.SolidColor || !string.IsNullOrWhiteSpace(_options.ImagePath));
+
+    private bool CanRestore => !_busy && _hasBackup;
+
+    protected override void OnInitialized()
+    {
+        _hasBackup = Injector.HasBackup();
+        LabSettings.Changed += OnLabSettingsChanged;
+    }
+
+    private void OnLabSettingsChanged() => InvokeAsync(StateHasChanged);
+
+    private void SetMode(SkyInjectionMode mode)
+    {
+        _options.Mode = mode;
+    }
+
+    private void OnTileChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v))
+        {
+            _options.TileSize = Math.Clamp(v, 1, 4);
+        }
+    }
+
+    private async Task PickImage()
+    {
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".webp" } }
+            });
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Select a sky image",
+                FileTypes = fileTypes
+            });
+            if (result is not null)
+            {
+                _options.ImagePath = result.FullPath;
+                AppendLog($"Image selected: {Path.GetFileName(_options.ImagePath)}", "info");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Sky image picker failed");
+            Notifications.ShowError("Could not open the file picker.");
+        }
+    }
+
+    private async Task InjectAsync()
+    {
+        if (!CanInject) return;
+
+        if (LabSettings.Current.GuardArkProcess && ProcessService.IsProcessRunning("ShooterGame"))
+        {
+            AppendLog("ARK is running — file writes may fail or be ignored until you restart.", "warn");
+        }
+
+        _busy = true;
+        _lastAction = "inject";
+        AppendLog(_options.Mode == SkyInjectionMode.Image
+            ? $"Injecting from {Path.GetFileName(_options.ImagePath)} (tile {_options.TileSize}x, flip {_options.FlipVertically})…"
+            : $"Injecting solid color {_options.HexColor}…", "info");
+        try
+        {
+            var result = await Injector.InjectAsync(_options);
+            AppendResult(result, verbAct: "Patched", verbErr: "errors during inject");
+            _hasBackup = Injector.HasBackup();
+            if (result.Errors.Count == 0 && result.Patched > 0)
+            {
+                Notifications.ShowSuccess($"Sky injected into {result.Patched} texture(s). Restart ARK to see it.");
+            }
+            else if (result.Errors.Count > 0)
+            {
+                Notifications.ShowError($"Sky inject completed with {result.Errors.Count} error(s) — see log.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Inject failed");
+            AppendLog($"Inject failed: {ex.Message}", "error");
+            Notifications.ShowError("Sky inject failed — see log.");
+        }
+        finally
+        {
+            _busy = false;
+            _lastAction = null;
+        }
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (!CanRestore) return;
+
+        if (LabSettings.Current.GuardArkProcess && ProcessService.IsProcessRunning("ShooterGame"))
+        {
+            AppendLog("ARK is running — file writes may fail or be ignored until you restart.", "warn");
+        }
+
+        _busy = true;
+        _lastAction = "restore";
+        AppendLog("Restoring original sky textures from backup…", "info");
+        try
+        {
+            var result = await Injector.RestoreAsync();
+            AppendResult(result, verbAct: "Restored", verbErr: "errors during restore");
+            _hasBackup = Injector.HasBackup();
+            if (result.Errors.Count == 0 && result.Patched > 0)
+            {
+                Notifications.ShowSuccess($"Restored {result.Patched} sky texture(s). Restart ARK to see the original.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Restore failed");
+            AppendLog($"Restore failed: {ex.Message}", "error");
+            Notifications.ShowError("Sky restore failed — see log.");
+        }
+        finally
+        {
+            _busy = false;
+            _lastAction = null;
+        }
+    }
+
+    private void AppendResult(SkyInjectionResult result, string verbAct, string verbErr)
+    {
+        AppendLog($"{verbAct}: {result.Patched} | Skipped: {result.Skipped}", result.Errors.Count == 0 ? "success" : "warn");
+        foreach (var err in result.Errors)
+        {
+            AppendLog($"  {err}", "error");
+        }
+        if (result.Errors.Count > 0)
+        {
+            AppendLog($"{result.Errors.Count} {verbErr}.", "warn");
+        }
+    }
+
+    private void AppendLog(string text, string kind)
+    {
+        var stamp = DateTime.Now.ToString("HH:mm:ss");
+        _logLines.Add(new LogLine($"[{stamp}] {text}", kind));
+        const int cap = 200;
+        if (_logLines.Count > cap)
+        {
+            _logLines.RemoveRange(0, _logLines.Count - cap);
+        }
+    }
+
+    private void ClearLog() => _logLines.Clear();
+
+    private Task JumpToReadMe() => OnJumpToReadMe.InvokeAsync();
+    private Task JumpToSettings() => OnJumpToSettings.InvokeAsync();
+
+    public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
+
+    private record LogLine(string Text, string Kind);
+}

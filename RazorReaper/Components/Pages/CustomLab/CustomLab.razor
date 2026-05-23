@@ -93,7 +93,7 @@
             <Settings OnJumpToReadMe="() => SetTab(LabTab.ReadMe)" />
             break;
         case LabTab.SkyInjector:
-            <SkyInjector />
+            <SkyInjector OnJumpToReadMe="() => SetTab(LabTab.ReadMe)" OnJumpToSettings="() => SetTab(LabTab.Settings)" />
             break;
         case LabTab.MemoryPatcher:
             <MemoryPatcher />

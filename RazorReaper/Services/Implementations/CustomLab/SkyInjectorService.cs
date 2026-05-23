@@ -286,31 +286,30 @@ public class SkyInjectorService : ISkyInjectorService
 
         await Task.Run(() =>
         {
-            foreach (var bak in Directory.EnumerateFiles(BackupFolderPath, "*.bak"))
+            // Walk the ARK content tree (not the backup folder). For each candidate, compute the
+            // backup name the inject pass would have produced and restore if it exists. This sidesteps
+            // the can't-distinguish-underscores problem we'd hit decoding "PrimalEarth_…_SimpleSky_0".
+            foreach (var path in EnumerateCandidateUassetPaths(contentRoot))
             {
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    var relPath = Path.GetFileNameWithoutExtension(bak); // 'PrimalEarth_Environment_Sky_SimpleSky_0.uasset' from .bak
-                    var originalRel = DecodeBackupName(relPath);
-                    if (originalRel is null)
+                    var rel = SafeRelative(contentRoot, path);
+                    var backupName = EncodeBackupName(rel);
+                    var backupPath = Path.Combine(BackupFolderPath, backupName);
+                    if (!File.Exists(backupPath))
                     {
                         skipped++;
                         continue;
                     }
-                    var originalPath = Path.Combine(contentRoot, originalRel);
-                    if (!File.Exists(originalPath))
-                    {
-                        skipped++;
-                        continue;
-                    }
-                    File.Copy(bak, originalPath, overwrite: true);
+                    File.Copy(backupPath, path, overwrite: true);
                     restored++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Restore failed for {Backup}", bak);
-                    errors.Add($"{Path.GetFileName(bak)}: {ex.Message}");
+                    var rel = SafeRelative(contentRoot, path);
+                    _logger.LogWarning(ex, "Restore failed for {Path}", path);
+                    errors.Add($"{rel}: {ex.Message}");
                 }
             }
         }, ct);
@@ -434,24 +433,9 @@ public class SkyInjectorService : ISkyInjectorService
     private static string EncodeBackupName(string relPath)
     {
         // t1m's flat naming: replace separators with underscores, append .bak.
+        // The reverse direction is ambiguous (SimpleSky_0 has a real underscore), so RestoreAsync
+        // walks the ARK content tree and re-encodes each candidate's path to look up its backup
+        // rather than trying to decode the .bak filename.
         return relPath.Replace('\\', '_').Replace('/', '_') + ".bak";
-    }
-
-    private static string? DecodeBackupName(string backupFileBaseName)
-    {
-        // 'PrimalEarth_Environment_Sky_SimpleSky_0.uasset' → 'PrimalEarth\Environment\Sky\SimpleSky_0.uasset'.
-        // We can't recover the separators losslessly (the SimpleSky_0 underscore is real), so we strip
-        // the .uasset extension, restore separators on everything else, then re-append .uasset.
-        if (!backupFileBaseName.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase))
-            return null;
-        var stem = backupFileBaseName[..^".uasset".Length];
-
-        // Greedy approach: replace ALL underscores with backslashes, then walk the resulting path
-        // looking for a *_N suffix that should keep its underscore (SimpleSky_0 etc). This is
-        // ambiguous in the general case; we resolve by checking whether the candidate file exists.
-        // For now we just round-trip via the inverse of EncodeBackupName by trying both.
-        // Phase 3c will likely store an index file (sky-backup-map.json) to avoid this ambiguity.
-        var withSeparators = stem.Replace('_', '\\') + ".uasset";
-        return withSeparators;
     }
 }
