@@ -231,7 +231,13 @@
             {
                 @foreach (var line in _logLines)
                 {
-                    <div class="injector-log-line @line.Kind">@line.Text</div>
+                    <div class="injector-log-line @line.Kind">
+                        @line.Text
+                        @if (line.ActionLabel is not null && line.ActionUrl is not null)
+                        {
+                            <button type="button" class="injector-log-action" @onclick="() => OpenUrl(line.ActionUrl!)">@line.ActionLabel</button>
+                        }
+                    </div>
                 }
             }
         </div>
@@ -558,9 +564,30 @@
     }
 
     .injector-link:hover { color: var(--text-primary); }
+
+    .injector-log-action {
+        margin-left: 0.5rem;
+        padding: 0.1rem 0.5rem;
+        background: rgba(139, 92, 246, 0.18);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        color: var(--accent-purple-light);
+        border-radius: 4px;
+        font-family: var(--font-primary);
+        font-size: 0.78rem;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .injector-log-action:hover { background: rgba(139, 92, 246, 0.32); }
 </style>
 
 @code {
+    private const string ConvertXUrl = "https://github.com/CedrickGD/Convert-X";
+    private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".webp", ".gif"
+    };
+
     [Parameter] public EventCallback OnJumpToReadMe { get; set; }
     [Parameter] public EventCallback OnJumpToSettings { get; set; }
 
@@ -653,12 +680,45 @@
             {
                 _opts.ImagePath = result.FullPath;
                 AppendLog($"Image selected: {Path.GetFileName(_opts.ImagePath)}", "info");
+
+                var ext = Path.GetExtension(_opts.ImagePath);
+                if (!SupportedImageExtensions.Contains(ext))
+                {
+                    AppendConvertXHint($"{ext} files aren't decoded by the built-in image pipeline. Convert it to PNG/JPG/BMP/TGA/WEBP first.");
+                }
             }
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Sky image picker failed");
             Notifications.ShowError("Could not open the file picker.");
+        }
+    }
+
+    private void AppendConvertXHint(string preamble)
+    {
+        AppendLog(preamble, "warn");
+        _logLines.Add(new LogLine(
+            "  Need a quick converter? Try Convert-X (also by CedrickGD):",
+            "info",
+            ActionLabel: "Open Convert-X on GitHub",
+            ActionUrl: ConvertXUrl));
+    }
+
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to open URL {Url}", url);
+            Notifications.ShowError($"Couldn't open {url} — copy and paste it into your browser.");
         }
     }
 
@@ -741,13 +801,23 @@
     private void AppendResult(SkyInjectionResult result, string verbAct, string verbErr)
     {
         AppendLog($"{verbAct}: {result.Patched} | Skipped: {result.Skipped}", result.Errors.Count == 0 ? "success" : "warn");
+        var sawDecodeFailure = false;
         foreach (var err in result.Errors)
         {
             AppendLog($"  {err}", "error");
+            if (!sawDecodeFailure && (err.Contains("could not be decoded", StringComparison.OrdinalIgnoreCase)
+                                   || err.Contains("Unsupported format", StringComparison.OrdinalIgnoreCase)))
+            {
+                sawDecodeFailure = true;
+            }
         }
         if (result.Errors.Count > 0)
         {
             AppendLog($"{result.Errors.Count} {verbErr}.", "warn");
+        }
+        if (sawDecodeFailure)
+        {
+            AppendConvertXHint("That image format wasn't decoded.");
         }
     }
 
@@ -762,6 +832,8 @@
         }
     }
 
+
+
     private void ClearLog() => _logLines.Clear();
 
     private Task JumpToReadMe() => OnJumpToReadMe.InvokeAsync();
@@ -769,5 +841,5 @@
 
     public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
 
-    private record LogLine(string Text, string Kind);
+    private record LogLine(string Text, string Kind, string? ActionLabel = null, string? ActionUrl = null);
 }
