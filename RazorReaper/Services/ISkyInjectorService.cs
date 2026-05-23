@@ -29,4 +29,21 @@ public interface ISkyInjectorService
     /// Absolute path of the backup folder. Exposed so the Settings tab can open it / show its size.
     /// </summary>
     string BackupFolderPath { get; }
+
+    /// <summary>
+    /// Cumulative byte size and file count of all .bak files in the backup folder. Cheap synchronous
+    /// call — the backup set caps at ~25 files at &lt;100MB total, so a full enumeration is fine.
+    /// </summary>
+    (long Bytes, int Files) GetBackupStats();
+
+    /// <summary>
+    /// Delete every .bak file in the backup folder. Returns the number of files removed. Does not
+    /// touch the user's ARK install — Restore loses its source after this, so the UI should confirm.
+    /// </summary>
+    Task<int> ClearBackupsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Open the backup folder in File Explorer. No-op if the folder doesn't exist yet.
+    /// </summary>
+    void OpenBackupFolder();
 }

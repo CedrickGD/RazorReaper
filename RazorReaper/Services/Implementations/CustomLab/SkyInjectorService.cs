@@ -83,6 +83,83 @@ public class SkyInjectorService : ISkyInjectorService
             && Directory.EnumerateFiles(BackupFolderPath, "*.bak").Any();
     }
 
+    public (long Bytes, int Files) GetBackupStats()
+    {
+        if (!Directory.Exists(BackupFolderPath)) return (0, 0);
+        long total = 0;
+        var count = 0;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(BackupFolderPath, "*.bak"))
+            {
+                try
+                {
+                    total += new FileInfo(file).Length;
+                    count++;
+                }
+                catch
+                {
+                    // Skip files that disappear mid-enumeration; this is best-effort.
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to stat sky backup folder");
+        }
+        return (total, count);
+    }
+
+    public async Task<int> ClearBackupsAsync(CancellationToken ct = default)
+    {
+        if (!Directory.Exists(BackupFolderPath)) return 0;
+
+        var deleted = 0;
+        await Task.Run(() =>
+        {
+            foreach (var file in Directory.EnumerateFiles(BackupFolderPath, "*.bak"))
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    File.Delete(file);
+                    deleted++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete backup {File}", file);
+                }
+            }
+        }, ct);
+
+        if (deleted > 0)
+        {
+            _activity.AddActivity($"Custom Lab: cleared {deleted} sky backup(s)", "warning");
+            _ = _telemetry.TrackEventAsync(
+                "custom_lab.sky_backups_cleared",
+                metrics: new Dictionary<string, object?> { ["deleted"] = deleted },
+                cancellationToken: ct);
+        }
+        return deleted;
+    }
+
+    public void OpenBackupFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(BackupFolderPath);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = BackupFolderPath,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to open backup folder");
+        }
+    }
+
     public async Task<IReadOnlyList<SkyTextureInfo>> DiscoverSkyTexturesAsync(CancellationToken ct = default)
     {
         await _settings.LoadAsync();
