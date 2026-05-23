@@ -4,8 +4,8 @@
 
 <div class="lab-readme">
     <div class="lab-card">
-        <div class="lab-card-header danger">
-            <div class="lab-icon-badge">
+        <div class="lab-card-header">
+            <div class="lab-icon-badge danger">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M10 3.5 16.5 15H3.5L10 3.5Z" />
                     <path d="M10 7.5v4" />
@@ -54,7 +54,7 @@
                     </p>
                 </div>
                 <div class="lab-feature">
-                    <div class="lab-feature-name">Memory Patcher <span class="lab-pill">coming soon</span></div>
+                    <div class="lab-feature-name">Memory Patcher <span class="lab-pill warning">coming soon</span></div>
                     <p>
                         Attaches to a running <code>ShooterGame.exe</code> and applies sky / texture changes in-memory so
                         edits show up without restarting ARK. Disabled until the feature is built.
@@ -95,189 +95,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .lab-readme { max-width: 880px; }
-
-    .lab-card {
-        background: rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    .lab-card-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.85rem;
-        padding: 1.1rem 1.25rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .lab-card-header h3 {
-        margin: 0 0 0.2rem 0;
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: #fff;
-    }
-
-    .lab-card-header p {
-        margin: 0;
-        font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.65);
-    }
-
-    .lab-icon-badge {
-        flex-shrink: 0;
-        width: 38px;
-        height: 38px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.85);
-    }
-
-    .lab-card-header.danger .lab-icon-badge {
-        background: rgba(231, 84, 84, 0.12);
-        color: #ff9a9a;
-    }
-
-    .lab-icon-badge svg { width: 20px; height: 20px; }
-
-    .lab-card-content { padding: 1.25rem; }
-    .lab-card-content h4 {
-        margin: 1.25rem 0 0.6rem 0;
-        font-size: 0.95rem;
-        color: rgba(255, 255, 255, 0.88);
-    }
-    .lab-card-content h4:first-child { margin-top: 0; }
-
-    .lab-lead {
-        margin: 0;
-        color: rgba(255, 255, 255, 0.75);
-        line-height: 1.55;
-    }
-
-    .lab-risk-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        gap: 0.55rem;
-    }
-
-    .lab-risk-list li {
-        padding: 0.65rem 0.9rem;
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 8px;
-        font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.78);
-        line-height: 1.5;
-    }
-
-    .lab-risk-list li strong { color: #fff; }
-
-    .lab-feature-list { display: grid; gap: 0.7rem; }
-
-    .lab-feature {
-        padding: 0.8rem 1rem;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 8px;
-    }
-
-    .lab-feature-name {
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 0.3rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .lab-feature p {
-        margin: 0;
-        font-size: 0.88rem;
-        color: rgba(255, 255, 255, 0.7);
-        line-height: 1.5;
-    }
-
-    .lab-pill {
-        font-size: 0.7rem;
-        font-weight: 600;
-        padding: 0.15rem 0.5rem;
-        border-radius: 4px;
-        background: rgba(255, 200, 80, 0.15);
-        color: #ffd479;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-
-    .lab-accept-row {
-        margin-top: 1.5rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .lab-accept-toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.7rem;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .lab-accept-toggle input { display: none; }
-
-    .lab-accept-check {
-        width: 22px;
-        height: 22px;
-        border-radius: 5px;
-        border: 1.5px solid rgba(255, 255, 255, 0.3);
-        background: rgba(255, 255, 255, 0.04);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #6ee06e;
-        transition: all 0.18s ease;
-        flex-shrink: 0;
-    }
-
-    .lab-accept-check svg { width: 14px; height: 14px; }
-
-    .lab-accept-toggle:hover .lab-accept-check {
-        border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    .lab-accept-toggle input:checked + .lab-accept-check {
-        background: rgba(110, 224, 110, 0.15);
-        border-color: rgba(110, 224, 110, 0.6);
-    }
-
-    .lab-accept-text {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 0.95rem;
-        font-weight: 500;
-    }
-
-    .lab-accept-hint {
-        margin: 0.85rem 0 0 0;
-        font-size: 0.88rem;
-        color: rgba(255, 215, 121, 0.85);
-    }
-
-    .lab-accept-hint.success { color: rgba(110, 224, 110, 0.9); }
-
-    code {
-        background: rgba(255, 255, 255, 0.06);
-        padding: 0.05rem 0.3rem;
-        border-radius: 3px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 0.85em;
-    }
-</style>
 
 @code {
     protected override void OnInitialized()
