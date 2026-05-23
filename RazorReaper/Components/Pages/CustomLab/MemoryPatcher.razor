@@ -1,0 +1,106 @@
+@using RazorReaper.Services
+@inject ICustomLabSettingsService LabSettings
+@implements IDisposable
+
+<div class="lab-memory">
+    <div class="lab-card">
+        <div class="lab-card-header">
+            <div class="lab-icon-badge accent">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="5" width="12" height="10" rx="1.5" />
+                    <path d="M7 5V3M10 5V3M13 5V3M7 17v-2M10 17v-2M13 17v-2M4 8H2M4 12H2M18 8h-2M18 12h-2" />
+                    <rect x="7.5" y="8.5" width="5" height="3" rx="0.5" />
+                </svg>
+            </div>
+            <div>
+                <h3>
+                    Memory Patcher
+                    <span class="lab-pill warning">coming soon</span>
+                </h3>
+                <p>Live-patch ARK's running process so sky and texture edits apply without a game restart.</p>
+            </div>
+        </div>
+
+        <div class="lab-card-content">
+            <p class="lab-lead">
+                The Memory Patcher attaches to <code>ShooterGame.exe</code> while you're in-game and rewrites
+                texture resources in memory. Pair it with the file-based <strong>Sky Injector</strong> as your
+                durable baseline; this tool is the "apply changes without quitting" layer on top.
+            </p>
+
+            <h4>What it will do</h4>
+            <ul class="lab-feature-bullets">
+                <li>Detect and attach to a running <code>ShooterGame.exe</code> process</li>
+                <li>Reload sky textures in memory so the new sky shows immediately</li>
+                <li>Auto-detach on game exit; manual detach via Attach button when running</li>
+                <li>Optional future: hot-reload other patched textures (paintings, pixel glitch)</li>
+            </ul>
+
+            <h4>Prerequisites once shipped</h4>
+            <ul class="lab-prereq-list">
+                <li class="@(LabSettings.Current.Accepted ? "met" : "")">
+                    <span class="lab-prereq-marker">
+                        @if (LabSettings.Current.Accepted)
+                        {
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                    </span>
+                    Read Me accepted
+                </li>
+                <li class="@(LabSettings.Current.MasterEnabled ? "met" : "")">
+                    <span class="lab-prereq-marker">
+                        @if (LabSettings.Current.MasterEnabled)
+                        {
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                    </span>
+                    Custom Lab enabled in Settings
+                </li>
+                <li class="@(LabSettings.Current.MemoryInjectEnabled ? "met" : "")">
+                    <span class="lab-prereq-marker">
+                        @if (LabSettings.Current.MemoryInjectEnabled)
+                        {
+                            <svg viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                    </span>
+                    Runtime memory injection enabled in Settings
+                </li>
+                <li>
+                    <span class="lab-prereq-marker"></span>
+                    <code>ShooterGame.exe</code> is running
+                </li>
+            </ul>
+
+            <div class="lab-attach-row">
+                <button type="button"
+                        class="lab-btn primary"
+                        disabled
+                        title="The Memory Patcher hasn't shipped yet — this button is a preview of where Attach will live.">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 10h12" />
+                        <path d="M10 4l6 6-6 6" />
+                    </svg>
+                    Attach
+                </button>
+                <span class="lab-attach-note">The Attach button activates once the Memory Patcher implementation ships.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        LabSettings.Changed += OnLabSettingsChanged;
+    }
+
+    private void OnLabSettingsChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
+}

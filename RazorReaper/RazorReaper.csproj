@@ -74,6 +74,9 @@
 		     (thumbnails, preview, overlay) can render unchanged. -->
 		<PackageReference Include="SkiaSharp" Version="3.119.0" />
 		<PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.0" />
+		<!-- BC3/BC1/BC7 texture encoding for the Custom Lab Sky Injector. MIT-licensed,
+		     replaces the hand-rolled numpy BC3 encoder in t1m's original Python script. -->
+		<PackageReference Include="BCnEncoder.Net" Version="2.3.0" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,0 +1,247 @@
+@using RazorReaper.Services
+@inject ICustomLabSettingsService LabSettings
+@inject ISkyInjectorService SkyInjector
+@inject INotificationService Notifications
+@implements IDisposable
+
+<div class="lab-settings">
+    <div class="lab-card">
+        <div class="lab-card-header">
+            <div class="lab-icon-badge">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10" cy="10" r="2.5" />
+                    <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.4 1.4M13.6 13.6 15 15M5 15l1.4-1.4M13.6 6.4 15 5" />
+                </svg>
+            </div>
+            <div>
+                <h3>Custom Lab settings</h3>
+                <p>Scope-wide toggles for the Custom Lab section. Persisted to <code>%LocalAppData%\RazorReaper\custom-lab.json</code>.</p>
+            </div>
+        </div>
+
+        <div class="lab-card-content">
+            <div class="lab-settings-row">
+                <div class="lab-settings-label">
+                    <div class="lab-settings-title">Enable Custom Lab</div>
+                    <p class="lab-settings-desc">
+                        Master switch for the whole section. When off, all feature tabs are locked.
+                    </p>
+                </div>
+                <label class="lab-switch">
+                    <input type="checkbox"
+                           checked="@LabSettings.Current.MasterEnabled"
+                           disabled="@(!LabSettings.Current.Accepted)"
+                           @onchange="OnMasterChanged" />
+                    <span class="lab-switch-slider"></span>
+                </label>
+            </div>
+
+            <div class="lab-settings-row">
+                <div class="lab-settings-label">
+                    <div class="lab-settings-title">Acceptance</div>
+                    <p class="lab-settings-desc">
+                        @if (LabSettings.Current.Accepted)
+                        {
+                            <span>You've accepted the Read Me. Reset to lock the feature tabs again and ask for acknowledgement next time.</span>
+                        }
+                        else
+                        {
+                            <span>You have not accepted the Read Me yet. Switch to the Read Me tab and tick the checkbox.</span>
+                        }
+                    </p>
+                </div>
+                <div class="lab-settings-actions">
+                    @if (LabSettings.Current.Accepted)
+                    {
+                        <button class="lab-btn danger" @onclick="ResetAcknowledgement">Reset acknowledgement</button>
+                    }
+                    else
+                    {
+                        <button class="lab-btn" @onclick="JumpToReadMe">Open Read Me</button>
+                    }
+                </div>
+            </div>
+
+            <div class="lab-settings-row">
+                <div class="lab-settings-label">
+                    <div class="lab-settings-title">
+                        Enable runtime memory injection
+                        <span class="lab-pill future">future feature</span>
+                    </div>
+                    <p class="lab-settings-desc">
+                        Unlocks the Memory Patcher tab once that feature ships. Has no effect today.
+                    </p>
+                </div>
+                <label class="lab-switch">
+                    <input type="checkbox"
+                           checked="@LabSettings.Current.MemoryInjectEnabled"
+                           disabled="@(!LabSettings.Current.Accepted || !LabSettings.Current.MasterEnabled)"
+                           @onchange="OnMemoryInjectChanged" />
+                    <span class="lab-switch-slider"></span>
+                </label>
+            </div>
+
+            <div class="lab-settings-row">
+                <div class="lab-settings-label">
+                    <div class="lab-settings-title">Warn when ARK is running</div>
+                    <p class="lab-settings-desc">
+                        Show a confirmation dialog before any file-modifying action if <code>ShooterGame.exe</code> is detected.
+                        Recommended on — locked files may otherwise cause writes to fail silently.
+                    </p>
+                </div>
+                <label class="lab-switch">
+                    <input type="checkbox"
+                           checked="@LabSettings.Current.GuardArkProcess"
+                           disabled="@(!LabSettings.Current.Accepted || !LabSettings.Current.MasterEnabled)"
+                           @onchange="OnGuardChanged" />
+                    <span class="lab-switch-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    @* ── Backup folder management ─────────────────────────────────── *@
+    <div class="lab-card">
+        <div class="lab-card-header">
+            <div class="lab-icon-badge">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 6.5a2 2 0 0 1 2-2h3l1.5 1.5h6.5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-8.5Z" />
+                </svg>
+            </div>
+            <div>
+                <h3>Sky backups</h3>
+                <p>Original .uasset files saved on first inject — needed for restore.</p>
+            </div>
+        </div>
+
+        <div class="lab-card-content">
+            <div class="lab-settings-row">
+                <div class="lab-settings-label">
+                    <div class="lab-settings-title">Backup folder</div>
+                    <p class="lab-settings-desc">
+                        @if (_backupCount == 0)
+                        {
+                            <span>No backups yet. They appear here after your first inject.</span>
+                        }
+                        else
+                        {
+                            <span><strong>@_backupCount</strong> file(s), <strong>@FormatBytes(_backupBytes)</strong></span>
+                        }
+                        <br />
+                        <code>@SkyInjector.BackupFolderPath</code>
+                    </p>
+                </div>
+                <div class="lab-settings-actions">
+                    <button class="lab-btn" @onclick="OpenBackupFolder">Open in Explorer</button>
+                </div>
+            </div>
+
+            <div class="lab-settings-row">
+                <div class="lab-settings-label">
+                    <div class="lab-settings-title">Clear all sky backups</div>
+                    <p class="lab-settings-desc">
+                        Permanently delete every <code>.bak</code> in the folder. After this you can no longer
+                        Restore — only Steam's Verify Integrity will return the original textures.
+                    </p>
+                </div>
+                <div class="lab-settings-actions">
+                    @if (_confirmingClear)
+                    {
+                        <button class="lab-btn danger" @onclick="ClearBackups" disabled="@_clearing">
+                            @(_clearing ? "Clearing…" : "Yes, delete all")
+                        </button>
+                        <button class="lab-btn" @onclick="() => _confirmingClear = false" disabled="@_clearing">Cancel</button>
+                    }
+                    else
+                    {
+                        <button class="lab-btn danger"
+                                @onclick="() => _confirmingClear = true"
+                                disabled="@(_backupCount == 0)">
+                            Clear backups
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnJumpToReadMe { get; set; }
+
+    private long _backupBytes;
+    private int _backupCount;
+    private bool _confirmingClear;
+    private bool _clearing;
+
+    protected override void OnInitialized()
+    {
+        LabSettings.Changed += OnLabSettingsChanged;
+        RefreshBackupStats();
+    }
+
+    private void RefreshBackupStats()
+    {
+        var (bytes, files) = SkyInjector.GetBackupStats();
+        _backupBytes = bytes;
+        _backupCount = files;
+        if (_backupCount == 0) _confirmingClear = false;
+    }
+
+    private Task OnMasterChanged(ChangeEventArgs e) =>
+        LabSettings.SetMasterEnabledAsync(e.Value is bool b && b);
+
+    private Task OnMemoryInjectChanged(ChangeEventArgs e) =>
+        LabSettings.SetMemoryInjectEnabledAsync(e.Value is bool b && b);
+
+    private Task OnGuardChanged(ChangeEventArgs e) =>
+        LabSettings.SetGuardArkProcessAsync(e.Value is bool b && b);
+
+    private Task ResetAcknowledgement() => LabSettings.ResetAcknowledgementAsync();
+
+    private Task JumpToReadMe() => OnJumpToReadMe.InvokeAsync();
+
+    private void OpenBackupFolder() => SkyInjector.OpenBackupFolder();
+
+    private async Task ClearBackups()
+    {
+        _clearing = true;
+        try
+        {
+            var n = await SkyInjector.ClearBackupsAsync();
+            RefreshBackupStats();
+            _confirmingClear = false;
+            if (n > 0)
+                Notifications.ShowSuccess($"Cleared {n} sky backup(s).");
+            else
+                Notifications.ShowInfo("No backups to clear.");
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError($"Failed to clear backups: {ex.Message}");
+        }
+        finally
+        {
+            _clearing = false;
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+
+    private void OnLabSettingsChanged()
+    {
+        InvokeAsync(() =>
+        {
+            RefreshBackupStats();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
+}

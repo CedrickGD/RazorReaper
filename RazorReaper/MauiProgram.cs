@@ -209,6 +209,10 @@ namespace RazorReaper
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
             services.AddSingleton<ICrosshairService, CrosshairService>();
+            services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
+            services.AddSingleton<IMemoryPatcherService, MemoryPatcherService>();
+            services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
+            services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
         }
     }
 }
