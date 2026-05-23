@@ -12,12 +12,18 @@
 
 <div class="lab-injector">
     @* ── Status badge ─────────────────────────────────────────────── *@
-    <div class="injector-status @(_hasBackup ? "injected" : "")">
+    <div class="injector-status @StatusClass">
         <div class="injector-status-icon">
-            @if (_hasBackup)
+            @if (StatusKind == "injected")
             {
                 <svg viewBox="0 0 20 20" fill="currentColor">
                     <path d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm-1 11.4-3.7-3.7 1.4-1.4L9 10.6l4.3-4.3 1.4 1.4L9 13.4Z" />
+                </svg>
+            }
+            else if (StatusKind == "restored")
+            {
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 4v5h5L7.6 7.6A6 6 0 1 1 4 13l-1.8.6A8 8 0 1 0 6.2 6.2L4 4Z" />
                 </svg>
             }
             else
@@ -28,17 +34,8 @@
             }
         </div>
         <div class="injector-status-text">
-            <div class="injector-status-title">@(_hasBackup ? "Sky injected" : "Original")</div>
-            <div class="injector-status-sub">
-                @if (_hasBackup)
-                {
-                    <span>ARK is running with your custom sky. Restore to revert to the original.</span>
-                }
-                else
-                {
-                    <span>No backups on disk yet. Pick an image or color and inject.</span>
-                }
-            </div>
+            <div class="injector-status-title">@StatusTitle</div>
+            <div class="injector-status-sub">@StatusSubtitle</div>
         </div>
     </div>
 
@@ -284,6 +281,11 @@
         background: rgba(139, 92, 246, 0.06);
     }
 
+    .injector-status.restored {
+        border-left-color: #6ee06e;
+        background: rgba(110, 224, 110, 0.04);
+    }
+
     .injector-status-icon {
         width: 36px;
         height: 36px;
@@ -297,6 +299,7 @@
     .injector-status-icon svg { width: 28px; height: 28px; }
 
     .injector-status.injected .injector-status-icon { color: var(--accent-purple-light); }
+    .injector-status.restored .injector-status-icon { color: #6ee06e; }
 
     .injector-status-title {
         font-weight: 600;
@@ -573,6 +576,41 @@
         && (_options.Mode == SkyInjectionMode.SolidColor || !string.IsNullOrWhiteSpace(_options.ImagePath));
 
     private bool CanRestore => !_busy && _hasBackup;
+
+    private string StatusKind
+    {
+        get
+        {
+            if (!_hasBackup) return "original";
+            var injected = LabSettings.Current.LastSkyInjectAt;
+            var restored = LabSettings.Current.LastSkyRestoreAt;
+            // Missing timestamps + backups present → treat as injected (pre-Phase-5b behavior).
+            if (injected is null && restored is null) return "injected";
+            if (restored is not null && (injected is null || restored > injected)) return "restored";
+            return "injected";
+        }
+    }
+
+    private string StatusClass => StatusKind switch
+    {
+        "injected" => "injected",
+        "restored" => "restored",
+        _ => ""
+    };
+
+    private string StatusTitle => StatusKind switch
+    {
+        "injected" => "Sky injected",
+        "restored" => "Original sky restored",
+        _ => "Original"
+    };
+
+    private string StatusSubtitle => StatusKind switch
+    {
+        "injected" => "ARK is running with your custom sky. Restore to revert to the original.",
+        "restored" => "ARK's original sky is back. Backups are kept — clear them in Settings if you're done.",
+        _ => "No backups on disk yet. Pick an image or color and inject."
+    };
 
     protected override void OnInitialized()
     {

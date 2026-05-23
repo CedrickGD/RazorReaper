@@ -164,6 +164,19 @@ public class CustomLabSettingsService : ICustomLabSettingsService
 
     public Task ResetAcknowledgementAsync() => SetAcceptedAsync(false);
 
+    public Task MarkSkyInjectedAsync() =>
+        MutateAsync(s => s.LastSkyInjectAt = DateTimeOffset.UtcNow, _ => true, null);
+
+    public Task MarkSkyRestoredAsync() =>
+        MutateAsync(s => s.LastSkyRestoreAt = DateTimeOffset.UtcNow, _ => true, null);
+
+    public Task ClearSkyTimestampsAsync() =>
+        MutateAsync(s =>
+        {
+            s.LastSkyInjectAt = null;
+            s.LastSkyRestoreAt = null;
+        }, s => s.LastSkyInjectAt is not null || s.LastSkyRestoreAt is not null, null);
+
     private async Task MutateAsync(Action<CustomLabSettings> apply, Func<CustomLabSettings, bool> changed, Action? sideEffect)
     {
         await _gate.WaitAsync();

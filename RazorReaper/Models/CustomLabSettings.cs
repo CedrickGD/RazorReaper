@@ -16,4 +16,9 @@ public class CustomLabSettings
     public bool MasterEnabled { get; set; }
     public bool MemoryInjectEnabled { get; set; }
     public bool GuardArkProcess { get; set; } = true;
+
+    // Sky Injector activity timestamps — used by the status badge to distinguish
+    // "Sky injected" (last action was inject) from "Backups available (restored)".
+    public DateTimeOffset? LastSkyInjectAt { get; set; }
+    public DateTimeOffset? LastSkyRestoreAt { get; set; }
 }

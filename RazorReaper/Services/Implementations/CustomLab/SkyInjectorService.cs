@@ -135,6 +135,7 @@ public class SkyInjectorService : ISkyInjectorService
         if (deleted > 0)
         {
             _activity.AddActivity($"Custom Lab: cleared {deleted} sky backup(s)", "warning");
+            await _settings.ClearSkyTimestampsAsync();
             _ = _telemetry.TrackEventAsync(
                 "custom_lab.sky_backups_cleared",
                 metrics: new Dictionary<string, object?> { ["deleted"] = deleted },
@@ -321,6 +322,8 @@ public class SkyInjectorService : ISkyInjectorService
                                   : $"Sky inject → {patched} ok, {errors.Count} errors",
                 errors.Count == 0 ? "success" : "warning");
 
+            if (patched > 0) await _settings.MarkSkyInjectedAsync();
+
             _ = _telemetry.TrackEventAsync(
                 "custom_lab.sky_inject",
                 errors.Count == 0 ? TelemetryEventStatus.Ok : TelemetryEventStatus.Degraded,
@@ -395,6 +398,8 @@ public class SkyInjectorService : ISkyInjectorService
             errors.Count == 0 ? $"Sky restored → {restored} file(s)"
                               : $"Sky restore → {restored} ok, {errors.Count} errors",
             errors.Count == 0 ? "info" : "warning");
+
+        if (restored > 0) await _settings.MarkSkyRestoredAsync();
 
         _ = _telemetry.TrackEventAsync(
             "custom_lab.sky_restore",
