@@ -1,14 +1,17 @@
+using BCnEncoder.Encoder;
+using BCnEncoder.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using RazorReaper.Models;
+using SkiaSharp;
 
 namespace RazorReaper.Services.Implementations.CustomLab;
 
 /// <summary>
-/// Phase 3b skeleton: discovery + backup + restore. Encoding (BC3 + BGRA8 splice) lands in
-/// Phase 3c. <see cref="InjectAsync"/> currently performs backup-only to validate the discovery
-/// and backup pipeline end-to-end without risk of corrupting game files.
+/// Discovery + backup + BC3/BGRA8 encode + splice. Reads each candidate .uasset,
+/// parses its texture header, backs up the original on first inject, then writes
+/// freshly-encoded bytes into the data region.
 /// </summary>
 public class SkyInjectorService : ISkyInjectorService
 {
@@ -130,58 +133,138 @@ public class SkyInjectorService : ISkyInjectorService
 
         Directory.CreateDirectory(BackupFolderPath);
 
-        var patched = 0;
-        var skipped = 0;
-        var errors = new List<string>();
-
-        await Task.Run(() =>
+        // Source image (or synthesized color), prepared once. Sky textures share their dimensions
+        // in a small set ({256², 512², 1024², 2048²}) so we cache the encoded bytes per (w, h, kind).
+        SKBitmap? source = null;
+        try
         {
-            foreach (var path in EnumerateCandidateUassetPaths(contentRoot))
+            if (options.Mode == SkyInjectionMode.Image)
             {
-                ct.ThrowIfCancellationRequested();
-                try
-                {
-                    var bytes = File.ReadAllBytes(path);
-                    if (!TryClassify(path, bytes, out var info))
-                    {
-                        skipped++;
-                        continue;
-                    }
+                if (string.IsNullOrWhiteSpace(options.ImagePath) || !File.Exists(options.ImagePath))
+                    return new SkyInjectionResult(0, 0, new[] { "Image file not found." });
 
-                    EnsureBackup(contentRoot, path, bytes);
+                source = SkyImagePipeline.Load(options.ImagePath);
+                if (source is null)
+                    return new SkyInjectionResult(0, 0, new[] { "Image could not be decoded — unsupported format?" });
 
-                    // Phase 3b: backup-only. Phase 3c plugs in BC3 / BGRA8 splice + WriteAllBytes here.
-                    patched++;
-                }
-                catch (Exception ex)
+                if (options.FlipVertically)
                 {
-                    var rel = SafeRelative(contentRoot, path);
-                    _logger.LogWarning(ex, "Inject failed for {Path}", path);
-                    errors.Add($"{rel}: {ex.Message}");
+                    var flipped = SkyImagePipeline.FlipVertically(source);
+                    source.Dispose();
+                    source = flipped;
                 }
             }
-        }, ct);
-
-        _activity.AddActivity(
-            errors.Count == 0 ? $"Sky inject (backup pass) → {patched} texture(s)"
-                              : $"Sky inject (backup pass) → {patched} ok, {errors.Count} errors",
-            errors.Count == 0 ? "success" : "warning");
-
-        _ = _telemetry.TrackEventAsync(
-            "custom_lab.sky_inject",
-            errors.Count == 0 ? TelemetryEventStatus.Ok : TelemetryEventStatus.Degraded,
-            metrics: new Dictionary<string, object?>
+            else
             {
-                ["patched"] = patched,
-                ["skipped"] = skipped,
-                ["errors"] = errors.Count,
-                ["mode"] = options.Mode.ToString(),
-                ["tile"] = options.TileSize,
-                ["phase"] = "3b-backup-only"
-            },
-            cancellationToken: ct);
+                source = SkyImagePipeline.SynthesizeSolidColor(options.HexColor);
+                if (source is null)
+                    return new SkyInjectionResult(0, 0, new[] { $"Invalid hex color: {options.HexColor}" });
+            }
 
-        return new SkyInjectionResult(patched, skipped, errors);
+            var tileSize = options.Mode == SkyInjectionMode.SolidColor ? 1 : Math.Clamp(options.TileSize, 1, 4);
+
+            var patched = 0;
+            var skipped = 0;
+            var errors = new List<string>();
+
+            var dxt5Cache = new Dictionary<(int W, int H), byte[]>();
+            var bgra8Cache = new Dictionary<(int W, int H), byte[]>();
+            var encoder = new BcEncoder
+            {
+                OutputOptions =
+                {
+                    Format = CompressionFormat.Bc3,
+                    Quality = CompressionQuality.Balanced,
+                    GenerateMipMaps = false
+                }
+            };
+
+            await Task.Run(() =>
+            {
+                foreach (var path in EnumerateCandidateUassetPaths(contentRoot))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        var bytes = File.ReadAllBytes(path);
+                        if (!TryClassify(path, bytes, out var info))
+                        {
+                            skipped++;
+                            continue;
+                        }
+
+                        var key = (info.Width, info.Height);
+                        byte[] encoded;
+                        if (info.Kind == SkyTextureKind.Dxt5)
+                        {
+                            if (!dxt5Cache.TryGetValue(key, out encoded!))
+                            {
+                                using var prepared = SkyImagePipeline.ResizeAndTile(source!, info.Width, info.Height, tileSize);
+                                var rgba = SkyImagePipeline.GetRgbaBytes(prepared);
+                                // EncodeToRawBytes returns a jagged array of mip levels; we set
+                                // GenerateMipMaps=false so only the base level (index 0) is produced.
+                                var mips = encoder.EncodeToRawBytes(rgba, info.Width, info.Height, PixelFormat.Rgba32);
+                                encoded = mips[0];
+                                dxt5Cache[key] = encoded;
+                            }
+                        }
+                        else
+                        {
+                            if (!bgra8Cache.TryGetValue(key, out encoded!))
+                            {
+                                using var prepared = SkyImagePipeline.ResizeAndTile(source!, info.Width, info.Height, tileSize);
+                                encoded = SkyImagePipeline.GetBgraBytes(prepared);
+                                bgra8Cache[key] = encoded;
+                            }
+                        }
+
+                        if (encoded.Length != info.DataSize)
+                        {
+                            errors.Add($"{Path.GetFileName(path)}: encoded {encoded.Length} bytes but file expects {info.DataSize}");
+                            continue;
+                        }
+
+                        EnsureBackup(contentRoot, path, bytes);
+
+                        Buffer.BlockCopy(encoded, 0, bytes, info.DataOffset, info.DataSize);
+                        File.WriteAllBytes(path, bytes);
+                        patched++;
+                    }
+                    catch (Exception ex)
+                    {
+                        var rel = SafeRelative(contentRoot, path);
+                        _logger.LogWarning(ex, "Inject failed for {Path}", path);
+                        errors.Add($"{rel}: {ex.Message}");
+                    }
+                }
+            }, ct);
+
+            _activity.AddActivity(
+                errors.Count == 0 ? $"Sky injected → {patched} texture(s)"
+                                  : $"Sky inject → {patched} ok, {errors.Count} errors",
+                errors.Count == 0 ? "success" : "warning");
+
+            _ = _telemetry.TrackEventAsync(
+                "custom_lab.sky_inject",
+                errors.Count == 0 ? TelemetryEventStatus.Ok : TelemetryEventStatus.Degraded,
+                metrics: new Dictionary<string, object?>
+                {
+                    ["patched"] = patched,
+                    ["skipped"] = skipped,
+                    ["errors"] = errors.Count,
+                    ["mode"] = options.Mode.ToString(),
+                    ["tile"] = tileSize,
+                    ["dxt5_dims"] = dxt5Cache.Count,
+                    ["bgra8_dims"] = bgra8Cache.Count
+                },
+                cancellationToken: ct);
+
+            return new SkyInjectionResult(patched, skipped, errors);
+        }
+        finally
+        {
+            source?.Dispose();
+        }
     }
 
     public async Task<SkyInjectionResult> RestoreAsync(CancellationToken ct = default)
