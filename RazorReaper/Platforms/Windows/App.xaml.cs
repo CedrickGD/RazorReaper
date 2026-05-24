@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
@@ -27,13 +26,7 @@ namespace RazorReaper.WinUI
 
         public App()
         {
-            // Version-scoped mutex name. A bare "RazorReaper_SingleInstance_Mutex" blocked any
-            // second instance regardless of which build it was — fine in production, but it also
-            // prevented the dev/test flow of installing v1.4.4 and v1.4.5 side-by-side on
-            // different drives to compare behaviour. Different version → different mutex, so
-            // side-by-side works while within a single version single-instance still holds.
-            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0";
-            _mutex = new Mutex(true, $"RazorReaper_SingleInstance_Mutex_v{version}", out bool isNewInstance);
+            _mutex = new Mutex(true, "RazorReaper_SingleInstance_Mutex", out bool isNewInstance);
 
             if (!isNewInstance)
             {
