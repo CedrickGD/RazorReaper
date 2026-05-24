@@ -624,9 +624,15 @@ namespace RazorReaper.Models
                 },
                 ["📦 UI - Inventory Textures"] = new Dictionary<string, string[]>
                 {
+                    // Every .uasset directly inside Textures, plus everything inside the
+                    // FullBgAnim / PanelBgAnim subfolders. Array.Empty<>() triggers ResolveFiles
+                    // to enumerate *.uasset for that folder. TextureBackupService also removes
+                    // the FullBgAnim / PanelBgAnim directory entries once their files are gone
+                    // (see the empty-leaf-folder cleanup in BackupFilesAsync) — Textures itself
+                    // stays because it has subdirectories at the start of the operation.
                     { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures"), Array.Empty<string>() },
-                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures", "FullBigMain"), Array.Empty<string>() },
-                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures", "PanelBigMain"), Array.Empty<string>() }
+                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures", "FullBgAnim"), Array.Empty<string>() },
+                    { Path.Combine(shooterGamePath, "UI", "Inventory", "Textures", "PanelBgAnim"), Array.Empty<string>() }
                 }
             };
         }

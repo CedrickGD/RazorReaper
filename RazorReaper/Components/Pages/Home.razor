@@ -50,6 +50,14 @@
                     <button class="btn-small" @onclick="() => CheckForUpdatesAsync(true)" disabled="@isCheckingForUpdates">
                         @(isCheckingForUpdates ? "Checking..." : "Check")
                     </button>
+                    @if (updateResult?.HasUpdate == true)
+                    {
+                        <button class="btn-small btn-small-primary"
+                                @onclick="OnUpdateNowAsync"
+                                disabled="@IsUpdateNowDisabled">
+                            @UpdateNowButtonLabel
+                        </button>
+                    }
                 </div>
             </div>
             <div class="update-status">
@@ -87,8 +95,31 @@
                         v@(AutoUpdateManager.PendingVersion) ready — will install silently when you close the app.
                     </div>
                 }
+                else
+                {
+                    @* The progress bar above is self-labeled with its own percentage, so the
+                       generic status line is only useful when no bar is on screen. Rendering
+                       both during download produced two side-by-side percent readouts that
+                       looked like a double progress bar. *@
+                    <div class="update-message">@UpdateStatusMessage</div>
+                }
 
-                <div class="update-message">@UpdateStatusMessage</div>
+                @* Notes show whenever the manifest carries them, even when the user is already
+                   on the latest. Pre-update: they're the "what's new" preview the user asked
+                   for. Post-update: they double as a recap of what just got installed. The
+                   summary reads "What's new in v{LatestVersion}" either way. *@
+                @if (updateResult?.LatestVersion != null && updateResult.Notes.Count > 0)
+                {
+                    <details class="update-notes" open="@(updateResult.HasUpdate)">
+                        <summary>What's new in v@(updateResult.LatestVersion)</summary>
+                        <ul class="update-notes-list">
+                            @foreach (var note in updateResult.Notes)
+                            {
+                                <li>@note</li>
+                            }
+                        </ul>
+                    </details>
+                }
             </div>
             <div class="update-card-footer">
                 <a href="https://github.com/CedrickGD/RazorReaper/releases/latest"
@@ -1444,6 +1475,71 @@
         if (!_isDisposed)
         {
             await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool isUpdateNowInFlight;
+
+    private bool IsUpdateNowDisabled =>
+        isUpdateNowInFlight
+        || AutoUpdateManager.IsDownloading
+        || isCheckingForUpdates;
+
+    private string UpdateNowButtonLabel
+    {
+        get
+        {
+            if (AutoUpdateManager.IsDownloading)
+                return $"Downloading… {AutoUpdateManager.DownloadProgressPercent ?? 0}%";
+            if (AutoUpdateManager.IsInstallerReady)
+                return "Install & Restart";
+            return "Update Now";
+        }
+    }
+
+    private async Task OnUpdateNowAsync()
+    {
+        if (isUpdateNowInFlight) return;
+        isUpdateNowInFlight = true;
+        StateHasChanged();
+
+        try
+        {
+            // Force a download if the auto-update toggle was off — Update Now is an explicit
+            // user gesture and must work even without the background-download path enabled.
+            if (!AutoUpdateManager.IsInstallerReady)
+            {
+                await AutoUpdateManager.PrepareInstallerOnDemandAsync();
+            }
+
+            if (!AutoUpdateManager.IsInstallerReady)
+            {
+                NotificationService.ShowError(
+                    string.IsNullOrWhiteSpace(AutoUpdateManager.StatusMessage)
+                        ? "Could not prepare the installer."
+                        : AutoUpdateManager.StatusMessage);
+                return;
+            }
+
+            if (!AutoUpdateManager.LaunchPendingInstaller())
+            {
+                NotificationService.ShowError("Could not launch the installer.");
+                return;
+            }
+
+            // Hand off to the installer. With /VERYSILENT it overwrites files and the .iss
+            // [Run] PostInstall entry relaunches RazorReaper.exe. We exit hard so file locks
+            // are released before the installer's file-replace step runs — ProcessExit still
+            // fires (telemetry flush stays bounded).
+            Environment.Exit(0);
+        }
+        finally
+        {
+            isUpdateNowInFlight = false;
+            if (!_isDisposed)
+            {
+                StateHasChanged();
+            }
         }
     }
 

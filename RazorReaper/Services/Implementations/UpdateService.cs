@@ -71,6 +71,7 @@ public class UpdateService : IUpdateService
             var installerArgs = item.Element("args")?.Value?.Trim();
             var mandatoryText = item.Element("mandatory")?.Value?.Trim();
             var isMandatory = bool.TryParse(mandatoryText, out var mandatory) && mandatory;
+            var notes = ParseNotes(item.Element("notes")?.Value);
 
             var successResult = new UpdateCheckResult
             {
@@ -81,6 +82,7 @@ public class UpdateService : IUpdateService
                 ChangelogUrl = changelogUrl,
                 InstallerArgs = installerArgs,
                 IsMandatory = isMandatory,
+                Notes = notes,
                 CheckedAt = DateTimeOffset.UtcNow
             };
             TrackUpdateTelemetry(
@@ -145,6 +147,28 @@ public class UpdateService : IUpdateService
             status,
             result.ErrorMessage ?? "Update check completed.",
             metrics);
+    }
+
+    /// <summary>
+    /// Turns the &lt;notes&gt; element content into a flat list of bullet strings. Accepts either
+    /// markdown-style lists (lines beginning with <c>-</c>, <c>*</c>, or <c>•</c>) or plain text
+    /// — leading marker characters and surrounding whitespace are stripped per line. Empty
+    /// lines are dropped so a CDATA block can be indented in the XML without bleeding into UI.
+    /// </summary>
+    private static IReadOnlyList<string> ParseNotes(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return Array.Empty<string>();
+
+        var bullets = new List<string>();
+        foreach (var line in raw.Split('\n'))
+        {
+            var trimmed = line.Trim().TrimStart('-', '*', '•').Trim();
+            if (trimmed.Length > 0)
+            {
+                bullets.Add(trimmed);
+            }
+        }
+        return bullets;
     }
 
     private static Version GetAssemblyVersion()

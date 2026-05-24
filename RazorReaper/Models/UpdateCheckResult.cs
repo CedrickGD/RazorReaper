@@ -12,5 +12,12 @@ public sealed class UpdateCheckResult
     public string? ErrorMessage { get; init; }
     public DateTimeOffset CheckedAt { get; init; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Human-readable release notes from the update manifest's <c>&lt;notes&gt;</c> element.
+    /// One bullet per non-empty line; leading dashes/asterisks are stripped at parse time so
+    /// the markup can be authored either as a markdown list or as plain lines.
+    /// </summary>
+    public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
+
     public bool IsSuccess => string.IsNullOrWhiteSpace(ErrorMessage);
 }

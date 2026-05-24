@@ -106,6 +106,42 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         await DownloadInstallerAsync(result, cancellationToken);
     }
 
+    public async Task PrepareInstallerOnDemandAsync(CancellationToken cancellationToken = default)
+    {
+        // Idempotent: if the installer is already on disk, the caller can immediately close
+        // the app to hand off to it. Likewise short-circuit if a download is already running.
+        if (isInstallerReady || isDownloading) return;
+
+        // Re-run the manifest check if we have nothing cached (e.g. the user launched offline,
+        // then connected, then clicked Update Now without ever hitting Check).
+        var pending = lastCheckResult;
+        if (pending is null || !pending.IsSuccess)
+        {
+            try
+            {
+                pending = await updateService.CheckForUpdatesAsync(cancellationToken);
+                lastCheckResult = pending;
+                OnStateChanged();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Update Now: manifest check failed");
+                statusMessage = "Update check failed.";
+                OnStateChanged();
+                return;
+            }
+        }
+
+        if (pending is null || !pending.HasUpdate || string.IsNullOrWhiteSpace(pending.DownloadUrl))
+        {
+            return;
+        }
+
+        // Bypass the IsAutoUpdateEnabled gate — Update Now is an explicit user intent and
+        // must work even when the auto-update toggle is off.
+        await DownloadInstallerAsync(pending, cancellationToken);
+    }
+
     public bool LaunchPendingInstaller()
     {
         var path = installerPath ?? Preferences.Get(PrefKeyInstallerPath, "");

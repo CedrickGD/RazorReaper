@@ -10,6 +10,7 @@ namespace RazorReaper
         private readonly ITelemetryService telemetryService;
         private readonly IAutoUpdateManager autoUpdateManager;
         private int telemetryShutdownStarted;
+        private Task? telemetryShutdownTask;
 
         public App(
             IFontInstaller fontInstaller,
@@ -65,13 +66,32 @@ namespace RazorReaper
         {
             SafeInvoke(() => autoUpdateManager.LaunchPendingInstaller());
             // Fire-and-forget so the window disappears instantly when the user clicks X.
-            // ProcessExit performs the bounded synchronous wait as a backstop.
-            _ = Task.Run(FlushTelemetryShutdown);
+            // ProcessExit waits on this task as a backstop so the session_end POST
+            // gets a chance to land before the process tears down.
+            telemetryShutdownTask = Task.Run(FlushTelemetryShutdown);
         }
 
         private void HandleProcessExit(object? sender, EventArgs e)
         {
             SafeInvoke(() => autoUpdateManager.LaunchPendingInstaller());
+
+            // If Destroying already queued the flush, wait (bounded) for it to land.
+            // The Interlocked guard in FlushTelemetryShutdown would otherwise short-circuit
+            // this call to a no-op and the background POST would be killed on exit.
+            var pendingFlush = telemetryShutdownTask;
+            if (pendingFlush is not null)
+            {
+                try
+                {
+                    pendingFlush.Wait(TelemetryShutdownTimeout);
+                }
+                catch
+                {
+                    // FlushTelemetryShutdown already logs its own failures.
+                }
+                return;
+            }
+
             FlushTelemetryShutdown();
         }
 

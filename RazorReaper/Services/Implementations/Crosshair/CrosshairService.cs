@@ -30,6 +30,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
     private readonly string _imagesDir;
     private readonly string _profilesPath;
     private readonly string _settingsPath;
+    private readonly string _activeProfilePath;
 
     private readonly object _lock = new();
     private readonly List<CrosshairProfile> _saved = new();
@@ -71,6 +72,12 @@ public partial class CrosshairService : ICrosshairService, IDisposable
     private int _hotkeyVk = 0x77; // F8
     private bool _hotkeyCtrl, _hotkeyAlt, _hotkeyShift;
 
+    // Debounce gate for active-profile persistence. Slider drags fire UpdateActive at ~25 Hz;
+    // writing JSON on every tick would hammer the disk. We coalesce bursts into a single
+    // delayed write, then Dispose flushes synchronously so the last edits aren't lost on exit.
+    private static readonly TimeSpan ActiveProfileSaveDebounce = TimeSpan.FromMilliseconds(500);
+    private CancellationTokenSource? _activeProfileSaveCts;
+
     public event Action? Changed;
     public event Action? LibraryChanged;
     public event Action? ShowAppRequested;
@@ -91,6 +98,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         _imagesDir = Path.Combine(_rootDir, "Images");
         _profilesPath = Path.Combine(_rootDir, "profiles.json");
         _settingsPath = Path.Combine(_rootDir, "settings.json");
+        _activeProfilePath = Path.Combine(_rootDir, "active.json");
 
         try
         {
@@ -105,9 +113,9 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         // is only mutated by Import/Delete — no re-enumeration on every Changed event.
         RebuildLibraryCache();
 
-        _active = CrosshairBuiltInPresets.All[0].Clone();
-        _active.IsBuiltIn = false;
-        _active.Name = "Custom";
+        // Restore the last session's working profile. If active.json is missing or unreadable,
+        // fall back to the first built-in preset so the editor still opens with something usable.
+        _active = LoadActiveProfile();
 
         LoadSaved();
         LoadSettings();
@@ -166,6 +174,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         snapshot.IsBuiltIn = false;
         lock (_lock) { _active = snapshot; }
         if (_overlayActive) _overlay.Show(snapshot);
+        ScheduleActiveProfileSave();
         Changed?.Invoke();
     }
 
@@ -177,6 +186,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         copy.IsBuiltIn = false;
         lock (_lock) { _active = copy; }
         if (_overlayActive) _overlay.Show(copy);
+        ScheduleActiveProfileSave();
         Changed?.Invoke();
     }
 
@@ -316,8 +326,124 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         }
     }
 
+    private CrosshairProfile LoadActiveProfile()
+    {
+        try
+        {
+            if (File.Exists(_activeProfilePath))
+            {
+                var json = File.ReadAllText(_activeProfilePath);
+                var restored = JsonSerializer.Deserialize<CrosshairProfile>(json);
+                if (restored is not null)
+                {
+                    // Built-in flag never persists — the restored profile is always treated as
+                    // the user's editable working copy, even if it originated from a preset.
+                    restored.IsBuiltIn = false;
+                    if (string.IsNullOrWhiteSpace(restored.Id)) restored.Id = Guid.NewGuid().ToString("N");
+                    if (string.IsNullOrWhiteSpace(restored.Name)) restored.Name = "Custom";
+                    return restored;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load active crosshair profile; falling back to default");
+        }
+
+        var fallback = CrosshairBuiltInPresets.All[0].Clone();
+        fallback.IsBuiltIn = false;
+        fallback.Name = "Custom";
+        return fallback;
+    }
+
+    /// <summary>Debounced background write of the active profile. Each call cancels any pending
+    /// save and queues a fresh one — so a 1-second slider drag produces a single disk write
+    /// after the drag settles, not 25.</summary>
+    private void ScheduleActiveProfileSave()
+    {
+        var previous = Interlocked.Exchange(ref _activeProfileSaveCts, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+
+        var current = _activeProfileSaveCts;
+        if (current is null) return;
+        var token = current.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(ActiveProfileSaveDebounce, token).ConfigureAwait(false);
+                await PersistActiveProfileAsync(token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Superseded by a newer schedule — the latest call will perform the write.
+            }
+        });
+    }
+
+    private async Task PersistActiveProfileAsync(CancellationToken cancellationToken)
+    {
+        CrosshairProfile snapshot;
+        lock (_lock)
+        {
+            snapshot = _active.Clone();
+            snapshot.Id = _active.Id;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(_rootDir);
+            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(_activeProfilePath, json, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation arrived between Delay completing and the write; next schedule will retry.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to persist active crosshair profile");
+        }
+    }
+
+    /// <summary>Synchronous flush — used from Dispose so the last edits land before the process
+    /// exits, even if a debounced save was still pending.</summary>
+    private void PersistActiveProfileSync()
+    {
+        CrosshairProfile snapshot;
+        lock (_lock)
+        {
+            snapshot = _active.Clone();
+            snapshot.Id = _active.Id;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(_rootDir);
+            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_activeProfilePath, json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to flush active crosshair profile on shutdown");
+        }
+    }
+
     public void Dispose()
     {
+        // Cancel any pending debounced write and flush the final state synchronously, otherwise
+        // the user's last slider tweak before closing the app is lost.
+        try
+        {
+            var pending = Interlocked.Exchange(ref _activeProfileSaveCts, null);
+            pending?.Cancel();
+            pending?.Dispose();
+            PersistActiveProfileSync();
+        }
+        catch { /* swallow on shutdown */ }
+
         try { _overlay.Dispose(); } catch { /* swallow on shutdown */ }
         lock (_previewImageLock)
         {

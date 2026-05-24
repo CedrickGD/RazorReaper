@@ -165,6 +165,7 @@ public partial class CrosshairService
             if (wasActive)
             {
                 _overlay.Update(snapshot, _overlayActive);
+                ScheduleActiveProfileSave();
                 Changed?.Invoke();
             }
             return true;
@@ -195,6 +196,7 @@ public partial class CrosshairService
             snapshot = _active;
         }
         if (_overlayActive) _overlay.Show(snapshot);
+        ScheduleActiveProfileSave();
         Changed?.Invoke();
     }
 

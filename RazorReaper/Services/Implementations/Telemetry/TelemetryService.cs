@@ -210,6 +210,7 @@ public sealed partial class TelemetryService : ITelemetryService
         try
         {
             using var response = await client.SendAsync(request, cancellationToken);
+            logger.LogInformation("Telemetry event {Service} -> HTTP {Status}", normalizedEventName, (int)response.StatusCode);
             if (!response.IsSuccessStatusCode)
             {
                 await LogFailedResponseAsync(response, normalizedEventName, cancellationToken);

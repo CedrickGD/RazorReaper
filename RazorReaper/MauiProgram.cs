@@ -175,18 +175,29 @@ namespace RazorReaper
 
         private static void ConfigureAppConfiguration(MauiAppBuilder builder)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            using var stream = assembly.GetManifestResourceStream("RazorReaper.appsettings.json");
-
-            var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
+            // Anchor JSON config lookup to the directory containing the executable, NOT
+            // Directory.GetCurrentDirectory(). The CWD depends on how the app was launched
+            // (Start menu shortcut, double-click, dotnet run) and is unreliable — for users
+            // launching from the wrong cwd the bound TelemetrySettings silently falls back to
+            // defaults (Enabled=false, empty Endpoint), which is what stopped session telemetry.
+            var configBuilder = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-                .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false)
-                .Build();
+                .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
+
+            // Fall back to the embedded copy if appsettings.json didn't ship alongside the
+            // exe (e.g. a packaging slip). The CopyToOutputDirectory entry in the csproj
+            // covers the common case; this is belt-and-suspenders.
+            var assembly = Assembly.GetExecutingAssembly();
+            using var embedded = assembly.GetManifestResourceStream("RazorReaper.appsettings.json");
+            if (embedded is not null)
+            {
+                configBuilder.AddJsonStream(embedded);
+            }
+
+            var config = configBuilder.Build();
 
             builder.Configuration.AddConfiguration(config);
-
-            // Bind configuration to AppConfiguration class
             builder.Services.Configure<AppConfiguration>(config);
         }
 

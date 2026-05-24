@@ -24,6 +24,28 @@ public class TextureBackupService : ITextureBackupService
             int count = 0;
             string categoryBackupDir = Path.Combine(_backupRoot, categoryKey);
 
+            // Snapshot which folder entries had no subdirectories at the start of the operation.
+            // Those are "leaf" folders (e.g. UI/Inventory/Textures/FullBgAnim) that the user wants
+            // physically removed after their files get backed up — not just emptied. Parent folders
+            // that contain subdirectories at startup (e.g. UI/Inventory/Textures itself, which holds
+            // FullBgAnim and PanelBgAnim) must NOT be deleted, even when our backup later makes them
+            // look empty after the subfolder cleanup. We compute this once, up front, to avoid
+            // ordering dependencies between sibling entries.
+            var removableLeafFolders = folderFiles.Keys
+                .Where(p =>
+                {
+                    try
+                    {
+                        return Directory.Exists(p)
+                            && !Directory.EnumerateDirectories(p).Any();
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                })
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             foreach (var folder in folderFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -57,6 +79,25 @@ public class TextureBackupService : ITextureBackupService
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to backup file {FilePath}", sourcePath);
+                    }
+                }
+
+                // Leaf-folder cleanup: if this entry was a leaf at startup and nothing
+                // remains in it now, remove the directory itself. RestoreFilesAsync's
+                // Directory.CreateDirectory call recreates it on revert.
+                if (removableLeafFolders.Contains(folderPath))
+                {
+                    try
+                    {
+                        if (Directory.Exists(folderPath)
+                            && !Directory.EnumerateFileSystemEntries(folderPath).Any())
+                        {
+                            Directory.Delete(folderPath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to remove emptied folder {FolderPath}", folderPath);
                     }
                 }
             }

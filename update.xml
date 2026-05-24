@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.4.4.0</version>
-    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.4/RazorReaper-Setup.exe</url>
-    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.4</changelog>
+    <version>1.4.5.0</version>
+    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.5/RazorReaper-Setup.exe</url>
+    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.5</changelog>
     <mandatory>false</mandatory>
     <args>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</args>
+    <notes>
+- Persistent crosshair settings — your last config is restored on next launch
+- Inventory glitch now removes the FullBgAnim and PanelBgAnim subfolders alongside the textures
+- Update card: single progress bar during download
+- Update Now button for instant manual updates with auto-relaunch
+- New "What's new" section so you can see release notes before updating
+- Removed Tanster credits from the Building tab
+    </notes>
 </item>
