@@ -60,7 +60,7 @@ jobs:
               headline="🚀 **New release published**"
             fi
 
-            content="$headline in **$REPO**"$'\n'"**$release_name** (\`$tag_name\`)"$'\n'"$release_url"
+            content="$headline in **$REPO**"$'\n'"**$release_name** (\`$tag_name\`)"$'\n'"<$release_url>"
           else
             commit_count="$(jq '.commits | length' "$GITHUB_EVENT_PATH")"
             compare_url="$(jq -r '.compare // empty' "$GITHUB_EVENT_PATH")"
@@ -75,7 +75,7 @@ jobs:
               commit_lines="- No commit details provided by GitHub payload"
             fi
 
-            content="📦 **Push detected** in **$REPO**"$'\n'"Branch: \`$REF_NAME\`"$'\n'"By: **$ACTOR**"$'\n'"Commits: **$commit_count**"$'\n'"$compare_url"$'\n\n'"$commit_lines"
+            content="📦 **Push detected** in **$REPO**"$'\n'"Branch: \`$REF_NAME\`"$'\n'"By: **$ACTOR**"$'\n'"Commits: **$commit_count**"$'\n'"<$compare_url>"$'\n\n'"$commit_lines"
           fi
 
           if [ "${#content}" -gt 1900 ]; then
