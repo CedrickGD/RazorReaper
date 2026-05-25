@@ -19,6 +19,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_WEBHOOK_2: ${{ secrets.DISCORD_WEBHOOK_2 }}
           DISCORD_WEBHOOK_3: ${{ secrets.DISCORD_WEBHOOK_3 }}
+          RIP_DISCORD_UPDATE_WEBHOOK: ${{ secrets.RIP_DISCORD_UPDATE_WEBHOOK }}
         run: |
           if [ -z "$DISCORD_WEBHOOK" ]; then
             echo "::error::Missing DISCORD_WEBHOOK repository secret."
@@ -30,12 +31,16 @@ jobs:
           if [ -z "$DISCORD_WEBHOOK_3" ]; then
             echo "::warning::Missing DISCORD_WEBHOOK_3 repository secret. Skipping third webhook."
           fi
+          if [ -z "$RIP_DISCORD_UPDATE_WEBHOOK" ]; then
+            echo "::warning::Missing RIP_DISCORD_UPDATE_WEBHOOK repository secret. Skipping RIP webhook."
+          fi
 
       - name: Send Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_WEBHOOK_2: ${{ secrets.DISCORD_WEBHOOK_2 }}
           DISCORD_WEBHOOK_3: ${{ secrets.DISCORD_WEBHOOK_3 }}
+          RIP_DISCORD_UPDATE_WEBHOOK: ${{ secrets.RIP_DISCORD_UPDATE_WEBHOOK }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
@@ -121,5 +126,18 @@ jobs:
             if [ "$http_code3" -lt 200 ] || [ "$http_code3" -ge 300 ]; then
               echo "::warning::Discord webhook 3 returned HTTP $http_code3"
               cat discord_response3.txt
+            fi
+          fi
+
+          # RIP Discord update webhook: releases only, skip commits
+          if [ -n "$RIP_DISCORD_UPDATE_WEBHOOK" ] && [ "$EVENT_NAME" = "release" ]; then
+            http_code_rip="$(curl -sS -o discord_response_rip.txt -w "%{http_code}" \
+              -H "Content-Type: application/json" \
+              -d "$payload" \
+              "$RIP_DISCORD_UPDATE_WEBHOOK")"
+
+            if [ "$http_code_rip" -lt 200 ] || [ "$http_code_rip" -ge 300 ]; then
+              echo "::warning::RIP Discord webhook returned HTTP $http_code_rip"
+              cat discord_response_rip.txt
             fi
           fi
