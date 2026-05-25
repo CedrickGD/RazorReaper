@@ -154,27 +154,53 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
         try
         {
-            using var process = new Process
+            // Spawn a self-contained orchestrator script so the relaunch path doesn't depend
+            // on the external Inno Setup .iss PostInstall config. The script:
+            //   1. Waits for our PID to disappear (so file locks are released)
+            //   2. Force-kills any leftover RazorReaper.exe (paranoia)
+            //   3. Runs the installer silently
+            //   4. Relaunches the freshly installed RazorReaper.exe from its own dir
+            //   5. Deletes itself
+            var ourExe = Process.GetCurrentProcess().MainModule?.FileName
+                         ?? Path.Combine(AppContext.BaseDirectory, "RazorReaper.exe");
+            var ourPid = Environment.ProcessId;
+            var scriptDir = Path.GetDirectoryName(path) ?? Path.GetTempPath();
+            Directory.CreateDirectory(scriptDir);
+            var scriptPath = Path.Combine(scriptDir, "rr_update.cmd");
+
+            var script = $@"@echo off
+:wait
+tasklist /FI ""PID eq {ourPid}"" 2>nul | find ""{ourPid}"" >nul
+if not errorlevel 1 (
+  timeout /t 1 /nobreak >nul
+  goto wait
+)
+taskkill /F /IM RazorReaper.exe >nul 2>&1
+""{path}"" {args}
+start """" ""{ourExe}""
+del ""%~f0"" >nul 2>&1
+";
+            File.WriteAllText(scriptPath, script);
+
+            Process.Start(new ProcessStartInfo
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = path,
-                    Arguments = args,
-                    UseShellExecute = true
-                }
-            };
-            process.Start();
+                FileName = "cmd.exe",
+                Arguments = $"/c \"\"{scriptPath}\"\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
 
             Preferences.Remove(PrefKeyInstallerPath);
             Preferences.Remove(PrefKeyInstallerArgs);
             Preferences.Remove(PrefKeyPendingVersion);
 
-            logger.LogInformation("Launched auto-update installer: {Path}", path);
+            logger.LogInformation("Launched auto-update orchestrator for installer: {Path}", path);
             return true;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to launch auto-update installer: {Path}", path);
+            logger.LogError(ex, "Failed to launch auto-update orchestrator: {Path}", path);
             return false;
         }
     }

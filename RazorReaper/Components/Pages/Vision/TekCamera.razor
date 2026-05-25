@@ -1,0 +1,313 @@
+@using System.Diagnostics
+@using System.IO
+@using System.Text.RegularExpressions
+@using RazorReaper.Services
+@using RazorReaper.Utilities
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+
+@{
+    var isEnabled = bUseOldThirdPersonCameraTrace && bUseOldThirdPersonCameraOffset;
+}
+<div class="vision-card-wrap wide">
+    <div class="content-card">
+        <div class="section-header-fov">
+            <div class="icon-circle-fov">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7.5h3.5l1.7-2.2h7.6l1.7 2.2H21v11H3z" />
+                    <circle cx="12" cy="13" r="3.6" />
+                </svg>
+            </div>
+            <div>
+                <h3>TEK Camera</h3>
+                <p class="vision-card-sub">Restore the classic third-person camera trace and offset behavior.</p>
+            </div>
+        </div>
+
+        <div class="vision-tek-hero @(isEnabled ? "is-on" : "is-off")">
+            <div class="vision-tek-hero-state">
+                <span class="vision-tek-state-badge">@(isEnabled ? "Active" : "Inactive")</span>
+                <div class="vision-tek-state-text">
+                    <strong>@(isEnabled ? "Classic third-person camera" : "Vanilla third-person camera")</strong>
+                    <span>@(isEnabled ? "Older trace + offset behavior is active. Useful for closer-feeling combat camera." : "Default modern camera behavior. Enable for the classic feel.")</span>
+                </div>
+            </div>
+            <button class="vision-tek-toggle @(isEnabled ? "is-off" : "is-on")"
+                    @onclick="@(isEnabled ? (Func<Task>)DisableCameraTrace : EnableCameraTrace)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    @if (isEnabled)
+                    {
+                        <circle cx="12" cy="12" r="9" />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                    }
+                    else
+                    {
+                        <circle cx="12" cy="12" r="9" />
+                        <polyline points="8 12 11 15 16 9" />
+                    }
+                </svg>
+                <span>@(isEnabled ? "Disable Camera Trace" : "Enable Camera Trace")</span>
+            </button>
+        </div>
+
+        <div class="vision-tek-keys-label">Underlying settings</div>
+        <div class="vision-tek-keys">
+            <div class="vision-tek-key @(bUseOldThirdPersonCameraTrace ? "on" : "off")">
+                <div class="vision-tek-key-dot"></div>
+                <div class="vision-tek-key-body">
+                    <div class="vision-tek-key-name">bUseOldThirdPersonCameraTrace</div>
+                    <div class="vision-tek-key-val">@(bUseOldThirdPersonCameraTrace ? "True" : "False")</div>
+                </div>
+            </div>
+            <div class="vision-tek-key @(bUseOldThirdPersonCameraOffset ? "on" : "off")">
+                <div class="vision-tek-key-dot"></div>
+                <div class="vision-tek-key-body">
+                    <div class="vision-tek-key-name">bUseOldThirdPersonCameraOffset</div>
+                    <div class="vision-tek-key-val">@(bUseOldThirdPersonCameraOffset ? "True" : "False")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="path-section">
+            <strong>Config Path</strong>
+            <div class="path-display @(string.IsNullOrEmpty(gameUserSettingsPath) ? string.Empty : "clickable")"
+                 @onclick="OpenGameSettingsFolder"
+                 title="@(string.IsNullOrEmpty(gameUserSettingsPath) ? "Path not available" : "Open folder")">
+                @GetConfigPathDisplay()
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string DefaultGameSettingsPath = @"ARK\ShooterGame\Saved\Config\WindowsNoEditor\GameUserSettings.ini";
+
+    private string arkInstallPath = string.Empty;
+    private string gameUserSettingsPath = string.Empty;
+
+    private bool bUseOldThirdPersonCameraTrace;
+    private bool bUseOldThirdPersonCameraOffset;
+
+    protected override void OnInitialized()
+    {
+        CheckFileAndReadSettings();
+    }
+
+    private bool ResolveArkPath()
+    {
+        if (!string.IsNullOrEmpty(arkInstallPath) && Directory.Exists(arkInstallPath))
+        {
+            return true;
+        }
+
+        arkInstallPath = ArkUtilities.FindArkPath() ?? string.Empty;
+        return !string.IsNullOrEmpty(arkInstallPath) && Directory.Exists(arkInstallPath);
+    }
+
+    private void CheckFileAndReadSettings()
+    {
+        try
+        {
+            if (!ResolveArkPath())
+            {
+                NotificationService.ShowError("ARK installation not found. Please ensure ARK is installed.");
+                return;
+            }
+
+            gameUserSettingsPath = Path.Combine(arkInstallPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor", "GameUserSettings.ini");
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                NotificationService.ShowWarning("GameUserSettings.ini not found. Launch ARK once to create it.");
+                return;
+            }
+
+            ReadCurrentSettings();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private void ReadCurrentSettings()
+    {
+        try
+        {
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                return;
+            }
+
+            var content = File.ReadAllText(gameUserSettingsPath);
+
+            var traceMatch = Regex.Match(content, @"bUseOldThirdPersonCameraTrace=(\w+)", RegexOptions.IgnoreCase);
+            if (traceMatch.Success)
+            {
+                bUseOldThirdPersonCameraTrace = traceMatch.Groups[1].Value.Equals("True", StringComparison.OrdinalIgnoreCase);
+            }
+
+            var offsetMatch = Regex.Match(content, @"bUseOldThirdPersonCameraOffset=(\w+)", RegexOptions.IgnoreCase);
+            if (offsetMatch.Success)
+            {
+                bUseOldThirdPersonCameraOffset = offsetMatch.Groups[1].Value.Equals("True", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"TekCamera error reading settings: {ex.Message}");
+        }
+    }
+
+    private async Task EnableCameraTrace()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(gameUserSettingsPath))
+            {
+                CheckFileAndReadSettings();
+            }
+
+            await Task.Run(() =>
+            {
+                if (!File.Exists(gameUserSettingsPath))
+                {
+                    InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found."));
+                    return;
+                }
+
+                var content = File.ReadAllText(gameUserSettingsPath);
+                var modified = false;
+
+                var tracePattern = @"bUseOldThirdPersonCameraTrace=\w+";
+                if (Regex.IsMatch(content, tracePattern, RegexOptions.IgnoreCase))
+                {
+                    content = Regex.Replace(content, tracePattern, "bUseOldThirdPersonCameraTrace=True", RegexOptions.IgnoreCase);
+                    modified = true;
+                }
+                else if (content.Contains("[/Script/ShooterGame.ShooterGameUserSettings]", StringComparison.Ordinal))
+                {
+                    content = content.Replace(
+                        "[/Script/ShooterGame.ShooterGameUserSettings]",
+                        "[/Script/ShooterGame.ShooterGameUserSettings]\r\nbUseOldThirdPersonCameraTrace=True");
+                    modified = true;
+                }
+
+                var offsetPattern = @"bUseOldThirdPersonCameraOffset=\w+";
+                if (Regex.IsMatch(content, offsetPattern, RegexOptions.IgnoreCase))
+                {
+                    content = Regex.Replace(content, offsetPattern, "bUseOldThirdPersonCameraOffset=True", RegexOptions.IgnoreCase);
+                    modified = true;
+                }
+                else if (content.Contains("[/Script/ShooterGame.ShooterGameUserSettings]", StringComparison.Ordinal) &&
+                         content.Contains("bUseOldThirdPersonCameraTrace=True", StringComparison.Ordinal) &&
+                         !content.Contains("bUseOldThirdPersonCameraOffset", StringComparison.OrdinalIgnoreCase))
+                {
+                    content = content.Replace(
+                        "bUseOldThirdPersonCameraTrace=True",
+                        "bUseOldThirdPersonCameraTrace=True\r\nbUseOldThirdPersonCameraOffset=True");
+                    modified = true;
+                }
+
+                if (!modified)
+                {
+                    InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini."));
+                    return;
+                }
+
+                File.WriteAllText(gameUserSettingsPath, content);
+                InvokeAsync(() =>
+                {
+                    bUseOldThirdPersonCameraTrace = true;
+                    bUseOldThirdPersonCameraOffset = true;
+                    NotificationService.ShowSuccess("Camera trace enabled.");
+                    ActivityService.AddActivity("Camera trace enabled", "success");
+                    StateHasChanged();
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private async Task DisableCameraTrace()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(gameUserSettingsPath))
+            {
+                CheckFileAndReadSettings();
+            }
+
+            await Task.Run(() =>
+            {
+                if (!File.Exists(gameUserSettingsPath))
+                {
+                    InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found."));
+                    return;
+                }
+
+                var content = File.ReadAllText(gameUserSettingsPath);
+                content = Regex.Replace(content, @"bUseOldThirdPersonCameraTrace=\w+", "bUseOldThirdPersonCameraTrace=False", RegexOptions.IgnoreCase);
+                content = Regex.Replace(content, @"bUseOldThirdPersonCameraOffset=\w+", "bUseOldThirdPersonCameraOffset=False", RegexOptions.IgnoreCase);
+
+                File.WriteAllText(gameUserSettingsPath, content);
+                InvokeAsync(() =>
+                {
+                    bUseOldThirdPersonCameraTrace = false;
+                    bUseOldThirdPersonCameraOffset = false;
+                    NotificationService.ShowWarning("Camera trace disabled.");
+                    ActivityService.AddActivity("Camera trace disabled", "warning");
+                    StateHasChanged();
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private void OpenGameSettingsFolder()
+    {
+        if (string.IsNullOrEmpty(gameUserSettingsPath))
+        {
+            NotificationService.ShowWarning("Config path not available.");
+            return;
+        }
+
+        OpenFolder(Path.GetDirectoryName(gameUserSettingsPath));
+    }
+
+    private void OpenFolder(string? path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            {
+                NotificationService.ShowError("Folder does not exist.");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{path}\"",
+                UseShellExecute = true
+            });
+
+            ActivityService.AddActivity($"Opened folder: {path}", "info");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+        }
+    }
+
+    private string GetConfigPathDisplay()
+    {
+        return string.IsNullOrEmpty(gameUserSettingsPath) ? DefaultGameSettingsPath : gameUserSettingsPath;
+    }
+}

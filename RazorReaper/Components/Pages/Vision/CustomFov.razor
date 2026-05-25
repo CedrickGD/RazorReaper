@@ -1,0 +1,334 @@
+@using System.Diagnostics
+@using System.Globalization
+@using System.IO
+@using System.Text.RegularExpressions
+@using RazorReaper.Services
+@using RazorReaper.Utilities
+
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+
+<div class="vision-card-wrap wide">
+    <div class="content-card">
+        <div class="section-header-fov">
+            <div class="icon-circle-fov">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z" stroke="currentColor" stroke-width="1.5" fill="none" />
+                    <circle cx="10" cy="10" r="2.2" />
+                </svg>
+            </div>
+            <div>
+                <h3>Custom FOV</h3>
+                <p class="vision-card-sub">The in-game slider caps at 1.35. Push higher for ultrawide or triple-monitor setups.</p>
+            </div>
+        </div>
+
+        <div class="vision-split">
+            <div class="vision-split-left">
+                <div class="vision-reference">
+                    <img src="images/vision/fov-crafting-station.webp"
+                         alt="Custom FOV view example"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onclick="rrZoom(this)" />
+                    <div class="vision-reference-placeholder" style="display:none;">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2.5" y="3.5" width="15" height="13" rx="1.5" />
+                            <circle cx="7" cy="8" r="1.5" />
+                            <path d="M2.5 13l4-4 4 4 3-3 4 4" />
+                        </svg>
+                        <span>Reference image (images/vision/fov-crafting-station.webp)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vision-split-right">
+                <div class="settings-status-card compact-card">
+                    <div class="settings-display">
+                        <div class="setting-item @(currentFov > 1.0 ? "enabled" : "disabled")">
+                            <div class="setting-status-dot"></div>
+                            <div class="setting-info">
+                                <div class="setting-name">FOVMultiplier</div>
+                                <div class="setting-value">@currentFov.ToString("F2", CultureInfo.InvariantCulture)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vision-fov-controls">
+                    <div class="vision-fov-slider-row">
+                        <input type="range"
+                               min="1.0"
+                               max="1.6"
+                               step="0.05"
+                               value="@pendingFov.ToString("F2", CultureInfo.InvariantCulture)"
+                               @oninput="OnSliderInput"
+                               class="vision-fov-slider" />
+                        <input type="number"
+                               min="1.0"
+                               max="1.6"
+                               step="0.01"
+                               value="@pendingFov.ToString("F2", CultureInfo.InvariantCulture)"
+                               @oninput="OnNumberInput"
+                               class="vision-fov-number" />
+                    </div>
+                    <div class="vision-fov-scale">
+                        <span>1.0</span>
+                        <span>1.2</span>
+                        <span>1.35 (vanilla max)</span>
+                        <span>1.6</span>
+                    </div>
+                </div>
+
+                <div class="fov-main-actions vision-fov-actions">
+                    <button class="fov-btn-large enable"
+                            @onclick="ApplyFov"
+                            disabled="@(isBusy || Math.Abs(pendingFov - currentFov) < 0.001)">
+                        <div class="btn-content-large">
+                            <span class="btn-title">Apply @pendingFov.ToString("F2", CultureInfo.InvariantCulture)</span>
+                        </div>
+                    </button>
+                    <button class="fov-btn-large disable"
+                            @onclick="ResetFov"
+                            disabled="@(isBusy || Math.Abs(currentFov - 1.0) < 0.001)">
+                        <div class="btn-content-large">
+                            <span class="btn-title">Reset to 1.00</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="path-section">
+                    <strong>Config Path</strong>
+                    <div class="path-display @(string.IsNullOrEmpty(gameUserSettingsPath) ? string.Empty : "clickable")"
+                         @onclick="OpenGameSettingsFolder"
+                         title="@(string.IsNullOrEmpty(gameUserSettingsPath) ? "Path not available" : "Open folder")">
+                        @GetConfigPathDisplay()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string DefaultGameSettingsPath = @"ARK\ShooterGame\Saved\Config\WindowsNoEditor\GameUserSettings.ini";
+    private const string BackupSuffix = ".rrfovbak";
+    private const string SettingsSectionHeader = "[/Script/ShooterGame.ShooterGameUserSettings]";
+    private const double MinFov = 1.0;
+    private const double MaxFov = 1.6;
+    private const double DefaultFov = 1.0;
+
+    private string arkInstallPath = string.Empty;
+    private string gameUserSettingsPath = string.Empty;
+
+    private double currentFov = DefaultFov;
+    private double pendingFov = DefaultFov;
+    private bool isBusy;
+    private bool sessionBackupTaken;
+
+    protected override void OnInitialized()
+    {
+        CheckFileAndReadSettings();
+    }
+
+    private bool ResolveArkPath()
+    {
+        if (!string.IsNullOrEmpty(arkInstallPath) && Directory.Exists(arkInstallPath))
+        {
+            return true;
+        }
+
+        arkInstallPath = ArkUtilities.FindArkPath() ?? string.Empty;
+        return !string.IsNullOrEmpty(arkInstallPath) && Directory.Exists(arkInstallPath);
+    }
+
+    private void CheckFileAndReadSettings()
+    {
+        try
+        {
+            if (!ResolveArkPath())
+            {
+                NotificationService.ShowError("ARK installation not found. Please ensure ARK is installed.");
+                return;
+            }
+
+            gameUserSettingsPath = Path.Combine(arkInstallPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor", "GameUserSettings.ini");
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                NotificationService.ShowWarning("GameUserSettings.ini not found. Launch ARK once to create it.");
+                return;
+            }
+
+            ReadCurrentFov();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private void ReadCurrentFov()
+    {
+        try
+        {
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                return;
+            }
+
+            var content = File.ReadAllText(gameUserSettingsPath);
+            var match = Regex.Match(content, @"FOVMultiplier=([\d.]+)", RegexOptions.IgnoreCase);
+            if (match.Success && double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            {
+                currentFov = Math.Clamp(parsed, MinFov, MaxFov);
+                pendingFov = currentFov;
+            }
+            else
+            {
+                currentFov = DefaultFov;
+                pendingFov = DefaultFov;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"CustomFov error reading FOVMultiplier: {ex.Message}");
+        }
+    }
+
+    private void OnSliderInput(ChangeEventArgs e)
+    {
+        if (e.Value is string raw && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+        {
+            pendingFov = ClampFov(v);
+        }
+    }
+
+    private void OnNumberInput(ChangeEventArgs e)
+    {
+        if (e.Value is string raw && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+        {
+            pendingFov = ClampFov(v);
+        }
+    }
+
+    private static double ClampFov(double value) => Math.Clamp(Math.Round(value, 2), MinFov, MaxFov);
+
+    private async Task ApplyFov()
+    {
+        if (isBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            if (string.IsNullOrEmpty(gameUserSettingsPath))
+            {
+                CheckFileAndReadSettings();
+            }
+
+            if (!File.Exists(gameUserSettingsPath))
+            {
+                NotificationService.ShowError("GameUserSettings.ini file not found.");
+                return;
+            }
+
+            isBusy = true;
+            var targetValue = pendingFov;
+
+            await Task.Run(() =>
+            {
+                if (!sessionBackupTaken)
+                {
+                    try
+                    {
+                        File.Copy(gameUserSettingsPath, gameUserSettingsPath + BackupSuffix, overwrite: true);
+                        sessionBackupTaken = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"CustomFov backup failed: {ex.Message}");
+                    }
+                }
+
+                var content = File.ReadAllText(gameUserSettingsPath);
+                var formatted = $"FOVMultiplier={targetValue.ToString("F6", CultureInfo.InvariantCulture)}";
+
+                if (Regex.IsMatch(content, @"FOVMultiplier=[\d.]+", RegexOptions.IgnoreCase))
+                {
+                    content = Regex.Replace(content, @"FOVMultiplier=[\d.]+", formatted, RegexOptions.IgnoreCase);
+                }
+                else if (content.Contains(SettingsSectionHeader, StringComparison.Ordinal))
+                {
+                    content = content.Replace(SettingsSectionHeader, $"{SettingsSectionHeader}\r\n{formatted}");
+                }
+                else
+                {
+                    InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini."));
+                    return;
+                }
+
+                File.WriteAllText(gameUserSettingsPath, content);
+            });
+
+            currentFov = targetValue;
+            NotificationService.ShowSuccess($"FOV set to {targetValue.ToString("F2", CultureInfo.InvariantCulture)}.");
+            ActivityService.AddActivity($"FOV applied: {targetValue.ToString("F2", CultureInfo.InvariantCulture)}", "success");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"FOV write failed: {ex.Message}");
+        }
+        finally
+        {
+            isBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetFov()
+    {
+        pendingFov = DefaultFov;
+        await ApplyFov();
+    }
+
+    private void OpenGameSettingsFolder()
+    {
+        if (string.IsNullOrEmpty(gameUserSettingsPath))
+        {
+            NotificationService.ShowWarning("Config path not available.");
+            return;
+        }
+
+        OpenFolder(Path.GetDirectoryName(gameUserSettingsPath));
+    }
+
+    private void OpenFolder(string? path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            {
+                NotificationService.ShowError("Folder does not exist.");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{path}\"",
+                UseShellExecute = true
+            });
+
+            ActivityService.AddActivity($"Opened folder: {path}", "info");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+        }
+    }
+
+    private string GetConfigPathDisplay()
+    {
+        return string.IsNullOrEmpty(gameUserSettingsPath) ? DefaultGameSettingsPath : gameUserSettingsPath;
+    }
+}

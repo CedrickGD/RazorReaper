@@ -1,0 +1,459 @@
+@using System.Diagnostics
+@using System.IO
+@using Microsoft.Maui.Storage
+@using RazorReaper.Services
+@using RazorReaper.Utilities
+
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+
+<div class="vision-card-wrap wide">
+    <div class="content-card">
+        <div class="section-header-fov">
+            <div class="icon-circle-fov">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div>
+                <h3>Scope Files</h3>
+                <p class="vision-card-sub">Disable scope rendering files to clear the view.</p>
+            </div>
+        </div>
+
+        <div class="vision-callout">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="10" cy="10" r="7.5" />
+                <path d="M10 6.5v4" />
+                <circle cx="10" cy="13.5" r="0.6" fill="currentColor" />
+            </svg>
+            <div>
+                <strong>Set in-game textures to High or Epic</strong> for scope removal to take effect properly.
+            </div>
+        </div>
+
+        <div class="vision-split">
+            <div class="vision-split-left">
+                <div class="vision-reference">
+                    <img src="images/vision/scope-removed.webp"
+                         alt="Scope view after files disabled"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                         onclick="rrZoom(this)" />
+                    <div class="vision-reference-placeholder" style="display:none;">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2.5" y="3.5" width="15" height="13" rx="1.5" />
+                            <circle cx="7" cy="8" r="1.5" />
+                            <path d="M2.5 13l4-4 4 4 3-3 4 4" />
+                        </svg>
+                        <span>Reference image (images/vision/scope-removed.webp)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vision-split-right">
+                <div class="settings-status-card compact-card">
+                    <div class="settings-display">
+                        <div class="setting-item @(ScopeHasDisabledFiles() ? "disabled" : "enabled")">
+                            <div class="setting-status-dot"></div>
+                            <div class="setting-info">
+                                <div class="setting-name">Scope</div>
+                                <div class="setting-value">@(ScopeHasDisabledFiles() ? "Disabled" : "Enabled")</div>
+                            </div>
+                        </div>
+                    </div>
+                    @if (isScopeStatusLoading)
+                    {
+                        <div class="scope-status-note">Scanning scope files...</div>
+                    }
+                </div>
+
+                <div class="fov-main-actions">
+                    <button class="fov-btn-large @(ScopeHasDisabledFiles() ? "enable" : "disable")"
+                            @onclick="ToggleScopeFiles"
+                            disabled="@IsScopeToggleDisabled()">
+                        <div class="btn-content-large">
+                            <span class="btn-title">@(ScopeHasDisabledFiles() ? "Restore Scope Files" : "Disable Scope Files")</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="path-section">
+                    <strong>Scope Root</strong>
+                    <div class="path-display @(string.IsNullOrEmpty(scopeRootPath) ? string.Empty : "clickable")"
+                         @onclick="OpenScopeFolder"
+                         title="@(string.IsNullOrEmpty(scopeRootPath) ? "Path not available" : "Open folder")">
+                        @GetScopeRootDisplay()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private const string ScopeDisabledSuffix = ".rrscopeoff";
+    private const string DefaultScopeRootPath = @"ARK\ShooterGame\Content\PrimalEarth";
+
+    private static readonly string[] ScopeFilePatterns =
+    {
+        "*scope*.uasset",
+        "*scope*.uexp",
+        "*scope*.ubulk"
+    };
+
+    private string arkInstallPath = string.Empty;
+    private string scopeRootPath = string.Empty;
+
+    private int? scopeActiveFileCount;
+    private int? scopeDisabledFileCount;
+    private bool isScopeStatusLoading;
+    private bool isScopeBusy;
+
+    protected override void OnInitialized()
+    {
+        ResolveScopeRootPath();
+        _ = LoadScopeStateAsync();
+    }
+
+    private bool ResolveArkPath()
+    {
+        if (!string.IsNullOrEmpty(arkInstallPath) && Directory.Exists(arkInstallPath))
+        {
+            return true;
+        }
+
+        arkInstallPath = ArkUtilities.FindArkPath() ?? string.Empty;
+        return !string.IsNullOrEmpty(arkInstallPath) && Directory.Exists(arkInstallPath);
+    }
+
+    private void ResolveScopeRootPath()
+    {
+        scopeRootPath = string.Empty;
+        if (!ResolveArkPath())
+        {
+            return;
+        }
+
+        var preferred = Path.Combine(arkInstallPath, "ShooterGame", "Content", "PrimalEarth");
+        if (Directory.Exists(preferred))
+        {
+            scopeRootPath = preferred;
+            return;
+        }
+
+        scopeRootPath = arkInstallPath;
+    }
+
+    private async Task LoadScopeStateAsync()
+    {
+        if (string.IsNullOrEmpty(scopeRootPath) || !Directory.Exists(scopeRootPath))
+        {
+            scopeActiveFileCount = 0;
+            scopeDisabledFileCount = 0;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        try
+        {
+            isScopeStatusLoading = true;
+            await InvokeAsync(StateHasChanged);
+
+            var (active, disabled) = await Task.Run(() => CountScopeFiles(scopeRootPath));
+            scopeActiveFileCount = active;
+            scopeDisabledFileCount = disabled;
+        }
+        catch
+        {
+            scopeActiveFileCount = 0;
+            scopeDisabledFileCount = 0;
+        }
+        finally
+        {
+            isScopeStatusLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private Task ToggleScopeFiles()
+    {
+        return ScopeHasDisabledFiles() ? RestoreScopeFiles() : DisableScopeFiles();
+    }
+
+    private bool IsScopeToggleDisabled()
+    {
+        if (isScopeBusy || isScopeStatusLoading)
+        {
+            return true;
+        }
+
+        if (ScopeHasDisabledFiles())
+        {
+            return !scopeDisabledFileCount.HasValue || scopeDisabledFileCount.Value == 0;
+        }
+
+        return !scopeActiveFileCount.HasValue || scopeActiveFileCount.Value == 0;
+    }
+
+    private async Task DisableScopeFiles()
+    {
+        if (isScopeBusy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(scopeRootPath) || !Directory.Exists(scopeRootPath))
+        {
+            NotificationService.ShowError("Scope root path not found.");
+            return;
+        }
+
+        try
+        {
+            isScopeBusy = true;
+            await InvokeAsync(StateHasChanged);
+
+            var result = await Task.Run(() =>
+            {
+                var renamed = 0;
+                var skipped = 0;
+                var failed = 0;
+
+                var activeFiles = EnumerateActiveScopeFiles(scopeRootPath).ToList();
+                foreach (var filePath in activeFiles)
+                {
+                    var renamedPath = filePath + ScopeDisabledSuffix;
+                    try
+                    {
+                        if (File.Exists(renamedPath))
+                        {
+                            skipped++;
+                            continue;
+                        }
+
+                        File.Move(filePath, renamedPath);
+                        renamed++;
+                    }
+                    catch
+                    {
+                        failed++;
+                    }
+                }
+
+                var counts = CountScopeFiles(scopeRootPath);
+                return (renamed, skipped, failed, counts.active, counts.disabled, scanned: activeFiles.Count);
+            });
+
+            scopeActiveFileCount = result.active;
+            scopeDisabledFileCount = result.disabled;
+            Preferences.Set(ScopeModeConstants.ScopeModePreferenceKey, ScopeModeConstants.ScopeModeDisabled);
+
+            if (result.renamed > 0)
+            {
+                NotificationService.ShowSuccess($"Renamed {result.renamed} scope file(s).");
+                ActivityService.AddActivity($"Scope files disabled: {result.renamed}", "success");
+            }
+            else if (result.scanned == 0)
+            {
+                NotificationService.ShowInfo("No active scope files found.");
+            }
+            else
+            {
+                NotificationService.ShowWarning($"No files renamed. Skipped: {result.skipped}, Failed: {result.failed}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Scope disable failed: {ex.Message}");
+        }
+        finally
+        {
+            isScopeBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RestoreScopeFiles()
+    {
+        if (isScopeBusy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(scopeRootPath) || !Directory.Exists(scopeRootPath))
+        {
+            NotificationService.ShowError("Scope root path not found.");
+            return;
+        }
+
+        try
+        {
+            isScopeBusy = true;
+            await InvokeAsync(StateHasChanged);
+
+            var result = await Task.Run(() =>
+            {
+                var restored = 0;
+                var skipped = 0;
+                var failed = 0;
+
+                var disabledFiles = EnumerateDisabledScopeFiles(scopeRootPath).ToList();
+                foreach (var filePath in disabledFiles)
+                {
+                    var originalPath = filePath.Substring(0, filePath.Length - ScopeDisabledSuffix.Length);
+                    try
+                    {
+                        if (File.Exists(originalPath))
+                        {
+                            skipped++;
+                            continue;
+                        }
+
+                        File.Move(filePath, originalPath);
+                        restored++;
+                    }
+                    catch
+                    {
+                        failed++;
+                    }
+                }
+
+                var counts = CountScopeFiles(scopeRootPath);
+                return (restored, skipped, failed, counts.active, counts.disabled, scanned: disabledFiles.Count);
+            });
+
+            scopeActiveFileCount = result.active;
+            scopeDisabledFileCount = result.disabled;
+            Preferences.Set(ScopeModeConstants.ScopeModePreferenceKey, ScopeModeConstants.ScopeModeEnabled);
+
+            if (result.restored > 0)
+            {
+                NotificationService.ShowSuccess($"Restored {result.restored} scope file(s).");
+                ActivityService.AddActivity($"Scope files restored: {result.restored}", "info");
+            }
+            else if (result.scanned == 0)
+            {
+                NotificationService.ShowInfo("No disabled scope files found.");
+            }
+            else
+            {
+                NotificationService.ShowWarning($"No files restored. Skipped: {result.skipped}, Failed: {result.failed}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Scope restore failed: {ex.Message}");
+        }
+        finally
+        {
+            isScopeBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OpenScopeFolder()
+    {
+        if (string.IsNullOrEmpty(scopeRootPath))
+        {
+            NotificationService.ShowWarning("Scope root path not available.");
+            return;
+        }
+
+        OpenFolder(scopeRootPath);
+    }
+
+    private void OpenFolder(string? path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            {
+                NotificationService.ShowError("Folder does not exist.");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{path}\"",
+                UseShellExecute = true
+            });
+
+            ActivityService.AddActivity($"Opened folder: {path}", "info");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+        }
+    }
+
+    private static (int active, int disabled) CountScopeFiles(string rootPath)
+    {
+        var activeCount = EnumerateActiveScopeFiles(rootPath).Count();
+        var disabledCount = EnumerateDisabledScopeFiles(rootPath).Count();
+        return (activeCount, disabledCount);
+    }
+
+    private static IEnumerable<string> EnumerateActiveScopeFiles(string rootPath)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var pattern in ScopeFilePatterns)
+        {
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(rootPath, pattern, SearchOption.AllDirectories);
+            }
+            catch
+            {
+                continue;
+            }
+
+            foreach (var filePath in files)
+            {
+                if (filePath.EndsWith(ScopeDisabledSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (seen.Add(filePath))
+                {
+                    yield return filePath;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateDisabledScopeFiles(string rootPath)
+    {
+        IEnumerable<string> files;
+        try
+        {
+            files = Directory.EnumerateFiles(rootPath, $"*{ScopeDisabledSuffix}", SearchOption.AllDirectories);
+        }
+        catch
+        {
+            yield break;
+        }
+
+        foreach (var filePath in files)
+        {
+            var fileName = Path.GetFileName(filePath);
+            if (fileName.Contains("scope", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return filePath;
+            }
+        }
+    }
+
+    private bool ScopeHasDisabledFiles()
+    {
+        return scopeDisabledFileCount.HasValue && scopeDisabledFileCount.Value > 0;
+    }
+
+    private string GetScopeRootDisplay()
+    {
+        return string.IsNullOrEmpty(scopeRootPath) ? DefaultScopeRootPath : scopeRootPath;
+    }
+}

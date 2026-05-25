@@ -1,0 +1,130 @@
+@page "/vision"
+
+<header class="page-header">
+    <h1 class="page-title">Vision Tools</h1>
+    <p class="page-subtitle">Manage TEK camera behavior, scope visibility, and field of view in one place.</p>
+</header>
+
+<div class="vision-tab-strip" role="tablist">
+    <button type="button"
+            role="tab"
+            class="vision-tab @(activeTab == VisionTab.TekCamera ? "active" : "")"
+            aria-selected="@(activeTab == VisionTab.TekCamera)"
+            @onclick="() => SetTab(VisionTab.TekCamera)">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h3l1.5-2h5L14 6h3v9H3z" />
+            <circle cx="10" cy="10.5" r="2.8" />
+        </svg>
+        <span>TEK Camera</span>
+    </button>
+
+    <button type="button"
+            role="tab"
+            class="vision-tab @(activeTab == VisionTab.Scope ? "active" : "")"
+            aria-selected="@(activeTab == VisionTab.Scope)"
+            @onclick="() => SetTab(VisionTab.Scope)">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10" cy="10" r="6" />
+            <path d="M10 2v4M10 14v4M2 10h4M14 10h4" />
+            <circle cx="10" cy="10" r="1.2" />
+        </svg>
+        <span>Scope</span>
+    </button>
+
+    <button type="button"
+            role="tab"
+            class="vision-tab @(activeTab == VisionTab.CustomFov ? "active" : "")"
+            aria-selected="@(activeTab == VisionTab.CustomFov)"
+            @onclick="() => SetTab(VisionTab.CustomFov)">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z" />
+            <circle cx="10" cy="10" r="2.2" />
+        </svg>
+        <span>Custom FOV</span>
+    </button>
+</div>
+
+<div class="vision-tab-panel" role="tabpanel">
+    @switch (activeTab)
+    {
+        case VisionTab.TekCamera:
+            <TekCamera />
+            break;
+        case VisionTab.Scope:
+            <Scope />
+            break;
+        case VisionTab.CustomFov:
+            <CustomFov />
+            break;
+    }
+</div>
+
+<style>
+    .vision-tab-strip {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .vision-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.6rem 1rem;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.92rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+        white-space: nowrap;
+    }
+
+    .vision-tab svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .vision-tab:hover:not(:disabled):not(.active) {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.92);
+    }
+
+    .vision-tab.active {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.14);
+        color: #fff;
+    }
+
+    .vision-tab-panel {
+        animation: visionFadeIn 0.25s ease-out;
+    }
+
+    @@keyframes visionFadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    private VisionTab activeTab = VisionTab.TekCamera;
+
+    private void SetTab(VisionTab tab)
+    {
+        activeTab = tab;
+    }
+
+    private enum VisionTab
+    {
+        TekCamera,
+        Scope,
+        CustomFov
+    }
+}

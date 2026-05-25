@@ -1490,7 +1490,7 @@
         get
         {
             if (AutoUpdateManager.IsDownloading)
-                return $"Downloading… {AutoUpdateManager.DownloadProgressPercent ?? 0}%";
+                return "Downloading…";
             if (AutoUpdateManager.IsInstallerReady)
                 return "Install & Restart";
             return "Update Now";
