@@ -82,17 +82,21 @@ jobs:
             content="${content:0:1900}"$'\n'"(truncated)"
           fi
 
-          payload="$(jq -n --arg content "$content" '{content: $content}')"
+          # flags: 4 = SUPPRESS_EMBEDS (no link previews / images)
+          payload="$(jq -n --arg content "$content" '{content: $content, flags: 4}')"
 
-          http_code="$(curl -sS -o discord_response.txt -w "%{http_code}" \
-            -H "Content-Type: application/json" \
-            -d "$payload" \
-            "$DISCORD_WEBHOOK")"
+          # Webhook 1 (commits channel): push events only, skip releases
+          if [ "$EVENT_NAME" = "push" ]; then
+            http_code="$(curl -sS -o discord_response.txt -w "%{http_code}" \
+              -H "Content-Type: application/json" \
+              -d "$payload" \
+              "$DISCORD_WEBHOOK")"
 
-          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-            echo "::error::Discord webhook returned HTTP $http_code"
-            cat discord_response.txt
-            exit 1
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+              echo "::error::Discord webhook returned HTTP $http_code"
+              cat discord_response.txt
+              exit 1
+            fi
           fi
 
           # Webhook 2 (updates channel): releases only, skip commits

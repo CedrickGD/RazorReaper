@@ -39,10 +39,10 @@ jobs:
           installer_url="https://github.com/${REPO}/releases/download/${TAG_NAME}/RazorReaper-Setup.exe"
           changelog_url="https://github.com/${REPO}/releases/tag/${TAG_NAME}"
 
-          sed -i \\
-            -e "s|<version>.*</version>|<version>${xml_version}</version>|" \\
-            -e "s|<url>.*</url>|<url>${installer_url}</url>|" \\
-            -e "s|<changelog>.*</changelog>|<changelog><${changelog_url}></changelog>|" \\
+          sed -i \
+            -e "s|<version>.*</version>|<version>${xml_version}</version>|" \
+            -e "s|<url>.*</url>|<url>${installer_url}</url>|" \
+            -e "s|<changelog>.*</changelog>|<changelog>${changelog_url}</changelog>|" \
             update.xml
 
           echo "--- Updated update.xml ---"
