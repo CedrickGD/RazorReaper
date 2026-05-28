@@ -752,3 +752,404 @@
     display: none;
 }
 
+/* ==========================================================================
+   Tabbed Vision redesign (TEK Camera / Scope / Custom FOV).
+   The v1.4.6 redesign introduced new markup but shipped without these rules,
+   leaving the toggle, callout and reference images unstyled (SVGs/images
+   rendered at native size). Styles below back the redesigned components.
+   ========================================================================== */
+
+.vision-card-wrap {
+    width: 100%;
+}
+
+.vision-card-sub {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0.25rem 0 0;
+    line-height: 1.5;
+}
+
+/* --- TEK Camera hero --- */
+.vision-tek-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    margin-bottom: 1.5rem;
+    transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.vision-tek-hero.is-on {
+    border-color: rgba(139, 92, 246, 0.35);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.04));
+}
+
+.vision-tek-hero-state {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 220px;
+}
+
+.vision-tek-state-badge {
+    align-self: flex-start;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+}
+
+.vision-tek-hero.is-on .vision-tek-state-badge {
+    color: var(--accent-purple-light);
+    background: rgba(139, 92, 246, 0.18);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.vision-tek-hero.is-off .vision-tek-state-badge {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.vision-tek-state-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.vision-tek-state-text strong {
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.vision-tek-state-text span {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    max-width: 52ch;
+}
+
+.vision-tek-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.4rem;
+    border-radius: 10px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vision-tek-toggle svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.vision-tek-toggle.is-on {
+    color: var(--accent-purple-light);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(139, 92, 246, 0.45);
+}
+
+.vision-tek-toggle.is-on:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.18));
+    border-color: var(--accent-purple);
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+    transform: translateY(-1px);
+}
+
+.vision-tek-toggle.is-off {
+    color: #fecaca;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.08));
+    border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.vision-tek-toggle.is-off:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(239, 68, 68, 0.16));
+    border-color: var(--accent-red);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
+    transform: translateY(-1px);
+}
+
+/* --- TEK underlying-setting chips --- */
+.vision-tek-keys-label {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.6rem;
+}
+
+.vision-tek-keys {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.vision-tek-key {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vision-tek-key.on {
+    border-color: rgba(139, 92, 246, 0.25);
+}
+
+.vision-tek-key-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-secondary);
+}
+
+.vision-tek-key.on .vision-tek-key-dot {
+    background: var(--accent-purple);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+}
+
+.vision-tek-key-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.vision-tek-key-name {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.vision-tek-key-val {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.vision-tek-key.on .vision-tek-key-val {
+    color: var(--accent-purple-light);
+}
+
+/* --- Scope info callout --- */
+.vision-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.15rem;
+    border-radius: 10px;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.22);
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.vision-callout svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--accent-purple);
+    margin-top: 0.1rem;
+}
+
+.vision-callout strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* --- Split layout (reference image | controls) --- */
+.vision-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.vision-split-left,
+.vision-split-right {
+    min-width: 0;
+}
+
+/* --- Reference image + fallback placeholder --- */
+.vision-reference {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.vision-reference img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    cursor: zoom-in;
+    /* theme.css sets a global `img { pointer-events: none }`; re-enable it here
+       or the onclick="rrZoom(this)" lightbox handler never fires. */
+    pointer-events: auto;
+    transition: transform 0.3s ease;
+}
+
+.vision-reference img:hover {
+    transform: scale(1.01);
+}
+
+.vision-reference-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+}
+
+.vision-reference-placeholder svg {
+    width: 48px;
+    height: 48px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.vision-reference-placeholder span {
+    font-size: 0.82rem;
+    font-family: var(--font-mono);
+    word-break: break-all;
+}
+
+/* --- Custom FOV controls --- */
+.vision-fov-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1.25rem;
+}
+
+.vision-fov-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.vision-fov-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 6px !important;
+    padding: 0 !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: none !important;
+    border-radius: 999px !important;
+    cursor: pointer;
+}
+
+.vision-fov-slider:focus {
+    box-shadow: none !important;
+    background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.vision-fov-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: transparent;
+}
+
+.vision-fov-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    border-radius: 50%;
+    background: var(--accent-purple);
+    border: 2px solid #fff;
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+    cursor: pointer;
+}
+
+.vision-fov-number {
+    width: 84px;
+    flex-shrink: 0;
+    text-align: center;
+    font-family: var(--font-mono);
+}
+
+.vision-fov-scale {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+}
+
+.fov-main-actions.vision-fov-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.vision-fov-actions .fov-btn-large {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+}
+
+/* --- Path display inside the redesigned cards (old rules were scoped to
+       the removed .suitfov-layout ancestor). --- */
+.vision-card-wrap .path-display {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    word-break: break-all;
+    color: #a78bfa;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.25s ease;
+}
+
+.vision-card-wrap .path-display.clickable {
+    cursor: pointer;
+}
+
+.vision-card-wrap .path-display.clickable:hover {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+@media (max-width: 900px) {
+    .vision-split {
+        grid-template-columns: 1fr;
+    }
+}
+
