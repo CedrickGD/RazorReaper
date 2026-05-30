@@ -137,7 +137,7 @@
 }
 
 .steam-mods-empty-card code {
-    color: #c4b5fd;
+    color: var(--accent-purple-soft);
     font-family: var(--font-mono);
     font-size: 0.8rem;
 }
@@ -146,8 +146,8 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    border: 3px solid rgba(139, 92, 246, 0.2);
-    border-top-color: rgba(139, 92, 246, 0.8);
+    border: 3px solid rgba(var(--accent-purple-rgb), 0.2);
+    border-top-color: rgba(var(--accent-purple-rgb), 0.8);
     margin: 0 auto 0.8rem;
     animation: spin 1s linear infinite;
 }
@@ -186,9 +186,9 @@
 
 .steam-mods-id-chip {
     border-radius: 999px;
-    border: 1px solid rgba(139, 92, 246, 0.45);
-    background: rgba(139, 92, 246, 0.16);
-    color: #ddd6fe;
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.45);
+    background: rgba(var(--accent-purple-rgb), 0.16);
+    color: var(--accent-purple-soft);
     font-size: 0.74rem;
     font-family: var(--font-mono);
     padding: 0.28rem 0.58rem;

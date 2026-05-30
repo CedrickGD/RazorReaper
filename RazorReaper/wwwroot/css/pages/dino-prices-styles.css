@@ -39,7 +39,7 @@
 .icon-badge {
     width: 40px;
     height: 40px;
-    background: rgba(139, 92, 246, 0.1);
+    background: rgba(var(--accent-purple-rgb), 0.1);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -50,7 +50,7 @@
 .icon-badge svg {
     width: 20px;
     height: 20px;
-    color: rgba(139, 92, 246, 0.8);
+    color: rgba(var(--accent-purple-rgb), 0.8);
 }
 
 .card-header h3 {
@@ -142,7 +142,7 @@
 
 .search-input:focus {
     outline: none;
-    border-color: rgba(139, 92, 246, 0.5);
+    border-color: rgba(var(--accent-purple-rgb), 0.5);
     background: rgba(0, 0, 0, 0.3);
 }
 
@@ -177,9 +177,9 @@
 }
 
 .tier-btn.active {
-    background: rgba(139, 92, 246, 0.15);
-    border-color: rgba(139, 92, 246, 0.3);
-    color: rgba(139, 92, 246, 1);
+    background: rgba(var(--accent-purple-rgb), 0.15);
+    border-color: rgba(var(--accent-purple-rgb), 0.3);
+    color: rgba(var(--accent-purple-rgb), 1);
 }
 
 .tier-btn.elite.active {
@@ -189,9 +189,9 @@
 }
 
 .tier-btn.high.active {
-    background: rgba(139, 92, 246, 0.15);
-    border-color: rgba(139, 92, 246, 0.3);
-    color: rgba(139, 92, 246, 1);
+    background: rgba(var(--accent-purple-rgb), 0.15);
+    border-color: rgba(var(--accent-purple-rgb), 0.3);
+    color: rgba(var(--accent-purple-rgb), 1);
 }
 
 .tier-btn.medium.active {
@@ -223,7 +223,7 @@
 }
 
 .stat-value {
-    color: rgba(139, 92, 246, 1);
+    color: rgba(var(--accent-purple-rgb), 1);
     font-weight: 600;
 }
 
@@ -291,7 +291,7 @@
 }
 
 .table-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.5);
+    background: rgba(var(--accent-purple-rgb), 0.5);
 }
 
 .table-row {
@@ -334,9 +334,9 @@
     border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
-    background: rgba(139, 92, 246, 0.15);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    color: rgba(139, 92, 246, 1);
+    background: rgba(var(--accent-purple-rgb), 0.15);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
+    color: rgba(var(--accent-purple-rgb), 1);
 }
 
 /* No Results */

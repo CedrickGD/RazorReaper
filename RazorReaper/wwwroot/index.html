@@ -321,6 +321,241 @@
             // Ignore font initialization errors.
         }
 
+        // ---- Accent color (theme) settings -------------------------------------
+        // The user picks ONE accent color; the lighter/darker/soft shades are
+        // derived from it (same lightness offsets the original purple used), so the
+        // whole UI re-tints cohesively. Power users can override individual shades
+        // via the Advanced section (any blank field falls back to the derived value).
+        // Every purple in the app references --accent-purple* (see theme.css), so we
+        // only need to set those few variables here; --glow-purple and the gradients
+        // reference them and recompute automatically.
+        const THEME_DEFAULT_ACCENT = '#8b5cf6';
+        const themeDefaults = { accent: THEME_DEFAULT_ACCENT, light: '', dark: '', darker: '', soft: '' };
+        const THEME_VARS = [
+            '--accent-purple', '--accent-purple-rgb', '--accent-purple-light',
+            '--accent-purple-dark', '--accent-purple-darker', '--accent-purple-soft'
+        ];
+
+        function themeIsBlank(v) { return !v || typeof v !== 'string' || v.trim() === ''; }
+
+        function themeClamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+        function themeParseHex(hex) {
+            if (typeof hex !== 'string') return null;
+            let h = hex.trim().replace(/^#/, '');
+            if (h.length === 3) { h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; }
+            if (h.length === 8) { h = h.substring(0, 6); } // drop alpha channel
+            if (h.length !== 6 || /[^0-9a-fA-F]/.test(h)) return null;
+            return {
+                r: parseInt(h.substring(0, 2), 16),
+                g: parseInt(h.substring(2, 4), 16),
+                b: parseInt(h.substring(4, 6), 16)
+            };
+        }
+
+        function themeRgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h = 0, s = 0; const l = (max + min) / 2;
+            if (max !== min) {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                if (max === r) { h = (g - b) / d + (g < b ? 6 : 0); }
+                else if (max === g) { h = (b - r) / d + 2; }
+                else { h = (r - g) / d + 4; }
+                h /= 6;
+            }
+            return { h: h * 360, s: s * 100, l: l * 100 };
+        }
+
+        function themeHslToHex(h, s, l) {
+            h = ((h % 360) + 360) % 360;
+            s = themeClamp(s, 0, 100) / 100;
+            l = themeClamp(l, 0, 100) / 100;
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+            const m = l - c / 2;
+            let r = 0, g = 0, b = 0;
+            if (h < 60) { r = c; g = x; }
+            else if (h < 120) { r = x; g = c; }
+            else if (h < 180) { g = c; b = x; }
+            else if (h < 240) { g = x; b = c; }
+            else if (h < 300) { r = x; b = c; }
+            else { r = c; b = x; }
+            const to = (v) => themeClamp(Math.round((v + m) * 255), 0, 255).toString(16).padStart(2, '0');
+            return '#' + to(r) + to(g) + to(b);
+        }
+
+        // Hand-tuned original purple ramp. Returned verbatim when the accent is the
+        // default so the shades stay pixel-identical even if the user overrides only
+        // one of them in Advanced (the HSL derivation is a touch more saturated than
+        // these originals, so we don't want it to silently shift the untouched shades).
+        const THEME_DEFAULT_RAMP = {
+            base: '#8b5cf6', light: '#a78bfa', dark: '#6d28d9',
+            darker: '#5b21b6', soft: '#c4b5fd', rgb: '139, 92, 246'
+        };
+
+        // Derive the full shade ramp from a single base accent color. The lightness
+        // offsets match the original purple ramp (base 66% L -> light +10, dark -16,
+        // darker -24, soft +19), so any chosen color yields a coherent set of shades.
+        function themeDeriveRamp(accentHex) {
+            const rgb = themeParseHex(accentHex) || themeParseHex(THEME_DEFAULT_ACCENT);
+            const hsl = themeRgbToHsl(rgb.r, rgb.g, rgb.b);
+            const base = themeHslToHex(hsl.h, hsl.s, hsl.l);
+            if (base.toLowerCase() === THEME_DEFAULT_ACCENT) {
+                return Object.assign({}, THEME_DEFAULT_RAMP);
+            }
+            return {
+                base: base,
+                light: themeHslToHex(hsl.h, hsl.s, hsl.l + 10),
+                dark: themeHslToHex(hsl.h, hsl.s, hsl.l - 16),
+                darker: themeHslToHex(hsl.h, hsl.s, hsl.l - 24),
+                soft: themeHslToHex(hsl.h, Math.min(hsl.s, 96), hsl.l + 19),
+                rgb: rgb.r + ', ' + rgb.g + ', ' + rgb.b
+            };
+        }
+
+        function normalizeThemeSettings(settings) {
+            if (!settings || typeof settings !== 'object') return {};
+            const out = {};
+            ['accent', 'light', 'dark', 'darker', 'soft'].forEach((k) => {
+                if (typeof settings[k] === 'string') { out[k] = settings[k]; }
+            });
+            return out;
+        }
+
+        function applyThemeSettings(settings, persist) {
+            const resolved = Object.assign({}, themeDefaults, normalizeThemeSettings(settings));
+            const accent = themeIsBlank(resolved.accent) ? THEME_DEFAULT_ACCENT : resolved.accent.trim();
+            resolved.accent = accent;
+
+            if (persist) {
+                try {
+                    localStorage.setItem('razorReaperThemeSettings', JSON.stringify(resolved));
+                } catch (e) {
+                    // Ignore storage errors.
+                }
+            }
+
+            const root = document.documentElement;
+            const isDefault = accent.toLowerCase() === THEME_DEFAULT_ACCENT
+                && themeIsBlank(resolved.light) && themeIsBlank(resolved.dark)
+                && themeIsBlank(resolved.darker) && themeIsBlank(resolved.soft);
+
+            if (isDefault) {
+                // No customization: clear inline overrides so the stylesheet's
+                // hand-tuned default purple renders exactly as before.
+                THEME_VARS.forEach((v) => root.style.removeProperty(v));
+                return resolved;
+            }
+
+            const ramp = themeDeriveRamp(accent);
+            root.style.setProperty('--accent-purple', ramp.base);
+            root.style.setProperty('--accent-purple-rgb', ramp.rgb);
+            root.style.setProperty('--accent-purple-light', themeIsBlank(resolved.light) ? ramp.light : resolved.light.trim());
+            root.style.setProperty('--accent-purple-dark', themeIsBlank(resolved.dark) ? ramp.dark : resolved.dark.trim());
+            root.style.setProperty('--accent-purple-darker', themeIsBlank(resolved.darker) ? ramp.darker : resolved.darker.trim());
+            root.style.setProperty('--accent-purple-soft', themeIsBlank(resolved.soft) ? ramp.soft : resolved.soft.trim());
+            return resolved;
+        }
+
+        window.getThemeSettings = function () {
+            if (window._themeSettings) return window._themeSettings;
+            let stored = {};
+            try {
+                const raw = localStorage.getItem('razorReaperThemeSettings');
+                if (raw) { stored = JSON.parse(raw); }
+            } catch (e) {
+                stored = {};
+            }
+            window._themeSettings = applyThemeSettings(stored, false);
+            return window._themeSettings;
+        };
+
+        // C# sends the full settings object every time (blank shade = auto-derive),
+        // mirroring how font/sound settings persist.
+        window.updateThemeSettings = function (settings) {
+            window._themeSettings = applyThemeSettings(settings || {}, true);
+            return window._themeSettings;
+        };
+
+        window.resetThemeSettings = function () {
+            window._themeSettings = applyThemeSettings({}, true);
+            return window._themeSettings;
+        };
+
+        // Preview a color without persisting — used while the user is dragging the
+        // picker so the UI updates live but nothing is saved until they commit.
+        window.previewThemeAccent = function (settings) {
+            applyThemeSettings(settings || {}, false);
+        };
+
+        try {
+            window.getThemeSettings();
+        } catch (e) {
+            // Ignore theme initialization errors.
+        }
+
+        // Runs the inline accent picker's saturation/value drag entirely in JS so there is
+        // NO per-move JS<->.NET round-trip or Blazor re-render: it positions the handle and
+        // previews the color live, then reports the final hex once on release (pointerup)
+        // via the .NET [JSInvokable] OnSvCommitted. Pointer capture keeps the drag tracking
+        // even when the cursor leaves the box.
+        function rrHsvToHex(h, s, v) {
+            h = ((h % 360) + 360) % 360;
+            var c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+            var r = 0, g = 0, b = 0;
+            if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+            else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+            else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+            var to = function (t) { return Math.min(255, Math.max(0, Math.round((t + m) * 255))).toString(16).padStart(2, '0'); };
+            return ('#' + to(r) + to(g) + to(b)).toUpperCase();
+        }
+
+        window.rrColorBoxBegin = function (boxEl, handleEl, opts, dotNetRef, pointerId, downX, downY) {
+            if (!boxEl) return;
+            opts = opts || {};
+            try { boxEl.setPointerCapture(pointerId); } catch (e) { /* ignore */ }
+            var clamp = function (n) { return Math.min(1, Math.max(0, n)); };
+            var current = null;
+
+            function apply(cx, cy) {
+                var r = boxEl.getBoundingClientRect();
+                if (!r.width || !r.height) return;
+                var s = clamp((cx - r.left) / r.width);
+                var v = clamp(1 - (cy - r.top) / r.height);
+                var hex = rrHsvToHex(opts.hue || 0, s, v);
+                current = hex;
+                if (handleEl) {
+                    handleEl.style.left = (s * 100) + '%';
+                    handleEl.style.top = ((1 - v) * 100) + '%';
+                    handleEl.style.background = hex;
+                }
+                try {
+                    window.previewThemeAccent({
+                        accent: hex, light: opts.light, dark: opts.dark,
+                        darker: opts.darker, soft: opts.soft
+                    });
+                } catch (e) { /* ignore */ }
+            }
+
+            function move(ev) { apply(ev.clientX, ev.clientY); }
+            function end() {
+                document.removeEventListener('pointermove', move, true);
+                document.removeEventListener('pointerup', end, true);
+                document.removeEventListener('pointercancel', end, true);
+                try { boxEl.releasePointerCapture(pointerId); } catch (e) { /* ignore */ }
+                if (current && dotNetRef) {
+                    try { dotNetRef.invokeMethodAsync('OnSvCommitted', current); } catch (e) { /* ignore */ }
+                }
+            }
+
+            document.addEventListener('pointermove', move, true);
+            document.addEventListener('pointerup', end, true);
+            document.addEventListener('pointercancel', end, true);
+            apply(downX, downY);
+        };
+
         function getSoundSettingsSafe() {
             try {
                 return window.getSoundSettings();

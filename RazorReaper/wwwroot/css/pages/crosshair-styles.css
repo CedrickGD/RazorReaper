@@ -140,8 +140,8 @@
         }
 
         .crosshair-layout .overlay-status-card.is-active {
-            border-color: rgba(139, 92, 246, 0.35) !important;
-            box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.12) !important;
+            border-color: rgba(var(--accent-purple-rgb), 0.35) !important;
+            box-shadow: 0 0 0 1px rgba(var(--accent-purple-rgb), 0.12) !important;
         }
 
             .crosshair-layout .overlay-status-card.is-active::before {
@@ -188,7 +188,7 @@
 
         .crosshair-layout .overlay-pulse.on {
             background: var(--accent-purple);
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.85);
+            box-shadow: 0 0 10px rgba(var(--accent-purple-rgb), 0.85);
         }
 
             .crosshair-layout .overlay-pulse.on::after {
@@ -196,7 +196,7 @@
                 position: absolute;
                 inset: -6px;
                 border-radius: 50%;
-                border: 1.5px solid rgba(139, 92, 246, 0.55);
+                border: 1.5px solid rgba(var(--accent-purple-rgb), 0.55);
                 animation: rrCrosshairPulse 1.7s ease-out infinite;
             }
 
@@ -245,13 +245,13 @@
         }
 
         .crosshair-layout .rr-pill-btn.primary {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.12));
-            border-color: rgba(139, 92, 246, 0.55);
+            background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.12));
+            border-color: rgba(var(--accent-purple-rgb), 0.55);
             color: #fff;
         }
 
             .crosshair-layout .rr-pill-btn.primary:hover:not(:disabled) {
-                box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+                box-shadow: 0 8px 24px rgba(var(--accent-purple-rgb), 0.35);
                 border-color: var(--accent-purple-light);
             }
 
@@ -311,10 +311,10 @@
         }
 
         .crosshair-layout .seg-btn.active {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.1));
+            background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.1));
             border-color: var(--accent-purple);
             color: #fff;
-            box-shadow: inset 0 0 12px rgba(139, 92, 246, 0.15);
+            box-shadow: inset 0 0 12px rgba(var(--accent-purple-rgb), 0.15);
         }
 
     .crosshair-layout .seg-glyph {
@@ -354,7 +354,7 @@
         width: min(320px, 100%);
         aspect-ratio: 1 / 1;
         background: rgba(0, 0, 0, 0.45);
-        border: 1px solid rgba(139, 92, 246, 0.25);
+        border: 1px solid rgba(var(--accent-purple-rgb), 0.25);
         border-radius: 8px;
         overflow: hidden;
         /* Disable text selection so click-drag paints cells instead of selecting text. */
@@ -370,7 +370,7 @@
     }
 
         .crosshair-layout .pixel-cell:hover {
-            outline-color: rgba(139, 92, 246, 0.55);
+            outline-color: rgba(var(--accent-purple-rgb), 0.55);
         }
 
         .crosshair-layout .pixel-cell.on {
@@ -407,7 +407,7 @@
 
     .crosshair-layout input[type="range"].rr-slider::-webkit-slider-runnable-track {
         height: 4px;
-        background: linear-gradient(90deg, rgba(139, 92, 246, 0.85), rgba(139, 92, 246, 0.45));
+        background: linear-gradient(90deg, rgba(var(--accent-purple-rgb), 0.85), rgba(var(--accent-purple-rgb), 0.45));
         border-radius: 999px;
         border: none;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -422,7 +422,7 @@
         border-radius: 50%;
         background: #fff;
         border: 2px solid var(--accent-purple);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 10px rgba(139, 92, 246, 0.45);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 10px rgba(var(--accent-purple-rgb), 0.45);
         cursor: grab;
         transition: transform 0.12s ease;
     }
@@ -450,7 +450,7 @@
 
         .crosshair-layout .num-stepper:focus-within {
             border-color: var(--accent-purple);
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.1);
         }
 
     .crosshair-layout .num-input {
@@ -548,7 +548,7 @@
         .rr-switch input:checked + .rr-switch-track {
             background: linear-gradient(135deg, var(--accent-purple), var(--accent-purple-dark));
             border-color: var(--accent-purple);
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 0 10px rgba(var(--accent-purple-rgb), 0.4);
         }
 
             .rr-switch input:checked + .rr-switch-track .rr-switch-thumb {
@@ -664,7 +664,7 @@
         min-width: 248px;
         padding: 0.85rem;
         background: rgba(20, 20, 26, 0.98);
-        border: 1px solid rgba(139, 92, 246, 0.35);
+        border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
         border-radius: 12px;
         box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(6px);
@@ -707,7 +707,7 @@
 
         .rr-color-pop-preset.selected {
             border-color: var(--accent-purple-light);
-            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.4);
         }
 
     .rr-color-pop-row {
@@ -737,8 +737,8 @@
 
     .rr-color-pop-close {
         padding: 0.45rem 0.85rem;
-        background: rgba(139, 92, 246, 0.2);
-        border: 1px solid rgba(139, 92, 246, 0.5);
+        background: rgba(var(--accent-purple-rgb), 0.2);
+        border: 1px solid rgba(var(--accent-purple-rgb), 0.5);
         border-radius: 6px;
         color: var(--text-primary);
         font-size: 0.78rem;
@@ -747,7 +747,7 @@
     }
 
         .rr-color-pop-close:hover {
-            background: rgba(139, 92, 246, 0.32);
+            background: rgba(var(--accent-purple-rgb), 0.32);
         }
 
     /* ── Nudge grid ──────────────────────────────────────────────────────── */
@@ -771,7 +771,7 @@
     }
 
         .crosshair-layout .nudge-btn:hover {
-            background: rgba(139, 92, 246, 0.18);
+            background: rgba(var(--accent-purple-rgb), 0.18);
             border-color: var(--accent-purple);
             color: #fff;
         }
@@ -814,7 +814,7 @@
 
         .crosshair-layout .hotkey-btn:hover {
             border-color: var(--accent-purple);
-            background: rgba(139, 92, 246, 0.1);
+            background: rgba(var(--accent-purple-rgb), 0.1);
         }
 
         .crosshair-layout .hotkey-btn.recording {
@@ -842,7 +842,7 @@
         border-radius: 10px;
         overflow: hidden;
         background:
-            radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+            radial-gradient(circle at 50% 50%, rgba(var(--accent-purple-rgb), 0.08) 0%, transparent 60%),
             repeating-conic-gradient(rgba(255,255,255,0.025) 0% 25%, rgba(0,0,0,0.0) 0% 50%) 50% / 18px 18px,
             linear-gradient(135deg, #0d0d10 0%, #15161c 100%);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -889,7 +889,7 @@
            `display: block` removes the baseline-gap that pushes the image down a couple of px. */
         display: block;
         image-rendering: -webkit-optimize-contrast;
-        filter: drop-shadow(0 0 14px rgba(139, 92, 246, 0.22));
+        filter: drop-shadow(0 0 14px rgba(var(--accent-purple-rgb), 0.22));
     }
 
     /* ── Presets ─────────────────────────────────────────────────────────── */
@@ -915,7 +915,7 @@
     }
 
         .crosshair-layout .preset-card:hover {
-            background: rgba(139, 92, 246, 0.1);
+            background: rgba(var(--accent-purple-rgb), 0.1);
             border-color: var(--accent-purple);
             transform: translateY(-1px);
         }
@@ -963,7 +963,7 @@
     }
 
         .crosshair-layout .saved-load:hover {
-            background: rgba(139, 92, 246, 0.1);
+            background: rgba(var(--accent-purple-rgb), 0.1);
             border-color: var(--accent-purple);
         }
 
@@ -1018,7 +1018,7 @@
 
         .crosshair-layout .library-item.selected {
             border-color: var(--accent-purple);
-            box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.35), 0 6px 18px rgba(139, 92, 246, 0.2);
+            box-shadow: 0 0 0 1px rgba(var(--accent-purple-rgb), 0.35), 0 6px 18px rgba(var(--accent-purple-rgb), 0.2);
         }
 
     .crosshair-layout .library-pick {
@@ -1036,7 +1036,7 @@
         .crosshair-layout .library-pick img {
             max-width: 88%;
             max-height: 88%;
-            filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.18));
+            filter: drop-shadow(0 0 6px rgba(var(--accent-purple-rgb), 0.18));
         }
 
     .crosshair-layout .library-no-thumb {

@@ -234,8 +234,8 @@
 .tone-disconnect,
 .tone-clean,
 .tone-debug {
-    --game-tone: #8b5cf6;
-    --game-tone-rgb: 139, 92, 246;
+    --game-tone: var(--accent-purple);
+    --game-tone-rgb: var(--accent-purple-rgb);
 }
 
 .game-actions-note {
@@ -296,8 +296,8 @@
     gap: 0.45rem;
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    background: rgba(139, 92, 246, 0.16);
-    border: 1px solid rgba(139, 92, 246, 0.45);
+    background: rgba(var(--accent-purple-rgb), 0.16);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.45);
     width: fit-content;
 }
 

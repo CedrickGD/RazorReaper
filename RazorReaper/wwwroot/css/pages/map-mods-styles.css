@@ -24,13 +24,13 @@
     width: 64px;
     height: 64px;
     border-radius: 16px;
-    background: rgba(139, 92, 246, 0.18);
-    border: 1px solid rgba(139, 92, 246, 0.35);
+    background: rgba(var(--accent-purple-rgb), 0.18);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    box-shadow: 0 0 24px rgba(139, 92, 246, 0.2);
+    box-shadow: 0 0 24px rgba(var(--accent-purple-rgb), 0.2);
 }
 
 .map-mods-logo {
@@ -106,7 +106,7 @@
 }
 
 .map-mods-map-header:focus-visible {
-    outline: 2px solid rgba(139, 92, 246, 0.5);
+    outline: 2px solid rgba(var(--accent-purple-rgb), 0.5);
     outline-offset: 4px;
 }
 
@@ -195,9 +195,9 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    background: rgba(139, 92, 246, 0.16);
+    background: rgba(var(--accent-purple-rgb), 0.16);
     color: var(--accent-purple);
-    border: 1px solid rgba(139, 92, 246, 0.35);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
 }
 
 .map-mods-coordinates {
@@ -327,14 +327,14 @@
     width: 48px;
     height: 48px;
     border-radius: 12px;
-    background: rgba(139, 92, 246, 0.14);
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: rgba(var(--accent-purple-rgb), 0.14);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     overflow: hidden;
-    box-shadow: 0 0 16px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 0 16px rgba(var(--accent-purple-rgb), 0.15);
 }
 
 .cs-server-logo-img {
@@ -583,8 +583,8 @@
 }
 
 .cs-type-btn.active {
-    background: rgba(139, 92, 246, 0.18);
-    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(var(--accent-purple-rgb), 0.18);
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
     color: var(--accent-purple);
     font-weight: 600;
 }
@@ -616,8 +616,8 @@
 }
 
 .cs-logo-dropzone:hover {
-    border-color: rgba(139, 92, 246, 0.35) !important;
-    background: rgba(139, 92, 246, 0.06) !important;
+    border-color: rgba(var(--accent-purple-rgb), 0.35) !important;
+    background: rgba(var(--accent-purple-rgb), 0.06) !important;
     color: var(--accent-purple);
 }
 
@@ -645,7 +645,7 @@
     height: 64px;
     object-fit: cover;
     border-radius: 12px;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
     display: block;
 }
 

@@ -172,8 +172,8 @@
     .server-btn.save:not(:disabled),
     .server-btn.favorite:not(:disabled),
     .server-btn.browser:not(:disabled) {
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.08)) !important;
-        border-color: rgba(139, 92, 246, 0.4) !important;
+        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.18), rgba(var(--accent-purple-rgb), 0.08)) !important;
+        border-color: rgba(var(--accent-purple-rgb), 0.4) !important;
         color: var(--text-primary) !important;
         box-shadow: none !important;
     }
@@ -183,9 +183,9 @@
         .server-btn.save:not(:disabled):hover,
         .server-btn.favorite:not(:disabled):hover,
         .server-btn.browser:not(:disabled):hover {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(139, 92, 246, 0.15)) !important;
+            background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
             border-color: var(--accent-purple) !important;
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.35) !important;
+            box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
             color: var(--accent-purple-light) !important;
         }
 
@@ -325,7 +325,7 @@
 .favorites-success {
     padding: 1rem !important;
     border-radius: 8px !important;
-    background: rgba(139, 92, 246, 0.15) !important;
+    background: rgba(var(--accent-purple-rgb), 0.15) !important;
     border: 1px solid var(--accent-purple) !important;
     color: var(--accent-purple) !important;
     margin-top: 1rem !important;
@@ -376,7 +376,7 @@
 
     .server-item.selected {
         border-color: var(--accent-purple);
-        background: rgba(139, 92, 246, 0.05);
+        background: rgba(var(--accent-purple-rgb), 0.05);
     }
 
 .server-item-content {
@@ -394,7 +394,7 @@
 
     .server-status-dot.online {
         background: var(--accent-purple);
-        box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+        box-shadow: 0 0 8px rgba(var(--accent-purple-rgb), 0.6);
     }
 
     .server-status-dot.offline {

@@ -31,7 +31,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, rgba(139, 92, 246, 0.9), rgba(139, 92, 246, 0));
+    background: linear-gradient(90deg, rgba(var(--accent-purple-rgb), 0.9), rgba(var(--accent-purple-rgb), 0));
 }
 
 .cr-dev-row {
@@ -255,8 +255,8 @@
 }
 
 .cr-tech:hover {
-    background: rgba(139, 92, 246, 0.16);
-    border-color: rgba(139, 92, 246, 0.5);
+    background: rgba(var(--accent-purple-rgb), 0.16);
+    border-color: rgba(var(--accent-purple-rgb), 0.5);
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
     color: var(--text-primary);

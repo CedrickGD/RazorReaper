@@ -285,7 +285,7 @@
 
     .injector-status.injected {
         border-left-color: var(--accent-purple);
-        background: rgba(139, 92, 246, 0.06);
+        background: rgba(var(--accent-purple-rgb), 0.06);
     }
 
     .injector-status.restored {
@@ -429,7 +429,7 @@
     .injector-action-btn.primary {
         background: var(--gradient-primary);
         color: var(--text-primary);
-        border-color: rgba(139, 92, 246, 0.4);
+        border-color: rgba(var(--accent-purple-rgb), 0.4);
     }
 
     .injector-action-btn.primary:hover:not(:disabled) {
@@ -568,8 +568,8 @@
     .injector-log-action {
         margin-left: 0.5rem;
         padding: 0.1rem 0.5rem;
-        background: rgba(139, 92, 246, 0.18);
-        border: 1px solid rgba(139, 92, 246, 0.4);
+        background: rgba(var(--accent-purple-rgb), 0.18);
+        border: 1px solid rgba(var(--accent-purple-rgb), 0.4);
         color: var(--accent-purple-light);
         border-radius: 4px;
         font-family: var(--font-primary);
@@ -578,7 +578,7 @@
         transition: background 0.15s ease;
     }
 
-    .injector-log-action:hover { background: rgba(139, 92, 246, 0.32); }
+    .injector-log-action:hover { background: rgba(var(--accent-purple-rgb), 0.32); }
 </style>
 
 @code {

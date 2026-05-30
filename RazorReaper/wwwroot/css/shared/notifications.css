@@ -61,11 +61,11 @@
 }
 
 .notification-success {
-    border-left: 3px solid #8b5cf6;
+    border-left: 3px solid var(--accent-purple);
 }
 
 .notification-success .notification-icon {
-    color: #8b5cf6;
+    color: var(--accent-purple);
 }
 
 .notification-error {

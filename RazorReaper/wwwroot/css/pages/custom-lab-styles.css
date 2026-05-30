@@ -81,7 +81,7 @@
 }
 
 .lab-icon-badge.accent {
-    background: rgba(139, 92, 246, 0.18);
+    background: rgba(var(--accent-purple-rgb), 0.18);
     color: var(--accent-purple-light);
 }
 
@@ -106,7 +106,7 @@
 }
 
 .lab-pill.future {
-    background: rgba(139, 92, 246, 0.18);
+    background: rgba(var(--accent-purple-rgb), 0.18);
     color: var(--accent-purple-light);
 }
 
@@ -146,13 +146,13 @@
 }
 
 .lab-btn.primary {
-    background: rgba(139, 92, 246, 0.18);
-    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(var(--accent-purple-rgb), 0.18);
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
     color: var(--accent-purple-light);
 }
 
 .lab-btn.primary:hover:not(:disabled) {
-    background: rgba(139, 92, 246, 0.28);
+    background: rgba(var(--accent-purple-rgb), 0.28);
 }
 
 .lab-btn:disabled {

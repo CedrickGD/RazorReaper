@@ -37,8 +37,8 @@
 }
 
     .building-section:hover {
-        border-color: rgba(139, 92, 246, 0.25) !important;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 24px rgba(139, 92, 246, 0.08) !important;
+        border-color: rgba(var(--accent-purple-rgb), 0.25) !important;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 24px rgba(var(--accent-purple-rgb), 0.08) !important;
     }
 
 .building-section-danger {
@@ -86,8 +86,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.06));
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.18), rgba(var(--accent-purple-rgb), 0.06));
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
     color: var(--accent-purple-light);
     transition: transform 0.3s ease;
 }
@@ -122,9 +122,9 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    background: rgba(139, 92, 246, 0.15);
+    background: rgba(var(--accent-purple-rgb), 0.15);
     color: var(--accent-purple-light);
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
 }
 
     .building-badge.critical {
@@ -179,7 +179,7 @@
 
     .building-media-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(139, 92, 246, 0.3);
+        border-color: rgba(var(--accent-purple-rgb), 0.3);
     }
 
 .building-media-label {
@@ -201,7 +201,7 @@
 }
 
     .building-media-tag.raising {
-        background: rgba(139, 92, 246, 0.2);
+        background: rgba(var(--accent-purple-rgb), 0.2);
         color: var(--accent-purple-light);
     }
 
@@ -244,7 +244,7 @@
 
     .building-figure:hover {
         transform: translateY(-2px);
-        border-color: rgba(139, 92, 246, 0.3);
+        border-color: rgba(var(--accent-purple-rgb), 0.3);
     }
 
     .building-figure.danger {
@@ -304,8 +304,8 @@
 
     .building-layout-card:hover {
         transform: translateY(-4px);
-        border-color: rgba(139, 92, 246, 0.35);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(139, 92, 246, 0.1);
+        border-color: rgba(var(--accent-purple-rgb), 0.35);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(var(--accent-purple-rgb), 0.1);
     }
 
 .building-layout-image-wrap {
@@ -347,7 +347,7 @@
     }
 
     .building-layout-meta code {
-        background: rgba(139, 92, 246, 0.15);
+        background: rgba(var(--accent-purple-rgb), 0.15);
         color: var(--accent-purple-light);
         padding: 0.05rem 0.4rem;
         border-radius: 4px;
@@ -360,8 +360,8 @@
     display: flex;
     gap: 1rem;
     padding: 1rem 1.25rem;
-    background: rgba(139, 92, 246, 0.08);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: rgba(var(--accent-purple-rgb), 0.08);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.2);
     border-radius: 10px;
     margin-top: 1.5rem;
 }
@@ -488,7 +488,7 @@
         }
 
         .building-details summary:hover {
-            background: rgba(139, 92, 246, 0.08);
+            background: rgba(var(--accent-purple-rgb), 0.08);
         }
 
     .building-details[open] summary::before {
@@ -524,8 +524,8 @@
 
         .building-spam-gallery img:hover {
             transform: scale(1.06);
-            border-color: rgba(139, 92, 246, 0.4);
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+            border-color: rgba(var(--accent-purple-rgb), 0.4);
+            box-shadow: 0 4px 15px rgba(var(--accent-purple-rgb), 0.2);
             z-index: 2;
             position: relative;
         }
@@ -563,9 +563,9 @@
     display: inline-block;
     margin-top: 0.5rem;
     padding: 0.4rem 0.85rem;
-    background: rgba(139, 92, 246, 0.15);
+    background: rgba(var(--accent-purple-rgb), 0.15);
     color: var(--accent-purple-light);
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
     border-radius: 6px;
     font-size: 0.82rem;
     text-decoration: none;
@@ -573,8 +573,8 @@
 }
 
     .building-link:hover {
-        background: rgba(139, 92, 246, 0.25);
-        border-color: rgba(139, 92, 246, 0.5);
+        background: rgba(var(--accent-purple-rgb), 0.25);
+        border-color: rgba(var(--accent-purple-rgb), 0.5);
         transform: translateX(2px);
     }
 
@@ -609,7 +609,7 @@
 
         .building-nav a:hover {
             color: var(--text-primary);
-            background: rgba(139, 92, 246, 0.08);
+            background: rgba(var(--accent-purple-rgb), 0.08);
             border-left-color: var(--accent-purple);
             padding-left: 1rem;
         }
@@ -636,7 +636,7 @@
 }
 
 .building-credit-card code {
-    background: rgba(139, 92, 246, 0.15);
+    background: rgba(var(--accent-purple-rgb), 0.15);
     color: var(--accent-purple-light);
     padding: 0.05rem 0.35rem;
     border-radius: 4px;
@@ -671,7 +671,7 @@
 
     .tip-item:hover {
         background: rgba(0, 0, 0, 0.3);
-        border-color: rgba(139, 92, 246, 0.25);
+        border-color: rgba(var(--accent-purple-rgb), 0.25);
         transform: translateX(3px);
     }
 
