@@ -100,7 +100,8 @@
         <div class="ac-cta-row">
             <button class="ini-widget-cta @(isRunning ? "danger" : "")"
                     @onclick="ToggleClicking" disabled="@IsStartButtonDisabled()">
-                @(isRunning ? "Stop" : "Start") · @hotkey
+                <span class="ac-cta-label">@(isRunning ? "Stop" : "Start")</span>
+                <kbd class="ac-cta-key">@hotkey</kbd>
             </button>
             <button class="rr-pill-btn ghost sm" @onclick="ResetStats">Reset</button>
         </div>
@@ -156,18 +157,25 @@
             {
                 <div class="row-2">
                     <div class="field">
-                        <label class="field-label">Clicks/burst</label>
-                        <input type="number" class="rr-input num-input" min="1" max="1000" @bind="burstClickCount" />
+                        <label class="field-label">Clicks / burst</label>
+                        <div class="interval-cell">
+                            <input type="number" class="interval-input" min="1" max="1000" @bind="burstClickCount" />
+                        </div>
                     </div>
                     <div class="field">
-                        <label class="field-label">Pause (s)</label>
-                        <input type="number" class="rr-input num-input" min="0" max="300" @bind="burstPauseSeconds" />
+                        <label class="field-label">Pause</label>
+                        <div class="interval-cell">
+                            <input type="number" class="interval-input" min="0" max="300" @bind="burstPauseSeconds" />
+                            <span class="interval-tag">s</span>
+                        </div>
                     </div>
                 </div>
             }
-            <Switch Value="@enableRandomization"
-                    ValueChanged="@((bool v) => enableRandomization = v)"
-                    Label="Randomize variance" />
+            <div class="ac-toggle-row">
+                <Switch Value="@enableRandomization"
+                        ValueChanged="@((bool v) => enableRandomization = v)"
+                        Label="Randomize variance" />
+            </div>
             @if (enableRandomization)
             {
                 <div class="field">
@@ -212,14 +220,20 @@
                 <div class="row-2">
                     <div class="field">
                         <label class="field-label">X</label>
-                        <input type="number" class="rr-input num-input" @bind="fixedX" />
+                        <div class="interval-cell">
+                            <input type="number" class="interval-input" @bind="fixedX" />
+                            <span class="interval-tag">px</span>
+                        </div>
                     </div>
                     <div class="field">
                         <label class="field-label">Y</label>
-                        <input type="number" class="rr-input num-input" @bind="fixedY" />
+                        <div class="interval-cell">
+                            <input type="number" class="interval-input" @bind="fixedY" />
+                            <span class="interval-tag">px</span>
+                        </div>
                     </div>
                 </div>
-                <button class="rr-pill-btn ghost sm" @onclick="StartPickLocation" disabled="@IsPickingLocation()">
+                <button class="rr-pill-btn ghost sm ac-pick @(pickingLocation ? "armed" : "")" @onclick="StartPickLocation" disabled="@IsPickingLocation()">
                     @(pickingLocation ? "Click anywhere…" : "Pick location")
                 </button>
             }
@@ -242,11 +256,11 @@
                         }
                     }
                 </div>
-                <button class="rr-pill-btn ghost sm" @onclick="StartPickMultiLocation" disabled="@IsPickingLocation()">
+                <button class="rr-pill-btn ghost sm ac-pick @(pickingLocation ? "armed" : "")" @onclick="StartPickMultiLocation" disabled="@IsPickingLocation()">
                     @(pickingLocation ? "Click anywhere…" : "Add position")
                 </button>
             }
-            <p class="muted-line">Cursor: @currentMouseX, @currentMouseY</p>
+            <p class="ac-cursor"><span class="ac-cursor-label">Cursor</span><span class="ac-cursor-val">@currentMouseX, @currentMouseY</span></p>
 
             <div class="field">
                 <label class="field-label">Hotkey</label>
@@ -350,6 +364,9 @@
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
     [DllImport("kernel32.dll")]
     private static extern IntPtr GetConsoleWindow();
@@ -1070,6 +1087,13 @@
         // Double check if still running (instant stop)
         if (!isRunning) return;
 
+        // Never click while RazorReaper's own window is focused. Otherwise the very first
+        // synthetic click (Cursor mode) lands on the Start button and instantly toggles
+        // Stop — the "it insta-stops when I press Start" bug. Clicks resume the moment the
+        // user switches to their target window. Skipping a tick is cheap; the timer keeps
+        // firing and the next tick clicks once the target app is focused.
+        if (IsOwnWindowForeground()) return;
+
         // Check burst mode
         if (clickMode == ClickMode.Burst)
         {
@@ -1220,6 +1244,24 @@
             MouseButton.Middle => (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
             _ => (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP)
         };
+    }
+
+    // True when RazorReaper's own window is the foreground (active) window. Auto-clicks are
+    // suppressed while this is true so the synthetic click can't hit our own Start button /
+    // config UI — the user focuses their target app for clicks to land there.
+    private bool IsOwnWindowForeground()
+    {
+        try
+        {
+            var fg = GetForegroundWindow();
+            if (fg == IntPtr.Zero) return false;
+            GetWindowThreadProcessId(fg, out uint pid);
+            return pid == (uint)Environment.ProcessId;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private DotNetObjectReference<Autoclicker>? _dotNetRef;

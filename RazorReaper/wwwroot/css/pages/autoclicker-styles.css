@@ -1,169 +1,229 @@
-/* Auto Clicker — uses the INI Changer 3-widget pattern (.ini-layout, .ini-widget,
-   .ini-widget-header, .ini-widget-pill, .ini-widget-body, .ini-widget-cta). All
-   the visual styling for those classes lives in ini-changer-styles.css so we
-   only override grid-template-columns (3 equal bars instead of 195px / 290px / 1fr)
-   and add a handful of autoclicker-specific element styles. */
+/* Auto Clicker — three-column workspace (TIMING · CLICK · TARGET).
+   All visuals are scoped under .autoclicker-layout and reference the themeable
+   --accent-purple* variables so the page re-tints with the user's accent.
+   NOTE: the base .ini-widget* classes are NOT defined elsewhere — the card look
+   comes from .content-card (theme.css) plus everything below. The Start CTA and
+   the numeric field chips are fully defined here. !important is used only where a
+   global rule in theme.css (input{}, .content-card{}, h2,h3{}) must be overridden. */
 
-/* Equal 3-column grid that fills the viewport (matches INI Changer's behavior).
-   Widgets are stretched to row height; content inside each widget distributes
-   via flex so the Timing CTA pins to the bottom and bodies fill the middle. */
+/* ── Layout: equal 3-column grid that fills the viewport ──────────────── */
 .autoclicker-layout.ini-layout {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    height: calc(100vh - 240px);
-    min-height: 460px;
-    align-items: stretch;
+    gap: 1rem;
+    /* Size cards to their content and top-align them — forcing full viewport height
+       left big empty voids inside the shorter cards, which looked sparse/unfinished. */
+    align-items: start;
 }
 
-/* ── Widget visual polish: subtle top accent + icon next to h3 ────────── */
-
+/* ── Card shell ───────────────────────────────────────────────────────── */
 .autoclicker-layout .ac-widget {
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 1.15rem 1.15rem 1rem !important;   /* beats .content-card 2rem !important */
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+}
+
+/* A 1px gradient hairline bleeding from the top edge — ties the 3 cards together
+   and brightens on the card that's actively running. */
+.autoclicker-layout .ac-widget::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(var(--accent-purple-rgb), 0.5), transparent);
+    opacity: 0.55;
+    pointer-events: none;
 }
 
 .autoclicker-layout .ac-widget.is-running {
-    border-color: rgba(139, 92, 246, 0.55) !important;
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25);
+    border-color: rgba(var(--accent-purple-rgb), 0.5) !important;
+    box-shadow: 0 0 0 1px rgba(var(--accent-purple-rgb), 0.2), 0 10px 40px rgba(var(--accent-purple-rgb), 0.12);
 }
 
+.autoclicker-layout .ac-widget.is-running::before {
+    opacity: 1;
+}
+
+/* ── Header: icon chip + crisp title + status pill ────────────────────── */
 .autoclicker-layout .ini-widget-header {
-    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
 }
 
 .autoclicker-layout .ini-widget-header h3 {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.5rem;
+    margin: 0 !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    /* neutralize the global h2,h3 gradient-text clip so the title is solid white */
+    background: none !important;
+    -webkit-text-fill-color: #fff !important;
+    color: #fff !important;
 }
 
 .autoclicker-layout .ac-widget-icon {
-    width: 16px;
-    height: 16px;
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    padding: 5px;
     flex-shrink: 0;
-    color: var(--accent-purple);
-    opacity: 0.9;
+    border-radius: 8px;
+    color: var(--accent-purple-light) !important;
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.22);
+    box-shadow: inset 0 0 8px rgba(var(--accent-purple-rgb), 0.12);
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
-/* ── Live CPS readout — clean inline line, no boxy sticker ────────────── */
-
-.autoclicker-layout .ac-cps-line {
-    margin-top: auto;
-    padding: 0.5rem 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0.4rem;
-    font-family: var(--font-mono);
+.autoclicker-layout .ac-widget.is-running .ac-widget-icon {
+    color: #fff !important;
+    background: rgba(var(--accent-purple-rgb), 0.22);
+    border-color: rgba(var(--accent-purple-rgb), 0.45);
 }
 
-.autoclicker-layout .ac-cps-num {
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: #fff;
-    line-height: 1;
-    letter-spacing: -0.01em;
+/* Status / summary pill in the header */
+.autoclicker-layout .ini-widget-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    white-space: nowrap;
 }
 
-.autoclicker-layout .ac-widget.is-running .ac-cps-num {
-    color: var(--accent-purple-light, #c4b5fd);
+.autoclicker-layout .ini-widget-pill.muted {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
 }
 
-.autoclicker-layout .ac-cps-unit {
-    font-size: 0.7rem;
+.autoclicker-layout .ini-widget-pill.live {
+    background: rgba(var(--accent-purple-rgb), 0.14);
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
+    color: var(--accent-purple-soft);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-secondary);
-    opacity: 0.8;
 }
 
-.autoclicker-layout .ac-cps-sep {
-    color: var(--text-secondary);
-    opacity: 0.35;
-    font-size: 0.7rem;
+.autoclicker-layout .ini-launcher-stat-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
 }
 
-.autoclicker-layout .ac-cps-sub {
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    opacity: 0.65;
+.autoclicker-layout .ini-launcher-stat-dot.live {
+    background: var(--accent-purple);
+    box-shadow: 0 0 8px var(--accent-purple);
+    animation: ac-dot-pulse 1.4s ease-in-out infinite;
 }
 
-/* Body fills the available vertical space inside each widget so the page
-   feels intentional even when a widget only has a few rows of content. */
+@keyframes ac-dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── Body fills available height ──────────────────────────────────────── */
 .autoclicker-layout .ini-widget-body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.65rem;
     overflow-y: auto;
     min-height: 0;
 }
 
-/* ── CTA row at the bottom of the TIMING widget (Start + Reset) ──────── */
-.autoclicker-layout .ac-cta-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    margin-top: auto;
-    padding-top: 0.6rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+.autoclicker-layout .field {
+    margin-bottom: 0;
 }
 
-    .autoclicker-layout .ac-cta-row .ini-widget-cta {
-        flex: 1;
-        margin: 0;
-    }
+.autoclicker-layout .field-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: var(--text-secondary) !important;
+    font-size: 0.66rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
 
-    .autoclicker-layout .ac-cta-row .ini-widget-cta.danger {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.1));
-        border-color: rgba(239, 68, 68, 0.5);
-        color: #fecaca;
-    }
+.autoclicker-layout .field-label strong {
+    color: var(--accent-purple-soft);
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
 
-/* ── Compact interval widget — 4 small inputs inline ─────────────────── */
-
+/* ── Numeric field chips (interval h/m/s/ms, hold, pre-delay, X/Y, burst) ─ */
 .autoclicker-layout .interval-row {
     display: flex;
     align-items: stretch;
-    gap: 0.3rem;
-    margin-bottom: 0.4rem;
+    gap: 0.4rem;
 }
 
 .autoclicker-layout .interval-cell {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.3rem 0.4rem;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.45rem 0.55rem;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    min-width: 0;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    border-radius: 9px;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
-    .autoclicker-layout .interval-cell:focus-within {
-        border-color: rgba(139, 92, 246, 0.55);
-        background: rgba(0, 0, 0, 0.45);
-    }
+.autoclicker-layout .interval-cell:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.36);
+}
 
-    .autoclicker-layout .interval-cell.wide {
-        flex: 1.5;
-    }
+.autoclicker-layout .interval-cell:focus-within {
+    border-color: var(--accent-purple);
+    background: rgba(0, 0, 0, 0.42);
+    box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.12),
+                inset 0 0 10px rgba(var(--accent-purple-rgb), 0.08);
+}
 
+.autoclicker-layout .interval-cell.wide {
+    flex: 1.5;
+}
+
+/* The input is borderless/transparent INSIDE the chip — the chip is the visible
+   control. !important defeats the global input{} rule that would otherwise force a
+   dark fill, its own border, 8px radius and 0.75rem padding inside the chip. */
 .autoclicker-layout .interval-input {
     width: 100%;
     min-width: 0;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    text-align: center;
+    color: #fff !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.95rem !important;
     font-weight: 700;
-    text-align: right;
-    padding: 0;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
     -moz-appearance: textfield;
 }
 
@@ -173,115 +233,420 @@
     margin: 0;
 }
 
+/* Unit suffix as a small chip pinned to the right of the value */
 .autoclicker-layout .interval-tag {
-    color: var(--text-secondary);
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-transform: lowercase;
     flex-shrink: 0;
-    opacity: 0.75;
-}
-
-/* ── field + label spacing inside widgets ─────────────────────────────── */
-
-.autoclicker-layout .field {
-    margin-bottom: 0.55rem;
-}
-
-.autoclicker-layout .field:last-child {
-    margin-bottom: 0;
-}
-
-.autoclicker-layout .field-label {
-    display: block;
-    color: var(--text-primary);
-    font-size: 0.72rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.14rem 0.4rem;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-family: var(--font-primary);
+    font-size: 0.6rem;
     font-weight: 600;
-    margin-bottom: 0.25rem;
-    opacity: 0.88;
     letter-spacing: 0.02em;
+    text-transform: lowercase;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
-/* ── Segmented control sizing (slightly tighter than crosshair defaults) ─ */
+.autoclicker-layout .interval-cell:focus-within .interval-tag {
+    background: rgba(var(--accent-purple-rgb), 0.18);
+    color: var(--accent-purple-soft);
+}
 
+/* Two-up field row (Burst clicks/pause, Fixed X/Y) */
+.autoclicker-layout .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+/* ── Segmented controls (Repeat / Button / Type / Mode / Position) ────── */
 .autoclicker-layout .seg-control {
-    padding: 0.18rem !important;
-    gap: 0.18rem !important;
+    display: flex;
+    gap: 0.2rem !important;
+    padding: 0.22rem !important;
     margin-bottom: 0 !important;
-    border-radius: 7px !important;
+    background: rgba(0, 0, 0, 0.32) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 9px !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .autoclicker-layout .seg-btn {
-    padding: 0.32rem 0.4rem !important;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.42rem 0.4rem !important;
+    border: 1px solid transparent !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    color: rgba(255, 255, 255, 0.62) !important;
     font-size: 0.74rem !important;
-    border-radius: 5px !important;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* ── Numeric / text inputs — compact ─────────────────────────────────── */
+.autoclicker-layout .seg-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+}
 
+.autoclicker-layout .seg-btn.active {
+    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.32), rgba(var(--accent-purple-rgb), 0.14)) !important;
+    border-color: rgba(var(--accent-purple-rgb), 0.55) !important;
+    color: #fff !important;
+    font-weight: 600;
+    box-shadow: inset 0 0 12px rgba(var(--accent-purple-rgb), 0.18), 0 2px 8px rgba(var(--accent-purple-rgb), 0.18);
+}
+
+.autoclicker-layout .seg-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-purple) !important;
+    box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.3);
+}
+
+/* ── CPS hero metric ──────────────────────────────────────────────────── */
+.autoclicker-layout .ac-cps-line {
+    margin-top: auto;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.45rem;
+    padding: 0.85rem 0.5rem 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: var(--font-mono);
+}
+
+.autoclicker-layout .ac-cps-num {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 18px rgba(var(--accent-purple-rgb), 0.18);
+}
+
+.autoclicker-layout .ac-cps-unit {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent-purple-soft);
+    opacity: 0.9;
+}
+
+/* The interval caption sits on its own line below the number, so the inline
+   separator would be orphaned — hide it. */
+.autoclicker-layout .ac-cps-sep {
+    display: none;
+}
+
+.autoclicker-layout .ac-cps-sub {
+    flex-basis: 100%;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    letter-spacing: 0.02em;
+}
+
+.autoclicker-layout .ac-widget.is-running .ac-cps-num {
+    color: var(--accent-purple-light);
+    animation: ac-cps-glow 2.2s ease-in-out infinite;
+}
+
+@keyframes ac-cps-glow {
+    0%, 100% { text-shadow: 0 0 18px rgba(var(--accent-purple-rgb), 0.25); }
+    50% { text-shadow: 0 0 32px rgba(var(--accent-purple-rgb), 0.55); }
+}
+
+/* ── CTA row: primary Start (→ red Stop) + secondary Reset ────────────── */
+.autoclicker-layout .ac-cta-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    margin-top: 0.4rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* The Start button has no base style anywhere else — it's fully defined here. */
+.autoclicker-layout .ac-cta-row .ini-widget-cta {
+    flex: 1;
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.72rem 1rem;
+    border-radius: 11px;
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.55);
+    background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-purple-dark) 100%);
+    color: #fff;
+    font-family: var(--font-primary);
+    font-size: 0.92rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(var(--accent-purple-rgb), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+/* diagonal sheen sweep on hover */
+.autoclicker-layout .ac-cta-row .ini-widget-cta::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+}
+
+.autoclicker-layout .ac-cta-row .ini-widget-cta:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.07);
+    box-shadow: 0 10px 26px rgba(var(--accent-purple-rgb), 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.autoclicker-layout .ac-cta-row .ini-widget-cta:hover:not(:disabled)::after {
+    transform: translateX(120%);
+}
+
+.autoclicker-layout .ac-cta-row .ini-widget-cta:active:not(:disabled) {
+    transform: translateY(0) scale(0.99);
+}
+
+.autoclicker-layout .ac-cta-row .ini-widget-cta:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.35), 0 6px 18px rgba(var(--accent-purple-rgb), 0.35);
+}
+
+.autoclicker-layout .ac-cta-row .ini-widget-cta:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    filter: grayscale(0.35);
+    transform: none;
+}
+
+/* Running = solid red Stop with a breathing pulse */
+.autoclicker-layout .ac-cta-row .ini-widget-cta.danger {
+    border-color: rgba(239, 68, 68, 0.6);
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    animation: ac-running-pulse 1.8s ease-in-out infinite;
+}
+
+.autoclicker-layout .ac-cta-row .ini-widget-cta.danger:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 10px 26px rgba(239, 68, 68, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+@keyframes ac-running-pulse {
+    0%, 100% { box-shadow: 0 6px 18px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+    50% { box-shadow: 0 6px 28px rgba(239, 68, 68, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+}
+
+/* F6 keycap chip inside the CTA */
+.autoclicker-layout .ac-cta-key {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.2rem 0.42rem;
+    border-radius: 5px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Secondary Reset — quiet neutral ghost, squared to echo the CTA */
+.autoclicker-layout .ac-cta-row .rr-pill-btn.ghost {
+    flex: 0 0 auto;
+    padding: 0.55rem 0.9rem;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.autoclicker-layout .ac-cta-row .rr-pill-btn.ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+/* ── Compact segmented sizing already handled above; numeric overrides ── */
+/* (legacy bare .rr-input/.num-input on this page are migrated to .interval-cell
+   chips in the markup; keep a safe fallback so any stray input is still legible) */
 .autoclicker-layout .rr-input,
-.autoclicker-layout .num-input,
-.autoclicker-layout .rr-select {
-    padding: 0.35rem 0.5rem !important;
-    font-size: 0.85rem !important;
+.autoclicker-layout .num-input {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px !important;
+    color: #fff !important;
+    padding: 0.45rem 0.6rem !important;
+    font-size: 0.88rem !important;
 }
 
-/* ── Progress bar shown in Fixed-count repeat mode ────────────────────── */
-
+/* ── Progress bar (Fixed-count mode) ──────────────────────────────────── */
 .autoclicker-layout .progress-bar {
     width: 100%;
     height: 5px;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
     border-radius: 3px;
     overflow: hidden;
-    margin-top: 0.25rem;
 }
 
 .autoclicker-layout .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--accent-purple), var(--accent-purple-light));
     border-radius: 3px;
+    box-shadow: 0 0 10px rgba(var(--accent-purple-rgb), 0.5);
     transition: width 0.3s ease;
 }
 
-/* ── Hotkey button — full-width inside its field ──────────────────────── */
-
-.autoclicker-layout .hotkey-btn {
-    padding: 0.4rem 0.75rem !important;
-    font-size: 0.85rem !important;
-    font-family: var(--font-mono);
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.15s ease;
+/* ── Randomize-variance toggle row ────────────────────────────────────── */
+.autoclicker-layout .ac-toggle-row {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 9px;
+    transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.autoclicker-layout .hotkey-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.3);
+.autoclicker-layout .ac-toggle-row:has(input:checked) {
+    border-color: rgba(var(--accent-purple-rgb), 0.3);
+    background: rgba(var(--accent-purple-rgb), 0.06);
 }
 
-.autoclicker-layout .hotkey-btn.recording {
-    background: rgba(139, 92, 246, 0.15);
-    border-color: rgba(139, 92, 246, 0.6);
-}
-
-.autoclicker-layout .hotkey-btn.full-width {
+.autoclicker-layout .ac-toggle-row .rr-switch {
     width: 100%;
-    min-width: 0;
+    justify-content: space-between;
+    font-size: 0.78rem;
+}
+
+/* ── Pick-location button (armed state while capturing) ───────────────── */
+.autoclicker-layout .ac-pick {
+    width: 100%;
+    border-radius: 9px !important;
+    border-style: dashed !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.autoclicker-layout .ac-pick:hover:not(:disabled) {
+    border-color: rgba(var(--accent-purple-rgb), 0.45) !important;
+    background: rgba(var(--accent-purple-rgb), 0.08) !important;
+    color: #fff !important;
+}
+
+.autoclicker-layout .ac-pick.armed {
+    border-style: solid !important;
+    border-color: var(--accent-purple) !important;
+    background: rgba(var(--accent-purple-rgb), 0.16) !important;
+    color: var(--accent-purple-soft) !important;
+    animation: ac-soft-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ac-soft-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-purple-rgb), 0); }
+    50% { box-shadow: 0 0 0 4px rgba(var(--accent-purple-rgb), 0.12); }
+}
+
+/* ── Live cursor readout ──────────────────────────────────────────────── */
+.autoclicker-layout .ac-cursor {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.45rem 0.6rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.autoclicker-layout .ac-cursor-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+}
+
+.autoclicker-layout .ac-cursor-val {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent-purple-soft);
+    font-variant-numeric: tabular-nums;
 }
 
 .autoclicker-layout .muted-line {
     font-size: 0.7rem !important;
-    margin: 0.35rem 0 0 !important;
+    margin: 0 !important;
     color: var(--text-secondary);
     opacity: 0.7;
 }
 
-/* ── Multi-position list ─────────────────────────────────────────────── */
+/* ── Hotkey capture field — physical keycap look ──────────────────────── */
+.autoclicker-layout .hotkey-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 0.55rem 0.75rem !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.92rem !important;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #fff !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-radius: 8px !important;
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
 
+.autoclicker-layout .hotkey-btn:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.32) !important;
+}
+
+.autoclicker-layout .hotkey-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-purple) !important;
+    box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.2), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.autoclicker-layout .hotkey-btn.recording {
+    color: var(--accent-purple-soft) !important;
+    background: rgba(var(--accent-purple-rgb), 0.15) !important;
+    border-color: var(--accent-purple) !important;
+    box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.18);
+    font-size: 0.8rem !important;
+    font-weight: 500;
+    animation: ac-soft-pulse 1.3s ease-in-out infinite;
+}
+
+/* ── Multi-position list ──────────────────────────────────────────────── */
 .autoclicker-layout .positions-list {
     display: flex;
     flex-direction: column;
@@ -290,8 +655,7 @@
     overflow-y: auto;
     padding: 0.35rem;
     background: rgba(0, 0, 0, 0.2);
-    border-radius: 6px;
-    margin: 0.45rem 0;
+    border-radius: 8px;
 }
 
 .autoclicker-layout .position-item {
@@ -300,8 +664,8 @@
     gap: 0.45rem;
     padding: 0.3rem 0.45rem;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
 }
 
 .autoclicker-layout .position-number {
@@ -311,22 +675,34 @@
     align-items: center;
     justify-content: center;
     background: var(--accent-purple);
-    color: white;
+    color: #fff;
     border-radius: 50%;
     font-size: 0.7rem;
     font-weight: 700;
     flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(var(--accent-purple-rgb), 0.4);
 }
 
 .autoclicker-layout .position-coords {
     flex: 1;
-    color: var(--text-primary);
+    color: #fff;
     font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
 }
 
-/* Collapse to 1 column only at very narrow widths so users always see the
-   `| TIMING | CLICK | TARGET |` row at default window size. */
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .autoclicker-layout .ac-cta-row .ini-widget-cta.danger,
+    .autoclicker-layout .ac-widget.is-running .ac-cps-num,
+    .autoclicker-layout .ac-pick.armed,
+    .autoclicker-layout .hotkey-btn.recording,
+    .autoclicker-layout .ini-launcher-stat-dot.live {
+        animation: none;
+    }
+}
+
+/* Collapse to 1 column at narrow widths. */
 @media (max-width: 720px) {
     .autoclicker-layout.ini-layout {
         grid-template-columns: 1fr;
