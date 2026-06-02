@@ -9,6 +9,7 @@ namespace RazorReaper
         private static readonly TimeSpan TelemetryShutdownTimeout = TimeSpan.FromSeconds(5);
         private readonly ITelemetryService telemetryService;
         private readonly IAutoUpdateManager autoUpdateManager;
+        private readonly IDiscordPresenceService discordPresence;
         private int telemetryShutdownStarted;
         private Task? telemetryShutdownTask;
 
@@ -16,16 +17,19 @@ namespace RazorReaper
             IFontInstaller fontInstaller,
             IScopeModeStartupService scopeModeStartupService,
             ITelemetryService telemetryService,
-            IAutoUpdateManager autoUpdateManager)
+            IAutoUpdateManager autoUpdateManager,
+            IDiscordPresenceService discordPresence)
         {
             this.telemetryService = telemetryService;
             this.autoUpdateManager = autoUpdateManager;
+            this.discordPresence = discordPresence;
 
             InitializeComponent();
             RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
             RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
             RunStartupTask("update-check", () => autoUpdateManager.RunStartupCheckAsync());
             RunStartupTask("telemetry-start", () => this.telemetryService.StartAsync());
+            RunStartupTask("discord-rpc", () => { discordPresence.Initialize(); return Task.CompletedTask; });
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
@@ -65,6 +69,7 @@ namespace RazorReaper
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
             SafeInvoke(() => autoUpdateManager.LaunchPendingInstaller());
+            SafeInvoke(() => discordPresence.Shutdown());
             // Fire-and-forget so the window disappears instantly when the user clicks X.
             // ProcessExit waits on this task as a backstop so the session_end POST
             // gets a chance to land before the process tears down.

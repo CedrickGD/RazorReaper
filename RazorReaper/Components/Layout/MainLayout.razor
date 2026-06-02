@@ -1,9 +1,13 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Routing
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services
+@inject NavigationManager Navigation
 @inject IAutoUpdateManager AutoUpdateManager
 @inject INotificationService NotificationService
 @inject IUpdateService UpdateService
+@inject IDiscordPresenceService DiscordPresence
 
 <NotificationContainer />
 <GlobalSearch />
@@ -26,5 +30,14 @@
             var current = UpdateService.CurrentVersionLabel;
             NotificationService.ShowSuccess($"Successfully updated to v{current}!");
         }
+
+        // Reflect the current page in Discord Rich Presence, then keep it synced on navigation.
+        DiscordPresence.SetActivityForPath(Navigation.ToBaseRelativePath(Navigation.Uri));
+        Navigation.LocationChanged += OnLocationChanged;
     }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => DiscordPresence.SetActivityForPath(Navigation.ToBaseRelativePath(e.Location));
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
 }

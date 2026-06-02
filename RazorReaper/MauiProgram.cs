@@ -212,6 +212,7 @@ namespace RazorReaper
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IAutoUpdateManager, AutoUpdateManager>();
+            services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();

@@ -67,16 +67,21 @@ namespace RazorReaper.WinUI
             // from inside the callback would return null and silently no-op.
             var uiDispatcher = winUiWindow.DispatcherQueue;
 
+            // Services were constructed during MAUI startup; resolve from DI.
+            var services = IPlatformApplication.Current?.Services;
+            var discordPresence = services?.GetService<IDiscordPresenceService>();
+
             // Intercept the X button — hide the window and keep the process alive so the overlay
             // and tray icon survive. The user quits explicitly via the tray's Quit menu item.
+            // Tell Discord we're idling in the tray (drops the per-page activity).
             _mainAppWindow.Closing += (sender, e) =>
             {
                 e.Cancel = true;
                 sender.Hide();
+                discordPresence?.SetMinimizedToTray(true);
             };
 
-            // Wire the tray callbacks. Service was constructed during MAUI startup; resolve from DI.
-            var services = IPlatformApplication.Current?.Services;
+            // Wire the tray callbacks.
             var crosshair = services?.GetService<ICrosshairService>();
             if (crosshair == null) return;
 
@@ -91,6 +96,8 @@ namespace RazorReaper.WinUI
                         // sometimes leaves the window de-activated behind other apps.
                         ShowWindow(hwnd, SW_RESTORE);
                         SetForegroundWindow(hwnd);
+                        // Back in view — restore the per-page Discord activity.
+                        discordPresence?.SetMinimizedToTray(false);
                     }
                     catch { /* window already gone */ }
                 });
@@ -99,6 +106,8 @@ namespace RazorReaper.WinUI
             crosshair.QuitRequested += () =>
             {
                 // Hard exit — we want the overlay, tray icon, and everything else torn down.
+                // Clear the Discord presence first, while the process (and IPC pipe) is still alive.
+                discordPresence?.Shutdown();
                 Environment.Exit(0);
             };
 

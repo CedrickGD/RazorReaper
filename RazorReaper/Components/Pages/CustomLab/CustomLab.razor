@@ -6,6 +6,7 @@
 @inject ICustomLabSettingsService LabSettings
 @inject INotificationService Notifications
 @inject ILogger<CustomLab> Logger
+@inject IDiscordPresenceService DiscordPresence
 @implements IDisposable
 
 <header class="page-header">
@@ -183,6 +184,7 @@
     {
         LabSettings.Changed += OnLabSettingsChanged;
         await LabSettings.LoadAsync();
+        UpdatePresence();
     }
 
     private void SetTab(LabTab tab)
@@ -202,6 +204,7 @@
             return;
         }
         activeTab = tab;
+        UpdatePresence();
     }
 
     private void OnLabSettingsChanged()
@@ -213,9 +216,22 @@
             // - Memory Patcher locks when MemoryInjectEnabled flips off → Settings is where it's toggled.
             if (activeTab == LabTab.SkyInjector && !SkyUnlocked) activeTab = LabTab.Settings;
             if (activeTab == LabTab.MemoryPatcher && !MemoryUnlocked) activeTab = LabTab.Settings;
+            UpdatePresence();
             StateHasChanged();
         });
     }
+
+    // Report the active sub-tool to Discord so Sky Injector and Memory Patcher show as their own
+    // activities instead of a generic "Custom Lab". MainLayout's navigation hook overrides this
+    // again when the user leaves the page.
+    private void UpdatePresence() => DiscordPresence.SetActivityLabel(PresenceLabelFor(activeTab));
+
+    private static string PresenceLabelFor(LabTab tab) => tab switch
+    {
+        LabTab.SkyInjector => "Sky Injector",
+        LabTab.MemoryPatcher => "Memory Patcher",
+        _ => "Custom Lab",
+    };
 
     public void Dispose()
     {

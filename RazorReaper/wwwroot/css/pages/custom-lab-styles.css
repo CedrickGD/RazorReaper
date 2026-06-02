@@ -5,10 +5,11 @@
 
 /* ── card chrome ──────────────────────────────────────────────────────── */
 
+/* Tab content fills the full width of the Custom Lab panel (no fixed cap). */
 .lab-readme,
 .lab-settings,
 .lab-memory {
-    max-width: 880px;
+    width: 100%;
 }
 
 .lab-card {
