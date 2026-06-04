@@ -99,5 +99,28 @@
 		</EmbeddedResource>
 	</ItemGroup>
 
+	<!-- ============================================================
+	     Self-contained RELEASE builds — no separate .NET install, no publish step
+	     ============================================================
+	     A normal Visual Studio "Build → Release" produces a fully self-contained app
+	     (bundled .NET 10 runtime + Windows App SDK) directly in
+	     bin\Release\net10.0-windows10.0.19041.0\win-x64\ — the exact folder the Inno
+	     installer already packages — so there is NO separate `dotnet publish` step.
+	     Debug builds stay framework-dependent and fast for everyday dev (F5 / dotnet run).
+
+	     Notes:
+	       * .NET 10 dropped version-specific RIDs (win10-x64) — use portable win-x64.
+	       * SelfContained=true bundles the .NET runtime (the load-bearing flag that kills
+	         the ".NET required" prompt); WindowsAppSDKSelfContained=true bundles WinUI 3.
+	       * Do NOT enable PublishSingleFile / PublishTrimmed / PublishAot: all three
+	         break MAUI Blazor Hybrid (BlazorWebView reflection) and SkiaSharp natives. -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<SelfContained>true</SelfContained>
+		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+		<PublishSingleFile>false</PublishSingleFile>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+
 </Project>
 
