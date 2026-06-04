@@ -6,11 +6,7 @@
     <mandatory>false</mandatory>
     <args>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</args>
     <notes>
-- Persistent crosshair settings — your last config is restored on next launch
-- Inventory glitch now removes the FullBgAnim and PanelBgAnim subfolders alongside the textures
-- Update card: single progress bar during download
-- Update Now button for instant manual updates with auto-relaunch
-- New "What's new" section so you can see release notes before updating
-- Removed Tanster credits from the Building tab
+- No more "install .NET" step — RazorReaper now bundles its own runtime, so it installs and runs on more machines with no extra setup
+- Smoother first-time install on fresh or locked-down PCs (no admin-only .NET install needed)
     </notes>
 </item>
