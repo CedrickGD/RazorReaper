@@ -1,18 +1,3 @@
-; ============================================================================
-;  RazorReaper installer  (your latest-compile.iss, brought into the repo)
-; ----------------------------------------------------------------------------
-;  Workflow is UNCHANGED from before:
-;    1. In Visual Studio: Build -> Release  (Rebuild for a real release, see note)
-;    2. Open this .iss in the Inno Setup Compiler and hit Compile.
-;
-;  What changed: a Release BUILD now produces a SELF-CONTAINED app (bundled .NET 10
-;  + Windows App SDK) in ...\win-x64\, so the [Files] section below ships an app that
-;  needs NO .NET install. Nothing else here changed.
-;
-;  NOTE: always use Build -> *Rebuild* for a release. A plain incremental Build can
-;  leave stale wwwroot assets (e.g. old videos) in the output.
-; ============================================================================
-
 #define MyAppName "RazorReaper"
 #define MyAppVersion "1.4.6"
 #define MyAppPublisher ".itssomeguy on discord - telemetry data is being collected for statistics"
@@ -33,11 +18,11 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=C:\Users\cedri\Desktop\!!! Main\Coding\RazorReaper\innosetuplicense.txt
+LicenseFile=innosetuplicense.txt
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=C:\Users\cedri\Desktop
 OutputBaseFilename=RazorReaper-Setup
-SetupIconFile=C:\Users\cedri\Desktop\!!! Main\Coding\RazorReaper\Up2Date LOGO\rr-logo.ico
+SetupIconFile=rr-logo.ico
 SolidCompression=yes
 WizardStyle=modern dark windows11
 CloseApplications=yes
@@ -56,10 +41,10 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "C:\Users\cedri\source\repos\CedrickGD\RazorReaper\RazorReaper\bin\Release\net10.0-windows10.0.19041.0\win-x64\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\RazorReaper\bin\Release\net10.0-windows10.0.19041.0\win-x64\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; win-x64\* is now the SELF-CONTAINED build output (bundled .NET 10 runtime + Windows App SDK).
 ; Excludes "publish\*" so a stray `dotnet publish` folder can never get double-packaged into the installer.
-Source: "C:\Users\cedri\source\repos\CedrickGD\RazorReaper\RazorReaper\bin\Release\net10.0-windows10.0.19041.0\win-x64\*"; DestDir: "{app}"; Excludes: "publish\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\RazorReaper\bin\Release\net10.0-windows10.0.19041.0\win-x64\*"; DestDir: "{app}"; Excludes: "publish\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
