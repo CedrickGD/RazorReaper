@@ -28,6 +28,7 @@ jobs:
         env:
           TAG_NAME: ${{ github.event.release.tag_name || inputs.tag_name }}
           REPO: ${{ github.repository }}
+          RELEASE_BODY: ${{ github.event.release.body }}
         shell: bash
         run: |
           set -euo pipefail
@@ -44,6 +45,22 @@ jobs:
             -e "s|<url>.*</url>|<url>${installer_url}</url>|" \
             -e "s|<changelog>.*</changelog>|<changelog>${changelog_url}</changelog>|" \
             update.xml
+
+          # Sync the in-app "What's new" <notes> from the release body's bullet list.
+          # (The version/url above are always patched; notes only update when the body
+          #  has "-"/"*" bullet lines, otherwise the existing notes are left untouched.)
+          bullets="$(printf '%s' "${RELEASE_BODY:-}" | tr -d '\r' | grep -E '^[[:space:]]*[-*][[:space:]]+' || true)"
+          if [ -n "${bullets}" ]; then
+            NOTES="$(printf '%s\n' "${bullets}" \
+              | sed -E 's/^[[:space:]]*[-*][[:space:]]+//' \
+              | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' \
+              | sed -E 's/^/- /')"
+            export NOTES
+            perl -0777 -i -pe 's|<notes>.*?</notes>|"<notes>\n".$ENV{NOTES}."\n    </notes>"|se' update.xml
+            echo "Synced in-app notes from the release body."
+          else
+            echo "No bullet lines in the release body - leaving <notes> unchanged."
+          fi
 
           echo "--- Updated update.xml ---"
           cat update.xml
