@@ -54,10 +54,12 @@
                     </p>
                 </div>
                 <div class="lab-feature">
-                    <div class="lab-feature-name">Memory Patcher <span class="lab-pill warning">coming soon</span></div>
+                    <div class="lab-feature-name">Live Apply (Memory Patcher) <span class="lab-pill warning">experimental</span></div>
                     <p>
-                        Attaches to a running <code>ShooterGame.exe</code> and applies sky / texture changes in-memory so
-                        edits show up without restarting ARK. Disabled until the feature is built.
+                        Attaches to a running <code>ShooterGame.exe</code> and tries to apply Sky Injector edits in memory so
+                        they show up without restarting ARK. Reads/writes process memory directly — no DLL injection or hooks.
+                        Live texture swaps aren't guaranteed (the GPU may already hold the pixels); it scans first and reports
+                        honestly. <strong>Unofficial / single-player only</strong> — never use it on official / anti-cheat servers.
                     </p>
                 </div>
             </div>

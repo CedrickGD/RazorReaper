@@ -101,6 +101,10 @@
                             }
                         </div>
                     </div>
+                    @if (!string.IsNullOrEmpty(_previewUri))
+                    {
+                        <img src="@_previewUri" alt="loaded sky" style="margin-top:.75rem;max-width:100%;max-height:180px;border-radius:8px;border:1px solid rgba(255,255,255,.12);display:block;" />
+                    }
                 }
                 else
                 {
@@ -642,10 +646,43 @@
         _ => "No backups on disk yet. Pick an image or color and inject."
     };
 
+    private string? _previewUri;
+
     protected override void OnInitialized()
     {
         _hasBackup = Injector.HasBackup();
         LabSettings.Changed += OnLabSettingsChanged;
+        // Restore the last-picked sky image across app restarts (session keeps it within a run).
+        if (string.IsNullOrEmpty(_opts.ImagePath))
+        {
+            try { var saved = Preferences.Get("SkyInjectorImagePath", ""); if (!string.IsNullOrEmpty(saved) && System.IO.File.Exists(saved)) _opts.ImagePath = saved; } catch { }
+        }
+        _ = UpdatePreview();
+    }
+
+    private async Task UpdatePreview()
+    {
+        _previewUri = null;
+        var path = _opts.ImagePath;
+        if (_opts.Mode == SkyInjectionMode.Image && !string.IsNullOrEmpty(path) && System.IO.File.Exists(path))
+        {
+            try
+            {
+                _previewUri = await Task.Run(() =>
+                {
+                    using var bmp = SkiaSharp.SKBitmap.Decode(path);
+                    if (bmp is null) return (string?)null;
+                    int tw = 220; int th = Math.Max(1, (int)(bmp.Height * (220.0 / bmp.Width)));
+                    using var thumb = bmp.Resize(new SkiaSharp.SKImageInfo(tw, th), SkiaSharp.SKFilterQuality.Medium);
+                    var src = thumb ?? bmp;
+                    using var img = SkiaSharp.SKImage.FromBitmap(src);
+                    using var data = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 80);
+                    return "data:image/png;base64," + Convert.ToBase64String(data.ToArray());
+                });
+            }
+            catch (Exception ex) { Logger.LogDebug(ex, "Sky preview failed"); }
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private void OnLabSettingsChanged() => InvokeAsync(StateHasChanged);
@@ -653,6 +690,7 @@
     private void SetMode(SkyInjectionMode mode)
     {
         _opts.Mode = mode;
+        _ = UpdatePreview();
     }
 
     private void OnTileChanged(ChangeEventArgs e)
@@ -679,6 +717,8 @@
             if (result is not null)
             {
                 _opts.ImagePath = result.FullPath;
+                try { Preferences.Set("SkyInjectorImagePath", _opts.ImagePath); } catch { }
+                await UpdatePreview();
                 AppendLog($"Image selected: {Path.GetFileName(_opts.ImagePath)}", "info");
 
                 var ext = Path.GetExtension(_opts.ImagePath);

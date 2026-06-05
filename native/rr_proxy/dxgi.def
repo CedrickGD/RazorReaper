@@ -1,0 +1,22 @@
+LIBRARY dxgi
+EXPORTS
+    ApplyCompatResolutionQuirking = dxgiorig.ApplyCompatResolutionQuirking @1
+    CompatString = dxgiorig.CompatString @2
+    CompatValue = dxgiorig.CompatValue @3
+    CreateDXGIFactory = dxgiorig.CreateDXGIFactory @10
+    CreateDXGIFactory1 = dxgiorig.CreateDXGIFactory1 @11
+    CreateDXGIFactory2 = dxgiorig.CreateDXGIFactory2 @12
+    DXGID3D10CreateDevice = dxgiorig.DXGID3D10CreateDevice @13
+    DXGID3D10CreateLayeredDevice = dxgiorig.DXGID3D10CreateLayeredDevice @14
+    DXGID3D10GetLayeredDeviceSize = dxgiorig.DXGID3D10GetLayeredDeviceSize @15
+    DXGID3D10RegisterLayers = dxgiorig.DXGID3D10RegisterLayers @16
+    DXGIDeclareAdapterRemovalSupport = dxgiorig.DXGIDeclareAdapterRemovalSupport @17
+    DXGIDisableVBlankVirtualization = dxgiorig.DXGIDisableVBlankVirtualization @18
+    DXGIDumpJournal = dxgiorig.DXGIDumpJournal @4
+    DXGIGetDebugInterface1 = dxgiorig.DXGIGetDebugInterface1 @19
+    DXGIReportAdapterConfiguration = dxgiorig.DXGIReportAdapterConfiguration @20
+    PIXBeginCapture = dxgiorig.PIXBeginCapture @5
+    PIXEndCapture = dxgiorig.PIXEndCapture @6
+    PIXGetCaptureState = dxgiorig.PIXGetCaptureState @7
+    SetAppCompatStringPointer = dxgiorig.SetAppCompatStringPointer @8
+    UpdateHMDEmulationStatus = dxgiorig.UpdateHMDEmulationStatus @9

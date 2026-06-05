@@ -1,4 +1,4 @@
-﻿@page "/game"
+@page "/game"
 @using System.Diagnostics
 @using System.Runtime.InteropServices
 @using Microsoft.Extensions.Logging
@@ -13,6 +13,8 @@
 @inject ILogger<Game> Logger
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@inject IGameConsoleService GameConsole
+@inject IArkLauncher ArkLauncher
 
 @implements IAsyncDisposable
 
@@ -149,12 +151,8 @@
 </div>
 
 @code {
-    private const int SW_RESTORE = 9;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
     private const byte VK_TAB = 0x09;
     private const byte VK_RETURN = 0x0D;
-    private const byte VK_CONTROL = 0x11;
-    private const byte VK_V = 0x56;
     private const string DefaultConsoleKey = "TAB";
     private const string ConsoleKeyPreferenceKey = "GameConsoleKey";
     private const string CleanVisionCommand = "foliage.DensityScale 0 | grass.DensityScale 0 | r.SkeletalMeshLODBias 10000 | r.DetailMode 0 | r.RefractionQuality 0 |  r.SSR 0 | r.SceneColorFormat 0 | r.DetailMode 0 | r.TranslucencyVolumeBlur 0  | r.GroundClutterQuality 0 | r.SSR.Quality 0 | r.SSS.Scale 0| r.SSS.SampleSet 0 | r.HFShadowQuality 0 | r.PostProcessAAQuality 0 | r.MSAA.CompositingSampleCount 0 | r.SkeletalMeshLODBias 1000 | r.ViewDistanceScale -7 | r.LightFunctionQuality 0 | r.ShadowQuality 0 | r.Shadow.CSM.MaxCascades 0 | r.Shadow.CSM.MaxFarCascades 0 | r.Shadow.AllowForegroundShadows 0 | r.Shadow.MaxResolution 0 | r.Shadow.RadiusThreshold 0 | r.Shadow.DistanceScale 0 | r.Shadow.CSM.TransitionScale 0 | r.DistanceFieldShadowing 0 | r.DistanceFieldShadowRaytraceDistance 0 | r.DistanceFieldAO 0 | r.oneframethreadlag 0 | r.MotionBlurQuality 0 | r.AmbientOcclusionSampleSetQuality 0 | r.AmbientOcclusionLevels 0 | r.AmbientOcclusionRadiusScale 0 | r.AmbientOcclusionFadeoutExponent 0 |r.AmbientOcclusion32BitPrecision 0 | r.DepthOfFieldQuality 0 | r.RenderTargetPoolMin 0 | r.LensFlareQuality 0 | r.SceneColorFringeQuality 0 | r.EyeAdaptationQuality 0 | r.BloomQuality 0 | r.FastBlurThreshold 0 | r.UpsampleQuality 0 | r.TonemapperQuality 0 | r.LightShaftQuality 0 | r.ScreenSpaceReflections 0 | r.Streaming.MipBias 100000 | r.MaxAnisotropy 8 | r.Streaming.PoolSize 0 | r.RefractionQuality 0 | r.SSR.Quality 0 | r.SceneColorFormat 0 | r.DetailMode 0 | r.TranslucencyVolumeBlur 0 | r.SSS.Scale 0 | r.SSS.SampleSet 0 | grass.enable 0 | r.ContactShadows 0 | r.DynamicGlobalIlluminationMethod 2 | r.Nanite.MaxPixelsPerEdge 4 | r.Shadow.CSM.MaxCascades 0 | r.ShadowQuality 0 | r.VolumetricCloud 0 | r.volumetricfog 0 | r.Water.SingleLayer.Reflection 0 | r.LandscapeLODBias 100000 | r.ParticleLODBias 10000 | r.MaterialQualityLevel 0 | r.TrueSkyQuality 0 | r.atmosphere 0 | r.lightshafts 0 | r.mapmaplodbias 9 |";
@@ -194,19 +192,9 @@
         ["PGDN"] = 0x22
     };
 
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")]
-    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
     private bool isGameRunning = false;
     private Timer? statusTimer;
     private string consoleKey = DefaultConsoleKey;
-    private byte consoleKeyCode = VK_TAB;
     private bool isCapturingConsoleKey = false;
     private string ConsoleKeyDisplay => isCapturingConsoleKey ? "Press a key..." : consoleKey;
 
@@ -253,7 +241,6 @@
         catch
         {
             consoleKey = DefaultConsoleKey;
-            consoleKeyCode = VK_TAB;
         }
     }
 
@@ -369,10 +356,9 @@
         var previousKey = consoleKey;
         var wasUnknown = false;
 
-        if (!TryGetVirtualKeyCode(normalized, out var keyCode))
+        if (!TryGetVirtualKeyCode(normalized, out _))
         {
             normalized = DefaultConsoleKey;
-            keyCode = VK_TAB;
             wasUnknown = true;
             if (notify)
             {
@@ -381,13 +367,13 @@
         }
 
         consoleKey = normalized;
-        consoleKeyCode = keyCode;
 
         if (persist)
         {
             try
             {
                 Preferences.Set(ConsoleKeyPreferenceKey, consoleKey);
+                GameConsole.RefreshConsoleKey();
             }
             catch
             {
@@ -467,64 +453,26 @@
 
     private async Task ExecuteGameCommand(string command, bool useClipboard = false, string? displayName = null)
     {
+        var commandLabel = displayName ?? command;
         try
         {
             Logger.LogInformation("Executing game command: {Command}", command);
-            var commandLabel = displayName ?? command;
-            var processName = Configuration.Value.Ark.GameProcessName;
-            Process[] processes = ProcessService.GetProcessesByName(processName);
-            try
+
+            if (!GameConsole.IsGameRunning)
             {
-                if (processes.Length > 0)
-                {
-                    IntPtr gameWindowHandle = processes[0].MainWindowHandle;
-
-                    ShowWindow(gameWindowHandle, SW_RESTORE);
-                    await Task.Delay(100);
-                    SetForegroundWindow(gameWindowHandle);
-                    await Task.Delay(500);
-
-                    keybd_event(consoleKeyCode, 0, 0, UIntPtr.Zero);
-                    await Task.Delay(50);
-                    keybd_event(consoleKeyCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-                    await Task.Delay(300);
-
-                    if (useClipboard)
-                    {
-                        var pasted = await PasteCommandAsync(command);
-                        if (!pasted)
-                        {
-                            NotificationService.ShowError($"Failed to paste '{commandLabel}'. Try again.");
-                            StateHasChanged();
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        await TypeCommandAsync(command);
-                    }
-
-                    await Task.Delay(200);
-
-                    keybd_event(VK_RETURN, 0, 0, UIntPtr.Zero);
-                    await Task.Delay(50);
-                    keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-
-                    NotificationService.ShowSuccess($"Command '{commandLabel}' executed successfully");
-                    ActivityService.AddActivity($"Game command executed: {commandLabel}", "success");
-                }
-                else
-                {
-                    NotificationService.ShowWarning("ARK: Survival Evolved is not running!");
-                }
+                NotificationService.ShowWarning("ARK: Survival Evolved is not running!");
+                return;
             }
-            finally
+
+            var ok = await GameConsole.SendCommandAsync(command, useClipboard);
+            if (ok)
             {
-                // Dispose all process objects to prevent handle leaks
-                foreach (var process in processes)
-                {
-                    process?.Dispose();
-                }
+                NotificationService.ShowSuccess($"Command '{commandLabel}' executed successfully");
+                ActivityService.AddActivity($"Game command executed: {commandLabel}", "success");
+            }
+            else
+            {
+                NotificationService.ShowError($"Failed to send '{commandLabel}'. Try again.");
             }
         }
         catch (Exception ex)
@@ -536,91 +484,15 @@
         StateHasChanged();
     }
 
-    private void SendChar(char c)
-    {
-        byte vk = (byte)char.ToUpperInvariant(c);
-        keybd_event(vk, 0, 0, UIntPtr.Zero);
-        keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-    }
-
-    private async Task TypeCommandAsync(string command)
-    {
-        foreach (char c in command.ToLowerInvariant())
-        {
-            SendChar(c);
-            await Task.Delay(25);
-        }
-    }
-
-    private async Task<bool> PasteCommandAsync(string command)
-    {
-        string? previousText = null;
-        try
-        {
-            try
-            {
-                previousText = await Clipboard.Default.GetTextAsync();
-            }
-            catch
-            {
-                previousText = null;
-            }
-
-            await Clipboard.Default.SetTextAsync(command);
-            await Task.Delay(50);
-
-            SendPasteShortcut();
-            await Task.Delay(120);
-
-            if (!string.IsNullOrEmpty(previousText))
-            {
-                try
-                {
-                    await Clipboard.Default.SetTextAsync(previousText);
-                }
-                catch
-                {
-                    // Ignore clipboard restore failures.
-                }
-            }
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error pasting game command");
-
-            if (!string.IsNullOrEmpty(previousText))
-            {
-                try
-                {
-                    await Clipboard.Default.SetTextAsync(previousText);
-                }
-                catch
-                {
-                    // Ignore clipboard restore failures.
-                }
-            }
-
-            return false;
-        }
-    }
-
-    private void SendPasteShortcut()
-    {
-        keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
-        keybd_event(VK_V, 0, 0, UIntPtr.Zero);
-        keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-    }
-
     private async Task LaunchGame()
     {
         try
         {
-            Logger.LogInformation("Launching ARK via Steam");
-            ProcessService.Start("steam://rungameid/346110");
-            NotificationService.ShowSuccess("Launching ARK: Survival Evolved via Steam...");
+            Logger.LogInformation("Launching ARK (No BattlEye, Unofficial only)");
+            var launch = ArkLauncher.LaunchNoBattlEye();
+            if (launch.Ok) NotificationService.ShowSuccess(launch.Message);
+            else NotificationService.ShowError(launch.Message);
+            ActivityService.AddActivity(launch.Ok ? "ARK launched (No BattlEye)" : "ARK launch failed", launch.Ok ? "success" : "warning");
 
             await Task.Delay(5000);
             CheckGameStatus();

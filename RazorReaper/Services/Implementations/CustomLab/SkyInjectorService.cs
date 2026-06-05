@@ -161,6 +161,26 @@ public class SkyInjectorService : ISkyInjectorService
         }
     }
 
+    public IReadOnlyList<(string LivePath, string BackupPath)> EnumerateBackupPairs()
+    {
+        var contentRoot = GetArkContentRoot();
+        if (contentRoot is null || !Directory.Exists(BackupFolderPath))
+            return Array.Empty<(string, string)>();
+
+        // Walk the ARK content tree (same candidate rules as inject/restore) and keep only the
+        // candidates whose .bak exists — re-encoding each path to find its backup, exactly as
+        // RestoreAsync does, to sidestep the ambiguous-underscore decode problem.
+        var pairs = new List<(string, string)>();
+        foreach (var path in EnumerateCandidateUassetPaths(contentRoot))
+        {
+            var rel = SafeRelative(contentRoot, path);
+            var backupPath = Path.Combine(BackupFolderPath, EncodeBackupName(rel));
+            if (File.Exists(backupPath))
+                pairs.Add((path, backupPath));
+        }
+        return pairs;
+    }
+
     public async Task<IReadOnlyList<SkyTextureInfo>> DiscoverSkyTexturesAsync(CancellationToken ct = default)
     {
         await _settings.LoadAsync();

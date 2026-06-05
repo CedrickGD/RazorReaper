@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Configuration;
 using RazorReaper.Diagnostics;
@@ -207,6 +207,10 @@ namespace RazorReaper
             services.AddSingleton<IArkPathProvider, ArkPathProvider>();
             services.AddSingleton<IFileSystemService, FileSystemService>();
             services.AddSingleton<IProcessService, ProcessService>();
+            services.AddSingleton<IGameConsoleService, RazorReaper.Services.Implementations.Game.GameConsoleService>();
+            services.AddSingleton<IProcessMemoryService, RazorReaper.Services.Implementations.Memory.ProcessMemoryService>();
+            services.AddSingleton<IGameInjector, RazorReaper.Services.Implementations.Memory.GameInjector>();
+            services.AddSingleton<IArkLauncher, ArkLauncher>();
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
             services.AddSingleton<INotificationService, NotificationService>();

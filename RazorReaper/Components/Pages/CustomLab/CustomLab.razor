@@ -73,7 +73,7 @@
             <path d="M7 5V3M10 5V3M13 5V3M7 17v-2M10 17v-2M13 17v-2M4 8H2M4 12H2M18 8h-2M18 12h-2" />
             <rect x="7.5" y="8.5" width="5" height="3" rx="0.5" />
         </svg>
-        <span>Memory Patcher</span>
+        <span>Live Apply</span>
         @if (!MemoryUnlocked)
         {
             <svg class="lab-tab-lock" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -178,7 +178,9 @@
     private LabTab activeTab = LabTab.ReadMe;
 
     private bool SkyUnlocked => LabSettings.Current.Accepted && LabSettings.Current.MasterEnabled;
-    private bool MemoryUnlocked => SkyUnlocked && LabSettings.Current.MemoryInjectEnabled;
+    // Live Apply tab unlocks like Sky Injector (Accepted + Custom Lab on). The Live Apply
+    // master toggle (MemoryInjectEnabled) now lives ON the page itself.
+    private bool MemoryUnlocked => SkyUnlocked;
 
     protected override async Task OnInitializedAsync()
     {
@@ -229,7 +231,7 @@
     private static string PresenceLabelFor(LabTab tab) => tab switch
     {
         LabTab.SkyInjector => "Sky Injector",
-        LabTab.MemoryPatcher => "Memory Patcher",
+        LabTab.MemoryPatcher => "Live Apply",
         _ => "Custom Lab",
     };
 

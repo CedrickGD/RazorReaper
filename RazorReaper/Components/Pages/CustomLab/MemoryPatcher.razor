@@ -1,106 +1,165 @@
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Models
 @using RazorReaper.Services
+@inject IGameConsoleService GameConsole
 @inject ICustomLabSettingsService LabSettings
+@inject INotificationService Notifications
+@inject ILogger<MemoryPatcher> Logger
+@inject IArkLauncher ArkLauncher
 @implements IDisposable
 
 <div class="lab-memory">
+
+    @* ── Live Apply settings (top — no scrolling) ─────────────────────── *@
     <div class="lab-card">
         <div class="lab-card-header">
             <div class="lab-icon-badge accent">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="4" y="5" width="12" height="10" rx="1.5" />
                     <path d="M7 5V3M10 5V3M13 5V3M7 17v-2M10 17v-2M13 17v-2M4 8H2M4 12H2M18 8h-2M18 12h-2" />
-                    <rect x="7.5" y="8.5" width="5" height="3" rx="0.5" />
                 </svg>
             </div>
             <div>
-                <h3>
-                    Memory Patcher
-                    <span class="lab-pill warning">coming soon</span>
-                </h3>
-                <p>Live-patch ARK's running process so sky and texture edits apply without a game restart.</p>
+                <h3>Live Apply <span class="lab-pill warning">experimental</span></h3>
+                <p>Apply Sky / Pixel / INI changes to the <em>running</em> game — no restart. Unofficial / single-player only.</p>
             </div>
         </div>
 
         <div class="lab-card-content">
-            <p class="lab-lead">
-                The Memory Patcher attaches to <code>ShooterGame.exe</code> while you're in-game and rewrites
-                texture resources in memory. Pair it with the file-based <strong>Sky Injector</strong> as your
-                durable baseline; this tool is the "apply changes without quitting" layer on top.
-            </p>
-
-            <h4>What it will do</h4>
-            <ul class="lab-feature-bullets">
-                <li>Detect and attach to a running <code>ShooterGame.exe</code> process</li>
-                <li>Reload sky textures in memory so the new sky shows immediately</li>
-                <li>Auto-detach on game exit; manual detach via Attach button when running</li>
-                <li>Optional future: hot-reload other patched textures (paintings, pixel glitch)</li>
-            </ul>
-
-            <h4>Prerequisites once shipped</h4>
-            <ul class="lab-prereq-list">
-                <li class="@(LabSettings.Current.Accepted ? "met" : "")">
-                    <span class="lab-prereq-marker">
-                        @if (LabSettings.Current.Accepted)
-                        {
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                    </span>
-                    Read Me accepted
-                </li>
-                <li class="@(LabSettings.Current.MasterEnabled ? "met" : "")">
-                    <span class="lab-prereq-marker">
-                        @if (LabSettings.Current.MasterEnabled)
-                        {
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                    </span>
-                    Custom Lab enabled in Settings
-                </li>
-                <li class="@(LabSettings.Current.MemoryInjectEnabled ? "met" : "")">
-                    <span class="lab-prereq-marker">
-                        @if (LabSettings.Current.MemoryInjectEnabled)
-                        {
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                    </span>
-                    Runtime memory injection enabled in Settings
-                </li>
-                <li>
-                    <span class="lab-prereq-marker"></span>
-                    <code>ShooterGame.exe</code> is running
-                </li>
-            </ul>
-
-            <div class="lab-attach-row">
-                <button type="button"
-                        class="lab-btn primary"
-                        disabled
-                        title="The Memory Patcher hasn't shipped yet — this button is a preview of where Attach will live.">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 10h12" />
-                        <path d="M10 4l6 6-6 6" />
-                    </svg>
-                    Attach
-                </button>
-                <span class="lab-attach-note">The Attach button activates once the Memory Patcher implementation ships.</span>
+            <div class="mp-settings-row">
+                <div class="mp-settings-label">
+                    <div class="mp-settings-title">Enable Live Apply</div>
+                    <p class="mp-hint">Master switch. While on, launching uses <strong>No BattlEye</strong> and changes you make in Sky Injector / INI / Pixel are pushed to the live game.</p>
+                </div>
+                <label class="lab-switch">
+                    <input type="checkbox" checked="@LiveApplyOn" @onchange="OnLiveApplyToggled" />
+                    <span class="lab-switch-slider"></span>
+                </label>
             </div>
+
+            <div class="mp-statusbar">
+                <span class="mp-pill @(GameConsole.IsGameRunning ? "on" : "off")">ARK @(GameConsole.IsGameRunning ? "running" : "not running")</span>
+                <span class="mp-pill @(LiveApplyOn ? "on" : "off")">Live Apply @(LiveApplyOn ? "on" : "off")</span>
+                @if (_battlEye) { <span class="mp-pill warn">BattlEye active</span> }
+            </div>
+
+            @if (_battlEye)
+            {
+                <div class="mp-banner danger">
+                    <strong>BattlEye is active — Live Apply is blocked.</strong>
+                    <span>Close ARK and relaunch with the button below (No BattlEye, unofficial only).</span>
+                </div>
+            }
+
+            <div class="mp-actions">
+                @if (!GameConsole.IsGameRunning)
+                {
+                    <button class="lab-btn primary" disabled="@(_busy || !LiveApplyOn)"
+                            title="@(LiveApplyOn ? null : "Turn on Live Apply first")" @onclick="LaunchNoBattlEye">
+                        Launch ARK (No BattlEye)
+                    </button>
+                    @if (!LiveApplyOn)
+                    {
+                        <span class="mp-hint">Turn on Live Apply to enable the No-BattlEye launch.</span>
+                    }
+                }
+                else
+                {
+                    <span class="mp-hint">ARK is running. Make a change in <strong>Sky Injector</strong>, <strong>INI Changer</strong>, or <strong>Pixel</strong> and it applies live.</span>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(_statusText))
+            {
+                <p class="mp-status-text">@_statusText</p>
+            }
         </div>
     </div>
+
+    @* ── Activity log (bottom) ────────────────────────────────────────── *@
+    @if (_logLines.Count > 0)
+    {
+        <div class="lab-card">
+            <div class="lab-card-content">
+                <div class="mp-log-head">
+                    <span>Activity</span>
+                    <button class="lab-btn" @onclick="() => _logLines.Clear()">Clear</button>
+                </div>
+                <div class="mp-log">
+                    @foreach (var line in _logLines)
+                    {
+                        <div class="mp-log-line @line.Kind">@line.Text</div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
+<style>
+    .mp-settings-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+    .mp-settings-label { flex:1; }
+    .mp-settings-title { font-weight:600; color:var(--text-primary); margin-bottom:.25rem; }
+    .mp-statusbar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem; }
+    .mp-pill { font-size:.78rem; padding:.2rem .6rem; border-radius:999px; border:1px solid rgba(255,255,255,.14); color:var(--text-secondary); }
+    .mp-pill.on { background:rgba(46,160,67,.15); border-color:rgba(46,160,67,.4); color:#7ee787; }
+    .mp-pill.off { background:rgba(255,255,255,.05); }
+    .mp-pill.warn { background:rgba(210,153,34,.16); border-color:rgba(210,153,34,.4); color:#e3b341; }
+    .mp-banner { display:flex; flex-direction:column; gap:.25rem; padding:.7rem .85rem; border-radius:8px; margin-bottom:.85rem; font-size:.9rem; }
+    .mp-banner.danger { background:rgba(248,81,73,.12); border:1px solid rgba(248,81,73,.4); color:#ff7b72; }
+    .mp-banner span { color:var(--text-secondary); }
+    .mp-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:.5rem; }
+    .mp-status-text, .mp-hint { color:var(--text-secondary); font-size:.85rem; }
+    .mp-status-text { margin-top:.6rem; }
+    .mp-log-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:.4rem; color:var(--text-secondary); font-size:.85rem; }
+    .mp-log { max-height:220px; overflow-y:auto; font-family:var(--font-mono, monospace); font-size:.8rem; }
+    .mp-log-line { padding:.12rem 0; color:var(--text-secondary); }
+    .mp-log-line.success { color:#7ee787; }
+    .mp-log-line.warn { color:#e3b341; }
+    .mp-log-line.info { color:rgba(var(--accent-purple-rgb), 1); }
+</style>
+
 @code {
+    private bool _busy;
+    private bool _battlEye;
+    private string? _statusText;
+    private readonly List<LogLine> _logLines = new();
+
+    private bool LiveApplyOn => LabSettings.Current.MemoryInjectEnabled;
+
     protected override void OnInitialized()
     {
-        LabSettings.Changed += OnLabSettingsChanged;
+        LabSettings.Changed += OnChanged;
+        RefreshBattlEye();
     }
 
-    private void OnLabSettingsChanged() => InvokeAsync(StateHasChanged);
+    private void OnChanged() => InvokeAsync(() => { RefreshBattlEye(); StateHasChanged(); });
 
-    public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
+    private void RefreshBattlEye()
+    {
+        try { _battlEye = ArkLauncher.IsBattlEyeActive(); } catch { _battlEye = false; }
+    }
+
+    private Task OnLiveApplyToggled(ChangeEventArgs e) =>
+        LabSettings.SetMemoryInjectEnabledAsync(e.Value is bool b && b);
+
+    private void LaunchNoBattlEye()
+    {
+        if (!LiveApplyOn) { Notifications.ShowWarning("Turn on Live Apply first."); return; }
+        var r = ArkLauncher.LaunchNoBattlEye();
+        RefreshBattlEye();
+        AppendLog(r.Message, r.Ok ? "success" : "warn");
+        if (r.Ok) Notifications.ShowSuccess(r.Message); else Notifications.ShowWarning(r.Message);
+    }
+
+    private void AppendLog(string text, string kind)
+    {
+        var stamp = DateTime.Now.ToString("HH:mm:ss");
+        _logLines.Add(new LogLine($"[{stamp}] {text}", kind));
+        if (_logLines.Count > 200) _logLines.RemoveRange(0, _logLines.Count - 200);
+    }
+
+    public void Dispose() => LabSettings.Changed -= OnChanged;
+
+    private record LogLine(string Text, string Kind);
 }

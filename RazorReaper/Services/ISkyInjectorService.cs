@@ -46,4 +46,12 @@ public interface ISkyInjectorService
     /// Open the backup folder in File Explorer. No-op if the folder doesn't exist yet.
     /// </summary>
     void OpenBackupFolder();
+
+    /// <summary>
+    /// Enumerate (live .uasset, matching .bak) pairs for every sky candidate that currently
+    /// has a backup on disk. Read-only — used by the Memory Patcher to derive the original vs
+    /// patched data-region bytes (the backup holds the originals; the live file holds the
+    /// injected bytes). Returns empty if ARK or the backup folder isn't found.
+    /// </summary>
+    IReadOnlyList<(string LivePath, string BackupPath)> EnumerateBackupPairs();
 }
