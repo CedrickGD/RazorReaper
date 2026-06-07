@@ -24,4 +24,10 @@ public interface IArkLauncher
     /// appended, so custom fonts / culture options still apply.
     /// </summary>
     ArkLaunchResult LaunchNoBattlEye();
+
+    /// <summary>
+    /// Launch ARK the normal way through Steam (steam://rungameid) — the user's usual launch
+    /// option / BattlEye. This is the launch that shows file-injected sky changes in-game.
+    /// </summary>
+    ArkLaunchResult LaunchNormal();
 }

@@ -148,6 +148,29 @@ public sealed class ArkLauncher : IArkLauncher
         }
     }
 
+    public ArkLaunchResult LaunchNormal()
+    {
+        if (_process.IsProcessRunning(_config.Value.Ark.GameProcessName))
+            return new ArkLaunchResult(false, "ARK is already running.");
+        try
+        {
+            // Hand off to Steam exactly like clicking Play — this is the launch that loads the
+            // file-injected sky (the direct No-BattlEye exe launch does not show it).
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = $"steam://rungameid/{ArkAppId}",
+                UseShellExecute = true
+            });
+            _logger.LogInformation("Launched ARK via Steam (normal launch).");
+            return new ArkLaunchResult(true, "Launching ARK through Steam — pick your usual launch option in the popup.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Steam launch failed");
+            return new ArkLaunchResult(false, $"Launch failed: {ex.Message}");
+        }
+    }
+
     private static string? GetSteamPath()
     {
         try

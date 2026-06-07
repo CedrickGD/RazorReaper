@@ -4,6 +4,7 @@
 @using RazorReaper.Services
 
 @inject ISkyInjectorService Injector
+@inject ILiveSkyService LiveSky
 @inject ISkyInjectorSessionState Session
 @inject ICustomLabSettingsService LabSettings
 @inject INotificationService Notifications
@@ -261,8 +262,12 @@
             · The Center · Ragnarok · Valguero · Crystal Isles · Lost Island
         </p>
         <p class="injector-coverage-caveat">
-            <strong>Fjordur</strong> uses a different sky system and is not covered. Nighttime on some
-            maps is hardcoded — your sky will only show during day phases there.
+            Changes apply on the next <strong>in-game day cycle</strong> — give it a day to roll over
+            (or slomo the time to speed it up). A custom sky normally won't show at <strong>night</strong> —
+            that's expected; it appears through the day phases.
+        </p>
+        <p class="injector-coverage-caveat">
+            <strong>Fjordur</strong> uses a different sky system and isn't covered by the file patch.
         </p>
         <p class="injector-coverage-jump">
             Curious about risks? <button type="button" class="injector-link" @onclick="JumpToReadMe">Read Me</button>
@@ -766,24 +771,27 @@
     {
         if (!CanInject) return;
 
-        if (LabSettings.Current.GuardArkProcess && ProcessService.IsProcessRunning("ShooterGame"))
-        {
-            AppendLog("ARK is running — file writes may fail or be ignored until you restart.", "warn");
-        }
-
         _busy = true;
         _lastAction = "inject";
         AppendLog(_opts.Mode == SkyInjectionMode.Image
-            ? $"Injecting from {Path.GetFileName(_opts.ImagePath)} (tile {_opts.TileSize}x, flip {_opts.FlipVertically})…"
-            : $"Injecting solid color {_opts.HexColor}…", "info");
+            ? $"Swapping sky → {Path.GetFileName(_opts.ImagePath)} (tile {_opts.TileSize}x, flip {_opts.FlipVertically})…"
+            : $"Swapping sky → solid color {_opts.HexColor}…", "info");
         try
         {
+            // Live arm — the in-place "instant" engine. Still being tuned to match the sky's runtime
+            // textures, so treat it as best-effort; the file patch below is the reliable path.
+            try { await LiveSky.ApplyAsync(_opts); } catch (Exception lx) { Logger.LogDebug(lx, "Live arm skipped"); }
+
+            // File patch — patches the sky textures by name on disk; the game bakes it in on the next
+            // reload / day cycle. Reliable on every covered map.
             var result = await Injector.InjectAsync(_opts);
             AppendResult(result, verbAct: "Patched", verbErr: "errors during inject");
             _hasBackup = Injector.HasBackup();
             if (result.Errors.Count == 0 && result.Patched > 0)
             {
-                Notifications.ShowSuccess($"Sky injected into {result.Patched} texture(s). Restart ARK to see it.");
+                AppendLog("Give it one in-game day cycle to appear — a patched sky rolls in when the next day starts (slomo the time to speed it up).", "info");
+                AppendLog("Heads up: a custom sky normally won't show at night — that's expected; it shows through the day phases.", "info");
+                Notifications.ShowSuccess($"Sky applied to {result.Patched} file(s) — may take one in-game day cycle to show.");
             }
             else if (result.Errors.Count > 0)
             {
@@ -792,9 +800,9 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Inject failed");
-            AppendLog($"Inject failed: {ex.Message}", "error");
-            Notifications.ShowError("Sky inject failed — see log.");
+            Logger.LogError(ex, "Live sky swap failed");
+            AppendLog($"Swap failed: {ex.Message}", "error");
+            Notifications.ShowError("Sky swap failed — see log.");
         }
         finally
         {
@@ -817,9 +825,15 @@
         AppendLog("Restoring original sky textures from backup…", "info");
         try
         {
+            // Disarm the live engine so a running ARK reverts too.
+            try { await LiveSky.DisableAsync(); } catch (Exception liveEx) { AppendLog($"Live disarm skipped: {liveEx.Message}", "warn"); }
             var result = await Injector.RestoreAsync();
             AppendResult(result, verbAct: "Restored", verbErr: "errors during restore");
             _hasBackup = Injector.HasBackup();
+            // Restoring the original sky returns the tool to a clean slate — drop the custom image + its preview.
+            _opts.ImagePath = null;
+            _previewUri = null;
+            try { Preferences.Set("SkyInjectorImagePath", ""); } catch { }
             if (result.Errors.Count == 0 && result.Patched > 0)
             {
                 Notifications.ShowSuccess($"Restored {result.Patched} sky texture(s). Restart ARK to see the original.");

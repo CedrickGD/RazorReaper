@@ -1,82 +1,72 @@
-# Live Apply — Left-Off / Resume Notes
+# Live Sky — Left-Off / Resume Notes
 
-_Last updated: 2026-06-06. Branch: `feature/live-apply`._
+_Last updated: 2026-06-07. Branch: `feature/live-apply`._
 
-## The goal (3 live-apply targets, no game restart, triggered from RazorReaper)
+## Goal
+In RazorReaper, pick an image/solid color → **Inject sky** → the in-game ARK sky becomes it.
+Two delivery lanes:
+- **A — file-inject (reliable, shipping):** patch the sky `.uasset`s on disk by name; the game bakes it in on the next **day-cycle reload**. Works on covered maps. Not zero-wait.
+- **B — live engine (instant, in progress):** a `d3d11.dll` proxy repaints the sky textures in VRAM with no reload. **Not working yet** — see the wall below.
 
-1. **Sky** → live texture **replace** (user's image) — Sky Injector, applied live.
-2. **Pixel glitch** → live texture **delete/break** — different from sky (it deletes texture files).
-3. **INI (BaseDeviceProfiles)** → live device-profile **setting swap**, in-memory (console can NOT carry a whole INI — only a small whitelist of words).
-
-Intended for **unofficial / single-player only**. Launch must use **"Play ARK: No BattlEye"**.
-
----
-
-## TL;DR status
-
-- ✅ **We CAN change textures live in a running ARK world** — proven (the whole map turned red via the GPU hook). The hardest conceptual barrier is cleared.
-- ⏳ **Sky/Pixel not yet clean/targeted** — the broad hook corrupts everything; the *sky's specific* texture-upload path still needs pinning so we hit only it and feed the real image.
-- ❌ **INI live not started** — needs in-game CVar-system RE (same depth as the sky work).
-- ✅ **App UX cleaned up** (see below). World is back to **normal** by default (`g_redden=false`).
+Single-player / unofficial only. Engine needs a **No-BattlEye** launch.
 
 ---
 
-## What works / the winning approach
+## CURRENT STATUS (this session)
 
-**Proxy DLL (NOT injection).** Runtime DLL injection (`CreateRemoteThread`) is blocked by Windows Defender on this machine — verified 4 ways. Instead we ship our DLL into ARK's `Win64` folder so the **game loads it itself** (ReShade/ENB style) — no injection, nothing for AV to flag. **Proven working.**
+### ✅ Option A is wired + shipping
+- `SkyInjector.razor` `InjectAsync` now runs `Injector.InjectAsync(_opts)` (the file patch) as the reliable path, plus a best-effort `LiveSky.ApplyAsync` (the live arm).
+- Two user notices added (output log + success toast + coverage caveat): **"may take one in-game day cycle to appear (slomo to speed it up)"** and **"a custom sky normally won't show at night — that's normal."**
+- Covered maps only (The Island, Ragnarok, Genesis, etc.). **Fjordur uses its own sky system → not file-patched.**
 
-- `native/rr_proxy/dxgi.dll` → proxy for `dxgi.dll`, forwards all exports to `dxgiorig.dll`. Runs a **named-pipe RE tool** (`\\.\pipe\rr_live`): `modinfo`, `ascan`/`wscan`/`afind`/`wfind <text>`, `read <hexaddr> <len>`. Found GNames (`ByteProperty` pool) this way.
-- `native/rr_proxy/d3d11.dll` → proxy for `d3d11.dll`. Hooks `ID3D11Device::CreateTexture2D` (vtbl 5) + context `Map`(14)/`Unmap`(15)/`CopySubresourceRegion`(46)/`CopyResource`(47)/`UpdateSubresource`(48). Replaces texture pixels with red (proof). `g_redden` master switch (currently **false** = normal world).
+### ✅ Live engine builds, loads, hooks, and is STABLE
+- `native/rr_proxy/d3d11_proxy.cpp`: hooks `CreateTexture2D` (device vtbl 5) for the create-time splice, and `Map` (immediate-ctx vtbl 14) as a **render-thread tick** for in-place re-skin. A **background poller thread** reads the control dir every 500 ms. Both splice paths are thread-safe (the old crash was re-skinning from the worker thread; now it's the Map/render thread).
+- **Fixed this session:** `SlurpFile` didn't null-terminate its buffer → `atoi(gen.txt)` read garbage → the gen counter flapped (`gen=1↔10`, `9↔930`) and the engine reloaded constantly. Added `malloc(sz+1)` + `b[rd]=0`. Gen is now stable.
+- Diagnostic build logs `BC3 sky <W>x<H> hash=<fnv1a64> match=<0/1> targets=<n>` for the first 50 sky-dim BC3 textures → `%TEMP%\rr_live.log`.
 
-Build: `native/rr_proxy/build_dxgi.ps1`, `build_d3d11.ps1` (auto-generate export forwarders via dumpbin → `exports_gen*.h`, compile with VS BuildTools).
-
-**Install (into ARK Win64):** copy `dxgi.dll`+`dxgiorig.dll` (copy of `C:\Windows\System32\dxgi.dll`) and `d3d11.dll`+`d3d11orig.dll`.
-**Uninstall = delete those 4 files** → game falls back to system DLLs.
-
-In-game DLL log: `%TEMP%\rr_live.log`.
-
----
-
-## Key technical findings (hard-won, don't re-litigate)
-
-- **External RPM/WPM can't change textures** — pixels live in VRAM, the CPU copy is freed after GPU upload. `MemoryPatcherService` (external scan/write) is a proven dead end for textures. Kept but unused by the new UI.
-- **Runtime injection blocked by Defender** — `VirtualAllocEx`/`CreateRemoteThread` → ACCESS_DENIED. `GameInjector` kept but unusable here. Proxy-DLL is the answer.
-- **ARK textures stream in EMPTY** (`init=0`, often TYPELESS formats: BC3=76, BC1=70, BGRA=90). Pixels arrive *after* creation — NOT via `CreateTexture2D` init data, NOT immediate-context `Map`/`UpdateSubresource`. Likely a **staging→Copy** path or a **deferred context**. `CopyResource`/`CopySubresourceRegion` + verbose `Map` diagnostics were added but **not yet captured in-world** (next step).
-- **The sky is several textures** (horizon ring + top + patches), some likely an **HDR cubemap** (`fmt=10 256x256 arr=6 misc=0x4`). The broad red hook missed the sky (different format/path) → it stayed normal while everything else corrupted.
-- Sky Injector only "covers" ~50% of maps (file-based, hand-grabbed). A live GPU swap would work on ANY map → strictly better.
+### ❌ THE WALL (don't re-litigate): content-hash matching from disk does NOT work
+- Proven cold on a fresh Fjordur load with clean targets: **every sky texture logged `match=0`.**
+- Why: the bytes ARK uploads to the GPU at runtime (`init[0]`) are **not** the bytes we hash off the `.uasset` (`DataOffset = end - W*H - 4`). Almost certainly a **mip / streaming difference** — the file-inject patches a region that's visible on the distant sky, but the proxy hashes the full-res base mip, which is different.
+- Also: the sky cycles through **~15–20 different textures** (day-cycle keyframes), all different hashes. The disk fingerprint collapses to ~3. So even a "correct" disk hash can't cover the runtime set.
+- ⇒ **Fingerprinting the disk is a dead end.** Stop trying to fix `DataOffset`.
 
 ---
 
-## Next steps (ordered)
+## NEXT: Option B — "learn the sky from the file-inject" (the route to instant)
 
-1. **Pin the sky's upload path** — load into a world with the current diagnostic d3d11 build; read `%TEMP%\rr_live.log` for `MAP`/`COPYRES`/`COPYSUB` lines to see how the sky's pixels arrive. Hook that path.
-2. **Target only the sky** (by the size/format found) and **feed the user's BC3 image** instead of red. Sky Injector already encodes BC3 per dimension — hand it to the hook over the pipe (or a file).
-3. **Pixel-glitch live** — same hook, write garbage/break instead of an image.
-4. **INI live** — in-game DLL finds `IConsoleManager` (AOB/RE) and sets each BaseDeviceProfiles CVar directly (bypasses console whitelist). Big RE task.
-5. **Integrate into app** (task #10) — install/uninstall proxy from RazorReaper; send "swap sky / break pixel / set cvar" commands over the pipe.
+The file-inject already changes the sky precisely (by name). Use it as a **marker** to teach the live engine which runtime textures are the sky:
 
----
+1. User injects image **X** → file-inject patches the sky on disk; C# also hands the proxy X's BC3 (it already writes `sky_<W>x<H>.bin`).
+2. On (re)load, the sky textures in VRAM **are X**. In `Hook_CreateTexture2D`, compare the new texture's content to **X's blob** (try matching a mip that lines up — likely NOT `init[0]`; test `init[1]`/`init[2]`, or compare the whole supplied mip chain). The ones that match are the **sky** → `TrackSky` them (AddRef).
+3. User injects image **Y** → bump `gen.txt`; the Map-hook re-skin rewrites the tracked textures to **Y** live → instant, no reload.
 
-## File map
+This sidesteps disk-hash matching entirely (we match runtime↔injected-image, not runtime↔disk-file). Open question to nail in-game: **which mip** the visible sky uses (so we compare/splice the right one).
 
-**Native:** `native/rr_proxy/` — `proxy.cpp` (dxgi RE tool), `d3d11_proxy.cpp` (texture hook), `build_dxgi.ps1`, `build_d3d11.ps1`. (`native/rr_live/` = old injection DLL, superseded.)
-
-**C# services (new):**
-- `IProcessMemoryService` + `Implementations/Memory/ProcessMemoryService.{cs,Imports.cs,Scan.cs}` — external RPM/WPM + scan (dead-end for textures).
-- `IGameConsoleService` + `Implementations/Game/GameConsoleService.cs` — console injection, extracted from `Game.razor`.
-- `IMemoryPatcherService` + `Implementations/MemoryPatcherService.cs` — external memory orchestration (dead-end).
-- `IGameInjector` + `Implementations/Memory/GameInjector.cs` — LoadLibrary injector (Defender-blocked).
-- `IArkLauncher` + `Implementations/ArkLauncher.cs` — No-BattlEye launch, strips `culture=*`, BattlEye detection (gates Live Apply).
-- `Models/MemoryModels.cs`, `Models/ConsoleBatchResult.cs`.
-
-**App UX done:** `MemoryPatcher.razor` rewritten (Live Apply toggle+settings on top, launch gated on toggle, dead buttons removed); `CustomLab.razor` (tab decoupled from the toggle); `SkyInjector.razor` (image thumbnail + persists across restart); `Game.razor` (launch → No-BattlEye, console extracted); `MauiProgram.cs` DI; csproj ships `rr_live.dll`.
+Fallback if (2) is unreliable: capture the runtime sky hashes over a full day cycle (the diag already logs them) and isolate the sky set by **diffing before/after a file-inject** (the hashes that change are the sky).
 
 ---
 
-## How to resume quickly
+## Architecture / file map
 
-1. `git checkout feature/live-apply`
-2. Rebuild proxies: `native/rr_proxy/build_dxgi.ps1` + `build_d3d11.ps1`; copy `dxgi.dll`/`dxgiorig.dll`/`d3d11.dll`/`d3d11orig.dll` into ARK `...\ShooterGame\Binaries\Win64\`.
-3. Build app: `dotnet build RazorReaper/RazorReaper.csproj -f net10.0-windows10.0.19041.0`.
-4. Launch ARK (No-BattlEye / `ShooterGame.exe` directly), watch `%TEMP%\rr_live.log`.
-5. To restore a clean game: delete the 4 proxy DLLs from Win64.
+**Proxy** `native/rr_proxy/d3d11_proxy.cpp` (built via `build_d3d11.ps1` → `d3d11.dll`):
+- Control dir `%LOCALAPPDATA%\RazorReaper\LiveSky\`: `enabled`, `gen.txt` (int, bumped per apply), `targets.txt` (`<fnv1a64-hex> <W> <H>` per line), `sky_<W>x<H>.bin` (user image as BC3 full mip chain).
+- FNV-1a-64: offset basis `14695981039346656037`, prime `1099511628211`. Must stay byte-identical to C#.
+
+**C#:**
+- `ILiveSkyService` / `Implementations/CustomLab/LiveSkyService.cs` — writes the control dir; fingerprints `SimpleSky_*` (DXT5) base-mip → targets (**this disk-fingerprint is the part that doesn't match runtime — rework per Option B**), encodes the image to BC3 per dim. Registered in `MauiProgram.cs`.
+- `ISkyInjectorService` / `SkyInjectorService.cs` + `UAssetTextureParser.cs` — the file-inject (by name) and `DiscoverSkyTexturesAsync`. `TryParseDxt5`: `dataSize=W*H`, `dataOffset=end-W*H-4`.
+- `SkyInjector.razor` — `InjectAsync` = file-inject + live arm + notices. Restore disarms live + clears preview.
+- `Game.razor` `LaunchGame` → `ArkLauncher.LaunchNoBattlEye()`.
+
+**Helper:** `C:\Users\cedri\rr_arm.cs` — .NET 10 file-based app (`dotnet run rr_arm.cs`) that re-arms the control dir from `C:\Users\cedri\Pictures\rr_test_sky.png` (live-only fingerprint of generic `SimpleSky_*` + encode). Writes `gen=1` each run. Quick way to re-arm without the UI (WebView2 doesn't render into screenshots).
+
+---
+
+## How to resume / gotchas
+1. Build proxy: `native/rr_proxy/build_d3d11.ps1`. Copy `d3d11.dll` → ARK `...\ShooterGame\Binaries\Win64\`; ensure `d3d11orig.dll` there (copy of `C:\Windows\System32\d3d11.dll`).
+2. Build app: `dotnet build RazorReaper/RazorReaper.csproj -f net10.0-windows10.0.19041.0`.
+3. **Launch ARK No-BattlEye = run `ShooterGame.exe` directly** (Steam must be running). Do **NOT** pass `-NoBattlEye` (not a real arg → ARK exits immediately). With the proxy installed, the normal Steam/BattlEye launch aborts — always launch the exe directly.
+4. Watch `%TEMP%\rr_live.log` for `proxy loaded` / `CreateTexture2D hooked` / `Map hooked` / `armed:` / `BC3 sky ... match=`.
+5. Clean game = delete `d3d11.dll` + `d3d11orig.dll` from Win64.
+- ARK is **borderless**; foreground it with **AttachThreadInput** (PowerShell). Discord/desktop steal focus — re-foreground ARK, never minimize Discord (user watches a stream on another monitor).
+- In-game console: **Tab** opens it. Run **`gcm`** (godmode) first so the char doesn't die during testing, then `slomo <n>` / `settimeofday <hh:mm>`.

@@ -488,7 +488,7 @@
     {
         try
         {
-            Logger.LogInformation("Launching ARK (No BattlEye, Unofficial only)");
+            Logger.LogInformation("Launching ARK (No BattlEye) so the live-sky engine loads");
             var launch = ArkLauncher.LaunchNoBattlEye();
             if (launch.Ok) NotificationService.ShowSuccess(launch.Message);
             else NotificationService.ShowError(launch.Message);
