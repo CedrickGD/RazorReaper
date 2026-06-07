@@ -159,7 +159,23 @@ static void LoadControl()
                     {
                         char bp[MAX_PATH]; sprintf_s(bp, sizeof(bp), "%ssky_%ux%u.bin", g_dir, w, h);
                         size_t bs; BYTE* bd = SlurpFile(bp, &bs);
-                        if (bd && bs > 0) g_blobs[g_blobN++] = { (uint32_t)w, (uint32_t)h, bd, bs };
+                        if (bd && bs > 0)
+                        {
+                            g_blobs[g_blobN++] = { (uint32_t)w, (uint32_t)h, bd, bs };
+                            // log the injected image's per-mip hashes so the next pass can find which
+                            // runtime mip the file-inject lands on (compare BLOB m? vs BC3 sky m?).
+                            char bm[220]; int bpos = sprintf_s(bm, sizeof(bm), "BLOB %ux%u", w, h);
+                            size_t boff = 0;
+                            for (int m = 0; m < 3; m++)
+                            {
+                                UINT mw = (UINT)w >> m, mh = (UINT)h >> m; if (!mw) mw = 1; if (!mh) mh = 1;
+                                size_t msz = (size_t)((mw + 3) / 4) * ((mh + 3) / 4) * 16;
+                                if (boff + msz > bs) break;
+                                bpos += sprintf_s(bm + bpos, sizeof(bm) - bpos, " m%d=%016llx", m, (unsigned long long)Fnv1a64(bd + boff, msz));
+                                boff += msz;
+                            }
+                            Log(bm);
+                        }
                         else if (bd) free(bd);
                     }
                 }
@@ -248,7 +264,21 @@ static HRESULT STDMETHODCALLTYPE Hook_CreateTexture2D(ID3D11Device* self,
         EnterCriticalSection(&g_cs);
         uint64_t hash = Fnv1a64((const BYTE*)init[0].pSysMem, baseMip);
         bool matched = MatchTarget(hash, W, H);
-        if (g_diagN < 50) { g_diagN++; char dm[160]; sprintf_s(dm, sizeof(dm), "BC3 sky %ux%u hash=%016llx match=%d targets=%d", W, H, (unsigned long long)hash, matched ? 1 : 0, g_targetN); Log(dm); }
+        if (g_diagN < 50)
+        {
+            g_diagN++;
+            char dm[220]; int dp = sprintf_s(dm, sizeof(dm), "BC3 sky %ux%u m0=%016llx", W, H, (unsigned long long)hash);
+            UINT mc = desc->MipLevels ? desc->MipLevels : 1;
+            for (UINT m = 1; m < 3 && m < mc; m++)   // also fingerprint mips 1-2: the file-inject may land on a lower mip
+            {
+                if (!init[m].pSysMem) continue;
+                UINT mw = W >> m, mh = H >> m; if (!mw) mw = 1; if (!mh) mh = 1;
+                size_t msz = (size_t)((mw + 3) / 4) * ((mh + 3) / 4) * 16;
+                dp += sprintf_s(dm + dp, sizeof(dm) - dp, " m%u=%016llx", m, (unsigned long long)Fnv1a64((const BYTE*)init[m].pSysMem, msz));
+            }
+            sprintf_s(dm + dp, sizeof(dm) - dp, " match=%d targets=%d", matched ? 1 : 0, g_targetN);
+            Log(dm);
+        }
         Blob* blob = matched ? FindBlob(W, H) : nullptr;
         if (blob)
         {
