@@ -12,12 +12,25 @@ Single-player / unofficial only. Engine needs a **No-BattlEye** launch.
 
 ---
 
+## ⚠️ OPEN PROBLEM — ADDRESS NEXT SESSION (2026-06-07)
+
+**BattlEye force-closes the game on server-join while the proxy is installed.**
+- Confirmed working this session: sky change on **Fjordur AND The Island** (file-inject path). Single-player is fine.
+- But: with `d3d11.dll` (our unsigned proxy) in `Win64`, **joining an unofficial server → BattlEye pops up and force-closes ARK** — its runtime scan flags the unsigned DLL (same reason the BattlEye launcher aborts; here it fires on server-join). So the proxy must NOT be present for ANY BattlEye server (official or unofficial).
+
+**Fix direction (pick/combine next time):**
+1. **Decouple it:** the **file-inject path needs NO proxy** — it already changes the sky on Fjordur + Island via disk patch + reload, and is online-safe. Ship sky changes with the proxy **uninstalled**; reserve the proxy strictly for the SP-only instant-engine R&D.
+2. **Live Sky On/Off toggle:** installs `d3d11.dll`+`d3d11orig.dll` into Win64 when ON (SP only), and **deletes them (→ stock game) when OFF / before going online**. Auto-remove on detected BattlEye/server-join.
+3. Immediate workaround to play online now: delete `d3d11.dll` + `d3d11orig.dll` from `Win64` → stock game → no BattlEye trip; the file-injected sky still shows (it's baked into the disk files).
+
+---
+
 ## CURRENT STATUS (this session)
 
 ### ✅ Option A is wired + shipping
 - `SkyInjector.razor` `InjectAsync` now runs `Injector.InjectAsync(_opts)` (the file patch) as the reliable path, plus a best-effort `LiveSky.ApplyAsync` (the live arm).
 - Two user notices added (output log + success toast + coverage caveat): **"may take one in-game day cycle to appear (slomo to speed it up)"** and **"a custom sky normally won't show at night — that's normal."**
-- Covered maps only (The Island, Ragnarok, Genesis, etc.). **Fjordur uses its own sky system → not file-patched.**
+- Sky change **confirmed working on Fjordur AND The Island** this session (file-inject + reload). (Earlier I assumed Fjordur used its own sky and wasn't covered — it is; the disk patch reaches it. The in-app coverage caveat still says otherwise; update it.)
 
 ### ✅ Live engine builds, loads, hooks, and is STABLE
 - `native/rr_proxy/d3d11_proxy.cpp`: hooks `CreateTexture2D` (device vtbl 5) for the create-time splice, and `Map` (immediate-ctx vtbl 14) as a **render-thread tick** for in-place re-skin. A **background poller thread** reads the control dir every 500 ms. Both splice paths are thread-safe (the old crash was re-skinning from the worker thread; now it's the Map/render thread).
