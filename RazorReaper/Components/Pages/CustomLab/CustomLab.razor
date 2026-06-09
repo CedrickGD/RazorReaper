@@ -14,14 +14,9 @@
 </div>
 
 <style>
-    /* Page entrance fade — restores the animation the old tabbed panel had. */
+    /* Bottom-to-top page entrance — the same global fadeInUp every other page uses. */
     .sky-changer-body {
-        animation: skyChangerFadeIn 0.25s ease-out;
-    }
-
-    @@keyframes skyChangerFadeIn {
-        from { opacity: 0; transform: translateY(4px); }
-        to   { opacity: 1; transform: translateY(0); }
+        animation: fadeInUp 0.6s ease-out;
     }
 </style>
 
