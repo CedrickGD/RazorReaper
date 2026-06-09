@@ -488,11 +488,11 @@
     {
         try
         {
-            Logger.LogInformation("Launching ARK (No BattlEye) so the live-sky engine loads");
-            var launch = ArkLauncher.LaunchNoBattlEye();
+            Logger.LogInformation("Launching ARK via Steam");
+            var launch = ArkLauncher.LaunchNormal();
             if (launch.Ok) NotificationService.ShowSuccess(launch.Message);
             else NotificationService.ShowError(launch.Message);
-            ActivityService.AddActivity(launch.Ok ? "ARK launched (No BattlEye)" : "ARK launch failed", launch.Ok ? "success" : "warning");
+            ActivityService.AddActivity(launch.Ok ? "ARK launched via Steam" : "ARK launch failed", launch.Ok ? "success" : "warning");
 
             await Task.Delay(5000);
             CheckGameStatus();
