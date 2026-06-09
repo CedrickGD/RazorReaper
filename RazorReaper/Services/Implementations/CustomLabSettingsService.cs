@@ -152,13 +152,6 @@ public class CustomLabSettingsService : ICustomLabSettingsService
                 metrics: new Dictionary<string, object?> { ["value"] = enabled });
         });
 
-    public Task SetMemoryInjectEnabledAsync(bool enabled) =>
-        MutateAsync(s => s.MemoryInjectEnabled = enabled, s => s.MemoryInjectEnabled != enabled, () =>
-        {
-            _ = _telemetry.TrackEventAsync("custom_lab.memory_inject_toggled",
-                metrics: new Dictionary<string, object?> { ["value"] = enabled });
-        });
-
     public Task SetGuardArkProcessAsync(bool guard) =>
         MutateAsync(s => s.GuardArkProcess = guard, s => s.GuardArkProcess != guard, null);
 

@@ -269,10 +269,6 @@
             anti-cheat to flag. Instant in-game swapping isn't offered — it would mean fighting BattlEye, which
             risks your account.
         </p>
-        <p class="injector-coverage-jump">
-            Curious about risks? <button type="button" class="injector-link" @onclick="JumpToReadMe">Read Me</button>
-            · prefer to manage settings? <button type="button" class="injector-link" @onclick="JumpToSettings">Settings</button>
-        </p>
     </div>
 </div>
 
@@ -597,9 +593,6 @@
         ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".webp", ".gif"
     };
 
-    [Parameter] public EventCallback OnJumpToReadMe { get; set; }
-    [Parameter] public EventCallback OnJumpToSettings { get; set; }
-
     // Pulled from a singleton so the picked image, mode, flip and tile size stick across
     // tab switches and page navigations within the same app session. Cleared on app restart.
     private SkyInjectionOptions _opts => Session.Options;
@@ -610,8 +603,6 @@
 
     private bool CanInject =>
         !_busy
-        && LabSettings.Current.MasterEnabled
-        && LabSettings.Current.Accepted
         && (_opts.Mode == SkyInjectionMode.SolidColor || !string.IsNullOrWhiteSpace(_opts.ImagePath));
 
     private bool CanRestore => !_busy && _hasBackup;
@@ -882,9 +873,6 @@
 
 
     private void ClearLog() => _logLines.Clear();
-
-    private Task JumpToReadMe() => OnJumpToReadMe.InvokeAsync();
-    private Task JumpToSettings() => OnJumpToSettings.InvokeAsync();
 
     public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
 

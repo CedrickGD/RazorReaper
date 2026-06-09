@@ -11,7 +11,6 @@ public interface ICustomLabSettingsService
     Task SaveAsync();
     Task SetAcceptedAsync(bool accepted);
     Task SetMasterEnabledAsync(bool enabled);
-    Task SetMemoryInjectEnabledAsync(bool enabled);
     Task SetGuardArkProcessAsync(bool guard);
     Task ResetAcknowledgementAsync();
 

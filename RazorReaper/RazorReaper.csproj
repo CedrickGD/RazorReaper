@@ -56,15 +56,6 @@
 	  </None>
 	</ItemGroup>
 
-	<!-- Native in-process helper for the Live Apply engine. Built separately via
-	     native\rr_live\build.ps1; copied next to the app so the injector can find it. -->
-	<ItemGroup>
-	  <None Include="..\native\rr_live\rr_live.dll" Condition="Exists('..\native\rr_live\rr_live.dll')">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	    <Link>rr_live.dll</Link>
-	  </None>
-	</ItemGroup>
-
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.60" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.60" />

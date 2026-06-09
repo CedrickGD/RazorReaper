@@ -1,42 +1,35 @@
-# Sky / Custom Lab — Left-Off / Resume Notes
+# Sky Changer — Left-Off / Resume Notes
 
 _Branch: `feature/live-apply`._
 
-## DECISION (final): sky = file-inject only. The live DLL is dropped.
+## Current state (final)
 
-The **Sky Injector** changes the in-game sky by patching the local `SimpleSky_*` `.uasset`
-textures on disk (`SkyInjectorService`). This is the **only** path now and it:
+**"Custom Lab" is now a single "Sky Changer" page** (route still `/custom-lab`, nav group
+"Custom ARK"). It contains only the file-inject sky tool — Read Me, Settings, and the Live Apply
+tab are gone.
 
-- works on **any server** (single-player, No-BattlEye, AND BattlEye servers) — it only edits
-  *your own local files*, so there is nothing for anti-cheat to flag (BattlEye bans for actual
-  cheat software, not cosmetic file edits — worst case is a kick, no ban);
-- shows after the next **map load** — rejoin the server or relaunch (or wait for the in-game
-  day to roll over). **Not instant.** It also won't show at night — that's normal.
+### Sky = file-inject only (no DLL, no injection)
+Patches the local `SimpleSky_*` `.uasset` textures on disk (`SkyInjectorService`). Safe on **any**
+server — it only edits your own files, so anti-cheat has nothing to flag (BattlEye bans actual
+cheat software, not cosmetic file edits — worst case a kick). Shows after the next **map load**
+(rejoin/relaunch); won't show at night. Not instant — and instant is impossible rule-safely
+(every instant method = DLL/memory injection, which BattlEye blocks). The live `d3d11` proxy was
+removed for this reason.
 
-### Why the live (instant) DLL engine was removed
-The instant in-VRAM swap required an unsigned `d3d11.dll` proxy. **BattlEye force-closes ARK on
-any join while that proxy is present** — joining a BattlEye server silently relaunches the client
-as `ShooterGame_BE.exe`, which trips on the proxy. Confirmed in testing. There is **no rule-safe
-way** to swap the sky instantly mid-session on a BattlEye server: every instant method
-(DLL injection, memory editing, ReShade — which ARK has blacklisted) is exactly what anti-cheat
-blocks. So the proxy only ever worked single-player / No-BattlEye, was pure liability online, and
-is now gone.
+### Removed this session
+- Live `d3d11` sky proxy (`LiveSkyService`, native `rr_proxy/`).
+- The **Live Apply / Memory Patcher** feature entirely — `MemoryPatcher.razor`,
+  `MemoryPatcherService`, `GameInjector`, `ProcessMemoryService`, `MemoryModels`, native `rr_live/`,
+  and the `MemoryInjectEnabled` setting. Same BattlEye dead-end as the sky DLL (injection → force-close).
+- The Read Me + Settings Custom Lab tabs (the page no longer gates on accept/master-enable).
 
-**Removed this session:** `ILiveSkyService`/`LiveSkyService`, the Live Sky toggle + `LiveSkyEnabled`
-setting, the `App.xaml.cs` proxy reconcile, the csproj `d3d11.dll` bundle, and `native/rr_proxy/`.
-The file-inject (`SkyInjectorService`, `UAssetTextureParser`, Restore/backup) is untouched.
+### Kept
+- **INI Changer** (`/ini-changer`) — untouched, works as before.
+- `ArkLauncher` + `GameConsoleService` — the **Game page** (`/game`) uses them for launch + console
+  key; NOT part of the removed memory feature.
 
-## OPEN — next task: BaseDeviceProfiles.ini live-apply
-Investigate whether an **INI preset switch** (the `IniChanger` — it writes ARK's
-`BaseDeviceProfiles.ini`, a set of UE4 `r.*` / `ShowFlag.*` graphics cvars) can be made to apply to
-a **running** session **via the file**, with no relaunch. This is strictly about the `.ini` file —
-NOT in-game console commands. Open question: does ARK re-read the device-profile file at runtime, or
-only at engine startup?
-
-## File map
-- `Services/Implementations/CustomLab/SkyInjectorService.cs` (+ `.Images`/`UAssetTextureParser`) —
-  the file-inject (patch by name, backup, restore). `TryParseDxt5`: `dataSize=W*H`, `dataOffset=end-W*H-4`.
-- `Components/Pages/CustomLab/SkyInjector.razor` — UI; `InjectAsync` = file patch only.
-- `IniChanger.razor` + `IniPresetService` + `Resources/Presets/*.ini` — the INI preset feature.
-- Memory patcher (`MemoryPatcherService`, `GameInjector`, `native/rr_live/`) — a SEPARATE Custom Lab
-  feature; not touched by the sky work.
+## INI changer live-switch — answered: NOT possible via the file
+`BaseDeviceProfiles.ini` (the INI preset = UE4 `r.*`/`ShowFlag.*` graphics cvars) is read **once at
+engine startup**. ARK never re-reads it mid-session, so editing it live does nothing; a different
+preset only takes effect on the **next game launch**. (This is a UE engine limit, not an ARK quirk,
+and it has nothing to do with in-game console commands.) Same "set → relaunch" model as the sky.

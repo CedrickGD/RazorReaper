@@ -208,8 +208,6 @@ namespace RazorReaper
             services.AddSingleton<IFileSystemService, FileSystemService>();
             services.AddSingleton<IProcessService, ProcessService>();
             services.AddSingleton<IGameConsoleService, RazorReaper.Services.Implementations.Game.GameConsoleService>();
-            services.AddSingleton<IProcessMemoryService, RazorReaper.Services.Implementations.Memory.ProcessMemoryService>();
-            services.AddSingleton<IGameInjector, RazorReaper.Services.Implementations.Memory.GameInjector>();
             services.AddSingleton<IArkLauncher, ArkLauncher>();
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
@@ -226,7 +224,6 @@ namespace RazorReaper
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
             services.AddSingleton<ICrosshairService, CrosshairService>();
             services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
-            services.AddSingleton<IMemoryPatcherService, MemoryPatcherService>();
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
         }

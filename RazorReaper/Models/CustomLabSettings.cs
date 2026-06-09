@@ -14,7 +14,6 @@ public class CustomLabSettings
     public DateTimeOffset? AcceptedAt { get; set; }
     public string? AcceptedAppVersion { get; set; }
     public bool MasterEnabled { get; set; }
-    public bool MemoryInjectEnabled { get; set; }
     public bool GuardArkProcess { get; set; } = true;
 
     // Sky Injector activity timestamps — used by the status badge to distinguish
