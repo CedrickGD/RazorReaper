@@ -9,7 +9,21 @@
     <p class="page-subtitle">Replace the in-game sky with an image or solid color — patches your local sky files, safe on any server.</p>
 </header>
 
-<SkyInjector />
+<div class="sky-changer-body">
+    <SkyInjector />
+</div>
+
+<style>
+    /* Page entrance fade — restores the animation the old tabbed panel had. */
+    .sky-changer-body {
+        animation: skyChangerFadeIn 0.25s ease-out;
+    }
+
+    @@keyframes skyChangerFadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+</style>
 
 @code {
     protected override async Task OnInitializedAsync()
