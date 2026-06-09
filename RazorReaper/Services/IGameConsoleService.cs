@@ -5,9 +5,8 @@ namespace RazorReaper.Services;
 /// <summary>
 /// Drives ARK's in-game console: focuses the window, opens the console with the user's
 /// configured key, types/pastes a command, presses Enter, and restores the clipboard.
-/// Extracted from Game.razor so both the Game page and the Memory Patcher's live-apply
-/// path share one implementation. "Sent" means keystrokes were delivered — not that the
-/// game accepted the CVar (the console gives no read-back).
+/// Used by the Game page's console controls. "Sent" means keystrokes were delivered — not
+/// that the game accepted the CVar (the console gives no read-back).
 /// </summary>
 public interface IGameConsoleService
 {

@@ -14,20 +14,13 @@ public class CustomLabSettingsService : ICustomLabSettingsService
 
     private readonly string _filePath;
     private readonly ILogger<CustomLabSettingsService> _logger;
-    private readonly IActivityService _activity;
-    private readonly ITelemetryService _telemetry;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private CustomLabSettings _current = new();
     private bool _loaded;
 
-    public CustomLabSettingsService(
-        ILogger<CustomLabSettingsService> logger,
-        IActivityService activity,
-        ITelemetryService telemetry)
+    public CustomLabSettingsService(ILogger<CustomLabSettingsService> logger)
     {
         _logger = logger;
-        _activity = activity;
-        _telemetry = telemetry;
         var appData = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RazorReaper");
@@ -59,7 +52,6 @@ public class CustomLabSettingsService : ICustomLabSettingsService
                 if (loaded != null)
                 {
                     _current = Migrate(loaded);
-                    InvalidateStaleAcceptanceLocked();
                 }
                 _loaded = true;
             }
@@ -87,19 +79,25 @@ public class CustomLabSettingsService : ICustomLabSettingsService
         Changed?.Invoke();
     }
 
-    public Task SaveAsync() => SaveLockedAsync();
+    public Task MarkSkyInjectedAsync() =>
+        MutateAsync(s => s.LastSkyInjectAt = DateTimeOffset.UtcNow);
 
-    private async Task SaveLockedAsync()
+    public Task MarkSkyRestoredAsync() =>
+        MutateAsync(s => s.LastSkyRestoreAt = DateTimeOffset.UtcNow);
+
+    private async Task MutateAsync(Action<CustomLabSettings> apply)
     {
         await _gate.WaitAsync();
         try
         {
+            apply(_current);
             await PersistAsync();
         }
         finally
         {
             _gate.Release();
         }
+        Changed?.Invoke();
     }
 
     // Caller must hold _gate.
@@ -119,83 +117,6 @@ public class CustomLabSettingsService : ICustomLabSettingsService
         }
     }
 
-    public Task SetAcceptedAsync(bool accepted) =>
-        MutateAsync(s =>
-        {
-            s.Accepted = accepted;
-            if (accepted)
-            {
-                s.AcceptedAt = DateTimeOffset.UtcNow;
-                s.AcceptedAppVersion = CustomLabSettings.RequiredAcceptanceVersion;
-            }
-            else
-            {
-                s.AcceptedAt = null;
-                s.AcceptedAppVersion = null;
-            }
-        },
-        s => s.Accepted != accepted,
-        () =>
-        {
-            _activity.AddActivity(accepted ? "Custom Lab: accepted Read Me" : "Custom Lab: revoked Read Me acceptance",
-                                  accepted ? "info" : "warning");
-            _ = _telemetry.TrackEventAsync("custom_lab.accepted",
-                metrics: new Dictionary<string, object?> { ["value"] = accepted });
-        });
-
-    public Task SetMasterEnabledAsync(bool enabled) =>
-        MutateAsync(s => s.MasterEnabled = enabled, s => s.MasterEnabled != enabled, () =>
-        {
-            _activity.AddActivity(enabled ? "Custom Lab enabled" : "Custom Lab disabled",
-                                  enabled ? "warning" : "info");
-            _ = _telemetry.TrackEventAsync("custom_lab.master_toggled",
-                metrics: new Dictionary<string, object?> { ["value"] = enabled });
-        });
-
-    public Task SetGuardArkProcessAsync(bool guard) =>
-        MutateAsync(s => s.GuardArkProcess = guard, s => s.GuardArkProcess != guard, null);
-
-    public Task ResetAcknowledgementAsync() => SetAcceptedAsync(false);
-
-    public Task MarkSkyInjectedAsync() =>
-        MutateAsync(s => s.LastSkyInjectAt = DateTimeOffset.UtcNow, _ => true, null);
-
-    public Task MarkSkyRestoredAsync() =>
-        MutateAsync(s => s.LastSkyRestoreAt = DateTimeOffset.UtcNow, _ => true, null);
-
-    public Task ClearSkyTimestampsAsync() =>
-        MutateAsync(s =>
-        {
-            s.LastSkyInjectAt = null;
-            s.LastSkyRestoreAt = null;
-        }, s => s.LastSkyInjectAt is not null || s.LastSkyRestoreAt is not null, null);
-
-    private async Task MutateAsync(Action<CustomLabSettings> apply, Func<CustomLabSettings, bool> changed, Action? sideEffect)
-    {
-        await _gate.WaitAsync();
-        bool didChange;
-        try
-        {
-            didChange = changed(_current);
-            if (didChange)
-            {
-                apply(_current);
-                await PersistAsync();
-            }
-        }
-        finally
-        {
-            _gate.Release();
-        }
-
-        if (didChange)
-        {
-            try { sideEffect?.Invoke(); }
-            catch (Exception ex) { _logger.LogWarning(ex, "Settings side-effect threw"); }
-            Changed?.Invoke();
-        }
-    }
-
     private static CustomLabSettings Migrate(CustomLabSettings loaded)
     {
         // Future migrations: switch on loaded.SchemaVersion and upgrade in place.
@@ -205,23 +126,5 @@ public class CustomLabSettingsService : ICustomLabSettingsService
         // Unknown future version — keep the data but stamp it as current so we don't churn.
         loaded.SchemaVersion = CustomLabSettings.CurrentSchemaVersion;
         return loaded;
-    }
-
-    // Caller must hold _gate.
-    private void InvalidateStaleAcceptanceLocked()
-    {
-        if (!_current.Accepted) return;
-        if (_current.AcceptedAppVersion == CustomLabSettings.RequiredAcceptanceVersion) return;
-
-        // Read Me content has changed since the user last accepted. Re-lock the gate so
-        // they have to re-read and re-accept. Master toggle stays as it was but feature
-        // tabs will lock because they require Accepted == true.
-        _logger.LogInformation(
-            "Custom Lab acceptance invalidated: stamped {Stamped} != required {Required}",
-            _current.AcceptedAppVersion ?? "(null)",
-            CustomLabSettings.RequiredAcceptanceVersion);
-        _current.Accepted = false;
-        _current.AcceptedAt = null;
-        _current.AcceptedAppVersion = null;
     }
 }

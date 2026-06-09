@@ -28,8 +28,8 @@ public interface IDiscordPresenceService
     void SetActivityForPath(string relativePath);
 
     /// <summary>
-    /// Set the displayed activity label directly. For in-page sub-tools that have no route of
-    /// their own (e.g. the Custom Lab tabs) so Discord still distinguishes them.
+    /// Set the displayed activity label directly, for pages that want to override the
+    /// route-derived label (e.g. the Sky Changer page sets "Sky Changer").
     /// </summary>
     void SetActivityLabel(string label);
 

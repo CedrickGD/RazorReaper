@@ -49,7 +49,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["fonts"] = "Fonts",
             ["pixel"] = "Pixel Glitch",
             ["paintings"] = "Paintings",
-            ["custom-lab"] = "Custom Lab",
+            ["custom-lab"] = "Sky Changer",
             ["dino-prices"] = "Mutagen Prices",
             ["oc-bps"] = "OC BPs",
             ["bosses"] = "Bosses",
