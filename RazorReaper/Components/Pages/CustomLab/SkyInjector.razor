@@ -4,7 +4,6 @@
 @using RazorReaper.Services
 
 @inject ISkyInjectorService Injector
-@inject ILiveSkyService LiveSky
 @inject ISkyInjectorSessionState Session
 @inject ICustomLabSettingsService LabSettings
 @inject INotificationService Notifications
@@ -259,15 +258,16 @@
         </div>
         <p class="injector-coverage-list">
             The Island · Scorched Earth · Aberration · Extinction · Genesis · Genesis 2 (NEW)
-            · The Center · Ragnarok · Valguero · Crystal Isles · Lost Island
+            · The Center · Ragnarok · Valguero · Crystal Isles · Lost Island · Fjördur
         </p>
         <p class="injector-coverage-caveat">
-            Changes apply on the next <strong>in-game day cycle</strong> — give it a day to roll over
-            (or slomo the time to speed it up). A custom sky normally won't show at <strong>night</strong> —
-            that's expected; it appears through the day phases.
+            Shows after the next <strong>map load</strong> — rejoin or relaunch to see it. Won't show at
+            <strong>night</strong> — that's normal.
         </p>
         <p class="injector-coverage-caveat">
-            <strong>Fjordur</strong> uses a different sky system and isn't covered by the file patch.
+            Safe on <strong>any server</strong>: it only edits your own local sky files, so there's nothing for
+            anti-cheat to flag. Instant in-game swapping isn't offered — it would mean fighting BattlEye, which
+            risks your account.
         </p>
         <p class="injector-coverage-jump">
             Curious about risks? <button type="button" class="injector-link" @onclick="JumpToReadMe">Read Me</button>
@@ -778,20 +778,15 @@
             : $"Swapping sky → solid color {_opts.HexColor}…", "info");
         try
         {
-            // Live arm — the in-place "instant" engine. Still being tuned to match the sky's runtime
-            // textures, so treat it as best-effort; the file patch below is the reliable path.
-            try { await LiveSky.ApplyAsync(_opts); } catch (Exception lx) { Logger.LogDebug(lx, "Live arm skipped"); }
-
-            // File patch — patches the sky textures by name on disk; the game bakes it in on the next
-            // reload / day cycle. Reliable on every covered map.
+            // Patches the sky textures by name on disk; the game loads them on the next map load
+            // (rejoin / relaunch / next in-game day). No proxy, no injection — safe on any server.
             var result = await Injector.InjectAsync(_opts);
             AppendResult(result, verbAct: "Patched", verbErr: "errors during inject");
             _hasBackup = Injector.HasBackup();
             if (result.Errors.Count == 0 && result.Patched > 0)
             {
-                AppendLog("Give it one in-game day cycle to appear — a patched sky rolls in when the next day starts (slomo the time to speed it up).", "info");
-                AppendLog("Heads up: a custom sky normally won't show at night — that's expected; it shows through the day phases.", "info");
-                Notifications.ShowSuccess($"Sky applied to {result.Patched} file(s) — may take one in-game day cycle to show.");
+                AppendLog("Rejoin the server or relaunch ARK to see it (or wait for the next in-game day). Won't show at night — that's normal.", "info");
+                Notifications.ShowSuccess($"Sky applied to {result.Patched} file(s) — rejoin or relaunch to see it.");
             }
             else if (result.Errors.Count > 0)
             {
@@ -825,8 +820,6 @@
         AppendLog("Restoring original sky textures from backup…", "info");
         try
         {
-            // Disarm the live engine so a running ARK reverts too.
-            try { await LiveSky.DisableAsync(); } catch (Exception liveEx) { AppendLog($"Live disarm skipped: {liveEx.Message}", "warn"); }
             var result = await Injector.RestoreAsync();
             AppendResult(result, verbAct: "Restored", verbErr: "errors during restore");
             _hasBackup = Injector.HasBackup();

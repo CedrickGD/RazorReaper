@@ -229,7 +229,6 @@ namespace RazorReaper
             services.AddSingleton<IMemoryPatcherService, MemoryPatcherService>();
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
-            services.AddSingleton<ILiveSkyService, RazorReaper.Services.Implementations.CustomLab.LiveSkyService>();
         }
     }
 }
