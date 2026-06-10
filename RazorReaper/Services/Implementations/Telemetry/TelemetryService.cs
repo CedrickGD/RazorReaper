@@ -10,23 +10,40 @@ using RazorReaper.Configuration;
 namespace RazorReaper.Services.Implementations;
 
 /// <summary>
-/// Ships allowlisted telemetry events (session start/end, app errors) to the configured
-/// HTTP endpoint. Stateless formatting and validation live in <see cref="TelemetryFormatting"/>;
+/// Ships allowlisted telemetry events (session lifecycle, app errors, feature usage) to the
+/// configured HTTP endpoint. Stateless formatting and validation live in <see cref="TelemetryFormatting"/>;
 /// identity (install/hardware ids) lives in the <c>TelemetryService.Identity.cs</c> partial.
 /// </summary>
 public sealed partial class TelemetryService : ITelemetryService
 {
     private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
     private const string SessionStartEventName = "session_start";
+    private const string SessionActiveEventName = "session_active";
     private const string SessionEndEventName = "session_end";
     private const string AppErrorEventName = "app_error";
     private const int MinTimeoutSeconds = 3;
     private const int MaxTimeoutSeconds = 60;
+    // The backend coalesces heartbeats into session-row updates (no event rows), so this
+    // cadence keeps the Live page accurate without burning Cloudflare's write budget.
+    private const int HeartbeatIntervalSeconds = 120;
     private static readonly HashSet<string> AllowedEventNames = new(StringComparer.OrdinalIgnoreCase)
     {
         SessionStartEventName,
+        SessionActiveEventName,
         SessionEndEventName,
-        AppErrorEventName
+        AppErrorEventName,
+        // Feature usage events shown on the admin panel. Heartbeat-style noise stays out.
+        "process_start",
+        "process_kill",
+        "update_check",
+        "ini_preset_add",
+        "ini_preset_remove",
+        "ini_preset_image_set",
+        "ini_preset_image_reset",
+        "custom_lab.sky_inject",
+        "custom_lab.sky_restore",
+        "discord_rpc_toggle",
+        "crosshair_overlay"
     };
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -46,6 +63,7 @@ public sealed partial class TelemetryService : ITelemetryService
     private string? hardwareId;
     private string? sessionId;
     private DateTimeOffset sessionStartedAtUtc;
+    private CancellationTokenSource? heartbeatCts;
 
     public TelemetryService(
         IHttpClientFactory httpClientFactory,
@@ -73,6 +91,7 @@ public sealed partial class TelemetryService : ITelemetryService
             return;
         }
 
+        CancellationToken heartbeatToken;
         await lifecycleGate.WaitAsync(cancellationToken);
         try
         {
@@ -84,11 +103,17 @@ public sealed partial class TelemetryService : ITelemetryService
             isStarted = true;
             sessionId = Guid.NewGuid().ToString("D");
             sessionStartedAtUtc = DateTimeOffset.UtcNow;
+            heartbeatCts = new CancellationTokenSource();
+            heartbeatToken = heartbeatCts.Token;
         }
         finally
         {
             lifecycleGate.Release();
         }
+
+        // Heartbeats start regardless of whether the session_start send succeeds — the
+        // server creates the session row from the first heartbeat if the start got lost.
+        _ = RunHeartbeatLoopAsync(heartbeatToken);
 
         await TrackEventAsync(
             SessionStartEventName,
@@ -99,6 +124,37 @@ public sealed partial class TelemetryService : ITelemetryService
                 ["session_open"] = true
             },
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Periodic liveness ping so the admin panel's Live view keeps showing the session
+    /// beyond the server's 6-minute activity timeout. Ends with the session.
+    /// </summary>
+    private async Task RunHeartbeatLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(HeartbeatIntervalSeconds));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await TrackEventAsync(
+                    SessionActiveEventName,
+                    TelemetryEventStatus.Ok,
+                    metrics: new Dictionary<string, object?>
+                    {
+                        ["session_open"] = true
+                    },
+                    cancellationToken: cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Session ended.
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Telemetry heartbeat loop stopped unexpectedly.");
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -112,6 +168,9 @@ public sealed partial class TelemetryService : ITelemetryService
             }
 
             isStarted = false;
+            heartbeatCts?.Cancel();
+            heartbeatCts?.Dispose();
+            heartbeatCts = null;
             await TrackEventAsync(
                 SessionEndEventName,
                 TelemetryEventStatus.Ok,
@@ -306,6 +365,15 @@ public sealed partial class TelemetryService : ITelemetryService
         catch
         {
             // Keep base metrics only if MAUI device info is unavailable.
+        }
+
+        try
+        {
+            metrics["rpc_enabled"] = Preferences.Get(IDiscordPresenceService.EnabledPreferenceKey, true);
+        }
+        catch
+        {
+            // Preferences unavailable; the panel treats a missing value as "unknown".
         }
 
         var location = await deviceLocationService.GetBestEffortLocationAsync(cancellationToken);

@@ -9,6 +9,12 @@ namespace RazorReaper.Services;
 public interface IDiscordPresenceService
 {
     /// <summary>
+    /// Preferences key backing <see cref="IsEnabled"/>. Telemetry reads it directly so it
+    /// can report RPC adoption without a service dependency cycle.
+    /// </summary>
+    const string EnabledPreferenceKey = "rr.discord.rpc.enabled";
+
+    /// <summary>
     /// User toggle (persisted across launches). Flipping it live connects/disconnects
     /// the Discord client and re-applies the last activity.
     /// </summary>

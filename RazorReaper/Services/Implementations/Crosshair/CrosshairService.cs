@@ -24,6 +24,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
 {
     private readonly ILogger<CrosshairService> _logger;
     private readonly INotificationService _notifications;
+    private readonly ITelemetryService _telemetry;
     private readonly VideoFrameExtractor _videoExtractor;
 
     private readonly string _rootDir;
@@ -86,10 +87,11 @@ public partial class CrosshairService : ICrosshairService, IDisposable
     public bool IsOverlayActive => _overlayActive;
     public CrosshairProfile ActiveProfile { get { lock (_lock) return _active; } }
 
-    public CrosshairService(ILogger<CrosshairService> logger, INotificationService notifications)
+    public CrosshairService(ILogger<CrosshairService> logger, INotificationService notifications, ITelemetryService telemetry)
     {
         _logger = logger;
         _notifications = notifications;
+        _telemetry = telemetry;
         _videoExtractor = new VideoFrameExtractor(logger);
 
         _rootDir = Path.Combine(
@@ -195,6 +197,8 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         CrosshairProfile snapshot;
         lock (_lock) { snapshot = _active; _overlayActive = true; }
         _overlay.Show(snapshot);
+        // Usage count only — profile names are user-entered text and stay local.
+        _ = _telemetry.TrackEventAsync("crosshair_overlay");
         Changed?.Invoke();
     }
 

@@ -19,7 +19,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     // activity ("RazorReaper"). Reset to a non-digit placeholder to disable RPC entirely.
     private const string ApplicationId = "1487518169164812339";
 
-    private const string PrefKeyEnabled = "rr.discord.rpc.enabled";
+    private const string PrefKeyEnabled = IDiscordPresenceService.EnabledPreferenceKey;
 
     // Asset key uploaded under Rich Presence → Art Assets in the Developer Portal
     // (the RRlogo.png art asset; Discord derived the key from the filename).
@@ -67,6 +67,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         ApplicationId.Length is >= 17 and <= 20 && ApplicationId.All(char.IsDigit);
 
     private readonly IUpdateService updateService;
+    private readonly ITelemetryService telemetryService;
     private readonly ILogger<DiscordPresenceService> logger;
     private readonly object gate = new();
 
@@ -75,9 +76,10 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     private string currentLabel = DefaultLabel;
     private bool minimizedToTray;
 
-    public DiscordPresenceService(IUpdateService updateService, ILogger<DiscordPresenceService> logger)
+    public DiscordPresenceService(IUpdateService updateService, ITelemetryService telemetryService, ILogger<DiscordPresenceService> logger)
     {
         this.updateService = updateService;
+        this.telemetryService = telemetryService;
         this.logger = logger;
     }
 
@@ -88,6 +90,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         get => Preferences.Get(PrefKeyEnabled, true);
         set
         {
+            var changed = value != IsEnabled;
             Preferences.Set(PrefKeyEnabled, value);
 
             // Reflect the toggle on the live connection immediately.
@@ -95,6 +98,17 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 Initialize();
             else
                 Shutdown();
+
+            if (changed)
+            {
+                _ = telemetryService.TrackEventAsync(
+                    "discord_rpc_toggle",
+                    TelemetryEventStatus.Ok,
+                    metrics: new Dictionary<string, object?>
+                    {
+                        ["enabled"] = value
+                    });
+            }
 
             OnStateChanged();
         }
