@@ -669,7 +669,7 @@
                     using var bmp = SkiaSharp.SKBitmap.Decode(path);
                     if (bmp is null) return (string?)null;
                     int tw = 220; int th = Math.Max(1, (int)(bmp.Height * (220.0 / bmp.Width)));
-                    using var thumb = bmp.Resize(new SkiaSharp.SKImageInfo(tw, th), SkiaSharp.SKFilterQuality.Medium);
+                    using var thumb = bmp.Resize(new SkiaSharp.SKImageInfo(tw, th), new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Linear, SkiaSharp.SKMipmapMode.Linear));
                     var src = thumb ?? bmp;
                     using var img = SkiaSharp.SKImage.FromBitmap(src);
                     using var data = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 80);
