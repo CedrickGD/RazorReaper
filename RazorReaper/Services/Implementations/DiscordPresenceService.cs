@@ -20,6 +20,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     private const string ApplicationId = "1487518169164812339";
 
     private const string PrefKeyEnabled = IDiscordPresenceService.EnabledPreferenceKey;
+    private const string PrefKeyConnectedUser = IDiscordPresenceService.ConnectedUserPreferenceKey;
 
     // Asset key uploaded under Rich Presence → Art Assets in the Developer Portal
     // (the RRlogo.png art asset; Discord derived the key from the filename).
@@ -185,6 +186,10 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
             var created = new DiscordRpcClient(ApplicationId);
 
+            // Remember which Discord account the local client is signed in as, so telemetry
+            // can attribute sessions. Fires on every (re)connect, overwriting the stored name.
+            created.OnReady += (_, e) => RecordConnectedUser(e.User);
+
             // Connects in the background and auto-reconnects; returns false (without throwing)
             // when Discord isn't running, and silently attaches once it launches.
             created.Initialize();
@@ -228,6 +233,28 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to update Discord presence.");
+        }
+    }
+
+    // Runs on the RPC client's message thread. Deliberately never clears the value on
+    // disable/shutdown — the last known name still identifies the user while RPC is off.
+    private void RecordConnectedUser(User? user)
+    {
+        try
+        {
+            var name = user?.Username;
+            if (string.IsNullOrWhiteSpace(name))
+                name = user?.ToString();
+
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+
+            Preferences.Set(PrefKeyConnectedUser, name);
+            logger.LogInformation("Discord Rich Presence connected as {User}.", name);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to record the connected Discord user.");
         }
     }
 

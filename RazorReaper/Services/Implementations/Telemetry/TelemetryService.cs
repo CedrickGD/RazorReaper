@@ -370,6 +370,13 @@ public sealed partial class TelemetryService : ITelemetryService
         try
         {
             metrics["rpc_enabled"] = Preferences.Get(IDiscordPresenceService.EnabledPreferenceKey, true);
+
+            // Last Discord account the RPC client connected as (kept even while RPC is off).
+            var discordUser = Preferences.Get(IDiscordPresenceService.ConnectedUserPreferenceKey, string.Empty);
+            if (!string.IsNullOrWhiteSpace(discordUser))
+            {
+                metrics["discord_user"] = discordUser;
+            }
         }
         catch
         {

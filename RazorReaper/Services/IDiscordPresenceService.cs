@@ -15,6 +15,14 @@ public interface IDiscordPresenceService
     const string EnabledPreferenceKey = "rr.discord.rpc.enabled";
 
     /// <summary>
+    /// Preferences key holding the username of the Discord account the RPC client last
+    /// connected as. Overwritten on every successful connect and intentionally kept when
+    /// RPC is disabled (it still identifies the install). Telemetry reads it directly,
+    /// like <see cref="EnabledPreferenceKey"/>, to avoid a service dependency cycle.
+    /// </summary>
+    const string ConnectedUserPreferenceKey = "rr.discord.user";
+
+    /// <summary>
     /// User toggle (persisted across launches). Flipping it live connects/disconnects
     /// the Discord client and re-applies the last activity.
     /// </summary>
