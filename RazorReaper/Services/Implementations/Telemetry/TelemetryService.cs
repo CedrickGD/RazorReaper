@@ -215,6 +215,33 @@ public sealed partial class TelemetryService : ITelemetryService
             return;
         }
 
+        // Most call sites fire-and-forget this task (`_ = TrackEventAsync(...)`), so the
+        // returned task must NEVER fault: a discarded faulted task resurfaces on the finalizer
+        // thread as TaskScheduler.UnobservedTaskException and gets reported as an RR-E1003
+        // app error. Every failure — metric building, serialization, or the send itself —
+        // is logged and silently dropped here instead.
+        try
+        {
+            await SendEventAsync(eventName, status, message, metrics, settings, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Caller canceled request.
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Telemetry push failed for event {Event}.", eventName);
+        }
+    }
+
+    private async Task SendEventAsync(
+        string eventName,
+        TelemetryEventStatus status,
+        string? message,
+        IReadOnlyDictionary<string, object?>? metrics,
+        TelemetrySettings settings,
+        CancellationToken cancellationToken)
+    {
         var normalizedEventName = TelemetryFormatting.SanitizeIdentifier(eventName, "event").ToLowerInvariant();
         if (!AllowedEventNames.Contains(normalizedEventName))
         {
@@ -266,22 +293,11 @@ public sealed partial class TelemetryService : ITelemetryService
         var client = httpClientFactory.CreateClient("RazorReaperTelemetry");
         client.Timeout = TimeSpan.FromSeconds(TelemetryFormatting.Clamp(settings.RequestTimeoutSeconds, MinTimeoutSeconds, MaxTimeoutSeconds));
 
-        try
+        using var response = await client.SendAsync(request, cancellationToken);
+        logger.LogInformation("Telemetry event {Service} -> HTTP {Status}", normalizedEventName, (int)response.StatusCode);
+        if (!response.IsSuccessStatusCode)
         {
-            using var response = await client.SendAsync(request, cancellationToken);
-            logger.LogInformation("Telemetry event {Service} -> HTTP {Status}", normalizedEventName, (int)response.StatusCode);
-            if (!response.IsSuccessStatusCode)
-            {
-                await LogFailedResponseAsync(response, normalizedEventName, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // Caller canceled request.
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Telemetry push failed for service {Service}.", normalizedEventName);
+            await LogFailedResponseAsync(response, normalizedEventName, cancellationToken);
         }
     }
 

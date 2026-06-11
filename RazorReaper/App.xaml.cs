@@ -138,10 +138,24 @@ namespace RazorReaper
 
         private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
         {
+            // Observe first: nothing below may run before the exception is defused.
+            e.SetObserved();
+
             AppDiagnostics.RecordError(
                 AppErrorCodes.UnobservedTaskException,
                 "Background task exception was not observed.",
                 e.Exception);
+
+            // Known-benign noise, logged locally above but not worth an app_error event:
+            // the DiscordRichPresence library's named-pipe client abandons its pending
+            // BeginRead when the IPC pipe drops (Discord closed/restarted, RPC toggled off,
+            // shutdown). The orphaned ReadAsync task faults with IOException
+            // ERROR_OPERATION_ABORTED ("The I/O operation has been aborted because of either
+            // a thread exit or an application request.") and app code can never observe it.
+            if (IsAbortedBackgroundIo(e.Exception))
+            {
+                return;
+            }
 
             _ = telemetryService.TrackEventAsync(
                 "app_error",
@@ -151,10 +165,26 @@ namespace RazorReaper
                 {
                     ["error_code"] = AppErrorCodes.UnobservedTaskException,
                     ["error_kind"] = "background",
-                    ["exception_type"] = e.Exception.GetType().FullName ?? "unknown"
+                    ["exception_type"] = e.Exception.GetType().FullName ?? "unknown",
+                    // AggregateException alone says nothing — surface the actual fault type.
+                    ["base_exception_type"] = e.Exception.GetBaseException().GetType().FullName
                 });
+        }
 
-            e.SetObserved();
+        /// <summary>
+        /// True when every leaf exception is canceled/aborted async I/O — overlapped reads or
+        /// writes killed by a handle close or thread exit (Win32 ERROR_OPERATION_ABORTED, 995).
+        /// These come from third-party background plumbing (e.g. the Discord RPC pipe) and are
+        /// expected during disconnects and shutdown; they are not app errors.
+        /// </summary>
+        private static bool IsAbortedBackgroundIo(AggregateException exception)
+        {
+            const uint OperationAbortedHResult = 0x800703E3; // HRESULT_FROM_WIN32(ERROR_OPERATION_ABORTED)
+
+            var leaves = exception.Flatten().InnerExceptions;
+            return leaves.Count > 0 && leaves.All(static ex =>
+                ex is OperationCanceledException
+                || (ex is IOException && (uint)ex.HResult == OperationAbortedHResult));
         }
 
         private void FlushTelemetryShutdown()
