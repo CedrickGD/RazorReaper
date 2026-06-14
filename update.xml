@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.4.7.0</version>
-    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.7/RazorReaper-Setup.exe</url>
-    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.7</changelog>
+    <version>1.4.8.0</version>
+    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.8/RazorReaper-Setup.exe</url>
+    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.8</changelog>
     <mandatory>false</mandatory>
     <args>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</args>
     <notes>
-- No more "install .NET" step — RazorReaper now bundles its own runtime, so it installs and runs on more machines with no extra setup
-- Smoother first-time install on fresh or locked-down PCs (no admin-only .NET install needed)
+- Sky Changer is now one simple page — the old experimental "Custom Lab" and its in-memory Live Apply have been removed. Pick a sky, inject it, and it applies on your next map load or server rejoin.
+- More reliable sky injection — fixed a bug that could stop a sky from applying. File-injection is now the only method, since the live in-memory swap was getting force-closed by BattlEye on server join.
+- Joining servers works again — the game now launches through Steam with BattlEye, instead of the experimental direct launch.
+- Smoother Sky Changer page with a proper fade-in entrance.
+- Behind-the-scenes stability and diagnostics fixes, including quieter Discord Rich Presence handling.
     </notes>
 </item>
