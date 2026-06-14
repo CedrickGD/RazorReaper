@@ -117,7 +117,8 @@ jobs:
             fi
           fi
 
-          if [ -n "$DISCORD_WEBHOOK_3" ]; then
+          # Webhook 3 (commits channel): push events only, skip releases
+          if [ -n "$DISCORD_WEBHOOK_3" ] && [ "$EVENT_NAME" = "push" ]; then
             http_code3="$(curl -sS -o discord_response3.txt -w "%{http_code}" \
               -H "Content-Type: application/json" \
               -d "$payload" \
