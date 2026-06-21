@@ -1,0 +1,43 @@
+name: Nextcloud Sync
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to sync (e.g. v1.4.4)"
+        required: true
+        type: string
+
+jobs:
+  upload-to-nextcloud:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download installer from GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag_name }}
+        run: |
+          echo "Downloading RazorReaper-Setup.exe for release: $TAG_NAME"
+          gh release download "$TAG_NAME" \
+            --repo ${{ github.repository }} \
+            --pattern "RazorReaper-Setup.exe"
+
+      - name: Upload to Nextcloud via WebDAV
+        env:
+          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
+          NEXTCLOUD_USERNAME: ${{ secrets.NEXTCLOUD_USERNAME }}
+          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
+        run: |
+          echo "Uploading to Nextcloud..."
+          
+          # Use curl to PUT the file via WebDAV. 
+          # -u provides the basic auth credentials.
+          # -T specifies the file to upload.
+          # --fail ensures curl exits with a non-zero code on HTTP errors (e.g., 401 Unauthorized, 404 Not Found).
+          curl --fail -u "$NEXTCLOUD_USERNAME:$NEXTCLOUD_PASSWORD" \
+               -T RazorReaper-Setup.exe \
+               "$NEXTCLOUD_URL"
+               
+          echo "Upload complete!"
