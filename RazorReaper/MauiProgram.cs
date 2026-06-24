@@ -34,8 +34,14 @@ namespace RazorReaper
             ConfigureServices(builder.Services);
 
             builder.Services.AddMauiBlazorWebView();
-            builder.Services.AddHttpClient();
-            builder.Services.AddHttpClient("RazorReaperTelemetry");
+            builder.Services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
+            {
+                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
+            });
+            builder.Services.AddHttpClient("RazorReaperTelemetry", client => 
+            {
+                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
+            });
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -226,6 +232,9 @@ namespace RazorReaper
             services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
+            
+            services.AddSingleton<IHwidService, HwidService>();
+            services.AddSingleton<ILicenseService, LicenseService>();
         }
     }
 }

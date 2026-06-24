@@ -1,9 +1,11 @@
 @using Microsoft.AspNetCore.Components.Routing
+@using RazorReaper.Services
+@inject ILicenseService LicenseService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<nav class="sidebar" data-sidebar @ref="_navRef">
+<nav class="sidebar @(LicenseService.IsActivated ? "" : "locked-content")" data-sidebar @ref="_navRef">
     <div class="brand">
         <img class="brand-logo" src="images/RRlogo.png" alt="Razor Reaper logo" />
     </div>
@@ -141,7 +143,13 @@
 
     protected override void OnInitialized()
     {
+        LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
         Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private void OnLicenseStateChangedHandler()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -348,6 +356,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
         Navigation.LocationChanged -= HandleLocationChanged;
 
         try

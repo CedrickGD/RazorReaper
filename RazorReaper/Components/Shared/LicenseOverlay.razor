@@ -1,0 +1,216 @@
+@using RazorReaper.Services
+@inject ILicenseService LicenseService
+@inject INotificationService NotificationService
+
+@if (!isActivated)
+{
+    <div class="license-overlay">
+        <div class="license-modal">
+            <h2 class="title">App Activation Required</h2>
+            <p class="subtitle">Please enter your hardware-bound license key to access RazorReaper.</p>
+
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    class="license-input" 
+                    placeholder="XXXX-XXXX-XXXX-XXXX" 
+                    @bind="licenseKey" 
+                    @bind:event="oninput" 
+                    @onkeyup="HandleKeyUp" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-message">@errorMessage</div>
+            }
+
+            <button class="activate-btn" @onclick="ActivateLicense" disabled="@isActivating">
+                @if (isActivating)
+                {
+                    <span class="spinner"></span>
+                    <span>Activating...</span>
+                }
+                else
+                {
+                    <span>Activate</span>
+                }
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isActivated = false;
+    private string licenseKey = "";
+    private string errorMessage = "";
+    private bool isActivating = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await LicenseService.ValidateLicenseAsync();
+        if (result.Success)
+        {
+            isActivated = true;
+        }
+        else
+        {
+            isActivated = false;
+            if (result.Message != "No license key found.")
+            {
+                errorMessage = result.Message;
+            }
+        }
+    }
+
+    private async Task ActivateLicense()
+    {
+        if (string.IsNullOrWhiteSpace(licenseKey))
+        {
+            errorMessage = "Please enter a valid license key.";
+            return;
+        }
+
+        isActivating = true;
+        errorMessage = "";
+        StateHasChanged();
+
+        var result = await LicenseService.ActivateLicenseAsync(licenseKey.Trim());
+
+        isActivating = false;
+        
+        if (result.Success)
+        {
+            isActivated = true;
+            NotificationService.ShowSuccess("Successfully activated!");
+        }
+        else
+        {
+            errorMessage = result.Message;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ActivateLicense();
+        }
+    }
+}
+
+<style>
+    .license-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(10, 10, 12, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .license-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 40px;
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    .license-modal .title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+        margin-top: 0;
+    }
+
+    .license-modal .subtitle {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        margin-bottom: 24px;
+        line-height: 1.5;
+    }
+
+    .input-group {
+        margin-bottom: 20px;
+    }
+
+    .license-input {
+        width: 100%;
+        background: var(--bg-dark);
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: var(--text);
+        font-size: 1rem;
+        text-align: center;
+        letter-spacing: 2px;
+        font-family: monospace;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .license-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+    }
+
+    .error-message {
+        color: #ff4a4a;
+        font-size: 0.875rem;
+        margin-bottom: 20px;
+        background: rgba(255, 74, 74, 0.1);
+        padding: 8px;
+        border-radius: 6px;
+    }
+
+    .activate-btn {
+        width: 100%;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background 0.2s ease, opacity 0.2s ease;
+    }
+
+    .activate-btn:hover:not(:disabled) {
+        background: var(--primary-hover);
+    }
+
+    .activate-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>

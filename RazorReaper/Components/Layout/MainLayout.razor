@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Routing
 @using RazorReaper.Components.Shared
@@ -8,6 +8,7 @@
 @inject INotificationService NotificationService
 @inject IUpdateService UpdateService
 @inject IDiscordPresenceService DiscordPresence
+@inject ILicenseService LicenseService
 
 <NotificationContainer />
 <GlobalSearch />
@@ -19,16 +20,24 @@
     <main class="main-content">
         @Body
     </main>
+
+    <LicenseOverlay />
 </div>
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         var previousVersion = AutoUpdateManager.DetectVersionUpgrade();
         if (previousVersion != null)
         {
             var current = UpdateService.CurrentVersionLabel;
             NotificationService.ShowSuccess($"Successfully updated to v{current}!");
+        }
+
+        var result = await LicenseService.ValidateLicenseAsync();
+        if (!result.Success && result.Message != "No license key found.")
+        {
+            NotificationService.ShowError($"License check failed: {result.Message}");
         }
 
         // Reflect the current page in Discord Rich Presence, then keep it synced on navigation.

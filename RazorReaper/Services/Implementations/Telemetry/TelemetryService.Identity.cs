@@ -42,59 +42,21 @@ public sealed partial class TelemetryService
 
         try
         {
-            var components = new StringBuilder();
+            // UNIFIED ALGORITHM: Matches IHwidService precisely to ensure License HWID 
+            // and Telemetry Session HWID are absolutely identical.
+            string cpuId = GetWmiProperty("Win32_Processor", "ProcessorId");
+            string diskId = GetWmiProperty("Win32_DiskDrive", "SerialNumber");
+            string boardId = GetWmiProperty("Win32_BaseBoard", "SerialNumber");
 
-            // CPU ProcessorId — burned into the chip, survives OS reinstalls and renames
-            try
+            string rawId = $"{cpuId}-{diskId}-{boardId}";
+            if (rawId == "UNKNOWN-UNKNOWN-UNKNOWN")
             {
-                using var cpu = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor");
-                foreach (var obj in cpu.Get())
-                {
-                    components.Append(obj["ProcessorId"]?.ToString()?.Trim());
-                    break;
-                }
-            }
-            catch
-            {
-                // WMI query may fail on locked-down systems.
+                rawId = GetMachineGuid();
             }
 
-            // Motherboard SerialNumber
-            try
-            {
-                using var board = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BaseBoard");
-                foreach (var obj in board.Get())
-                {
-                    components.Append(obj["SerialNumber"]?.ToString()?.Trim());
-                    break;
-                }
-            }
-            catch
-            {
-                // WMI query may fail on locked-down systems.
-            }
-
-            // BIOS SerialNumber — another hardware-level constant
-            try
-            {
-                using var bios = new ManagementObjectSearcher("SELECT SerialNumber FROM Win32_BIOS");
-                foreach (var obj in bios.Get())
-                {
-                    components.Append(obj["SerialNumber"]?.ToString()?.Trim());
-                    break;
-                }
-            }
-            catch
-            {
-                // WMI query may fail on locked-down systems.
-            }
-
-            if (components.Length > 0)
-            {
-                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(components.ToString()));
-                hardwareId = Convert.ToHexString(hash).ToLowerInvariant();
-                return hardwareId;
-            }
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawId));
+            hardwareId = Convert.ToHexString(bytes).Substring(0, 32); // Use first 32 chars uppercase
+            return hardwareId;
         }
         catch (Exception ex)
         {
@@ -104,5 +66,37 @@ public sealed partial class TelemetryService
         // Fall back to install_id if hardware queries fail entirely
         hardwareId = GetOrCreateInstallId();
         return hardwareId;
+    }
+
+    private string GetWmiProperty(string wmiClass, string wmiProperty)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher($"SELECT {wmiProperty} FROM {wmiClass}");
+            foreach (var item in searcher.Get())
+            {
+                var value = item[wmiProperty]?.ToString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+        }
+        catch { }
+        return "UNKNOWN";
+    }
+
+    private string GetMachineGuid()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography");
+            if (key != null)
+            {
+                return key.GetValue("MachineGuid")?.ToString() ?? "UNKNOWN_GUID";
+            }
+        }
+        catch { }
+        return "UNKNOWN_GUID";
     }
 }

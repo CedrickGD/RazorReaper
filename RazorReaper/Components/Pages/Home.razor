@@ -21,6 +21,7 @@
 @inject IUpdateService UpdateService
 @inject IAutoUpdateManager AutoUpdateManager
 @inject IDiscordPresenceService DiscordPresence
+@inject ILicenseService LicenseService
 @implements IAsyncDisposable
 
 
@@ -28,6 +29,32 @@
             <h1 class="page-title">Welcome, @userName</h1>
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
+
+        @if (!LicenseService.IsActivated)
+        {
+            <div class="content-card update-card" style="border: 2px solid var(--accent-primary);">
+                <div class="update-card-header">
+                    <div class="update-title">
+                        <div>
+                            <h3 style="color: var(--accent-primary);">Activate RazorReaper</h3>
+                            <p class="update-subtitle">Please enter your license key to unlock the tool.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="update-status" style="display: flex; gap: 10px; margin-top: 1rem;">
+                    <input type="text" @bind="licenseKeyInput" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex: 1; padding: 0.5rem; background: var(--bg-body); border: 1px solid var(--border); color: var(--text); border-radius: 4px;" />
+                    <button class="btn-primary" @onclick="ActivateLicense" disabled="@isActivating">
+                        @(isActivating ? "Activating..." : "Activate")
+                    </button>
+                </div>
+                @if (!string.IsNullOrEmpty(activationError))
+                {
+                    <div class="update-status" style="color: #ef4444; margin-top: 10px;">@activationError</div>
+                }
+            </div>
+        }
+
+        <div class="@(!LicenseService.IsActivated ? "locked-content" : "")">
 
         <div class="content-card update-card">
             <div class="update-card-header">
@@ -764,6 +791,7 @@
             </div>
         </div>
 
+        </div> <!-- end locked-content -->
 
 @code {
     private DateTime currentTime = DateTime.Now;
@@ -777,6 +805,44 @@
     private string appSessionDuration = "0m";
     private UpdateCheckResult? updateResult;
     private bool isCheckingForUpdates = false;
+
+    private string licenseKeyInput = "";
+    private bool isActivating = false;
+    private string activationError = "";
+
+    private async Task ActivateLicense()
+    {
+        if (string.IsNullOrWhiteSpace(licenseKeyInput))
+        {
+            activationError = "Please enter a license key.";
+            return;
+        }
+
+        isActivating = true;
+        activationError = "";
+        StateHasChanged();
+
+        var result = await LicenseService.ActivateLicenseAsync(licenseKeyInput.Trim());
+        
+        isActivating = false;
+        
+        if (result.Success)
+        {
+            activationError = "";
+            NotificationService.ShowSuccess(result.Message);
+        }
+        else
+        {
+            activationError = result.Message;
+        }
+        
+        StateHasChanged();
+    }
+
+    private void OnLicenseStateChangedHandler()
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     private int driveCount = 0;
     private List<DriveUsageInfo> driveInfos = new();
@@ -933,6 +999,8 @@
 
     protected override Task OnInitializedAsync()
     {
+        LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
+        
         // Keep initial render lightweight to reduce navigation lag.
         userName = Environment.UserName;
 
@@ -3159,6 +3227,7 @@
         Logger.LogDebug("Disposing Home component resources");
 
         _isDisposed = true;
+        LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
         AutoUpdateManager.StateChanged -= OnAutoUpdateStateChanged;
         _themeRef?.Dispose();
 
