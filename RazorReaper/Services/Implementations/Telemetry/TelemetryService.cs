@@ -371,7 +371,8 @@ public sealed partial class TelemetryService : ITelemetryService
 
         try
         {
-            metrics["app_version"] = AppInfo.Current.VersionString;
+            var ver = AppInfo.Current.Version;
+            metrics["app_version"] = ver.Build > 0 ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : $"{ver.Major}.{ver.Minor}";
             metrics["app_build"] = AppInfo.Current.BuildString;
             metrics["platform"] = DeviceInfo.Platform.ToString().ToLowerInvariant();
             metrics["device_model"] = DeviceInfo.Model;

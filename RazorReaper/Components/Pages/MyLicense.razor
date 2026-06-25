@@ -1,0 +1,242 @@
+@page "/my-license"
+@using RazorReaper.Services
+@inject ILicenseService LicenseService
+@inject IHwidService HwidService
+@implements IDisposable
+
+<div class="page-container">
+    <div class="header">
+        <h1>My License</h1>
+        <p class="subtitle">View your license details and hardware binding.</p>
+    </div>
+
+    <div class="license-card glass-panel">
+        <div class="card-header">
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span class="status-text">Active</span>
+            </div>
+            <div class="license-type">
+                @if (string.IsNullOrEmpty(LicenseService.LicenseType))
+                {
+                    <span class="badge">Standard</span>
+                }
+                else
+                {
+                    <span class="badge">@(char.ToUpper(LicenseService.LicenseType[0]) + LicenseService.LicenseType.Substring(1))</span>
+                }
+            </div>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">License Key</span>
+            <div class="detail-value key-value">
+                <code>@MaskLicenseKey(LicenseService.CurrentLicenseKey)</code>
+                <button class="icon-btn" title="Copy to clipboard" @onclick="CopyKey">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Hardware ID (HWID)</span>
+            <div class="detail-value hwid-value">
+                <code>@HwidService.GetHardwareId()</code>
+                <button class="icon-btn" title="Copy to clipboard" @onclick="CopyHwid">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="detail-row">
+            <span class="detail-label">Expires At</span>
+            <span class="detail-value">
+                @(string.IsNullOrEmpty(LicenseService.ExpiresAt) ? "Never (Lifetime)" : FormatDate(LicenseService.ExpiresAt))
+            </span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        LicenseService.OnLicenseStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        LicenseService.OnLicenseStateChanged -= StateHasChanged;
+    }
+
+    private string MaskLicenseKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key) || key.Length < 8) return key;
+        return key.Substring(0, 4) + new string('•', key.Length - 8) + key.Substring(key.Length - 4);
+    }
+
+    private string FormatDate(string isoDate)
+    {
+        if (DateTime.TryParse(isoDate, out var date))
+        {
+            return date.ToLocalTime().ToString("f");
+        }
+        return isoDate;
+    }
+
+    private async Task CopyKey()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", LicenseService.CurrentLicenseKey);
+    }
+
+    private async Task CopyHwid()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", HwidService.GetHardwareId());
+    }
+}
+
+<style>
+    .page-container {
+        padding: 40px;
+        max-width: 800px;
+        margin: 0 auto;
+        color: #fff;
+    }
+
+    .header {
+        margin-bottom: 40px;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .glass-panel {
+        background: rgba(20, 20, 25, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 30px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(46, 213, 115, 0.1);
+        padding: 6px 12px;
+        border-radius: 20px;
+        border: 1px solid rgba(46, 213, 115, 0.2);
+    }
+
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: #2ed573;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #2ed573;
+        animation: pulse 2s infinite;
+    }
+
+    .status-text {
+        color: #2ed573;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .badge {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+
+    .detail-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .detail-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .detail-label {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+    }
+
+    .detail-value {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .detail-value code {
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        letter-spacing: 0.05em;
+        font-size: 0.95rem;
+        flex: 1;
+    }
+
+    .icon-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+        border-radius: 6px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+    }
+
+    @@keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.4); }
+        70% { box-shadow: 0 0 0 6px rgba(46, 213, 115, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
+    }
+</style>

@@ -6,5 +6,7 @@ public interface ILicenseService
     Task<(bool Success, string Message)> ValidateLicenseAsync();
     bool IsActivated { get; }
     string CurrentLicenseKey { get; }
+    string? ExpiresAt { get; }
+    string? LicenseType { get; }
     event Action OnLicenseStateChanged;
 }

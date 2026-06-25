@@ -15,6 +15,8 @@ public class LicenseService : ILicenseService
 
     public bool IsActivated { get; private set; }
     public string CurrentLicenseKey => Preferences.Get(LicenseKeyPref, string.Empty);
+    public string? ExpiresAt { get; private set; }
+    public string? LicenseType { get; private set; }
     
     public event Action? OnLicenseStateChanged;
 
@@ -37,6 +39,8 @@ public class LicenseService : ILicenseService
             {
                 Preferences.Set(LicenseKeyPref, licenseKey);
                 IsActivated = true;
+                ExpiresAt = result.ExpiresAt;
+                LicenseType = result.Type;
                 OnLicenseStateChanged?.Invoke();
                 return (true, result.Message ?? "Activated successfully.");
             }
@@ -69,6 +73,8 @@ public class LicenseService : ILicenseService
             if (response.IsSuccessStatusCode && result != null && result.Ok)
             {
                 IsActivated = true;
+                ExpiresAt = result.ExpiresAt;
+                LicenseType = result.Type;
                 OnLicenseStateChanged?.Invoke();
                 return (true, "License is valid.");
             }
@@ -97,5 +103,11 @@ public class LicenseService : ILicenseService
         
         [JsonPropertyName("error")]
         public string? Error { get; set; }
+
+        [JsonPropertyName("expires_at")]
+        public string? ExpiresAt { get; set; }
+
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
     }
 }
