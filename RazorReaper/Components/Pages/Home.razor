@@ -30,31 +30,7 @@
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
 
-        @if (!LicenseService.IsActivated)
-        {
-            <div class="content-card update-card" style="border: 2px solid var(--accent-primary);">
-                <div class="update-card-header">
-                    <div class="update-title">
-                        <div>
-                            <h3 style="color: var(--accent-primary);">Activate RazorReaper</h3>
-                            <p class="update-subtitle">Please enter your license key to unlock the tool.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="update-status" style="display: flex; gap: 10px; margin-top: 1rem;">
-                    <input type="text" @bind="licenseKeyInput" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex: 1; padding: 0.5rem; background: var(--bg-body); border: 1px solid var(--border); color: var(--text); border-radius: 4px;" />
-                    <button class="btn-primary" @onclick="ActivateLicense" disabled="@isActivating">
-                        @(isActivating ? "Activating..." : "Activate")
-                    </button>
-                </div>
-                @if (!string.IsNullOrEmpty(activationError))
-                {
-                    <div class="update-status" style="color: #ef4444; margin-top: 10px;">@activationError</div>
-                }
-            </div>
-        }
 
-        <div class="@(!LicenseService.IsActivated ? "locked-content" : "")">
 
         <div class="content-card update-card">
             <div class="update-card-header">
@@ -791,7 +767,60 @@
             </div>
         </div>
 
-        </div> <!-- end locked-content -->
+        <!-- License Widget -->
+        <div class="content-card license-widget @(LicenseService.IsPremium ? "premium-active" : "free-tier")">
+            <div class="update-card-header">
+                <div class="update-title">
+                    <div class="update-icon">
+                        @if (LicenseService.IsPremium)
+                        {
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                    </div>
+                    <div>
+                        <h3>
+                            RazorReaper 
+                            @if (LicenseService.IsPremium)
+                            {
+                                <span class="premium-badge">Premium Active</span>
+                            }
+                        </h3>
+                        <p class="update-subtitle">
+                            @(LicenseService.IsPremium ? "Your hardware is securely bound to an active Premium license." : "You are currently on the Free tier. Upgrade to unlock all advanced features.")
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            @if (!LicenseService.IsPremium)
+            {
+                <div class="license-activation-area">
+                    <div class="license-input-wrapper">
+                        <input type="text" @bind="licenseKeyInput" placeholder="Enter SellHub Key (XXXX-XXXX-XXXX-XXXX)" spellcheck="false" autocomplete="off" />
+                    </div>
+                    <button class="license-activate-btn" @onclick="ActivateLicense" disabled="@isActivating">
+                        @(isActivating ? "Verifying..." : "Activate Key")
+                    </button>
+                    <a href="https://rr.sellhub.cx" target="_blank" class="license-activate-btn" style="text-align: center; text-decoration: none;">
+                        Buy Premium
+                    </a>
+                </div>
+                @if (!string.IsNullOrEmpty(activationError))
+                {
+                    <div style="color: #ef4444; margin-top: 10px; font-size: 0.875rem;">@activationError</div>
+                }
+            }
+        </div>
+
+        <!-- End of Home Content -->
 
 @code {
     private DateTime currentTime = DateTime.Now;

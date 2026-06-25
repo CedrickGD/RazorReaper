@@ -1,0 +1,39 @@
+@using RazorReaper.Services
+@inject ILicenseService LicenseService
+
+<div class="premium-lock-wrapper @(IsActuallyLocked ? "is-locked" : "")">
+    @if (IsActuallyLocked)
+    {
+        <div class="premium-lock-overlay">
+            <div class="premium-lock-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="premium-lock-icon">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <h4>Premium Feature</h4>
+                <p>This feature requires an active Premium license.</p>
+                <a href="https://sellhub.cx/RazorReaper" target="_blank" class="btn-primary premium-upgrade-btn">
+                    Upgrade to Premium
+                </a>
+            </div>
+        </div>
+    }
+    
+    <div class="premium-lock-inner @(IsActuallyLocked ? "blurred" : "")">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public bool RequiresPremium { get; set; } = true;
+
+    // Currently set to false per user request to not actually lock anything yet
+    [Parameter]
+    public bool EnforceLock { get; set; } = false;
+
+    private bool IsActuallyLocked => RequiresPremium && EnforceLock && !LicenseService.IsPremium;
+}

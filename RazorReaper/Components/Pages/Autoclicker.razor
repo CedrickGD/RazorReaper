@@ -1,4 +1,4 @@
-﻿@page "/autoclicker"
+@page "/autoclicker"
 @using System.Runtime.InteropServices
 @using System.Timers
 @using System.Drawing
@@ -20,6 +20,7 @@
 
 @* Mirrors the INI Changer 3-column workspace: viewport-height grid,
    each card is `content-card ini-widget` with `ini-widget-header` (h3 + pill). *@
+<PremiumLock RequiresPremium="true">
 <div class="autoclicker-layout ini-layout crosshair-layout">
 
     @* ── LEFT: TIMING ──────────────────────────────────────────────────── *@
@@ -276,6 +277,7 @@
     </div>
 
 </div>
+</PremiumLock>
 
 @code {
     public enum MouseButton { Left, Middle, Right }

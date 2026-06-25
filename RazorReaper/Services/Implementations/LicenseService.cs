@@ -14,6 +14,8 @@ public class LicenseService : ILicenseService
     private const string LicenseKeyPref = "RR_LicenseKey";
 
     public bool IsActivated { get; private set; }
+    public bool IsPremium => IsActivated; // For now, if they are activated, they are premium.
+    public bool IsFreeTier => !IsActivated;
     public string CurrentLicenseKey => Preferences.Get(LicenseKeyPref, string.Empty);
     public string? ExpiresAt { get; private set; }
     public string? LicenseType { get; private set; }

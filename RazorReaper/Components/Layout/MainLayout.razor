@@ -21,7 +21,6 @@
         @Body
     </main>
 
-    <LicenseOverlay />
 </div>
 
 @code {
@@ -35,10 +34,6 @@
         }
 
         var result = await LicenseService.ValidateLicenseAsync();
-        if (!result.Success && result.Message != "No license key found.")
-        {
-            NotificationService.ShowError($"License check failed: {result.Message}");
-        }
 
         // Reflect the current page in Discord Rich Presence, then keep it synced on navigation.
         DiscordPresence.SetActivityForPath(Navigation.ToBaseRelativePath(Navigation.Uri));

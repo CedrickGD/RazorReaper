@@ -1,4 +1,4 @@
-﻿.content-card {
+.content-card {
     background: rgba(0, 0, 0, 0.15) !important;
     backdrop-filter: none !important;
 }
@@ -2433,4 +2433,120 @@
     margin-top: 0.75rem;
     color: var(--text-secondary);
     font-size: 0.75rem;
+}
+
+/* Premium License Widget Styles */
+.license-widget {
+    margin-bottom: 2rem;
+    background: rgba(10, 10, 15, 0.4) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.license-widget.premium-active {
+    border: 1px solid rgba(16, 185, 129, 0.3); /* Success green */
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1), inset 0 0 15px rgba(16, 185, 129, 0.05);
+}
+
+.license-widget.premium-active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #10b981, transparent);
+    animation: shimmer 3s infinite linear;
+}
+
+.license-widget.free-tier {
+    border-left: 4px solid var(--accent-purple);
+}
+
+.license-widget .update-title h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+}
+
+.license-widget.premium-active .update-icon {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+}
+
+.license-widget.free-tier .update-icon {
+    background: rgba(var(--accent-purple-rgb), 0.15);
+    color: var(--accent-purple);
+}
+
+.license-activation-area {
+    display: flex;
+    gap: 12px;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    align-items: center;
+}
+
+.license-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.license-input-wrapper input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    transition: all 0.2s ease;
+}
+
+.license-input-wrapper input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.2);
+}
+
+.license-activate-btn {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    color: var(--accent-purple-light);
+    border: 1px solid var(--accent-purple);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+}
+
+.license-activate-btn:hover:not(:disabled) {
+    background: rgba(var(--accent-purple-rgb), 0.1);
+    border-color: var(--accent-purple-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.2);
+}
+
+.license-activate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.premium-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-left: 12px;
+    vertical-align: middle;
 }
