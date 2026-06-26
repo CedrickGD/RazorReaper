@@ -106,10 +106,11 @@ public class LicenseService : ILicenseService
         }
         catch (Exception)
         {
-            // If network fails but we have a key, we might want to allow offline access briefly,
-            // but for a strict HWID DRM, we enforce online check.
-            IsActivated = false;
-            OnLicenseStateChanged?.Invoke();
+            // Transient network failure: do NOT downgrade. A real revoke/delete comes back as a
+            // proper HTTP response (handled above and cuts access immediately); only an
+            // unreachable server lands here. Flipping to Free on every flaky poll would kick an
+            // active user out every 30s on bad wifi. Keep the last-known state and keep polling
+            // so the next reachable check still catches a server-side revoke.
             return (false, "Network error. Please connect to the internet to verify license.");
         }
     }
