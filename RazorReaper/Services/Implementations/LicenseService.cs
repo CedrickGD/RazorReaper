@@ -12,6 +12,10 @@ public class LicenseService : ILicenseService
     private readonly IHwidService _hwidService;
     private const string ApiBaseUrl = "https://rr-admin-panel.pages.dev"; // Change to your actual worker URL
     private const string LicenseKeyPref = "RR_LicenseKey";
+    // How often we re-check the server while activated. Kept short so a revoke/delete in the
+    // admin panel cuts the user off within seconds instead of surviving until the next launch.
+    private static readonly TimeSpan ValidationInterval = TimeSpan.FromSeconds(30);
+    private Timer? _validationTimer;
 
     public bool IsActivated { get; private set; }
     public bool IsPremium => IsActivated; // For now, if they are activated, they are premium.
@@ -26,6 +30,17 @@ public class LicenseService : ILicenseService
     {
         _httpClient = httpClient;
         _hwidService = hwidService;
+        
+        // Start background validation timer (disabled initially)
+        _validationTimer = new Timer(async _ => await BackgroundValidateAsync(), null, Timeout.Infinite, Timeout.Infinite);
+    }
+
+    private async Task BackgroundValidateAsync()
+    {
+        if (IsActivated && !string.IsNullOrWhiteSpace(CurrentLicenseKey))
+        {
+            await ValidateLicenseAsync();
+        }
     }
 
     public async Task<(bool Success, string Message)> ActivateLicenseAsync(string licenseKey)
@@ -44,9 +59,11 @@ public class LicenseService : ILicenseService
                 ExpiresAt = result.ExpiresAt;
                 LicenseType = result.Type;
                 OnLicenseStateChanged?.Invoke();
+                _validationTimer?.Change(ValidationInterval, ValidationInterval);
                 return (true, result.Message ?? "Activated successfully.");
             }
             
+            _validationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             return (false, result?.Error ?? "Failed to activate license.");
         }
         catch (Exception ex)
@@ -78,10 +95,12 @@ public class LicenseService : ILicenseService
                 ExpiresAt = result.ExpiresAt;
                 LicenseType = result.Type;
                 OnLicenseStateChanged?.Invoke();
+                _validationTimer?.Change(ValidationInterval, ValidationInterval);
                 return (true, "License is valid.");
             }
             
             IsActivated = false;
+            _validationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             OnLicenseStateChanged?.Invoke();
             return (false, result?.Error ?? "Invalid license.");
         }
