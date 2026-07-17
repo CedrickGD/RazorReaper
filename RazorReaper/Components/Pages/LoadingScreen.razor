@@ -1,0 +1,360 @@
+@page "/loading-screen"
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+
+@inject ILoadingScreenService MovieService
+@inject INotificationService Notifications
+@inject IActivityService Activity
+@inject IProcessService ProcessService
+@inject ILogger<LoadingScreen> Logger
+
+<div class="loading-screen-page">
+    <header class="page-header">
+        <h1 class="page-title">Custom Loading Screen</h1>
+        <p class="page-subtitle">Swap ARK's startup and loading videos for your own — fully reversible.</p>
+    </header>
+
+    @if (!_arkFound)
+    {
+        <div class="content-card ls-empty-card">
+            <div class="ls-empty-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h3>ARK installation not found</h3>
+            <p>
+                RazorReaper couldn't locate ARK: Survival Evolved through Steam.
+                Make sure the game is installed, then rescan.
+            </p>
+            <button type="button" class="ls-btn primary" @onclick="Refresh">Rescan</button>
+        </div>
+    }
+    else if (!_moviesFolderFound)
+    {
+        <div class="content-card ls-empty-card">
+            <div class="ls-empty-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                </svg>
+            </div>
+            <h3>Movies folder missing</h3>
+            <p>
+                The ARK install was found, but its Movies folder doesn't exist.
+                Verify the game files in Steam, then rescan.
+            </p>
+            <p class="ls-empty-path">@_moviesPath</p>
+            <button type="button" class="ls-btn primary" @onclick="Refresh">Rescan</button>
+        </div>
+    }
+    else
+    {
+        <StatusHeader State="@HeaderState" Label="@HeaderLabel" Description="@HeaderDescription">
+            <Actions>
+                <button type="button" class="ls-btn" @onclick="Refresh" disabled="@_busy">Rescan</button>
+                <button type="button"
+                        class="ls-btn warn"
+                        @onclick="RestoreAllMoviesAsync"
+                        disabled="@(_busy || _replacedCount == 0)">
+                    @(_restoringAll ? "Restoring…" : "Restore all")
+                </button>
+            </Actions>
+        </StatusHeader>
+
+        <div class="content-card ls-info-card">
+            <div class="ls-info-header">
+                <div class="ls-info-icon">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-4a1 1 0 100 2 1 1 0 000-2zm-1 4a1 1 0 011-1h1a1 1 0 011 1v4a1 1 0 01-2 0v-3a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ls-info-title">
+                    <h3>How it works</h3>
+                    <p>What these videos are and what to expect.</p>
+                </div>
+            </div>
+            <ul class="ls-info-list">
+                <li>
+                    These are ARK's <strong>startup, title and loading videos</strong>. The game plays whatever file
+                    sits in <code>ShooterGame\Content\Movies</code> under the original name — no config edits needed.
+                </li>
+                <li>
+                    Every movie ships twice: once as <strong>.mp4</strong> and once as <strong>.wmv</strong>.
+                    Replace <strong>both variants</strong> of the same movie so your version plays no matter
+                    which one the game picks.
+                </li>
+                <li>
+                    <strong>Format requirement:</strong> your video must use the same container as the file it
+                    replaces — a .mp4 for a .mp4, a .wmv for a .wmv. RazorReaper does not convert videos.
+                </li>
+                <li>
+                    The first time you replace a video, the untouched original is backed up to
+                    <code>@_backupFolder</code>. Restore brings it back exactly as it was.
+                </li>
+                <li>
+                    Changes apply on the <strong>next game start</strong>. Only your local files are touched.
+                </li>
+            </ul>
+        </div>
+
+        <div class="content-card ls-movies-card">
+            @if (_movies.Count == 0)
+            {
+                <div class="ls-no-movies">No video files found in the Movies folder.</div>
+            }
+            else
+            {
+                @foreach (var group in MovieGroups)
+                {
+                    <div class="ls-group" @key="group.Title">
+                        <div class="ls-group-title">@group.Title</div>
+                        <div class="ls-rows">
+                            @foreach (var movie in group.Movies)
+                            {
+                                <SettingRow @key="movie.FileName" Title="@movie.DisplayName" Description="@RowDescription(movie)">
+                                    @if (movie.IsReplaced)
+                                    {
+                                        <span class="ls-badge">Replaced</span>
+                                    }
+                                    <button type="button"
+                                            class="ls-btn primary"
+                                            @onclick="() => ReplaceMovieAsync(movie)"
+                                            disabled="@_busy">
+                                        Replace…
+                                    </button>
+                                    @if (movie.IsReplaced)
+                                    {
+                                        <button type="button"
+                                                class="ls-btn"
+                                                @onclick="() => RestoreMovieAsync(movie)"
+                                                disabled="@_busy">
+                                            Restore
+                                        </button>
+                                    }
+                                </SettingRow>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ArkMovieInfo> _movies = new();
+    private string? _moviesPath;
+    private string _backupFolder = "";
+    private bool _arkFound;
+    private bool _moviesFolderFound;
+    private bool _busy;
+    private bool _restoringAll;
+    private int _replacedCount;
+
+    private static readonly (ArkMovieKind Kind, string Title)[] GroupOrder =
+    {
+        (ArkMovieKind.Loading, "Loading screen"),
+        (ArkMovieKind.Startup, "Startup & title"),
+        (ArkMovieKind.Cinematic, "Map cinematics"),
+        (ArkMovieKind.Other, "Other video files"),
+    };
+
+    private IEnumerable<(string Title, List<ArkMovieInfo> Movies)> MovieGroups =>
+        GroupOrder
+            .Select(g => (g.Title, Movies: _movies.Where(m => m.Kind == g.Kind).ToList()))
+            .Where(g => g.Movies.Count > 0);
+
+    private string HeaderState => _replacedCount > 0 ? "warning" : "online";
+
+    private string HeaderLabel => _replacedCount > 0
+        ? $"{_replacedCount} of {_movies.Count} videos replaced"
+        : "All original videos intact";
+
+    private string HeaderDescription => _replacedCount > 0
+        ? "Your custom videos play the next time ARK starts. Restore any file at any time."
+        : "ARK's stock startup and loading videos are untouched.";
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _backupFolder = MovieService.GetBackupFolderPath();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve the movie backup folder");
+        }
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        try
+        {
+            _moviesPath = MovieService.GetMoviesFolderPath();
+            _arkFound = _moviesPath is not null;
+            _moviesFolderFound = _arkFound && MovieService.MoviesFolderExists();
+            _movies = _moviesFolderFound ? MovieService.ListMovies() : new List<ArkMovieInfo>();
+            _replacedCount = _movies.Count(m => m.IsReplaced);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load the ARK movie list");
+            Notifications.ShowError("Could not read the ARK Movies folder — see the log for details.");
+        }
+    }
+
+    private static string RowDescription(ArkMovieInfo movie) =>
+        $"{movie.FileName} · {FormatSize(movie.SizeBytes)}";
+
+    private void WarnIfArkRunning()
+    {
+        try
+        {
+            if (ProcessService.IsProcessRunning("ShooterGame"))
+            {
+                Notifications.ShowWarning("ARK is running — it may lock these files. Close the game if the change fails.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "ARK process check failed");
+        }
+    }
+
+    private async Task ReplaceMovieAsync(ArkMovieInfo movie)
+    {
+        if (_busy) return;
+
+        string? picked;
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { movie.Extension } }
+            });
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = $"Select a {movie.Extension} replacement for {movie.FileName}",
+                FileTypes = fileTypes
+            });
+            picked = result?.FullPath;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Movie file picker failed");
+            Notifications.ShowError("Could not open the file picker.");
+            return;
+        }
+
+        if (picked is null) return;
+
+        _busy = true;
+        try
+        {
+            WarnIfArkRunning();
+            var op = await MovieService.ReplaceAsync(movie.FileName, picked);
+            if (op.Success)
+            {
+                Notifications.ShowSuccess(op.Message);
+                Activity.AddActivity($"Replaced ARK video {movie.FileName}", "success");
+            }
+            else
+            {
+                Notifications.ShowError(op.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Replacing movie {FileName} failed", movie.FileName);
+            Notifications.ShowError($"Replacing {movie.FileName} failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            Refresh();
+        }
+    }
+
+    private async Task RestoreMovieAsync(ArkMovieInfo movie)
+    {
+        if (_busy) return;
+
+        _busy = true;
+        try
+        {
+            WarnIfArkRunning();
+            var op = await MovieService.RestoreAsync(movie.FileName);
+            if (op.Success)
+            {
+                Notifications.ShowSuccess(op.Message);
+                Activity.AddActivity($"Restored ARK video {movie.FileName}", "success");
+            }
+            else
+            {
+                Notifications.ShowError(op.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Restoring movie {FileName} failed", movie.FileName);
+            Notifications.ShowError($"Restoring {movie.FileName} failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            Refresh();
+        }
+    }
+
+    private async Task RestoreAllMoviesAsync()
+    {
+        if (_busy || _replacedCount == 0) return;
+
+        _busy = true;
+        _restoringAll = true;
+        try
+        {
+            WarnIfArkRunning();
+            var summary = await MovieService.RestoreAllAsync();
+            if (summary.Failed == 0 && summary.Restored > 0)
+            {
+                Notifications.ShowSuccess($"Restored {summary.Restored} original video(s).");
+                Activity.AddActivity($"Restored all ARK videos ({summary.Restored})", "success");
+            }
+            else if (summary.Failed > 0)
+            {
+                var firstError = summary.Errors.Count > 0 ? $" First error: {summary.Errors[0]}" : "";
+                Notifications.ShowError($"Restored {summary.Restored} video(s), {summary.Failed} failed.{firstError}");
+            }
+            else
+            {
+                Notifications.ShowInfo("Nothing to restore — no videos are currently replaced.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Movie restore-all failed");
+            Notifications.ShowError("Restoring the original videos failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            _restoringAll = false;
+            Refresh();
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB" };
+        double size = bytes;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return unit == 0 ? $"{size:0} {units[unit]}" : $"{size:0.0} {units[unit]}";
+    }
+}

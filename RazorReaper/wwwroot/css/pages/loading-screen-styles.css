@@ -1,0 +1,236 @@
+/* ── Custom Loading Screen page ──────────────────────────────────────────────
+   Styles for Components/Pages/LoadingScreen.razor, namespaced under
+   .loading-screen-page. Uses only theme.css design tokens (radius/spacing
+   scales, accent + status variables) plus neutral white/black rgba surfaces.
+   Shared chrome (.setting-row / .status-header) lives in shared/primitives.css. */
+
+.loading-screen-page .status-header {
+    margin-bottom: var(--space-5);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.loading-screen-page .ls-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-chip);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+    .loading-screen-page .ls-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .loading-screen-page .ls-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .loading-screen-page .ls-btn.primary {
+        background: rgba(var(--accent-purple-rgb), 0.15);
+        border-color: rgba(var(--accent-purple-rgb), 0.4);
+        color: var(--accent-purple-light);
+    }
+
+        .loading-screen-page .ls-btn.primary:hover:not(:disabled) {
+            background: rgba(var(--accent-purple-rgb), 0.25);
+            border-color: var(--accent-purple);
+        }
+
+    .loading-screen-page .ls-btn.warn {
+        background: rgba(var(--accent-orange-rgb), 0.12);
+        border-color: rgba(var(--accent-orange-rgb), 0.35);
+        color: var(--accent-orange-soft);
+    }
+
+        .loading-screen-page .ls-btn.warn:hover:not(:disabled) {
+            background: rgba(var(--accent-orange-rgb), 0.2);
+            border-color: var(--accent-orange);
+        }
+
+/* ── Info card (blue / info tokens) ─────────────────────────────────────── */
+
+.loading-screen-page .ls-info-card {
+    /* .content-card in theme.css sets background/border with !important,
+       so the info-tinted override needs !important too. */
+    background: rgba(var(--accent-blue-rgb), 0.05) !important;
+    border-color: rgba(var(--accent-blue-rgb), 0.25) !important;
+}
+
+.loading-screen-page .ls-info-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.loading-screen-page .ls-info-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-panel);
+    background: rgba(var(--accent-blue-rgb), 0.15);
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+    .loading-screen-page .ls-info-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+.loading-screen-page .ls-info-title h3 {
+    margin: 0 !important;
+    font-size: 1.15rem !important;
+}
+
+.loading-screen-page .ls-info-title p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.loading-screen-page .ls-info-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+}
+
+    .loading-screen-page .ls-info-list li {
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-chip);
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
+
+    .loading-screen-page .ls-info-list strong {
+        color: var(--text-primary);
+    }
+
+    .loading-screen-page .ls-info-list code {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--accent-blue);
+        overflow-wrap: anywhere;
+    }
+
+/* ── Movie groups ───────────────────────────────────────────────────────── */
+
+.loading-screen-page .ls-group {
+    margin-bottom: var(--space-5);
+}
+
+    .loading-screen-page .ls-group:last-child {
+        margin-bottom: 0;
+    }
+
+.loading-screen-page .ls-group-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+}
+
+.loading-screen-page .ls-rows {
+    display: grid;
+    gap: var(--space-2);
+}
+
+/* ── Replaced badge ─────────────────────────────────────────────────────── */
+
+.loading-screen-page .ls-badge {
+    padding: 0.15rem var(--space-2);
+    border-radius: var(--radius-round);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: rgba(var(--accent-purple-rgb), 0.15);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.4);
+    color: var(--accent-purple-light);
+    white-space: nowrap;
+}
+
+/* ── Empty / error states ───────────────────────────────────────────────── */
+
+.loading-screen-page .ls-empty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-3);
+}
+
+.loading-screen-page .ls-empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-panel);
+    background: rgba(var(--accent-red-rgb), 0.12);
+    color: var(--accent-red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .loading-screen-page .ls-empty-icon svg {
+        width: 26px;
+        height: 26px;
+    }
+
+.loading-screen-page .ls-empty-card h3 {
+    margin: 0 !important;
+}
+
+.loading-screen-page .ls-empty-card p {
+    margin: 0;
+    max-width: 480px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.loading-screen-page .ls-empty-path {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent-orange-soft);
+    overflow-wrap: anywhere;
+}
+
+.loading-screen-page .ls-no-movies {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+/* ── Narrow layout: stack the row controls under the text ───────────────── */
+
+@media (max-width: 900px) {
+    .loading-screen-page .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .loading-screen-page .setting-row-control {
+        flex-wrap: wrap;
+    }
+}
