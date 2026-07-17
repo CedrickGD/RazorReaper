@@ -6,10 +6,12 @@
 @using Microsoft.Win32
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.Steam
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
 @inject ILogger<Server> Logger
 @inject IActivityService ActivityService
+@inject ISteamFavoritesService SteamFavoritesService
 @implements IDisposable
 
 
@@ -196,6 +198,93 @@
                                 <div class="empty-subtitle">Query and save servers to see them here</div>
                             </div>
                         }
+                    </div>
+                </div>
+
+                <div class="content-card bulk-favorites-section">
+                    <StatusHeader State="@BulkStatusState"
+                                  Label="Bulk Add Favorites"
+                                  Description="@BulkStatusDescription">
+                        <Actions>
+                            <button class="server-btn bulk-clear-btn"
+                                    @onclick="ClearBulkInput"
+                                    disabled="@(isBulkApplying || (string.IsNullOrEmpty(bulkInput) && bulkResults.Count == 0))">
+                                Clear
+                            </button>
+                            <button class="server-btn favorite bulk-apply-btn"
+                                    @onclick="ApplyBulkFavorites"
+                                    disabled="@(!CanApplyBulk)">
+                                @if (isBulkApplying)
+                                {
+                                    <div class="server-spinner"></div>
+                                    <span>Applying</span>
+                                }
+                                else
+                                {
+                                    <span>Apply@(bulkParse.Valid.Count > 0 ? $" ({bulkParse.Valid.Count})" : "")</span>
+                                }
+                            </button>
+                        </Actions>
+                    </StatusHeader>
+
+                    <p class="bulk-help-text">
+                        Paste one server per line: <span class="bulk-mono">IP:QUERYPORT</span>,
+                        <span class="bulk-mono">IP QUERYPORT</span>, <span class="bulk-mono">IP,QUERYPORT</span>
+                        or a <span class="bulk-mono">steam://connect/...</span> link.
+                        Lines starting with <span class="bulk-mono">#</span> or <span class="bulk-mono">//</span> are ignored.
+                    </p>
+
+                    <textarea class="bulk-input"
+                              rows="7"
+                              placeholder="141.98.157.224:27015&#10;144.76.28.10 27017&#10;steam://connect/145.239.87.28:27015&#10;# comment lines are skipped"
+                              @bind="bulkInput" @bind:event="oninput" @bind:after="OnBulkInputChanged"
+                              disabled="@isBulkApplying"></textarea>
+
+                    @if (bulkParse.HasInput)
+                    {
+                        <div class="bulk-preview">
+                            <span class="bulk-count valid">@bulkParse.Valid.Count valid</span>
+                            <span class="bulk-count invalid @(bulkParse.Invalid.Count == 0 ? "none" : "")">@bulkParse.Invalid.Count invalid</span>
+                        </div>
+                    }
+
+                    @if (bulkParse.Invalid.Count > 0)
+                    {
+                        <div class="bulk-line-list">
+                            @foreach (var invalidLine in bulkParse.Invalid.Take(MaxBulkListRows))
+                            {
+                                <div @key="@invalidLine.LineNumber" class="bulk-line-item">
+                                    <span class="bulk-line-number">Line @invalidLine.LineNumber</span>
+                                    <span class="bulk-line-raw">@TruncateLine(invalidLine.RawLine)</span>
+                                    <span class="bulk-line-reason">@invalidLine.Reason</span>
+                                </div>
+                            }
+                            @if (bulkParse.Invalid.Count > MaxBulkListRows)
+                            {
+                                <div class="bulk-line-more">+ @(bulkParse.Invalid.Count - MaxBulkListRows) more invalid lines</div>
+                            }
+                        </div>
+                    }
+
+                    @if (bulkResults.Count > 0)
+                    {
+                        <div class="bulk-results">
+                            @foreach (var bulkResult in bulkResults)
+                            {
+                                <div class="bulk-result-item @bulkResult.Status">
+                                    <span class="bulk-result-dot"></span>
+                                    <span class="bulk-result-endpoint">@bulkResult.Endpoint</span>
+                                    <span class="bulk-result-status">@bulkResult.StatusLabel</span>
+                                    <span class="bulk-result-detail">@bulkResult.Detail</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="bulk-note">
+                        Ports are treated as query ports, matching the field above — the game port is derived automatically.
+                        Steam must be running; added servers appear under Steam &rarr; View &rarr; Game Servers &rarr; Favorites
+                        (no Steam restart required, same as the single-server button).
                     </div>
                 </div>
 
@@ -998,6 +1087,188 @@
     private void ToggleTroubleshooting()
     {
         showTroubleshooting = !showTroubleshooting;
+    }
+
+    // ── Bulk Add Favorites ──────────────────────────────────────────────────
+
+    private const int MaxBulkListRows = 25;
+    private const int BulkApplyDelayMs = 350;
+
+    private string bulkInput = "";
+    private BulkParseResult bulkParse = new();
+    private bool isBulkApplying = false;
+    private readonly List<BulkFavoriteResult> bulkResults = new();
+    private string? bulkLastRunSummary;
+    private bool bulkLastRunHadFailures;
+
+    private bool CanApplyBulk => !isBulkApplying && bulkParse.Valid.Count > 0;
+
+    private string BulkStatusState =>
+        isBulkApplying ? "warning"
+        : bulkLastRunSummary != null ? (bulkLastRunHadFailures ? "warning" : "online")
+        : bulkParse.Valid.Count > 0 ? "online"
+        : bulkParse.Invalid.Count > 0 ? "error"
+        : "off";
+
+    private string BulkStatusDescription =>
+        isBulkApplying ? $"Adding servers to Steam favorites ({bulkResults.Count}/{bulkParse.Valid.Count})"
+        : bulkLastRunSummary != null ? $"Last run: {bulkLastRunSummary}"
+        : bulkParse.Valid.Count > 0 ? $"{bulkParse.Valid.Count} server{(bulkParse.Valid.Count == 1 ? "" : "s")} ready to add"
+        : bulkParse.Invalid.Count > 0 ? "No valid servers found in the pasted list"
+        : "Paste a server list to add every entry to Steam favorites at once";
+
+    private void OnBulkInputChanged()
+    {
+        bulkParse = SteamFavoritesService.ParseServerList(bulkInput);
+
+        // Old apply results no longer match the edited list — drop them.
+        bulkResults.Clear();
+        bulkLastRunSummary = null;
+        bulkLastRunHadFailures = false;
+    }
+
+    private void ClearBulkInput()
+    {
+        bulkInput = "";
+        bulkParse = new BulkParseResult();
+        bulkResults.Clear();
+        bulkLastRunSummary = null;
+        bulkLastRunHadFailures = false;
+    }
+
+    private async Task ApplyBulkFavorites()
+    {
+        if (isBulkApplying || bulkParse.Valid.Count == 0)
+        {
+            return;
+        }
+
+        isBulkApplying = true;
+        bulkResults.Clear();
+        bulkLastRunSummary = null;
+        bulkLastRunHadFailures = false;
+        StateHasChanged();
+
+        var added = 0;
+        var skipped = 0;
+        var failed = 0;
+
+        try
+        {
+            var existingFavorites = await SteamFavoritesService.GetExistingFavoriteEndpointsAsync();
+
+            foreach (var entry in bulkParse.Valid)
+            {
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                var gamePort = GetGamePort(entry.QueryPort);
+                var favoriteEndpoint = $"{entry.IpAddress}:{gamePort}";
+
+                // Steam may store the address with either port form; check both.
+                if (existingFavorites.Contains(favoriteEndpoint) || existingFavorites.Contains(entry.Endpoint))
+                {
+                    bulkResults.Add(new BulkFavoriteResult
+                    {
+                        Endpoint = favoriteEndpoint,
+                        Status = "skipped",
+                        Detail = "Already in Steam favorites"
+                    });
+                    skipped++;
+                    StateHasChanged();
+                    continue;
+                }
+
+                try
+                {
+                    // Exactly the same mechanism as the single-server "Add to Steam" button.
+                    var steamFavoriteUrl = $"steam://friends/joingame/{favoriteEndpoint}";
+                    await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
+
+                    existingFavorites.Add(favoriteEndpoint);
+                    bulkResults.Add(new BulkFavoriteResult
+                    {
+                        Endpoint = favoriteEndpoint,
+                        Status = "added",
+                        Detail = "Sent to Steam favorites"
+                    });
+                    added++;
+                    StateHasChanged();
+
+                    // Give Steam a moment between protocol invocations so none get dropped.
+                    await Task.Delay(BulkApplyDelayMs);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Bulk favorites: failed to add {Endpoint}", favoriteEndpoint);
+                    bulkResults.Add(new BulkFavoriteResult
+                    {
+                        Endpoint = favoriteEndpoint,
+                        Status = "failed",
+                        Detail = ex.Message
+                    });
+                    failed++;
+                    StateHasChanged();
+                }
+            }
+
+            bulkLastRunSummary = $"{added} added, {skipped} skipped, {failed} failed";
+            bulkLastRunHadFailures = failed > 0;
+
+            var summary = $"Bulk add complete: {added} added, {skipped} skipped, {failed} failed";
+            if (failed > 0)
+            {
+                NotificationService.ShowWarning(summary);
+            }
+            else if (added > 0)
+            {
+                NotificationService.ShowSuccess(summary);
+            }
+            else
+            {
+                NotificationService.ShowInfo(summary);
+            }
+
+            if (added > 0)
+            {
+                ActivityService.AddActivity($"Bulk added {added} server{(added == 1 ? "" : "s")} to Steam favorites", "success");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Bulk favorites apply failed");
+            NotificationService.ShowError($"Bulk add failed: {ex.Message}");
+        }
+        finally
+        {
+            isBulkApplying = false;
+            if (!_isDisposed)
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private static string TruncateLine(string value, int maxLength = 48)
+        => value.Length <= maxLength ? value : value[..maxLength] + "...";
+
+    private sealed class BulkFavoriteResult
+    {
+        public string Endpoint { get; init; } = "";
+
+        /// <summary>"added" | "skipped" | "failed" — doubles as the result row CSS class.</summary>
+        public string Status { get; init; } = "";
+
+        public string Detail { get; init; } = "";
+
+        public string StatusLabel => Status switch
+        {
+            "added" => "Added",
+            "skipped" => "Skipped",
+            _ => "Failed"
+        };
     }
 
     public class ServerQueryResult
