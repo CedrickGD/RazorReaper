@@ -1,0 +1,106 @@
+@* Shared hotkey capture field. Focus it and press a combination — modifiers + key are
+   captured into a display string like "Ctrl + Alt + F" and pushed through ValueChanged.
+   Escape exits capture mode without changing the value; Backspace/Delete clears it.
+   Pure Blazor (KeyboardEventArgs), no JS. Two-way bind via @bind-Value.
+   Styled in wwwroot/css/shared/primitives.css. *@
+
+<input class="hotkey-field @(_capturing ? "capturing" : "")"
+       type="text"
+       readonly
+       value="@DisplayValue"
+       placeholder="@(Placeholder ?? DefaultPlaceholder)"
+       spellcheck="false"
+       @onfocus="OnFocus"
+       @onblur="OnBlur"
+       @onkeydown="OnKeyDown"
+       @onkeydown:preventDefault="true" />
+
+@code {
+    private const string DefaultPlaceholder = "Press a key…";
+
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+
+    private bool _capturing;
+    private bool _capturedThisSession;
+
+    // While capturing (and nothing captured yet this focus session) the field is
+    // empty so the placeholder prompts for a key; otherwise show the bound value.
+    private string DisplayValue => _capturing && !_capturedThisSession ? "" : Value;
+
+    private void OnFocus()
+    {
+        _capturing = true;
+        _capturedThisSession = false;
+    }
+
+    private void OnBlur()
+    {
+        _capturing = false;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!_capturing)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "Escape":
+                // Exit capture mode without changing the value.
+                _capturing = false;
+                return;
+            case "Backspace":
+            case "Delete":
+                if (Value != "")
+                {
+                    Value = "";
+                    await ValueChanged.InvokeAsync(Value);
+                }
+                _capturedThisSession = false;
+                return;
+            case "Control":
+            case "Alt":
+            case "Shift":
+            case "Meta":
+            case "OS":
+                // Modifier alone — wait for the full combination.
+                return;
+        }
+
+        var parts = new List<string>();
+        if (e.CtrlKey) parts.Add("Ctrl");
+        if (e.AltKey) parts.Add("Alt");
+        if (e.ShiftKey) parts.Add("Shift");
+        if (e.MetaKey) parts.Add("Win");
+        parts.Add(NormalizeKey(e.Key));
+
+        var combo = string.Join(" + ", parts);
+        _capturedThisSession = true;
+        if (combo != Value)
+        {
+            Value = combo;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private static string NormalizeKey(string key)
+    {
+        if (key.Length == 1)
+        {
+            return key == " " ? "Space" : key.ToUpperInvariant();
+        }
+
+        return key switch
+        {
+            "ArrowUp" => "Up",
+            "ArrowDown" => "Down",
+            "ArrowLeft" => "Left",
+            "ArrowRight" => "Right",
+            _ => key
+        };
+    }
+}

@@ -38,7 +38,7 @@
 .troubleshoot-icon {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     background: rgba(var(--accent-purple-rgb), 0.15);
     color: var(--accent-purple);
     display: flex;
@@ -48,7 +48,7 @@
 }
 
 .troubleshoot-icon.warn {
-    background: rgba(245, 158, 11, 0.18);
+    background: rgba(var(--accent-orange-rgb), 0.18);
     color: var(--accent-orange);
 }
 
@@ -73,34 +73,17 @@
 
 .troubleshoot-tips li {
     padding: 0.85rem 1rem;
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     background: rgba(0, 0, 0, 0.15);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     line-height: 1.5;
 }
 
-.troubleshoot-toggle-grid {
+.troubleshoot-settings {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.troubleshoot-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 0.8rem;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.troubleshoot-toggle input {
-    accent-color: var(--accent-purple);
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
 }
 
 .troubleshoot-log-section {
@@ -121,45 +104,10 @@
     flex-wrap: wrap;
 }
 
-.troubleshoot-log-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    width: 100%;
-    padding: 0.85rem 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: rgba(0, 0, 0, 0.12);
-}
-
-.troubleshoot-log-path {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.35rem;
-    min-width: 0;
-    flex: 1;
-}
-
-.troubleshoot-log-path-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-}
-
-.troubleshoot-log-path-value {
-    font-size: 0.85rem;
-    font-family: var(--font-mono);
-    color: var(--text-primary);
-    word-break: break-all;
-}
-
 .troubleshoot-log-open {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
     background: rgba(var(--accent-purple-rgb), 0.12);
     color: var(--accent-purple);
@@ -189,7 +137,7 @@
 
 .troubleshoot-empty {
     padding: 1rem;
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     border: 1px dashed var(--border-color);
     text-align: center;
     color: var(--text-secondary);
@@ -200,8 +148,8 @@
     display: grid;
     gap: 0.5rem;
     padding: 1rem;
-    border-radius: 12px;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-panel);
+    border: 1px solid rgba(var(--accent-orange-rgb), 0.3);
     background: rgba(0, 0, 0, 0.2);
 }
 
@@ -229,7 +177,7 @@
 
 .troubleshoot-code-card {
     padding: 0.85rem;
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(0, 0, 0, 0.18);
     display: flex;
@@ -256,21 +204,8 @@
 }
 
 @media (max-width: 768px) {
-    .troubleshoot-toggle-grid {
-        grid-template-columns: 1fr;
-    }
-
     .troubleshoot-log-actions {
         flex-direction: column;
         align-items: stretch;
-    }
-
-    .troubleshoot-log-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .troubleshoot-log-open {
-        align-self: flex-end;
     }
 }

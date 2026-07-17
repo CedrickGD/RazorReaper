@@ -1,0 +1,40 @@
+@* Shared status banner for tool pages: pulsing status dot + state label + optional
+   description on the left, action buttons on the right (via Actions fragment).
+   State: "online" (accent purple), "warning" (orange), "error" (red), "off" (grey).
+   Styled in wwwroot/css/shared/primitives.css (dot colors follow the .status-dot
+   conventions from theme.css). *@
+
+<div class="status-header">
+    <div class="status-header-state">
+        <span class="status-header-dot @NormalizedState"></span>
+        <div class="status-header-text">
+            <div class="status-header-label">@Label</div>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <div class="status-header-desc">@Description</div>
+            }
+        </div>
+    </div>
+    @if (Actions != null)
+    {
+        <div class="status-header-actions">
+            @Actions
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>One of "online", "warning", "error", "off".</summary>
+    [Parameter] public string State { get; set; } = "off";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    private string NormalizedState => State?.ToLowerInvariant() switch
+    {
+        "online" => "online",
+        "warning" => "warning",
+        "error" => "error",
+        _ => "off"
+    };
+}

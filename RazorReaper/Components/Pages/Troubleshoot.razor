@@ -56,31 +56,25 @@
                     </div>
                 </div>
 
-                <div class="troubleshoot-toggle-grid">
-                    <label class="troubleshoot-toggle">
-                        <input type="checkbox" @bind="loggingEnabled" @bind:after="PersistLoggingSettings" />
-                        <span>Enable logging</span>
-                    </label>
-                    <label class="troubleshoot-toggle">
-                        <input type="checkbox" @bind="verboseLoggingEnabled" @bind:after="PersistLoggingSettings" disabled="@(!loggingEnabled)" />
-                        <span>Verbose diagnostics (debug)</span>
-                    </label>
+                <div class="troubleshoot-settings">
+                    <SettingRow Title="Enable logging">
+                        <Switch @bind-Value="loggingEnabled" @bind-Value:after="PersistLoggingSettings" />
+                    </SettingRow>
+                    <SettingRow Title="Verbose diagnostics (debug)" Disabled="@(!loggingEnabled)">
+                        <Switch @bind-Value="verboseLoggingEnabled" @bind-Value:after="PersistLoggingSettings" Disabled="@(!loggingEnabled)" />
+                    </SettingRow>
                 </div>
 
                 <div class="troubleshoot-log-section">
                     <div class="troubleshoot-log-label">Log folder</div>
-                    <div class="troubleshoot-log-row">
-                        <div class="troubleshoot-log-path">
-                            <div class="troubleshoot-log-path-label">Current folder</div>
-                            <div class="troubleshoot-log-path-value">@GetCurrentLogFolder()</div>
-                        </div>
+                    <SettingRow Title="Current folder" Description="@GetCurrentLogFolder()">
                         <button type="button" class="troubleshoot-log-open" @onclick="OpenLogFolder" aria-label="Open log folder">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v1H2V6z" />
                                 <path d="M2 10h16v5a2 2 0 01-2 2H4a2 2 0 01-2-2v-5z" />
                             </svg>
                         </button>
-                    </div>
+                    </SettingRow>
                     <div class="troubleshoot-log-actions">
                         <button class="btn-small" @onclick="PickLogFolderAsync">Change output</button>
                         <button class="btn-small" @onclick="ResetLogFolder">Reset default</button>
