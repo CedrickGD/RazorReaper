@@ -1,0 +1,512 @@
+@page "/ini-builder"
+@using System.IO
+@using Microsoft.Extensions.Logging
+@using Microsoft.Maui.Storage
+@using RazorReaper.Services
+
+@inject IGameIniService GameIni
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+@inject ILogger<IniBuilder> Logger
+@inject IJSRuntime JSRuntime
+
+
+        <header class="page-header">
+            <h1 class="page-title">INI Builder</h1>
+            <p class="page-subtitle">One-click Game.ini &amp; GameUserSettings.ini presets with automatic backups</p>
+        </header>
+
+        <div class="inib-page">
+
+            @* ============================================================
+               STATUS — install detection + ARK-running warning
+               ============================================================ *@
+            <section class="content-card inib-status-card">
+                <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
+                    <Actions>
+                        <button class="btn btn-secondary inib-small-btn" @onclick="RefreshStatus">Re-check</button>
+                    </Actions>
+                </StatusHeader>
+            </section>
+
+            @* ============================================================
+               PRESETS — one-click curated GameUserSettings presets
+               ============================================================ *@
+            <section class="content-card">
+                <h3>One-Click Presets</h3>
+                <p class="inib-card-intro">Each preset edits only its own keys — the rest of your INI (mod sections, comments, keybinds) is left untouched. A timestamped backup is created before every apply.</p>
+
+                <div class="inib-preset-grid">
+                    @foreach (var preset in presets)
+                    {
+                        var isLastApplied = !string.IsNullOrEmpty(lastAppliedPreset) &&
+                                            string.Equals(lastAppliedPreset, preset.Name, StringComparison.OrdinalIgnoreCase);
+                        <div class="inib-preset-card @(isLastApplied ? "active" : "")" @key="preset.Name">
+                            <div class="inib-preset-head">
+                                <span class="inib-preset-name">@preset.Name</span>
+                                <span class="inib-chip">@preset.Entries.Count keys</span>
+                            </div>
+                            <p class="inib-preset-desc">@preset.Description</p>
+                            <div class="inib-preset-foot">
+                                @if (isLastApplied)
+                                {
+                                    <span class="inib-badge">
+                                        <svg fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        @LastAppliedLabel
+                                    </span>
+                                }
+                                <button class="btn btn-primary inib-apply-btn"
+                                        disabled="@isApplying"
+                                        @onclick="() => ApplyPresetAsync(preset)">
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            @* ============================================================
+               CUSTOM EDITOR — (section, key, value) rows with a persisted draft
+               ============================================================ *@
+            <section class="content-card">
+                <h3>Custom Keys</h3>
+                <p class="inib-card-intro">Write your own keys with the same targeted editor: the first matching key in the section is updated, missing keys are appended, missing sections are created.</p>
+
+                <SettingRow Title="Target file"
+                            Description="Which INI file the rows below are written to.">
+                    <div class="inib-seg">
+                        <button type="button"
+                                class="inib-seg-btn @(currentTarget == GameIniTarget.GameUserSettings ? "is-active" : "")"
+                                @onclick="() => SetTargetAsync(GameIniTarget.GameUserSettings)">
+                            GameUserSettings.ini
+                        </button>
+                        <button type="button"
+                                class="inib-seg-btn @(currentTarget == GameIniTarget.Game ? "is-active" : "")"
+                                @onclick="() => SetTargetAsync(GameIniTarget.Game)">
+                            Game.ini
+                        </button>
+                    </div>
+                </SettingRow>
+
+                @if (currentTarget == GameIniTarget.Game && !gameIniExists)
+                {
+                    <p class="inib-note warn">Game.ini does not exist yet — it will be created when you apply.</p>
+                }
+
+                <div class="inib-rows">
+                    <div class="inib-row inib-row-head">
+                        <span>Section</span>
+                        <span>Key</span>
+                        <span>Value</span>
+                        <span></span>
+                    </div>
+                    @foreach (var row in draftRows)
+                    {
+                        <div class="inib-row" @key="row">
+                            <input class="inib-input" placeholder="e.g. ScalabilityGroups"
+                                   @bind="row.Section" @bind:after="SaveDraftAsync" />
+                            <input class="inib-input" placeholder="e.g. sg.ShadowQuality"
+                                   @bind="row.Key" @bind:after="SaveDraftAsync" />
+                            <input class="inib-input" placeholder="Value"
+                                   @bind="row.Value" @bind:after="SaveDraftAsync" />
+                            <button type="button" class="inib-row-remove" title="Remove row"
+                                    @onclick="() => RemoveRowAsync(row)">
+                                <svg fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                <div class="inib-editor-actions">
+                    <button class="btn btn-secondary" @onclick="AddRowAsync">Add Row</button>
+                    <button class="btn btn-primary"
+                            disabled="@(isApplying || !HasValidRows)"
+                            @onclick="ApplyCustomAsync">
+                        Apply to @TargetFileLabel
+                    </button>
+                </div>
+
+                <p class="inib-note">Rows are saved as a draft automatically and restored the next time you open this page.</p>
+            </section>
+
+            @* ============================================================
+               BACKUPS — restore or delete stored snapshots
+               ============================================================ *@
+            <section class="content-card">
+                <h3>Backups</h3>
+                <p class="inib-card-intro">The last @MaxBackupsShownNote backups per file are kept in your local RazorReaper folder. Restoring snapshots the current file first, so you can always go back.</p>
+
+                @if (backups.Count == 0)
+                {
+                    <p class="inib-empty">No backups yet — one is created automatically every time you apply a preset or custom keys.</p>
+                }
+                else
+                {
+                    <div class="inib-backup-list">
+                        @foreach (var backup in backups)
+                        {
+                            <div class="inib-backup-row" @key="backup.FullPath">
+                                <div class="inib-backup-info">
+                                    <span class="inib-backup-name">@backup.FileName</span>
+                                    <span class="inib-backup-meta">@backup.TargetFileName &middot; @backup.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") &middot; @FormatSize(backup.SizeBytes)</span>
+                                </div>
+                                <div class="inib-backup-actions">
+                                    <button class="btn btn-secondary inib-small-btn"
+                                            disabled="@isApplying"
+                                            @onclick="() => RestoreBackupAsync(backup)">
+                                        Restore
+                                    </button>
+                                    <button class="btn btn-danger inib-small-btn"
+                                            disabled="@isApplying"
+                                            @onclick="() => DeleteBackupAsync(backup)">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+
+        </div>
+
+@code {
+    private const string LastPresetKey = "inibuilder.lastpreset";
+    private const string LastPresetTimeKey = "inibuilder.lastpreset.time";
+    private const string MaxBackupsShownNote = "20";
+
+    private IReadOnlyList<GameIniPreset> presets = Array.Empty<GameIniPreset>();
+    private List<GameIniBackup> backups = new();
+    private List<GameIniEntry> draftRows = new();
+    private GameIniTarget currentTarget = GameIniTarget.GameUserSettings;
+    private string lastAppliedPreset = "";
+    private string lastAppliedAt = "";
+    private bool arkFound = true;
+    private bool arkRunning;
+    private bool gameIniExists;
+    private string configFolder = "";
+    private bool isApplying;
+
+    private string StatusState => !arkFound ? "error" : arkRunning ? "warning" : "online";
+
+    private string StatusLabel => !arkFound
+        ? "ARK installation not found"
+        : arkRunning
+            ? "ARK is running"
+            : "Ready to apply";
+
+    private string StatusDescription => !arkFound
+        ? "Could not locate your ARK: Survival Evolved install. Make sure Steam and ARK are installed."
+        : arkRunning
+            ? "ARK rewrites GameUserSettings.ini when it exits — close the game before applying, or your changes will be overwritten."
+            : $"Editing INIs in {configFolder}";
+
+    private string LastAppliedLabel => string.IsNullOrEmpty(lastAppliedAt)
+        ? "Last applied"
+        : $"Applied {lastAppliedAt}";
+
+    private string TargetFileLabel => currentTarget == GameIniTarget.Game ? "Game.ini" : "GameUserSettings.ini";
+
+    private bool HasValidRows => draftRows.Any(r =>
+        !string.IsNullOrWhiteSpace(r.Section) && !string.IsNullOrWhiteSpace(r.Key));
+
+    protected override async Task OnInitializedAsync()
+    {
+        presets = GameIni.GetBuiltInPresets();
+        lastAppliedPreset = Preferences.Get(LastPresetKey, string.Empty);
+        lastAppliedAt = Preferences.Get(LastPresetTimeKey, string.Empty);
+        RefreshStatus();
+        await LoadDraftAsync();
+        await RefreshBackupsAsync();
+    }
+
+    private void RefreshStatus()
+    {
+        try
+        {
+            var path = GameIni.GetIniPath(GameIniTarget.GameUserSettings);
+            arkFound = path != null;
+            configFolder = path == null ? "" : (Path.GetDirectoryName(path) ?? "");
+            arkRunning = GameIni.IsArkRunning();
+            gameIniExists = GameIni.IniFileExists(GameIniTarget.Game);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing INI Builder status");
+        }
+    }
+
+    private async Task LoadDraftAsync()
+    {
+        try
+        {
+            var draft = await GameIni.LoadDraftAsync();
+            if (draft != null)
+            {
+                draftRows = draft.Rows ?? new List<GameIniEntry>();
+                currentTarget = string.Equals(draft.Target, "Game", StringComparison.OrdinalIgnoreCase)
+                    ? GameIniTarget.Game
+                    : GameIniTarget.GameUserSettings;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading INI Builder draft");
+        }
+
+        if (draftRows.Count == 0)
+        {
+            draftRows.Add(new GameIniEntry());
+        }
+    }
+
+    private async Task SaveDraftAsync()
+    {
+        try
+        {
+            var draft = new GameIniDraft
+            {
+                Target = currentTarget == GameIniTarget.Game ? "Game" : "GameUserSettings",
+                Rows = draftRows
+            };
+            await GameIni.SaveDraftAsync(draft);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to save INI Builder draft");
+        }
+    }
+
+    private async Task SetTargetAsync(GameIniTarget target)
+    {
+        if (currentTarget == target)
+        {
+            return;
+        }
+
+        currentTarget = target;
+        RefreshStatus();
+        await SaveDraftAsync();
+    }
+
+    private async Task AddRowAsync()
+    {
+        draftRows.Add(new GameIniEntry());
+        await SaveDraftAsync();
+    }
+
+    private async Task RemoveRowAsync(GameIniEntry row)
+    {
+        draftRows.Remove(row);
+        if (draftRows.Count == 0)
+        {
+            draftRows.Add(new GameIniEntry());
+        }
+
+        await SaveDraftAsync();
+    }
+
+    private async Task RefreshBackupsAsync()
+    {
+        try
+        {
+            backups = await Task.Run(() => GameIni.ListBackups());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading INI backups");
+        }
+    }
+
+    private bool BlockWhenNotReady()
+    {
+        RefreshStatus();
+
+        if (!arkFound)
+        {
+            NotificationService.ShowError("ARK installation not found — cannot write INI files.");
+            return true;
+        }
+
+        if (arkRunning)
+        {
+            NotificationService.ShowWarning("ARK is running. Close the game first — it overwrites GameUserSettings.ini on exit.");
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task ApplyPresetAsync(GameIniPreset preset)
+    {
+        if (isApplying || BlockWhenNotReady())
+        {
+            return;
+        }
+
+        isApplying = true;
+        try
+        {
+            var result = await GameIni.ApplyPresetAsync(preset);
+            if (result.Success)
+            {
+                lastAppliedPreset = preset.Name;
+                lastAppliedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+                Preferences.Set(LastPresetKey, lastAppliedPreset);
+                Preferences.Set(LastPresetTimeKey, lastAppliedAt);
+
+                NotificationService.ShowSuccess($"Preset '{preset.Name}' applied ({result.KeysApplied} keys). A backup was saved first.");
+                ActivityService.AddActivity($"INI Builder preset applied: {preset.Name}", "success");
+                await RefreshBackupsAsync();
+            }
+            else
+            {
+                NotificationService.ShowError(result.Error ?? "Failed to apply preset.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error applying INI Builder preset {Preset}", preset.Name);
+            NotificationService.ShowError($"Apply failed: {ex.Message}");
+        }
+        finally
+        {
+            isApplying = false;
+        }
+    }
+
+    private async Task ApplyCustomAsync()
+    {
+        if (isApplying || BlockWhenNotReady())
+        {
+            return;
+        }
+
+        if (!HasValidRows)
+        {
+            NotificationService.ShowWarning("Add at least one row with a section and a key.");
+            return;
+        }
+
+        isApplying = true;
+        try
+        {
+            await SaveDraftAsync();
+
+            var result = await GameIni.ApplyEntriesAsync(currentTarget, draftRows);
+            if (result.Success)
+            {
+                NotificationService.ShowSuccess($"{result.KeysApplied} key(s) written to {TargetFileLabel}.");
+                ActivityService.AddActivity($"INI Builder custom keys applied to {TargetFileLabel} ({result.KeysApplied} keys)", "success");
+                RefreshStatus();
+                await RefreshBackupsAsync();
+            }
+            else
+            {
+                NotificationService.ShowError(result.Error ?? "Failed to apply custom keys.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error applying INI Builder custom keys");
+            NotificationService.ShowError($"Apply failed: {ex.Message}");
+        }
+        finally
+        {
+            isApplying = false;
+        }
+    }
+
+    private async Task RestoreBackupAsync(GameIniBackup backup)
+    {
+        if (isApplying || BlockWhenNotReady())
+        {
+            return;
+        }
+
+        var confirm = await JSRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Restore '{backup.FileName}' over the live {backup.TargetFileName}?");
+        if (!confirm)
+        {
+            return;
+        }
+
+        isApplying = true;
+        try
+        {
+            var result = await GameIni.RestoreBackupAsync(backup);
+            if (result.Success)
+            {
+                NotificationService.ShowSuccess($"Backup restored to {backup.TargetFileName}. The previous file was snapshotted first.");
+                ActivityService.AddActivity($"INI Builder backup restored: {backup.FileName}", "success");
+                RefreshStatus();
+                await RefreshBackupsAsync();
+            }
+            else
+            {
+                NotificationService.ShowError(result.Error ?? "Failed to restore backup.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error restoring INI backup {Backup}", backup.FileName);
+            NotificationService.ShowError($"Restore failed: {ex.Message}");
+        }
+        finally
+        {
+            isApplying = false;
+        }
+    }
+
+    private async Task DeleteBackupAsync(GameIniBackup backup)
+    {
+        var confirm = await JSRuntime.InvokeAsync<bool>(
+            "confirm",
+            $"Delete backup '{backup.FileName}'? This cannot be undone.");
+        if (!confirm)
+        {
+            return;
+        }
+
+        try
+        {
+            var deleted = GameIni.DeleteBackup(backup);
+            if (deleted)
+            {
+                NotificationService.ShowSuccess("Backup deleted.");
+                ActivityService.AddActivity($"INI Builder backup deleted: {backup.FileName}", "warning");
+                await RefreshBackupsAsync();
+            }
+            else
+            {
+                NotificationService.ShowWarning("Backup could not be deleted.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting INI backup {Backup}", backup.FileName);
+            NotificationService.ShowError($"Delete failed: {ex.Message}");
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        if (bytes < 1024 * 1024)
+        {
+            return $"{bytes / 1024.0:F1} KB";
+        }
+
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+}

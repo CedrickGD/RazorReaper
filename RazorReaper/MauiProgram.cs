@@ -217,6 +217,7 @@ namespace RazorReaper
             services.AddSingleton<IArkLauncher, ArkLauncher>();
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
+            services.AddSingleton<IGameIniService, GameIniService>();
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<IUpdateService, UpdateService>();
             services.AddSingleton<IAutoUpdateManager, AutoUpdateManager>();
