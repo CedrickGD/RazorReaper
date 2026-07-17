@@ -23,10 +23,7 @@
                 </svg>
             </div>
             <h3>ARK installation not found</h3>
-            <p>
-                RazorReaper couldn't locate ARK: Survival Evolved through Steam.
-                Make sure the game is installed, then rescan.
-            </p>
+            <p>ARK wasn't found through Steam — make sure it's installed, then rescan.</p>
             <button type="button" class="ls-btn primary" @onclick="Refresh">Rescan</button>
         </div>
     }
@@ -39,10 +36,7 @@
                 </svg>
             </div>
             <h3>Movies folder missing</h3>
-            <p>
-                The ARK install was found, but its Movies folder doesn't exist.
-                Verify the game files in Steam, then rescan.
-            </p>
+            <p>The Movies folder doesn't exist — verify the game files in Steam, then rescan.</p>
             <p class="ls-empty-path">@_moviesPath</p>
             <button type="button" class="ls-btn primary" @onclick="Refresh">Rescan</button>
         </div>
@@ -70,31 +64,12 @@
                 </div>
                 <div class="ls-info-title">
                     <h3>How it works</h3>
-                    <p>What these videos are and what to expect.</p>
                 </div>
             </div>
-            <ul class="ls-info-list">
-                <li>
-                    These are ARK's <strong>startup, title and loading videos</strong>. The game plays whatever file
-                    sits in <code>ShooterGame\Content\Movies</code> under the original name — no config edits needed.
-                </li>
-                <li>
-                    Every movie ships twice: once as <strong>.mp4</strong> and once as <strong>.wmv</strong>.
-                    Replace <strong>both variants</strong> of the same movie so your version plays no matter
-                    which one the game picks.
-                </li>
-                <li>
-                    <strong>Format requirement:</strong> your video must use the same container as the file it
-                    replaces — a .mp4 for a .mp4, a .wmv for a .wmv. RazorReaper does not convert videos.
-                </li>
-                <li>
-                    The first time you replace a video, the untouched original is backed up to
-                    <code>@_backupFolder</code>. Restore brings it back exactly as it was.
-                </li>
-                <li>
-                    Changes apply on the <strong>next game start</strong>. Only your local files are touched.
-                </li>
-            </ul>
+            <p class="ls-info-text">
+                Replace both the .mp4 and .wmv variant of a movie with a video in the same format — RazorReaper does not convert.
+                Originals are backed up to <code>@_backupFolder</code> and changes apply on the next game start.
+            </p>
         </div>
 
         <div class="content-card ls-movies-card">
@@ -171,7 +146,7 @@
         : "All original videos intact";
 
     private string HeaderDescription => _replacedCount > 0
-        ? "Your custom videos play the next time ARK starts. Restore any file at any time."
+        ? "Custom videos play on the next game start."
         : "ARK's stock startup and loading videos are untouched.";
 
     protected override void OnInitialized()

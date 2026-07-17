@@ -65,7 +65,7 @@
 
         <div class="compact-ark-actions">
             <SettingRow Title="Compress with LZX"
-                        Description="Re-packs every game file with the strongest transparent NTFS algorithm. ARK stays fully playable — Windows decompresses on the fly."
+                        Description="Re-packs every game file with NTFS LZX compression — ARK stays fully playable."
                         Disabled="@(!CanStart)">
                 <button class="btn btn-primary" @onclick="() => RequestOperation(true)" disabled="@(!CanStart)">
                     Compress
@@ -73,7 +73,7 @@
             </SettingRow>
 
             <SettingRow Title="Uncompress"
-                        Description="Restores all files to their original uncompressed size. Make sure the drive has enough free space."
+                        Description="Restores all files to their original size — the drive needs enough free space."
                         Disabled="@(!CanStart)">
                 <button class="btn btn-secondary" @onclick="() => RequestOperation(false)" disabled="@(!CanStart)">
                     Uncompress
@@ -89,17 +89,16 @@
                     {
                         <strong>Compress the ARK install?</strong>
                         <span>
-                            This runs Windows compact.exe over @totalFiles.ToString("N0") files (@FormatBytes(logicalBytes)).
-                            It can take a while on large installs. You can cancel anytime — files already
-                            processed simply stay compressed.
+                            Runs compact.exe over @totalFiles.ToString("N0") files (@FormatBytes(logicalBytes)).
+                            You can cancel anytime — processed files stay compressed.
                         </span>
                     }
                     else
                     {
                         <strong>Uncompress the ARK install?</strong>
                         <span>
-                            This restores @totalFiles.ToString("N0") files back to their full size
-                            (@FormatBytes(logicalBytes) on disk when done). You can cancel anytime.
+                            Restores @totalFiles.ToString("N0") files to their full size
+                            (@FormatBytes(logicalBytes)). You can cancel anytime.
                         </span>
                     }
                 </div>
@@ -146,10 +145,8 @@
             <h3>Before you compact</h3>
         </div>
         <ul class="compact-ark-warning-list">
-            <li>The first launch after compressing is a bit slower while Windows warms up its cache. After that, load times are normal — often faster on slow drives.</li>
-            <li>Never compress or uncompress while ARK is running. Close the game (and let Steam finish any update) first.</li>
-            <li>LZX trades CPU for disk: reading assets costs a little extra CPU in exchange for a much smaller install.</li>
-            <li>Game updates write new files uncompressed, so savings shrink over time — just run Compress again after big patches.</li>
+            <li>Close ARK (and let Steam finish updating) before compressing or uncompressing.</li>
+            <li>Game updates write new files uncompressed — run Compress again after big patches.</li>
         </ul>
     </div>
 

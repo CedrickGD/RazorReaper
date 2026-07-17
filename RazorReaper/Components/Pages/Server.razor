@@ -228,10 +228,8 @@
                     </StatusHeader>
 
                     <p class="bulk-help-text">
-                        Paste one server per line: <span class="bulk-mono">IP:QUERYPORT</span>,
-                        <span class="bulk-mono">IP QUERYPORT</span>, <span class="bulk-mono">IP,QUERYPORT</span>
-                        or a <span class="bulk-mono">steam://connect/...</span> link.
-                        Lines starting with <span class="bulk-mono">#</span> or <span class="bulk-mono">//</span> are ignored.
+                        One server per line — <span class="bulk-mono">IP:QUERYPORT</span> or a
+                        <span class="bulk-mono">steam://connect/...</span> link; <span class="bulk-mono">#</span> lines are ignored.
                     </p>
 
                     <textarea class="bulk-input"
@@ -282,9 +280,8 @@
                     }
 
                     <div class="bulk-note">
-                        Ports are treated as query ports, matching the field above — the game port is derived automatically.
-                        Steam must be running; added servers appear under Steam &rarr; View &rarr; Game Servers &rarr; Favorites
-                        (no Steam restart required, same as the single-server button).
+                        Ports are treated as query ports; the game port is derived automatically.
+                        Steam must be running — added servers appear under View &rarr; Game Servers &rarr; Favorites.
                     </div>
                 </div>
 
@@ -1111,11 +1108,11 @@
         : "off";
 
     private string BulkStatusDescription =>
-        isBulkApplying ? $"Adding servers to Steam favorites ({bulkResults.Count}/{bulkParse.Valid.Count})"
+        isBulkApplying ? $"Adding to Steam favorites ({bulkResults.Count}/{bulkParse.Valid.Count})"
         : bulkLastRunSummary != null ? $"Last run: {bulkLastRunSummary}"
         : bulkParse.Valid.Count > 0 ? $"{bulkParse.Valid.Count} server{(bulkParse.Valid.Count == 1 ? "" : "s")} ready to add"
-        : bulkParse.Invalid.Count > 0 ? "No valid servers found in the pasted list"
-        : "Paste a server list to add every entry to Steam favorites at once";
+        : bulkParse.Invalid.Count > 0 ? "No valid servers found"
+        : "Paste a server list to add all entries to Steam favorites";
 
     private void OnBulkInputChanged()
     {

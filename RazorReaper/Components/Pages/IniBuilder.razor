@@ -34,7 +34,7 @@
                ============================================================ *@
             <section class="content-card">
                 <h3>One-Click Presets</h3>
-                <p class="inib-card-intro">Each preset edits only its own keys — the rest of your INI (mod sections, comments, keybinds) is left untouched. A timestamped backup is created before every apply.</p>
+                <p class="inib-card-intro">Each preset edits only its own keys; a backup is created before every apply.</p>
 
                 <div class="inib-preset-grid">
                     @foreach (var preset in presets)
@@ -73,7 +73,7 @@
                ============================================================ *@
             <section class="content-card">
                 <h3>Custom Keys</h3>
-                <p class="inib-card-intro">Write your own keys with the same targeted editor: the first matching key in the section is updated, missing keys are appended, missing sections are created.</p>
+                <p class="inib-card-intro">Add your own keys — existing keys are updated in place, missing keys and sections are created.</p>
 
                 <SettingRow Title="Target file"
                             Description="Which INI file the rows below are written to.">
@@ -93,7 +93,7 @@
 
                 @if (currentTarget == GameIniTarget.Game && !gameIniExists)
                 {
-                    <p class="inib-note warn">Game.ini does not exist yet — it will be created when you apply.</p>
+                    <p class="inib-note">Game.ini does not exist yet — it will be created when you apply.</p>
                 }
 
                 <div class="inib-rows">
@@ -131,7 +131,7 @@
                     </button>
                 </div>
 
-                <p class="inib-note">Rows are saved as a draft automatically and restored the next time you open this page.</p>
+                <p class="inib-note">Rows are saved as a draft automatically.</p>
             </section>
 
             @* ============================================================
@@ -139,11 +139,11 @@
                ============================================================ *@
             <section class="content-card">
                 <h3>Backups</h3>
-                <p class="inib-card-intro">The last @MaxBackupsShownNote backups per file are kept in your local RazorReaper folder. Restoring snapshots the current file first, so you can always go back.</p>
+                <p class="inib-card-intro">The last @MaxBackupsShownNote backups per file are kept; restoring snapshots the current file first.</p>
 
                 @if (backups.Count == 0)
                 {
-                    <p class="inib-empty">No backups yet — one is created automatically every time you apply a preset or custom keys.</p>
+                    <p class="inib-empty">No backups yet — one is created each time you apply.</p>
                 }
                 else
                 {
@@ -201,9 +201,9 @@
             : "Ready to apply";
 
     private string StatusDescription => !arkFound
-        ? "Could not locate your ARK: Survival Evolved install. Make sure Steam and ARK are installed."
+        ? "ARK install not found — make sure Steam and ARK are installed."
         : arkRunning
-            ? "ARK rewrites GameUserSettings.ini when it exits — close the game before applying, or your changes will be overwritten."
+            ? "Close ARK before applying — it overwrites GameUserSettings.ini on exit."
             : $"Editing INIs in {configFolder}";
 
     private string LastAppliedLabel => string.IsNullOrEmpty(lastAppliedAt)

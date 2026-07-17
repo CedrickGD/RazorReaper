@@ -78,7 +78,7 @@
 
 .inib-chip {
     font-size: 0.65rem;
-    font-weight: 600;
+    font-weight: 500;
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-round);
     background: rgba(255, 255, 255, 0.06);
@@ -109,10 +109,10 @@
     align-items: center;
     gap: var(--space-1);
     font-size: 0.68rem;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--accent-purple-light);
-    background: rgba(var(--accent-purple-rgb), 0.12);
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
+    background: rgba(var(--accent-purple-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-round);
     white-space: nowrap;
@@ -153,7 +153,7 @@
     color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 500;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-chip);
     cursor: pointer;
@@ -192,7 +192,7 @@
 
 .inib-row-head {
     font-size: 0.68rem;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-secondary);
@@ -247,10 +247,6 @@
     color: var(--text-secondary);
     margin-top: var(--space-3);
 }
-
-    .inib-note.warn {
-        color: var(--accent-orange-soft);
-    }
 
 /* ------------------------------------------------------------
    Backups list

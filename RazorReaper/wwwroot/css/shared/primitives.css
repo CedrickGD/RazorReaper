@@ -41,7 +41,7 @@
 
 .setting-row-title {
     font-size: 0.9rem;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-primary);
 }
 
@@ -146,7 +146,7 @@
 
 .status-header-label {
     font-size: 0.95rem;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-primary);
 }
 
