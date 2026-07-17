@@ -230,6 +230,7 @@ namespace RazorReaper
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<RazorReaper.Services.Steam.ISteamFavoritesService, RazorReaper.Services.Steam.SteamFavoritesService>();
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
+            services.AddSingleton<ICompactArkService, CompactArkService>();
             services.AddSingleton<ICrosshairService, CrosshairService>();
             services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();

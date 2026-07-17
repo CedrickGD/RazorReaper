@@ -61,6 +61,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["autoclicker"] = "Auto Clicker",
             ["crosshair"] = "Crosshair",
             ["crafting-scripts"] = "Macro / AHK",
+            ["compact-ark"] = "Compact ARK",
             ["troubleshoot"] = "Troubleshoot",
             ["credits"] = "Credits",
         };

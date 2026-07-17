@@ -1,0 +1,251 @@
+/* Compact ARK page — namespaced under .compact-ark-page.
+   Uses theme tokens only (radius/space/accent vars); neutral rgba surfaces
+   follow the conventions of the other page stylesheets. */
+
+.compact-ark-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.compact-ark-page .content-card {
+    margin-bottom: 0 !important;
+}
+
+.compact-ark-btn-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------- status card */
+
+.compact-ark-scan-note {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    border: 1px dashed rgba(var(--accent-purple-rgb), 0.35);
+    background: rgba(var(--accent-purple-rgb), 0.08);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+}
+
+.compact-ark-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+}
+
+.compact-ark-stat {
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.compact-ark-stat.accent {
+    border-color: rgba(var(--accent-purple-rgb), 0.35);
+    background: rgba(var(--accent-purple-rgb), 0.08);
+}
+
+.compact-ark-stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+}
+
+.compact-ark-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.compact-ark-stat.accent .compact-ark-stat-value {
+    color: var(--accent-purple-light);
+}
+
+.compact-ark-stat-sub {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.compact-ark-analyzed-note {
+    margin-top: var(--space-3);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------- actions card */
+
+.compact-ark-actions {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.compact-ark-confirm {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.4);
+    background: rgba(var(--accent-purple-rgb), 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    animation: fadeInUp 0.25s ease-out;
+}
+
+.compact-ark-confirm-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.compact-ark-confirm-text strong {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.compact-ark-confirm-text span {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.compact-ark-confirm-buttons {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------- progress */
+
+.compact-ark-progress {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    animation: fadeInUp 0.25s ease-out;
+}
+
+.compact-ark-progress-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.compact-ark-progress-label {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.compact-ark-progress-percent {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-purple-light);
+}
+
+.compact-ark-progress-bar {
+    height: 8px;
+    border-radius: var(--radius-round);
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.compact-ark-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-round);
+    background: var(--gradient-purple);
+    box-shadow: 0 0 10px rgba(var(--accent-purple-rgb), 0.5);
+    transition: width 0.2s ease;
+}
+
+.compact-ark-current-file {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.compact-ark-progress-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------- warning card */
+
+.compact-ark-warning-card {
+    border-color: rgba(var(--accent-orange-rgb), 0.3) !important;
+}
+
+.compact-ark-warning-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.compact-ark-warning-header h3 {
+    margin: 0 !important;
+}
+
+.compact-ark-warning-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-panel);
+    background: rgba(var(--accent-orange-rgb), 0.15);
+    color: var(--accent-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.compact-ark-warning-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.compact-ark-warning-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-3);
+}
+
+.compact-ark-warning-list li {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    border: 1px solid rgba(var(--accent-orange-rgb), 0.2);
+    background: rgba(var(--accent-orange-rgb), 0.06);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+
+@media (max-width: 768px) {
+    .compact-ark-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .compact-ark-confirm-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

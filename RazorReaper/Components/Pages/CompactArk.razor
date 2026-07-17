@@ -1,0 +1,546 @@
+@page "/compact-ark"
+@using Microsoft.Extensions.Logging
+@using Microsoft.Maui.Storage
+@using RazorReaper.Services
+@using RazorReaper.Components.Shared
+@implements IDisposable
+@inject ICompactArkService CompactArkService
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+@inject ILogger<CompactArk> Logger
+
+<header class="page-header">
+    <h1 class="page-title">Compact ARK</h1>
+    <p class="page-subtitle">Shrink your ARK install with transparent Windows NTFS compression.</p>
+</header>
+
+<div class="compact-ark-page">
+
+    <div class="content-card">
+        <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
+            <Actions>
+                <button class="btn btn-secondary" @onclick="RunAnalysisAsync" disabled="@(isAnalyzing || IsBusy)">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="compact-ark-btn-icon">
+                        <path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6" />
+                        <path d="M16.5 2.5v3h-3" />
+                    </svg>
+                    @(isAnalyzing ? "Analyzing..." : "Analyze")
+                </button>
+            </Actions>
+        </StatusHeader>
+
+        @if (isAnalyzing)
+        {
+            <div class="compact-ark-scan-note">
+                Scanning files... @filesScanned.ToString("N0") files, @FormatBytes(scannedLogicalBytes) so far
+            </div>
+        }
+
+        <div class="compact-ark-stats">
+            <div class="compact-ark-stat">
+                <div class="compact-ark-stat-label">Logical size</div>
+                <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(logicalBytes) : "—")</div>
+                <div class="compact-ark-stat-sub">What the game data adds up to</div>
+            </div>
+            <div class="compact-ark-stat">
+                <div class="compact-ark-stat-label">On disk</div>
+                <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(onDiskBytes) : "—")</div>
+                <div class="compact-ark-stat-sub">What it actually occupies</div>
+            </div>
+            <div class="compact-ark-stat accent">
+                <div class="compact-ark-stat-label">Saved</div>
+                <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(SavedBytes) : "—")</div>
+                <div class="compact-ark-stat-sub">@(HasStats ? $"{SavedPercent:0.0}% of the install" : "Run an analysis to find out")</div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(lastAnalyzedLabel) && !isAnalyzing)
+        {
+            <div class="compact-ark-analyzed-note">Last analyzed: @lastAnalyzedLabel</div>
+        }
+    </div>
+
+    <div class="content-card">
+        <h3>Actions</h3>
+
+        <div class="compact-ark-actions">
+            <SettingRow Title="Compress with LZX"
+                        Description="Re-packs every game file with the strongest transparent NTFS algorithm. ARK stays fully playable — Windows decompresses on the fly."
+                        Disabled="@(!CanStart)">
+                <button class="btn btn-primary" @onclick="() => RequestOperation(true)" disabled="@(!CanStart)">
+                    Compress
+                </button>
+            </SettingRow>
+
+            <SettingRow Title="Uncompress"
+                        Description="Restores all files to their original uncompressed size. Make sure the drive has enough free space."
+                        Disabled="@(!CanStart)">
+                <button class="btn btn-secondary" @onclick="() => RequestOperation(false)" disabled="@(!CanStart)">
+                    Uncompress
+                </button>
+            </SettingRow>
+        </div>
+
+        @if (pendingCompress != null)
+        {
+            <div class="compact-ark-confirm">
+                <div class="compact-ark-confirm-text">
+                    @if (pendingCompress == true)
+                    {
+                        <strong>Compress the ARK install?</strong>
+                        <span>
+                            This runs Windows compact.exe over @totalFiles.ToString("N0") files (@FormatBytes(logicalBytes)).
+                            It can take a while on large installs. You can cancel anytime — files already
+                            processed simply stay compressed.
+                        </span>
+                    }
+                    else
+                    {
+                        <strong>Uncompress the ARK install?</strong>
+                        <span>
+                            This restores @totalFiles.ToString("N0") files back to their full size
+                            (@FormatBytes(logicalBytes) on disk when done). You can cancel anytime.
+                        </span>
+                    }
+                </div>
+                <div class="compact-ark-confirm-buttons">
+                    <button class="btn btn-primary" @onclick="ConfirmOperationAsync">Start</button>
+                    <button class="btn btn-secondary" @onclick="CancelConfirm">Cancel</button>
+                </div>
+            </div>
+        }
+
+        @if (IsBusy)
+        {
+            <div class="compact-ark-progress">
+                <div class="compact-ark-progress-head">
+                    <span class="compact-ark-progress-label">
+                        @(activeOperation == "compress" ? "Compressing" : "Uncompressing")...
+                        @opFilesDone.ToString("N0") / @opTotalFiles.ToString("N0") files
+                    </span>
+                    <span class="compact-ark-progress-percent">@($"{ProgressPercent:0}")%</span>
+                </div>
+                <div class="compact-ark-progress-bar">
+                    <div class="compact-ark-progress-fill" style="width: @ProgressPercentCss%"></div>
+                </div>
+                @if (!string.IsNullOrEmpty(opCurrentFile))
+                {
+                    <div class="compact-ark-current-file" title="@opCurrentFile">@opCurrentFile</div>
+                }
+                <div class="compact-ark-progress-actions">
+                    <button class="btn btn-danger" @onclick="CancelOperation" disabled="@cancelRequested">
+                        @(cancelRequested ? "Cancelling..." : "Cancel")
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="content-card compact-ark-warning-card">
+        <div class="compact-ark-warning-header">
+            <div class="compact-ark-warning-icon">
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h3>Before you compact</h3>
+        </div>
+        <ul class="compact-ark-warning-list">
+            <li>The first launch after compressing is a bit slower while Windows warms up its cache. After that, load times are normal — often faster on slow drives.</li>
+            <li>Never compress or uncompress while ARK is running. Close the game (and let Steam finish any update) first.</li>
+            <li>LZX trades CPU for disk: reading assets costs a little extra CPU in exchange for a much smaller install.</li>
+            <li>Game updates write new files uncompressed, so savings shrink over time — just run Compress again after big patches.</li>
+        </ul>
+    </div>
+
+</div>
+
+@code {
+    private const string PrefLogical = "compactark.logical";
+    private const string PrefOnDisk = "compactark.ondisk";
+    private const string PrefFiles = "compactark.files";
+    private const string PrefState = "compactark.state";
+    private const string PrefAnalyzedAt = "compactark.analyzedat";
+
+    private CompactArkAnalysis? analysis;
+    private bool isAnalyzing;
+    private bool autoAnalysisStarted;
+
+    // Persisted / last-known stats shown in the stats card.
+    private long logicalBytes;
+    private long onDiskBytes;
+    private int totalFiles;
+    private CompactArkState state = CompactArkState.Unknown;
+    private string? installPath;
+    private string? lastAnalyzedLabel;
+
+    // Live analysis progress.
+    private int filesScanned;
+    private long scannedLogicalBytes;
+
+    // Operation state. activeOperation: null | "compress" | "uncompress".
+    private string? activeOperation;
+    private bool? pendingCompress;
+    private bool cancelRequested;
+    private int opFilesDone;
+    private int opTotalFiles;
+    private string? opCurrentFile;
+
+    private CancellationTokenSource? analysisCts;
+    private CancellationTokenSource? operationCts;
+
+    private bool IsBusy => activeOperation != null;
+    private bool HasStats => logicalBytes > 0;
+    private long SavedBytes => Math.Max(0, logicalBytes - onDiskBytes);
+    private double SavedPercent => logicalBytes > 0 ? (1.0 - (double)onDiskBytes / logicalBytes) * 100.0 : 0;
+    private double ProgressPercent => opTotalFiles > 0 ? Math.Min(100.0, opFilesDone * 100.0 / opTotalFiles) : 0;
+
+    // Invariant culture so the inline CSS width never gets a decimal comma.
+    private string ProgressPercentCss =>
+        ProgressPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private bool CanStart =>
+        !isAnalyzing
+        && !IsBusy
+        && pendingCompress == null
+        && analysis is { InstallFound: true, IsNtfs: true, IsGameRunning: false };
+
+    private string StatusState
+    {
+        get
+        {
+            if (IsBusy || isAnalyzing) return "warning";
+            if (analysis == null) return state == CompactArkState.Compacted ? "online" : "off";
+            if (!analysis.InstallFound || !analysis.IsNtfs) return "error";
+            if (analysis.IsGameRunning) return "warning";
+            return state switch
+            {
+                CompactArkState.Compacted => "online",
+                CompactArkState.PartiallyCompacted => "warning",
+                _ => "off"
+            };
+        }
+    }
+
+    private string StatusLabel
+    {
+        get
+        {
+            if (activeOperation == "compress") return "Compressing...";
+            if (activeOperation == "uncompress") return "Uncompressing...";
+            if (isAnalyzing) return "Analyzing install...";
+            if (analysis != null && !analysis.InstallFound) return "ARK install not found";
+            if (analysis != null && !analysis.IsNtfs) return $"Drive is not NTFS ({analysis.DriveFormat ?? "unknown"})";
+            if (analysis is { IsGameRunning: true }) return "ARK is running";
+            return state switch
+            {
+                CompactArkState.Compacted => "Compacted",
+                CompactArkState.PartiallyCompacted => "Partially compacted",
+                CompactArkState.NotCompacted => "Not compacted",
+                _ => "Unknown"
+            };
+        }
+    }
+
+    private string StatusDescription
+    {
+        get
+        {
+            if (analysis != null && !analysis.InstallFound)
+                return "Could not locate a valid ARK: Survival Evolved installation.";
+            if (analysis != null && !analysis.IsNtfs)
+                return "NTFS compression only works on NTFS-formatted drives.";
+            if (analysis is { IsGameRunning: true })
+                return "Close ARK before compressing or uncompressing the install.";
+            return installPath ?? "Install path will appear here after analysis.";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        LoadPersistedStats();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !autoAnalysisStarted)
+        {
+            autoAnalysisStarted = true;
+            await RunAnalysisAsync();
+        }
+    }
+
+    private void LoadPersistedStats()
+    {
+        try
+        {
+            logicalBytes = Preferences.Get(PrefLogical, 0L);
+            onDiskBytes = Preferences.Get(PrefOnDisk, 0L);
+            totalFiles = Preferences.Get(PrefFiles, 0);
+            state = (CompactArkState)Preferences.Get(PrefState, (int)CompactArkState.Unknown);
+            lastAnalyzedLabel = Preferences.Get(PrefAnalyzedAt, string.Empty);
+            if (string.IsNullOrWhiteSpace(lastAnalyzedLabel))
+            {
+                lastAnalyzedLabel = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load persisted Compact ARK stats");
+        }
+    }
+
+    private void PersistStats()
+    {
+        try
+        {
+            lastAnalyzedLabel = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            Preferences.Set(PrefLogical, logicalBytes);
+            Preferences.Set(PrefOnDisk, onDiskBytes);
+            Preferences.Set(PrefFiles, totalFiles);
+            Preferences.Set(PrefState, (int)state);
+            Preferences.Set(PrefAnalyzedAt, lastAnalyzedLabel);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to persist Compact ARK stats");
+        }
+    }
+
+    private async Task RunAnalysisAsync()
+    {
+        if (isAnalyzing || IsBusy)
+        {
+            return;
+        }
+
+        isAnalyzing = true;
+        pendingCompress = null;
+        filesScanned = 0;
+        scannedLogicalBytes = 0;
+        analysisCts = new CancellationTokenSource();
+        StateHasChanged();
+
+        try
+        {
+            var progress = new Progress<CompactArkAnalyzeProgress>(p =>
+            {
+                filesScanned = p.FilesScanned;
+                scannedLogicalBytes = p.LogicalBytes;
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = await CompactArkService.AnalyzeAsync(progress, analysisCts.Token);
+
+            analysis = result;
+            installPath = result.InstallPath;
+
+            if (!result.InstallFound)
+            {
+                NotificationService.ShowError("ARK installation not found. Compact ARK needs a valid install.");
+            }
+            else
+            {
+                logicalBytes = result.LogicalBytes;
+                onDiskBytes = result.OnDiskBytes;
+                totalFiles = result.TotalFiles;
+                state = result.State;
+                PersistStats();
+
+                if (!result.IsNtfs)
+                {
+                    NotificationService.ShowWarning(
+                        $"The ARK drive is {result.DriveFormat ?? "not NTFS"} — NTFS compression is unavailable.");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Page navigated away or analysis cancelled — nothing to report.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Compact ARK analysis failed");
+            NotificationService.ShowError($"Analysis failed: {ex.Message}");
+        }
+        finally
+        {
+            isAnalyzing = false;
+            analysisCts?.Dispose();
+            analysisCts = null;
+            StateHasChanged();
+        }
+    }
+
+    private void RequestOperation(bool compress)
+    {
+        if (!CanStart)
+        {
+            return;
+        }
+
+        pendingCompress = compress;
+    }
+
+    private void CancelConfirm()
+    {
+        pendingCompress = null;
+    }
+
+    private async Task ConfirmOperationAsync()
+    {
+        if (pendingCompress is not bool compress || IsBusy)
+        {
+            return;
+        }
+
+        pendingCompress = null;
+
+        if (CompactArkService.IsArkRunning())
+        {
+            NotificationService.ShowError("ARK is currently running. Close the game first.");
+            return;
+        }
+
+        activeOperation = compress ? "compress" : "uncompress";
+        cancelRequested = false;
+        opFilesDone = 0;
+        opTotalFiles = totalFiles;
+        opCurrentFile = null;
+        operationCts = new CancellationTokenSource();
+        StateHasChanged();
+
+        bool reanalyze = false;
+
+        try
+        {
+            var progress = new Progress<CompactArkOperationProgress>(p =>
+            {
+                opFilesDone = p.FilesProcessed;
+                opTotalFiles = p.TotalFiles;
+                opCurrentFile = p.CurrentFile;
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = compress
+                ? await CompactArkService.CompressAsync(progress, operationCts.Token)
+                : await CompactArkService.UncompressAsync(progress, operationCts.Token);
+
+            if (result.Cancelled)
+            {
+                NotificationService.ShowWarning(
+                    compress
+                        ? "Compression cancelled. Files already processed stay compressed."
+                        : "Uncompress cancelled. Files already processed stay uncompressed.");
+                ActivityService.AddActivity(
+                    compress ? "Compact ARK: compression cancelled" : "Compact ARK: uncompress cancelled",
+                    "warning");
+                reanalyze = true;
+            }
+            else if (!result.Success)
+            {
+                NotificationService.ShowError(result.ErrorMessage ?? "The compact operation failed.");
+                ActivityService.AddActivity("Compact ARK operation failed", "warning");
+            }
+            else
+            {
+                logicalBytes = result.LogicalBytes;
+                onDiskBytes = result.OnDiskBytesAfter;
+                state = compress ? CompactArkState.Compacted : CompactArkState.NotCompacted;
+                if (analysis != null)
+                {
+                    analysis = analysis with
+                    {
+                        LogicalBytes = result.LogicalBytes,
+                        OnDiskBytes = result.OnDiskBytesAfter,
+                        State = state,
+                        IsGameRunning = CompactArkService.IsArkRunning()
+                    };
+                }
+                PersistStats();
+
+                if (compress)
+                {
+                    var saved = Math.Max(0, result.LogicalBytes - result.OnDiskBytesAfter);
+                    NotificationService.ShowSuccess($"ARK compressed — {FormatBytes(saved)} saved on disk.");
+                    ActivityService.AddActivity($"Compacted ARK install (saved {FormatBytes(saved)})", "success");
+                }
+                else
+                {
+                    NotificationService.ShowSuccess("ARK restored to its full uncompressed size.");
+                    ActivityService.AddActivity("Uncompressed ARK install", "success");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Compact ARK operation failed unexpectedly");
+            NotificationService.ShowError($"Operation failed: {ex.Message}");
+        }
+        finally
+        {
+            activeOperation = null;
+            cancelRequested = false;
+            operationCts?.Dispose();
+            operationCts = null;
+            StateHasChanged();
+        }
+
+        if (reanalyze)
+        {
+            await RunAnalysisAsync();
+        }
+    }
+
+    private void CancelOperation()
+    {
+        if (operationCts == null || cancelRequested)
+        {
+            return;
+        }
+
+        cancelRequested = true;
+        try
+        {
+            operationCts.Cancel();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to signal cancellation for compact operation");
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 0)
+        {
+            return "—";
+        }
+
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return value >= 100 ? $"{value:N0} {units[unit]}" : $"{value:N1} {units[unit]}";
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            analysisCts?.Cancel();
+        }
+        catch { /* page teardown must never throw */ }
+
+        try
+        {
+            operationCts?.Cancel();
+        }
+        catch { /* page teardown must never throw */ }
+    }
+}
