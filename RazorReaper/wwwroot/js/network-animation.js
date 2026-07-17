@@ -1,3 +1,7 @@
+// Read the live accent color ("R, G, B" channel list) from the theme engine,
+// which sets --accent-purple-rgb inline on documentElement.
+const readAccent = () => (getComputedStyle(document.documentElement).getPropertyValue('--accent-purple-rgb') || '139, 92, 246').trim();
+
 class NetworkAnimation {
     constructor() {
         this.canvas = document.getElementById('network-canvas');
@@ -10,15 +14,27 @@ class NetworkAnimation {
         this.animationId = null;
         this.time = 0;
         this._resizeTimer = null;
+        this.accentBlend = '208, 190, 251'; // default purple blended toward white; refreshed at runtime
+        this._lastAccentRefresh = 0;
 
         this.init();
     }
 
     init() {
+        this.refreshAccent();
         this.setupEventListeners();
         this.resizeCanvas();
         this.createNodes();
         this.animate();
+    }
+
+    refreshAccent() {
+        const parts = readAccent().split(',').map(p => parseInt(p, 10));
+        if (parts.length === 3 && parts.every(n => Number.isFinite(n))) {
+            // Mix 60% accent / 40% white per channel so low-alpha nodes/links
+            // stay visible on the near-black background.
+            this.accentBlend = parts.map(c => Math.round(c * 0.6 + 255 * 0.4)).join(', ');
+        }
     }
 
     setupEventListeners() {
@@ -115,6 +131,13 @@ class NetworkAnimation {
     animate() {
         this.time += 0.017;
 
+        // Refresh the cached accent roughly once per second so live theme
+        // changes propagate without a reload (avoids per-frame getComputedStyle).
+        if (this.time - this._lastAccentRefresh >= 1) {
+            this._lastAccentRefresh = this.time;
+            this.refreshAccent();
+        }
+
         this.ctx.fillStyle = '#0a0a0a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -154,7 +177,7 @@ class NetworkAnimation {
                     const trailSize = node.size * 0.3 * point.life;
                     this.ctx.beginPath();
                     this.ctx.arc(point.x, point.y, trailSize, 0, Math.PI * 2);
-                    this.ctx.fillStyle = `rgba(255, 255, 255, ${point.life * 0.3})`;
+                    this.ctx.fillStyle = `rgba(${this.accentBlend}, ${point.life * 0.3})`;
                     this.ctx.fill();
                 }
             }
@@ -162,7 +185,7 @@ class NetworkAnimation {
             const pulseSize = node.size + Math.sin(this.time * 3 + node.pulseOffset) * 0.3;
             this.ctx.beginPath();
             this.ctx.arc(node.x, node.y, pulseSize, 0, Math.PI * 2);
-            this.ctx.fillStyle = distance < 80 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
+            this.ctx.fillStyle = distance < 80 ? `rgba(${this.accentBlend}, 0.9)` : `rgba(${this.accentBlend}, 0.6)`;
             this.ctx.fill();
 
             // Only check connections with subsequent nodes (avoid duplicates)
@@ -194,7 +217,7 @@ class NetworkAnimation {
                     const nodeDistance = Math.sqrt(nodeDistSq);
                     const maxDist = Math.sqrt(maxDistSq);
                     const alpha = (1 - nodeDistance / maxDist) * 0.4;
-                    this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                    this.ctx.strokeStyle = `rgba(${this.accentBlend}, ${alpha})`;
                     this.ctx.lineWidth = 0.5;
 
                     if (useElectric) {
