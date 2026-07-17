@@ -14,7 +14,7 @@
     backdrop-filter: blur(10px) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     padding: 2rem !important;
-    border-radius: 16px !important;
+    border-radius: var(--radius-card) !important;
     animation: fadeInUp 0.6s ease-out !important;
 }
 
@@ -63,7 +63,7 @@
     padding: 0.75rem !important;
     background: rgba(0, 0, 0, 0.3) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 8px !important;
+    border-radius: var(--radius-control) !important;
     color: var(--text-primary) !important;
     font-size: 0.9rem !important;
     transition: all 0.3s ease !important;
@@ -115,7 +115,7 @@
     padding: 0.75rem 1rem !important;
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 8px !important;
+    border-radius: var(--radius-control) !important;
     color: var(--text-primary) !important;
     cursor: pointer !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -207,7 +207,7 @@
     font-size: 0.8rem !important;
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 8px !important;
+    border-radius: var(--radius-control) !important;
     color: var(--text-primary) !important;
     cursor: pointer !important;
     transition: all 0.3s ease !important;
@@ -246,7 +246,7 @@
 
 .server-status-message {
     padding: 1.5rem !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius-panel) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     margin-top: 1rem !important;
     background: rgba(0, 0, 0, 0.3) !important;
@@ -324,7 +324,7 @@
 
 .favorites-success {
     padding: 1rem !important;
-    border-radius: 8px !important;
+    border-radius: var(--radius-control) !important;
     background: rgba(var(--accent-purple-rgb), 0.15) !important;
     border: 1px solid var(--accent-purple) !important;
     color: var(--accent-purple) !important;
@@ -360,7 +360,7 @@
 .server-item {
     background: rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     padding: 1rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
@@ -399,7 +399,7 @@
 
     .server-status-dot.offline {
         background: var(--accent-red);
-        box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        box-shadow: 0 0 8px rgba(var(--accent-red-rgb), 0.6);
     }
 
 .server-item-info {
@@ -443,7 +443,7 @@
     padding: 0.5rem 0.75rem;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     color: var(--text-primary);
     cursor: pointer;
     font-size: 0.7rem;
@@ -482,7 +482,7 @@
 
         .server-action-btn.remove:hover {
             border-color: var(--accent-red);
-            background: rgba(239, 68, 68, 0.1);
+            background: rgba(var(--accent-red-rgb), 0.1);
         }
 
 .empty-servers-state {
@@ -507,7 +507,7 @@
 .troubleshooting-item {
     background: var(--background-dark) !important;
     border: 1px solid var(--border-color) !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius-panel) !important;
     padding: 1.5rem !important;
     backdrop-filter: blur(5px) !important;
     transition: all 0.3s ease !important;

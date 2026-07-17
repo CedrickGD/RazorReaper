@@ -20,7 +20,7 @@
 .bosses-intro-icon {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     background: rgba(var(--accent-purple-rgb), 0.15);
     color: var(--accent-purple);
     display: flex;
@@ -87,7 +87,7 @@
 .boss-card {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
+    border-radius: var(--radius-card);
     padding: 1.25rem;
     display: flex;
     flex-direction: column;
@@ -123,7 +123,7 @@
 
 .boss-type-pill {
     padding: 0.2rem 0.6rem;
-    border-radius: 999px;
+    border-radius: var(--radius-round);
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -155,7 +155,7 @@
 
 .boss-tag {
     padding: 0.2rem 0.55rem;
-    border-radius: 999px;
+    border-radius: var(--radius-round);
     font-size: 0.65rem;
     font-weight: 600;
     background: rgba(var(--accent-purple-rgb), 0.12);
@@ -165,7 +165,7 @@
 
 .boss-tier-details {
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     padding: 0.6rem 0.75rem;
     background: rgba(0, 0, 0, 0.2);
 }
@@ -213,20 +213,20 @@
 .boss-tier-card {
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     padding: 0.75rem;
 }
 
 .boss-tier-card.tier-alpha {
-    border-color: rgba(239, 68, 68, 0.4);
+    border-color: rgba(var(--accent-red-rgb), 0.4);
 }
 
 .boss-tier-card.tier-beta {
-    border-color: rgba(59, 130, 246, 0.35);
+    border-color: rgba(var(--accent-blue-rgb), 0.35);
 }
 
 .boss-tier-card.tier-gamma {
-    border-color: rgba(34, 197, 94, 0.35);
+    border-color: rgba(var(--accent-green-rgb), 0.35);
 }
 
 .boss-tier-card.tier-neutral {
@@ -253,7 +253,7 @@
     font-size: 0.7rem;
     color: var(--text-secondary);
     padding: 0.15rem 0.45rem;
-    border-radius: 999px;
+    border-radius: var(--radius-round);
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 

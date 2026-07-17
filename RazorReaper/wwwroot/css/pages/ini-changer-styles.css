@@ -39,7 +39,7 @@
     width: 116px;
     aspect-ratio: 16 / 9;
     flex-shrink: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(0, 0, 0, 0.4);
@@ -86,7 +86,7 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
+    border-radius: var(--radius-round);
     backdrop-filter: blur(6px);
 }
 
@@ -206,7 +206,7 @@
     padding: 0.42rem 0.75rem;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 7px;
+    border-radius: var(--radius-chip);
     color: var(--text-primary);
     font-size: 0.74rem;
     font-weight: 500;
@@ -234,26 +234,26 @@
 
 /* Danger variant — Remove water */
 .ini-btn.ini-btn-danger {
-    background: rgba(239, 68, 68, 0.08);
-    border-color: rgba(239, 68, 68, 0.22);
+    background: rgba(var(--accent-red-rgb), 0.08);
+    border-color: rgba(var(--accent-red-rgb), 0.22);
     color: #fca5a5;
 }
 
     .ini-btn.ini-btn-danger:hover:not(:disabled) {
-        background: rgba(239, 68, 68, 0.18);
-        border-color: rgba(239, 68, 68, 0.5);
-        color: #fecaca;
+        background: rgba(var(--accent-red-rgb), 0.18);
+        border-color: rgba(var(--accent-red-rgb), 0.5);
+        color: var(--accent-red-soft);
     }
 
 /* Accent variant — primary action like "Add Preset". */
 .ini-btn.ini-btn-accent {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.25), rgba(124, 58, 237, 0.18));
+    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.25), rgba(var(--accent-purple-rgb), 0.18));
     border-color: rgba(var(--accent-purple-rgb), 0.5);
     color: #ffffff;
 }
 
     .ini-btn.ini-btn-accent:hover:not(:disabled) {
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.42), rgba(124, 58, 237, 0.3));
+        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.42), rgba(var(--accent-purple-rgb), 0.3));
         border-color: rgba(var(--accent-purple-rgb), 0.7);
         box-shadow: 0 10px 22px rgba(var(--accent-purple-rgb), 0.22);
     }
@@ -266,7 +266,7 @@
     padding: 0.42rem 0.75rem;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 7px;
+    border-radius: var(--radius-chip);
     color: var(--text-secondary);
     font-size: 0.74rem;
     font-weight: 500;
@@ -296,13 +296,13 @@
     }
 
     .ini-toolbar-toggle.is-active {
-        background: rgba(239, 68, 68, 0.15);
-        border-color: rgba(239, 68, 68, 0.45);
+        background: rgba(var(--accent-red-rgb), 0.15);
+        border-color: rgba(var(--accent-red-rgb), 0.45);
         color: #fca5a5;
     }
 
         .ini-toolbar-toggle.is-active input {
-            accent-color: #ef4444;
+            accent-color: var(--accent-red);
         }
 
 /* ============================================================================
@@ -326,7 +326,7 @@
 
 .ini-presets-card .preset-gallery-grid::-webkit-scrollbar { width: 6px; }
 .ini-presets-card .preset-gallery-grid::-webkit-scrollbar-track { background: transparent; }
-.ini-presets-card .preset-gallery-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
+.ini-presets-card .preset-gallery-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: var(--radius-sm); }
 .ini-presets-card .preset-gallery-grid::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
 .ini-presets-card.delete-mode {
@@ -346,7 +346,7 @@
     flex-direction: column;
     background: rgba(0, 0, 0, 0.28);
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 12px;
+    border-radius: var(--radius-panel);
     overflow: hidden;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
                 background 0.2s ease,
@@ -404,7 +404,7 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    border-radius: 999px;
+    border-radius: var(--radius-round);
     backdrop-filter: blur(6px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
@@ -427,7 +427,7 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
+    border-radius: var(--radius-round);
 }
 
 .preset-gallery-info {
@@ -530,7 +530,7 @@
     background: rgba(0, 0, 0, 0.42);
     color: #ffffff;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 9px;
+    border-radius: var(--radius-control);
     padding: 0.85rem 0.95rem;
     font-family: var(--font-mono);
     font-size: 0.76rem;
@@ -586,7 +586,7 @@
     padding: 0.22rem 0.55rem;
     background: rgba(255, 255, 255, 0.045);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+    border-radius: var(--radius-round);
     font-size: 0.65rem;
     color: var(--text-secondary);
     font-weight: 500;
@@ -635,7 +635,7 @@
 .ini-preset-textarea {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     color: var(--text-primary);
     padding: 0.75rem;
     font-size: 0.85rem;
@@ -679,7 +679,7 @@
     aspect-ratio: 16 / 9;
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 9px;
+    border-radius: var(--radius-control);
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -742,7 +742,7 @@
     background: rgba(18, 18, 18, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     box-shadow:
         0 25px 80px rgba(0, 0, 0, 0.6),
         0 0 0 1px rgba(var(--accent-purple-rgb), 0.08);
@@ -798,7 +798,7 @@
     padding: 0.45rem 0.8rem;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 7px;
+    border-radius: var(--radius-chip);
     color: var(--text-primary);
     font-size: 0.74rem;
     font-weight: 500;
@@ -820,13 +820,13 @@
     }
 
 .ini-overlay-primary-btn {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.25), rgba(124, 58, 237, 0.18));
+    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.25), rgba(var(--accent-purple-rgb), 0.18));
     border-color: rgba(var(--accent-purple-rgb), 0.5);
     color: #ffffff;
 }
 
     .ini-overlay-primary-btn:hover:not(:disabled) {
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.42), rgba(124, 58, 237, 0.3));
+        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.42), rgba(var(--accent-purple-rgb), 0.3));
         border-color: rgba(var(--accent-purple-rgb), 0.7);
         box-shadow: 0 12px 26px rgba(var(--accent-purple-rgb), 0.25);
     }
@@ -834,7 +834,7 @@
 .ini-overlay-close {
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
@@ -864,7 +864,7 @@
 
     .ini-overlay-body::-webkit-scrollbar { width: 6px; }
     .ini-overlay-body::-webkit-scrollbar-track { background: transparent; }
-    .ini-overlay-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
+    .ini-overlay-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: var(--radius-sm); }
     .ini-overlay-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
 .ini-overlay-footer {
@@ -898,7 +898,7 @@
         padding: 0.35rem 0.65rem;
         background: linear-gradient(180deg, rgba(28, 23, 42, 0.98) 0%, rgba(20, 16, 32, 0.98) 100%);
         border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
-        border-radius: 7px;
+        border-radius: var(--radius-chip);
         color: var(--text-primary);
         font-family: var(--font-primary);
         font-size: 0.7rem;

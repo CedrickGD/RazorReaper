@@ -21,7 +21,7 @@
     .crosshair-layout .content-card {
         padding: 1.1rem 1.25rem !important;
         margin-bottom: 0 !important;
-        border-radius: 12px !important;
+        border-radius: var(--radius-panel) !important;
     }
 
     /* `.content-card` has `overflow: hidden` for rounded-corner clipping (theme.css), which
@@ -135,7 +135,7 @@
             transform: scaleY(0);
             transform-origin: top center;
             transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 3px;
+            border-radius: var(--radius-sm);
             pointer-events: none;
         }
 
@@ -219,7 +219,7 @@
         padding: 0.55rem 1rem;
         font-size: 0.85rem;
         font-weight: 600;
-        border-radius: 999px;
+        border-radius: var(--radius-round);
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(255, 255, 255, 0.04);
         color: var(--text-primary);
@@ -256,13 +256,13 @@
             }
 
         .crosshair-layout .rr-pill-btn.danger {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.08));
-            border-color: rgba(239, 68, 68, 0.5);
-            color: #fecaca;
+            background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.22), rgba(var(--accent-red-rgb), 0.08));
+            border-color: rgba(var(--accent-red-rgb), 0.5);
+            color: var(--accent-red-soft);
         }
 
             .crosshair-layout .rr-pill-btn.danger:hover:not(:disabled) {
-                box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+                box-shadow: 0 8px 24px rgba(var(--accent-red-rgb), 0.3);
                 border-color: var(--accent-red);
             }
 
@@ -280,7 +280,7 @@
         padding: 0.25rem;
         background: rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
+        border-radius: var(--radius-control);
         margin-bottom: 0.85rem;
     }
 
@@ -297,7 +297,7 @@
         padding: 0.55rem 0.4rem;
         background: transparent;
         border: 1px solid transparent;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         color: var(--text-secondary);
         cursor: pointer;
         font-size: 0.74rem;
@@ -355,7 +355,7 @@
         aspect-ratio: 1 / 1;
         background: rgba(0, 0, 0, 0.45);
         border: 1px solid rgba(var(--accent-purple-rgb), 0.25);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         overflow: hidden;
         /* Disable text selection so click-drag paints cells instead of selecting text. */
         user-select: none;
@@ -408,7 +408,7 @@
     .crosshair-layout input[type="range"].rr-slider::-webkit-slider-runnable-track {
         height: 4px;
         background: linear-gradient(90deg, rgba(var(--accent-purple-rgb), 0.85), rgba(var(--accent-purple-rgb), 0.45));
-        border-radius: 999px;
+        border-radius: var(--radius-round);
         border: none;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     }
@@ -443,7 +443,7 @@
         align-items: stretch;
         background: rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         overflow: hidden;
         height: 36px;
     }
@@ -528,7 +528,7 @@
             height: 18px;
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 999px;
+            border-radius: var(--radius-round);
             transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
             flex-shrink: 0;
         }
@@ -590,7 +590,7 @@
         gap: 0.5rem;
         padding: 0.5rem;
         background: rgba(0, 0, 0, 0.25);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
@@ -611,7 +611,7 @@
         position: relative;
         width: 36px;
         height: 36px;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         border: 1px solid rgba(255, 255, 255, 0.2);
         cursor: pointer;
         padding: 0;
@@ -665,7 +665,7 @@
         padding: 0.85rem;
         background: rgba(20, 20, 26, 0.98);
         border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
-        border-radius: 12px;
+        border-radius: var(--radius-panel);
         box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(6px);
         animation: rrColorPopIn 0.14s ease-out;
@@ -692,7 +692,7 @@
 
     .rr-color-pop-preset {
         height: 28px;
-        border-radius: 6px;
+        border-radius: var(--radius-chip);
         border: 1px solid rgba(255, 255, 255, 0.12);
         cursor: pointer;
         padding: 0;
@@ -721,7 +721,7 @@
         height: 32px !important;
         padding: 0 !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        border-radius: 6px !important;
+        border-radius: var(--radius-chip) !important;
         background: transparent !important;
         cursor: pointer;
         flex-shrink: 0;
@@ -739,7 +739,7 @@
         padding: 0.45rem 0.85rem;
         background: rgba(var(--accent-purple-rgb), 0.2);
         border: 1px solid rgba(var(--accent-purple-rgb), 0.5);
-        border-radius: 6px;
+        border-radius: var(--radius-chip);
         color: var(--text-primary);
         font-size: 0.78rem;
         cursor: pointer;
@@ -763,7 +763,7 @@
         height: 32px;
         background: rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 7px;
+        border-radius: var(--radius-chip);
         color: var(--text-primary);
         font-size: 0.85rem;
         cursor: pointer;
@@ -793,7 +793,7 @@
         color: var(--text-secondary);
         background: rgba(0, 0, 0, 0.2);
         border: 1px dashed rgba(255, 255, 255, 0.08);
-        border-radius: 7px;
+        border-radius: var(--radius-chip);
     }
 
     /* ── Hotkey ──────────────────────────────────────────────────────────── */
@@ -803,7 +803,7 @@
         padding: 0.55rem 0.9rem;
         background: rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         color: var(--accent-purple-light);
         font-family: var(--font-mono);
         font-size: 0.82rem;
@@ -839,7 +839,7 @@
 
     .crosshair-layout .preview-frame {
         position: relative;
-        border-radius: 10px;
+        border-radius: var(--radius-control);
         overflow: hidden;
         background:
             radial-gradient(circle at 50% 50%, rgba(var(--accent-purple-rgb), 0.08) 0%, transparent 60%),
@@ -904,7 +904,7 @@
         padding: 0.65rem 0.8rem;
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         cursor: pointer;
         text-align: left;
         color: var(--text-primary);
@@ -955,7 +955,7 @@
         padding: 0.5rem 0.75rem;
         background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         color: var(--text-primary);
         cursor: pointer;
         transition: all 0.15s ease;
@@ -1002,7 +1002,7 @@
     .crosshair-layout .library-item {
         position: relative;
         aspect-ratio: 1;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         overflow: hidden;
         border: 1px solid rgba(255, 255, 255, 0.08);
         background:
@@ -1101,7 +1101,7 @@
         padding: 0.55rem 0.8rem;
         background: rgba(0, 0, 0, 0.2);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         color: var(--text-secondary);
         font-size: 0.82rem;
         font-weight: 500;
@@ -1130,7 +1130,7 @@
         margin-top: 0.6rem;
         padding: 0.85rem 1rem;
         background: rgba(0, 0, 0, 0.25);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         border: 1px solid rgba(255, 255, 255, 0.06);
         display: flex;
         flex-direction: column;
@@ -1172,7 +1172,7 @@
             font-size: 0.74rem;
             padding: 0.05rem 0.3rem;
             background: rgba(255, 255, 255, 0.06);
-            border-radius: 4px;
+            border-radius: var(--radius-sm);
         }
 
     .crosshair-layout kbd {
@@ -1182,7 +1182,7 @@
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.18);
         border-bottom-width: 2px;
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         color: var(--text-primary);
     }
 
