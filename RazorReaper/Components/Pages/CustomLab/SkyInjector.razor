@@ -103,7 +103,7 @@
                     </div>
                     @if (!string.IsNullOrEmpty(_previewUri))
                     {
-                        <img src="@_previewUri" alt="loaded sky" style="margin-top:.75rem;max-width:100%;max-height:180px;border-radius:8px;border:1px solid rgba(255,255,255,.12);display:block;" />
+                        <img src="@_previewUri" alt="loaded sky" style="margin-top:.75rem;max-width:100%;max-height:180px;border-radius:var(--radius-control);border:1px solid rgba(255,255,255,.12);display:block;" />
                     }
                 }
                 else
@@ -285,7 +285,7 @@
         background: rgba(0, 0, 0, 0.2);
         border: 1px solid var(--glass-hover);
         border-left: 4px solid var(--text-secondary);
-        border-radius: 10px;
+        border-radius: var(--radius-control);
     }
 
     .injector-status.injected {
@@ -294,8 +294,8 @@
     }
 
     .injector-status.restored {
-        border-left-color: #6ee06e;
-        background: rgba(110, 224, 110, 0.04);
+        border-left-color: var(--accent-green-soft);
+        background: rgba(var(--accent-green-rgb), 0.04);
     }
 
     .injector-status-icon {
@@ -311,7 +311,7 @@
     .injector-status-icon svg { width: 28px; height: 28px; }
 
     .injector-status.injected .injector-status-icon { color: var(--accent-purple-light); }
-    .injector-status.restored .injector-status-icon { color: #6ee06e; }
+    .injector-status.restored .injector-status-icon { color: var(--accent-green-soft); }
 
     .injector-status-title {
         font-weight: 600;
@@ -336,7 +336,7 @@
         margin-bottom: 1rem;
         padding: 0.25rem;
         background: var(--glass-bg);
-        border-radius: 8px;
+        border-radius: var(--radius-control);
     }
 
     .injector-mode-btn {
@@ -348,7 +348,7 @@
         padding: 0.55rem 0.75rem;
         background: transparent;
         border: none;
-        border-radius: 6px;
+        border-radius: var(--radius-chip);
         color: rgba(255, 255, 255, 0.7);
         font-size: 0.9rem;
         cursor: pointer;
@@ -376,7 +376,7 @@
         padding: 0.5rem 0.75rem;
         background: var(--glass-bg);
         border: 1px solid var(--glass-hover);
-        border-radius: 6px;
+        border-radius: var(--radius-chip);
         font-size: 0.88rem;
         color: var(--text-primary);
         overflow: hidden;
@@ -401,7 +401,7 @@
         padding: 0.45rem 0.7rem;
         background: var(--glass-bg);
         border: 1px solid var(--glass-hover);
-        border-radius: 6px;
+        border-radius: var(--radius-chip);
         color: var(--text-primary);
         font-size: 0.88rem;
         cursor: pointer;
@@ -422,7 +422,7 @@
         gap: 0.6rem;
         padding: 0.85rem 1.4rem;
         border: 1px solid transparent;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         font-size: 0.95rem;
         font-weight: 600;
         cursor: pointer;
@@ -443,13 +443,13 @@
     }
 
     .injector-action-btn.danger {
-        background: rgba(231, 84, 84, 0.12);
-        border-color: rgba(231, 84, 84, 0.35);
-        color: #ff9a9a;
+        background: rgba(var(--accent-red-rgb), 0.12);
+        border-color: rgba(var(--accent-red-rgb), 0.35);
+        color: var(--accent-red-soft);
     }
 
     .injector-action-btn.danger:hover:not(:disabled) {
-        background: rgba(231, 84, 84, 0.2);
+        background: rgba(var(--accent-red-rgb), 0.2);
     }
 
     .injector-action-btn:disabled {
@@ -471,7 +471,7 @@
     .injector-log {
         background: #0a0a14;
         border: 1px solid var(--glass-hover);
-        border-radius: 10px;
+        border-radius: var(--radius-control);
         overflow: hidden;
     }
 
@@ -496,7 +496,7 @@
         font-size: 0.8rem;
         cursor: pointer;
         padding: 0.15rem 0.45rem;
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
     }
 
     .injector-log-clear:hover { color: var(--text-primary); background: var(--glass-bg); }
@@ -521,16 +521,16 @@
         color: rgba(255, 255, 255, 0.75);
     }
 
-    .injector-log-line.success { color: #6ee06e; }
-    .injector-log-line.error { color: #ff9a9a; }
-    .injector-log-line.warn { color: #ffd479; }
+    .injector-log-line.success { color: var(--accent-green-soft); }
+    .injector-log-line.error { color: var(--accent-red-soft); }
+    .injector-log-line.warn { color: var(--accent-orange-soft); }
     .injector-log-line.info { color: var(--accent-purple-light); }
 
     .injector-coverage {
         padding: 0.85rem 1rem;
         background: rgba(0, 0, 0, 0.15);
         border: 1px solid var(--glass-hover);
-        border-radius: 10px;
+        border-radius: var(--radius-control);
         font-size: 0.86rem;
         color: rgba(255, 255, 255, 0.7);
     }
@@ -547,7 +547,7 @@
 
     .injector-coverage-list { margin: 0 0 0.5rem 0; line-height: 1.5; }
     .injector-coverage-caveat { margin: 0 0 0.5rem 0; line-height: 1.5; }
-    .injector-coverage-caveat strong { color: #ffd479; }
+    .injector-coverage-caveat strong { color: var(--accent-orange-soft); }
 
     .injector-coverage-jump {
         margin: 0.6rem 0 0 0;
@@ -576,7 +576,7 @@
         background: rgba(var(--accent-purple-rgb), 0.18);
         border: 1px solid rgba(var(--accent-purple-rgb), 0.4);
         color: var(--accent-purple-light);
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         font-family: var(--font-primary);
         font-size: 0.78rem;
         cursor: pointer;
