@@ -54,6 +54,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["custom-lab"] = "Sky Changer",
             ["loading-screen"] = "Loading Screen",
             ["dino-prices"] = "Mutagen Prices",
+            ["line-list"] = "Line List",
             ["oc-bps"] = "OC BPs",
             ["bosses"] = "Bosses",
             ["map-mods"] = "Map Mods",

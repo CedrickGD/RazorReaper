@@ -1,0 +1,599 @@
+/* Line List page — breeding line tracker + WTS/WTB post generator.
+   All rules are namespaced under .line-list-page. */
+
+.line-list-page .ll-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5) !important;
+    margin-bottom: var(--space-5) !important;
+}
+
+.line-list-page .ll-search {
+    position: relative;
+    flex: 1 1 220px;
+    min-width: 200px;
+}
+
+.line-list-page .ll-search-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.line-list-page .ll-search-input {
+    width: 100%;
+    padding: 0.55rem 0.9rem 0.55rem 2.2rem !important;
+    font-size: 0.85rem !important;
+}
+
+.line-list-page .ll-filter-group {
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-control);
+}
+
+.line-list-page .ll-filter-btn {
+    padding: 0.35rem 0.8rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.line-list-page .ll-filter-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.line-list-page .ll-filter-btn.active {
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    border-color: rgba(var(--accent-purple-rgb), 0.35);
+    color: var(--accent-purple-light);
+}
+
+.line-list-page .ll-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.line-list-page .ll-toolbar-actions {
+    display: inline-flex;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+.line-list-page .ll-toolbar-actions .btn {
+    padding: 0.55rem 0.9rem;
+    font-size: 0.8rem;
+}
+
+/* ── Inline editor card ─────────────────────────────────────── */
+
+.line-list-page .ll-editor-card {
+    margin-bottom: var(--space-5) !important;
+    padding: var(--space-5) !important;
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35) !important;
+}
+
+.line-list-page .ll-editor-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.line-list-page .ll-editor-header h3 {
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+}
+
+.line-list-page .ll-editor-header p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.line-list-page .ll-editor-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-3);
+}
+
+.line-list-page .ll-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.line-list-page .ll-field-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
+
+.line-list-page .ll-input {
+    width: 100%;
+    padding: 0.5rem 0.7rem !important;
+    font-size: 0.85rem !important;
+}
+
+.line-list-page .ll-stats-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+.line-list-page .ll-stat-field .ll-input {
+    padding: 0.5rem 0.55rem !important;
+    font-family: var(--font-mono);
+}
+
+.line-list-page .ll-field-notes {
+    grid-column: span 2;
+}
+
+.line-list-page .ll-sale-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.line-list-page .ll-price-input {
+    max-width: 320px;
+}
+
+.line-list-page .ll-price-input:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.line-list-page .ll-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+.line-list-page .ll-editor-actions .btn {
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+}
+
+/* ── List card / table ──────────────────────────────────────── */
+
+.line-list-page .ll-list-card {
+    padding: var(--space-4) !important;
+}
+
+.line-list-page .ll-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.line-list-page .ll-table-header,
+.line-list-page .ll-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 150px) minmax(150px, 1fr) minmax(200px, auto) 76px 44px 84px;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+}
+
+.line-list-page .ll-table-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+.line-list-page .ll-th {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.line-list-page .ll-th-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color 0.2s ease;
+    width: fit-content;
+    text-align: left;
+}
+
+.line-list-page .ll-th-sort:hover {
+    color: var(--text-primary);
+}
+
+.line-list-page .ll-sort-arrow {
+    font-size: 0.6rem;
+    color: var(--accent-purple-light);
+}
+
+.line-list-page .ll-th-actions {
+    text-align: right;
+}
+
+.line-list-page .ll-row {
+    border-radius: var(--radius-control);
+    transition: background 0.15s ease;
+}
+
+.line-list-page .ll-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.line-list-page .ll-cell-species {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.line-list-page .ll-cell-name {
+    min-width: 0;
+}
+
+.line-list-page .ll-name-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.line-list-page .ll-name {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.line-list-page .ll-badge-sale {
+    flex-shrink: 0;
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-round);
+    background: rgba(var(--accent-green-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-green-rgb), 0.25);
+    color: var(--accent-green-soft);
+    font-size: 0.68rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.line-list-page .ll-price {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+}
+
+.line-list-page .ll-notes {
+    margin-top: 0.15rem;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.line-list-page .ll-cell-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+}
+
+.line-list-page .ll-stat-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.2rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.line-list-page .ll-stat-key {
+    color: var(--text-secondary);
+    font-size: 0.62rem;
+}
+
+.line-list-page .ll-cell-muts,
+.line-list-page .ll-cell-gen {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.line-list-page .ll-cell-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.line-list-page .ll-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: var(--radius-chip) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.line-list-page .ll-icon-btn:hover {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.line-list-page .ll-icon-btn.danger:hover {
+    color: var(--accent-red-soft);
+    border-color: rgba(var(--accent-red-rgb), 0.4) !important;
+    background: rgba(var(--accent-red-rgb), 0.1) !important;
+}
+
+.line-list-page .ll-confirm-btn {
+    padding: 0.25rem 0.55rem !important;
+    border: 1px solid rgba(var(--accent-red-rgb), 0.35) !important;
+    border-radius: var(--radius-chip) !important;
+    background: rgba(var(--accent-red-rgb), 0.12) !important;
+    color: var(--accent-red-soft);
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.line-list-page .ll-confirm-btn:hover {
+    border-color: rgba(var(--accent-red-rgb), 0.6) !important;
+    background: rgba(var(--accent-red-rgb), 0.2) !important;
+}
+
+/* ── Empty states ───────────────────────────────────────────── */
+
+.line-list-page .ll-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+}
+
+.line-list-page .ll-empty svg {
+    width: 34px;
+    height: 34px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.line-list-page .ll-empty h3 {
+    margin: 0 !important;
+    font-size: 1rem !important;
+}
+
+.line-list-page .ll-empty p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* ── WTS/WTB post modal ─────────────────────────────────────── */
+
+.line-list-page .ll-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    animation: fadeIn 0.15s ease-out;
+}
+
+.line-list-page .ll-modal {
+    display: flex;
+    flex-direction: column;
+    width: min(720px, 92vw);
+    max-height: 84vh;
+    background: rgba(14, 14, 14, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-card);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: fadeInUp 0.2s ease-out;
+}
+
+.line-list-page .ll-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.line-list-page .ll-modal-header h3 {
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+}
+
+.line-list-page .ll-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    overflow-y: auto;
+}
+
+.line-list-page .ll-modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.line-list-page .ll-modal-section-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+.line-list-page .ll-modal-hint {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.line-list-page .ll-modal-empty {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.line-list-page .ll-post-preview {
+    margin: 0;
+    padding: var(--space-3);
+    max-height: 180px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-control);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.line-list-page .ll-post-preview-combined {
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35);
+}
+
+.line-list-page .ll-wtb-input {
+    width: 100%;
+    resize: vertical;
+    min-height: 80px;
+    font-size: 0.85rem !important;
+    line-height: 1.5;
+}
+
+.line-list-page .ll-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.line-list-page .ll-modal-footer .btn {
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+    .line-list-page .ll-table-header {
+        display: none;
+    }
+
+    .line-list-page .ll-row {
+        grid-template-columns: minmax(110px, 150px) minmax(0, 1fr) auto;
+        grid-template-areas:
+            "species name actions"
+            "stats stats stats";
+        row-gap: var(--space-2);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: var(--space-2);
+        padding: var(--space-3);
+    }
+
+    .line-list-page .ll-cell-species {
+        grid-area: species;
+    }
+
+    .line-list-page .ll-cell-name {
+        grid-area: name;
+    }
+
+    .line-list-page .ll-cell-actions {
+        grid-area: actions;
+    }
+
+    .line-list-page .ll-cell-stats {
+        grid-area: stats;
+    }
+
+    .line-list-page .ll-cell-muts,
+    .line-list-page .ll-cell-gen {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .line-list-page .ll-editor-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .line-list-page .ll-stats-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .line-list-page .ll-field-notes {
+        grid-column: 1 / -1;
+    }
+
+    .line-list-page .ll-toolbar-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+}

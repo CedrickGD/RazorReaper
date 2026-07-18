@@ -229,6 +229,7 @@ namespace RazorReaper
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<RazorReaper.Services.Steam.ISteamFavoritesService, RazorReaper.Services.Steam.SteamFavoritesService>();
+            services.AddSingleton<ILineListService, LineListService>();
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
             services.AddSingleton<ICompactArkService, CompactArkService>();
             services.AddSingleton<ICrosshairService, CrosshairService>();

@@ -1,0 +1,553 @@
+@page "/line-list"
+@using System.Text
+@using RazorReaper.Services
+@inject ILineListService LineListService
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+
+<div class="line-list-page">
+    <header class="page-header">
+        <h1 class="page-title">Line List</h1>
+        <p class="page-subtitle">Track your breeding lines and build WTS/WTB posts.</p>
+    </header>
+
+    <div class="content-card ll-toolbar">
+        <div class="ll-search">
+            <svg class="ll-search-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+            </svg>
+            <input type="text"
+                   class="ll-search-input"
+                   placeholder="Search species or line name..."
+                   @bind="searchQuery"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="ll-filter-group">
+            <button class="ll-filter-btn @(showForSaleOnly ? "" : "active")" @onclick="() => SetFilter(false)">All</button>
+            <button class="ll-filter-btn @(showForSaleOnly ? "active" : "")" @onclick="() => SetFilter(true)">For Sale</button>
+        </div>
+
+        <span class="ll-count">@FilteredLines.Count / @(store?.Lines.Count ?? 0) lines</span>
+
+        <div class="ll-toolbar-actions">
+            <button class="btn btn-secondary" @onclick="OpenPostModal">WTS / WTB Post</button>
+            <button class="btn btn-primary" @onclick="StartAdd">Add Line</button>
+        </div>
+    </div>
+
+    @if (editorOpen && draft is not null)
+    {
+        var d = draft;
+        <section class="content-card ll-editor-card">
+            <div class="ll-editor-header">
+                <h3>@(editingId is null ? "Add Line" : "Edit Line")</h3>
+                <p>Stat values are points, not displayed levels.</p>
+            </div>
+
+            <div class="ll-editor-grid">
+                <div class="ll-field">
+                    <label class="ll-field-label">Species</label>
+                    <input class="ll-input" type="text" list="ll-species-suggestions" placeholder="e.g. Rex" @bind="d.Species" />
+                    <datalist id="ll-species-suggestions">
+                        @foreach (var s in LineListService.SpeciesSuggestions)
+                        {
+                            <option value="@s"></option>
+                        }
+                    </datalist>
+                </div>
+                <div class="ll-field">
+                    <label class="ll-field-label">Line Name</label>
+                    <input class="ll-input" type="text" placeholder="e.g. Ultron line" @bind="d.Name" />
+                </div>
+                <div class="ll-field">
+                    <label class="ll-field-label">Generation</label>
+                    <input class="ll-input" type="number" min="0" @bind="d.Generation" />
+                </div>
+                <div class="ll-field">
+                    <label class="ll-field-label">Base Level</label>
+                    <input class="ll-input" type="number" min="0" @bind="d.BaseLevel" />
+                </div>
+
+                <div class="ll-stats-row">
+                    <div class="ll-field ll-stat-field">
+                        <label class="ll-field-label">Health</label>
+                        <input class="ll-input" type="number" min="0" @bind="d.Health" />
+                    </div>
+                    <div class="ll-field ll-stat-field">
+                        <label class="ll-field-label">Stamina</label>
+                        <input class="ll-input" type="number" min="0" @bind="d.Stamina" />
+                    </div>
+                    <div class="ll-field ll-stat-field">
+                        <label class="ll-field-label">Oxygen</label>
+                        <input class="ll-input" type="number" min="0" @bind="d.Oxygen" />
+                    </div>
+                    <div class="ll-field ll-stat-field">
+                        <label class="ll-field-label">Food</label>
+                        <input class="ll-input" type="number" min="0" @bind="d.Food" />
+                    </div>
+                    <div class="ll-field ll-stat-field">
+                        <label class="ll-field-label">Weight</label>
+                        <input class="ll-input" type="number" min="0" @bind="d.Weight" />
+                    </div>
+                    <div class="ll-field ll-stat-field">
+                        <label class="ll-field-label">Melee</label>
+                        <input class="ll-input" type="number" min="0" @bind="d.Melee" />
+                    </div>
+                </div>
+
+                <div class="ll-field">
+                    <label class="ll-field-label">Mutations (Maternal)</label>
+                    <input class="ll-input" type="number" min="0" @bind="d.MaternalMutations" />
+                </div>
+                <div class="ll-field">
+                    <label class="ll-field-label">Mutations (Paternal)</label>
+                    <input class="ll-input" type="number" min="0" @bind="d.PaternalMutations" />
+                </div>
+                <div class="ll-field ll-field-notes">
+                    <label class="ll-field-label">Notes</label>
+                    <input class="ll-input" type="text" placeholder="Optional" @bind="d.Notes" />
+                </div>
+
+                <div class="ll-sale-row">
+                    <Switch Label="For sale" Compact="true" Value="@d.ForSale" ValueChanged="@((bool v) => d.ForSale = v)" />
+                    <input class="ll-input ll-price-input"
+                           type="text"
+                           placeholder="Price, e.g. 2x mutagen or offer"
+                           disabled="@(!d.ForSale)"
+                           @bind="d.Price" />
+                </div>
+            </div>
+
+            <div class="ll-editor-actions">
+                <button class="btn btn-secondary" @onclick="CancelEditor">Cancel</button>
+                <button class="btn btn-primary" @onclick="SaveDraftAsync">@(editingId is null ? "Add Line" : "Save Changes")</button>
+            </div>
+        </section>
+    }
+
+    <div class="content-card ll-list-card">
+        @if (store is null || store.Lines.Count == 0)
+        {
+            <div class="ll-empty">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" />
+                    <path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" />
+                </svg>
+                <h3>No breeding lines yet</h3>
+                <p>Add your first line to start tracking stats and mutations.</p>
+            </div>
+        }
+        else if (FilteredLines.Count == 0)
+        {
+            <div class="ll-empty">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+                <h3>No matching lines</h3>
+                <p>Try a different search or filter.</p>
+            </div>
+        }
+        else
+        {
+            <div class="ll-table">
+                <div class="ll-table-header">
+                    <button class="ll-th ll-th-sort" @onclick="ToggleSort" title="Sort by species">
+                        Species <span class="ll-sort-arrow">@(sortDesc ? "▼" : "▲")</span>
+                    </button>
+                    <div class="ll-th">Line</div>
+                    <div class="ll-th">Stats</div>
+                    <div class="ll-th">Muts M/P</div>
+                    <div class="ll-th">Gen</div>
+                    <div class="ll-th ll-th-actions"></div>
+                </div>
+
+                @foreach (var line in FilteredLines)
+                {
+                    <div @key="line.Id" class="ll-row">
+                        <div class="ll-cell-species" title="@line.Species">@line.Species</div>
+
+                        <div class="ll-cell-name">
+                            <div class="ll-name-row">
+                                <span class="ll-name">@(string.IsNullOrWhiteSpace(line.Name) ? "Unnamed line" : line.Name)</span>
+                                @if (line.ForSale)
+                                {
+                                    <span class="ll-badge-sale">For sale</span>
+                                }
+                                @if (line.ForSale && !string.IsNullOrWhiteSpace(line.Price))
+                                {
+                                    <span class="ll-price" title="@line.Price">@line.Price</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(line.Notes))
+                            {
+                                <div class="ll-notes" title="@line.Notes">@line.Notes</div>
+                            }
+                        </div>
+
+                        <div class="ll-cell-stats" title="Base level @line.BaseLevel">
+                            <span class="ll-stat-chip"><span class="ll-stat-key">HP</span>@line.Health</span>
+                            <span class="ll-stat-chip"><span class="ll-stat-key">St</span>@line.Stamina</span>
+                            <span class="ll-stat-chip"><span class="ll-stat-key">Ox</span>@line.Oxygen</span>
+                            <span class="ll-stat-chip"><span class="ll-stat-key">Fo</span>@line.Food</span>
+                            <span class="ll-stat-chip"><span class="ll-stat-key">We</span>@line.Weight</span>
+                            <span class="ll-stat-chip"><span class="ll-stat-key">Me</span>@line.Melee</span>
+                        </div>
+
+                        <div class="ll-cell-muts" title="Maternal / paternal mutations">@line.MaternalMutations / @line.PaternalMutations</div>
+                        <div class="ll-cell-gen">@line.Generation</div>
+
+                        <div class="ll-cell-actions">
+                            @if (pendingDeleteId == line.Id)
+                            {
+                                <button class="ll-confirm-btn" @onclick="() => ConfirmDeleteAsync(line)">Delete</button>
+                                <button class="ll-icon-btn" title="Cancel" @onclick="CancelDelete">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="ll-icon-btn" title="Edit" @onclick="() => StartEdit(line)">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+                                </button>
+                                <button class="ll-icon-btn danger" title="Delete" @onclick="() => RequestDelete(line.Id)">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (postModalOpen)
+    {
+        <div class="ll-modal-overlay" @onclick="ClosePostModalAsync">
+            <div class="ll-modal" @onclick:stopPropagation="true">
+                <div class="ll-modal-header">
+                    <h3>WTS / WTB Post</h3>
+                    <button class="ll-icon-btn" title="Close" @onclick="ClosePostModalAsync">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                </div>
+
+                <div class="ll-modal-body">
+                    <div class="ll-modal-section">
+                        <div class="ll-modal-section-title">WTS <span class="ll-modal-hint">generated from lines marked for sale</span></div>
+                        @if (string.IsNullOrEmpty(wtsPreview))
+                        {
+                            <p class="ll-modal-empty">No lines are marked for sale yet.</p>
+                        }
+                        else
+                        {
+                            <pre class="ll-post-preview">@wtsPreview</pre>
+                        }
+                    </div>
+
+                    <div class="ll-modal-section">
+                        <div class="ll-modal-section-title">WTB <span class="ll-modal-hint">free text, saved with your list</span></div>
+                        <textarea class="ll-wtb-input"
+                                  rows="4"
+                                  placeholder="e.g. WTB clean Rex females, high melee Shadowmane..."
+                                  @bind="wtbDraft"
+                                  @bind:event="oninput"></textarea>
+                    </div>
+
+                    <div class="ll-modal-section">
+                        <div class="ll-modal-section-title">Combined post</div>
+                        @if (string.IsNullOrEmpty(CombinedPost))
+                        {
+                            <p class="ll-modal-empty">Mark lines for sale or write a WTB block to build a post.</p>
+                        }
+                        else
+                        {
+                            <pre class="ll-post-preview ll-post-preview-combined">@CombinedPost</pre>
+                        }
+                    </div>
+                </div>
+
+                <div class="ll-modal-footer">
+                    <button class="btn btn-secondary" @onclick="ClosePostModalAsync">Close</button>
+                    <button class="btn btn-primary" @onclick="CopyPostAsync">Copy Post</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private LineListStore? store;
+
+    private string searchQuery = "";
+    private bool showForSaleOnly;
+    private bool sortDesc;
+
+    private bool editorOpen;
+    private string? editingId;
+    private BreedingLine? draft;
+
+    private string? pendingDeleteId;
+
+    private bool postModalOpen;
+    private string wtbDraft = "";
+    private string wtsPreview = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        store = await LineListService.LoadAsync();
+        wtbDraft = store.WtbText;
+    }
+
+    private List<BreedingLine> FilteredLines
+    {
+        get
+        {
+            if (store is null)
+                return new List<BreedingLine>();
+
+            IEnumerable<BreedingLine> query = store.Lines;
+
+            if (showForSaleOnly)
+                query = query.Where(l => l.ForSale);
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                query = query.Where(l =>
+                    l.Species.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    l.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            }
+
+            query = sortDesc
+                ? query.OrderByDescending(l => l.Species, StringComparer.OrdinalIgnoreCase).ThenBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
+                : query.OrderBy(l => l.Species, StringComparer.OrdinalIgnoreCase).ThenBy(l => l.Name, StringComparer.OrdinalIgnoreCase);
+
+            return query.ToList();
+        }
+    }
+
+    private void SetFilter(bool forSaleOnly)
+    {
+        showForSaleOnly = forSaleOnly;
+        pendingDeleteId = null;
+    }
+
+    private void ToggleSort() => sortDesc = !sortDesc;
+
+    private void StartAdd()
+    {
+        draft = new BreedingLine();
+        editingId = null;
+        editorOpen = true;
+        pendingDeleteId = null;
+    }
+
+    private void StartEdit(BreedingLine line)
+    {
+        draft = line.Clone();
+        editingId = line.Id;
+        editorOpen = true;
+        pendingDeleteId = null;
+    }
+
+    private void CancelEditor()
+    {
+        editorOpen = false;
+        editingId = null;
+        draft = null;
+    }
+
+    private async Task SaveDraftAsync()
+    {
+        if (draft is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(draft.Species))
+        {
+            NotificationService.ShowWarning("Species is required.");
+            return;
+        }
+
+        draft.Species = draft.Species.Trim();
+        draft.Name = (draft.Name ?? "").Trim();
+        draft.Notes = (draft.Notes ?? "").Trim();
+        draft.Price = (draft.Price ?? "").Trim();
+
+        var label = string.IsNullOrWhiteSpace(draft.Name) ? draft.Species : $"{draft.Species} — {draft.Name}";
+
+        bool ok;
+        if (editingId is null)
+        {
+            ok = await LineListService.AddLineAsync(draft);
+            if (ok)
+            {
+                NotificationService.ShowSuccess("Line added.");
+                ActivityService.AddActivity($"Added breeding line: {label}", "success");
+            }
+        }
+        else
+        {
+            ok = await LineListService.UpdateLineAsync(draft);
+            if (ok)
+            {
+                NotificationService.ShowSuccess("Line updated.");
+                ActivityService.AddActivity($"Updated breeding line: {label}", "info");
+            }
+        }
+
+        if (ok)
+        {
+            CancelEditor();
+        }
+        else
+        {
+            NotificationService.ShowError("Could not save the line. Check the log for details.");
+        }
+    }
+
+    private void RequestDelete(string id) => pendingDeleteId = id;
+
+    private void CancelDelete() => pendingDeleteId = null;
+
+    private async Task ConfirmDeleteAsync(BreedingLine line)
+    {
+        pendingDeleteId = null;
+
+        var ok = await LineListService.DeleteLineAsync(line.Id);
+        if (ok)
+        {
+            if (editingId == line.Id)
+                CancelEditor();
+
+            var label = string.IsNullOrWhiteSpace(line.Name) ? line.Species : $"{line.Species} — {line.Name}";
+            NotificationService.ShowSuccess("Line deleted.");
+            ActivityService.AddActivity($"Deleted breeding line: {label}", "info");
+        }
+        else
+        {
+            NotificationService.ShowError("Could not delete the line. Check the log for details.");
+        }
+    }
+
+    private void OpenPostModal()
+    {
+        if (store is null)
+            return;
+
+        wtbDraft = store.WtbText;
+        wtsPreview = BuildWtsText();
+        postModalOpen = true;
+        pendingDeleteId = null;
+    }
+
+    private async Task ClosePostModalAsync()
+    {
+        await SaveWtbIfChangedAsync();
+        postModalOpen = false;
+    }
+
+    private async Task SaveWtbIfChangedAsync()
+    {
+        if (store is not null && store.WtbText != wtbDraft)
+        {
+            var ok = await LineListService.SaveWtbTextAsync(wtbDraft);
+            if (!ok)
+                NotificationService.ShowError("Could not save the WTB text. Check the log for details.");
+        }
+    }
+
+    private string CombinedPost
+    {
+        get
+        {
+            var sb = new StringBuilder();
+
+            if (!string.IsNullOrEmpty(wtsPreview))
+                sb.Append(wtsPreview);
+
+            var wtb = (wtbDraft ?? "").Trim();
+            if (wtb.Length > 0)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine();
+                }
+
+                if (!wtb.StartsWith("WTB", StringComparison.OrdinalIgnoreCase))
+                    sb.AppendLine("WTB:");
+
+                sb.Append(wtb);
+            }
+
+            return sb.ToString();
+        }
+    }
+
+    private string BuildWtsText()
+    {
+        if (store is null)
+            return "";
+
+        var forSale = store.Lines
+            .Where(l => l.ForSale)
+            .OrderBy(l => l.Species, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(l => l.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (forSale.Count == 0)
+            return "";
+
+        var sb = new StringBuilder();
+        sb.AppendLine("WTS:");
+
+        foreach (var group in forSale.GroupBy(l => l.Species, StringComparer.OrdinalIgnoreCase))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"{group.Key}:");
+
+            foreach (var l in group)
+            {
+                var name = string.IsNullOrWhiteSpace(l.Name) ? "Unnamed line" : l.Name;
+                var parts = new List<string>
+                {
+                    $"HP {l.Health} / St {l.Stamina} / Ox {l.Oxygen} / Fo {l.Food} / We {l.Weight} / Me {l.Melee}",
+                    $"Muts {l.MaternalMutations}/{l.PaternalMutations}"
+                };
+
+                if (l.Generation > 0)
+                    parts.Add($"Gen {l.Generation}");
+                if (l.BaseLevel > 0)
+                    parts.Add($"Base {l.BaseLevel}");
+
+                var price = string.IsNullOrWhiteSpace(l.Price) ? "offer" : l.Price.Trim();
+                sb.AppendLine($"- {name} | {string.Join(" | ", parts)} -> {price}");
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task CopyPostAsync()
+    {
+        await SaveWtbIfChangedAsync();
+
+        var post = CombinedPost;
+        if (string.IsNullOrWhiteSpace(post))
+        {
+            NotificationService.ShowWarning("Nothing to copy yet. Mark lines for sale or write a WTB block.");
+            return;
+        }
+
+        try
+        {
+            await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(post);
+            NotificationService.ShowSuccess("Post copied to clipboard.");
+            ActivityService.AddActivity("Copied WTS/WTB post to clipboard", "info");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Failed to copy: {ex.Message}");
+        }
+    }
+}
