@@ -100,6 +100,13 @@
             new NavItem("Loading Screen", "/loading-screen", IconLoadingScreen),
             new NavItem("Char Manager", "/char-manager", IconCharManager),
         }),
+        new NavGroupDef("Automation", new[]
+        {
+            new NavItem("Auto Clicker", "/autoclicker", IconClicker),
+            new NavItem("Macros", "/macros", IconMacros),
+            new NavItem("Fed Suit", "/fed-suit", IconFedSuit),
+            new NavItem("Auto Antidote", "/auto-antidote", IconAntidote),
+        }),
         new NavGroupDef("Mods & Intel", new[]
         {
             new NavItem("Mutagen Prices", "/dino-prices", IconMutagen),
@@ -115,7 +122,6 @@
         new NavGroupDef("Utilities", new[]
         {
             new NavItem("Building", "/building", IconBuilding),
-            new NavItem("Auto Clicker", "/autoclicker", IconClicker),
             new NavItem("Crosshair", "/crosshair", IconCrosshair),
             new NavItem("Macro / AHK", "/crafting-scripts", IconScript),
             new NavItem("Compact ARK", "/compact-ark", IconCompact),
@@ -139,6 +145,9 @@
     private const string IconTpLocations = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s-5.5-4.6-5.5-8.5a5.5 5.5 0 0 1 11 0C15.5 12.4 10 17 10 17Z"/><circle cx="10" cy="8.5" r="2"/></svg>""";
     private const string IconUnderwaterDrops = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.2c1.6 1.3 3.1 1.3 4.7 0 1.6-1.3 3-1.3 4.6 0 1.6 1.3 3.1 1.3 4.7 0"/><rect x="6" y="9.5" width="8" height="6.5" rx="1.2"/><path d="M6 12.2h8"/><path d="M10 9.5v6.5"/></svg>""";
     private const string IconCaves = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5 10 4l7 12.5H3Z"/><path d="M7.6 16.5a2.4 2.4 0 0 1 4.8 0"/></svg>""";
+    private const string IconMacros = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="M8.4 7.6l4.2 2.4-4.2 2.4z"/></svg>""";
+    private const string IconFedSuit = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M7.5 8.5h5l-1.8-1.8"/><path d="M12.5 11.5h-5l1.8 1.8"/></svg>""";
+    private const string IconAntidote = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 4.5 5v4.5c0 3.6 2.3 6 5.5 7.5 3.2-1.5 5.5-3.9 5.5-7.5V5L10 3Z"/><path d="M10 7.5v4"/><path d="M8 9.5h4"/></svg>""";
     private const string IconVision ="""<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z"/><circle cx="10" cy="10" r="2.2"/></svg>""";
     private const string IconLaunch = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16.5V3.5"/><path d="M5 4h8l-1.6 2.6L13 9H5"/></svg>""";
     private const string IconFonts = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15 10 5l4 10"/><path d="M7.4 11.5h5.2"/></svg>""";

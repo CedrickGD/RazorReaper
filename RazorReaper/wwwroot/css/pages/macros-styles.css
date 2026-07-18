@@ -1,0 +1,250 @@
+/* ── Macros page (Components/Pages/Macros.razor) ─────────────────────────────
+   Macro recorder, saved recordings and the premade Fast Transfer macro.
+   Uses only theme.css design tokens (radius/spacing scales, accent + status
+   variables, glass backgrounds); shared primitives (SettingRow, StatusHeader,
+   HotkeyField) are styled in css/shared/primitives.css. */
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+.macros-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.mac-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-bottom: 0 !important; /* grid gap replaces content-card's default margin */
+}
+
+.mac-card-wide {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+    .macros-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Card headers ───────────────────────────────────────────────────────── */
+
+.mac-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.mac-card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.mac-badge {
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-round);
+    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ── Setting rows ───────────────────────────────────────────────────────── */
+
+.mac-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.mac-rows.two-col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+}
+
+    /* The calibration row is last and gets the full width for its readout. */
+    .mac-rows.two-col > .setting-row:last-child {
+        grid-column: 1 / -1;
+    }
+
+@media (max-width: 900px) {
+    .mac-rows.two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Info note ──────────────────────────────────────────────────────────── */
+
+.mac-note {
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-chip);
+    background: var(--glass-bg);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.mac-desc {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.btn.mac-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+    .btn.mac-btn.sm {
+        padding: var(--space-1) var(--space-2);
+        font-size: 0.75rem;
+    }
+
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
+
+.mac-save-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+    .mac-save-row .mac-input {
+        flex: 1;
+        min-width: 0;
+    }
+
+.mac-input.key {
+    width: 4.5rem;
+    flex: 0 0 auto;
+    text-align: center;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+
+.mac-input.num {
+    width: 6.5rem;
+    flex: 0 0 auto;
+    text-align: center;
+}
+
+/* ── Playback speed segmented control ───────────────────────────────────── */
+
+.mac-seg {
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-control);
+}
+
+.mac-seg-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    font-family: var(--font-primary);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+    .mac-seg-btn:hover {
+        color: var(--text-primary);
+    }
+
+    .mac-seg-btn.active {
+        background: rgba(var(--accent-purple-rgb), 0.18);
+        color: var(--text-primary);
+    }
+
+/* ── Saved recordings list ──────────────────────────────────────────────── */
+
+.mac-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.mac-list-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+    .mac-list-item:hover {
+        background: var(--glass-hover);
+    }
+
+    .mac-list-item.loaded {
+        border-color: rgba(var(--accent-purple-rgb), 0.35);
+    }
+
+.mac-list-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mac-list-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+
+.mac-empty {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    text-align: center;
+    padding: var(--space-3);
+}
+
+/* ── Calibration readout (dynamic status only) ──────────────────────────── */
+
+.mac-cal {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+    .mac-cal.missing {
+        color: var(--accent-orange);
+    }
+
+.mac-countdown {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent-purple-light);
+    white-space: nowrap;
+}
