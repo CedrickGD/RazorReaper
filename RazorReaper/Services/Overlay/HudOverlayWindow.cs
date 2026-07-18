@@ -888,6 +888,13 @@ internal sealed class HudOverlayWindow : IDisposable
             UpdateLayeredWindow(
                 _hwnd, screenDc, ref pointDst, ref size,
                 memDc, ref pointSrc, 0, ref blend, ULW_ALPHA);
+
+            // Re-assert topmost every frame. Full-screen games (ARK) re-insert their own
+            // window at the top of the Z-order whenever they gain focus, which would
+            // otherwise bury the overlay. HWND_TOPMOST + NOACTIVATE keeps us above the
+            // game without stealing its focus.
+            SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }
         finally
         {
@@ -917,6 +924,8 @@ internal sealed class HudOverlayWindow : IDisposable
     private const int WS_EX_NOACTIVATE = 0x08000000;
 
     private const int GWL_EXSTYLE = -20;
+
+    private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
