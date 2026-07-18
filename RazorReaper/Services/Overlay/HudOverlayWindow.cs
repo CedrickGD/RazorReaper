@@ -172,6 +172,8 @@ internal sealed class HudOverlayWindow : IDisposable
         _uiThread?.Join(TimeSpan.FromSeconds(2));
         _buffer?.Dispose();
         _buffer = null;
+        _logo?.Dispose();
+        _logo = null;
         _started.Dispose();
     }
 
@@ -534,6 +536,23 @@ internal sealed class HudOverlayWindow : IDisposable
         }
     }
 
+    private Bitmap? _logo;
+    private bool _logoLoadAttempted;
+
+    /// <summary>Lazily load the RazorReaper logo (deployed under wwwroot) for the panel header.</summary>
+    private Bitmap? GetLogo()
+    {
+        if (_logoLoadAttempted) return _logo;
+        _logoLoadAttempted = true;
+        try
+        {
+            var path = System.IO.Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "RRlogo.png");
+            if (System.IO.File.Exists(path)) _logo = new Bitmap(path);
+        }
+        catch { _logo = null; }
+        return _logo;
+    }
+
     private RectangleF DrawFullPanel(
         Graphics g, HudSnapshot snap, List<HudModule> modules, MonitorInfo mon, float s,
         HudAnchor anchor, int offX, int offY, int custX, int custY, Color accent)
@@ -581,11 +600,21 @@ internal sealed class HudOverlayWindow : IDisposable
         }
         if (rows.Count == 0) return RectangleF.Empty;
 
+        // Brand header: logo + wordmark, sits above the module rows.
+        var logo = GetLogo();
+        using var brandFont = new Font("Segoe UI Semibold", 12.5f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+        const string brandText = "RazorReaper";
+        float logoSize = 22f * s, logoGap = 8f * s, headerGap = 10f * s;
+        float brandW = g.MeasureString(brandText, brandFont, 1000, fmt).Width;
+        float brandH = brandFont.GetHeight(g);
+        float headerH = Math.Max(logo != null ? logoSize : 0f, brandH);
+        float headerW = (logo != null ? logoSize + logoGap : 0f) + brandW;
+
         // Measure.
         float labelH = labelFont.GetHeight(g);
         float valueH = valueFont.GetHeight(g);
         float subH = subFont.GetHeight(g);
-        float contentW = 0f, contentH = 0f;
+        float contentW = headerW, contentH = headerH + headerGap;
         foreach (var row in rows)
         {
             var lw = g.MeasureString(row.Label, labelFont, (int)maxTextW, fmt).Width;
@@ -613,6 +642,24 @@ internal sealed class HudOverlayWindow : IDisposable
         float tx = rect.X + barW + padX - 3f; // bar sits inside left padding visually
         float textW = rect.Width - (barW + padX * 2f - 3f) - padX;
         float y = rect.Y + padY;
+
+        // Brand header (logo + wordmark), then advance past it.
+        {
+            float hx = tx;
+            if (logo != null)
+            {
+                var prevInterp = g.InterpolationMode;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.DrawImage(logo, new RectangleF(hx, y + (headerH - logoSize) / 2f, logoSize, logoSize));
+                g.InterpolationMode = prevInterp;
+                hx += logoSize + logoGap;
+            }
+            using var brandBrush = new SolidBrush(TextValue);
+            g.DrawString(brandText, brandFont, brandBrush,
+                new RectangleF(hx, y + (headerH - brandH) / 2f, textW, brandH + 1f), fmt);
+        }
+        y += headerH + headerGap;
+
         using var labelBrush = new SolidBrush(TextLabel);
         foreach (var row in rows)
         {
@@ -697,19 +744,32 @@ internal sealed class HudOverlayWindow : IDisposable
         if (parts.Count == 0) return RectangleF.Empty;
 
         var line = string.Join("  ·  ", parts);
+        var logo = GetLogo();
         float padX = 12f * s, padY = 7f * s, barW = 3f;
+        float logoSize = font.GetHeight(g), logoGap = 7f * s;
+        float logoBlock = logo != null ? logoSize + logoGap : 0f;
         float maxW = 560f * s;
-        float maxTextW = maxW - padX * 2f - barW;
+        float maxTextW = maxW - padX * 2f - barW - logoBlock;
         var textSize = g.MeasureString(line, font, (int)maxTextW, fmt);
-        var panelW = Math.Min(textSize.Width + padX * 2f + barW + 2f, maxW);
+        var panelW = Math.Min(textSize.Width + padX * 2f + barW + 2f + logoBlock, maxW);
         var panelH = font.GetHeight(g) + padY * 2f;
 
         var rect = PlacePanel(new SizeF(panelW, panelH), mon, s, anchor, offX, offY, custX, custY);
         DrawPanelChrome(g, rect, s, accent);
 
+        float textX = rect.X + barW + padX - 3f;
+        if (logo != null)
+        {
+            var prevInterp = g.InterpolationMode;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(logo, new RectangleF(textX, rect.Y + (panelH - logoSize) / 2f, logoSize, logoSize));
+            g.InterpolationMode = prevInterp;
+            textX += logoSize + logoGap;
+        }
+
         using var brush = new SolidBrush(TextValue);
         g.DrawString(line, font, brush,
-            new RectangleF(rect.X + barW + padX - 3f, rect.Y + padY, rect.Width - padX * 2f - barW, panelH), fmt);
+            new RectangleF(textX, rect.Y + padY, rect.X + rect.Width - textX - padX, panelH), fmt);
 
         return rect;
     }
