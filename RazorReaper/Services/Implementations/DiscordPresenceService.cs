@@ -60,6 +60,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["bosses"] = "Bosses",
             ["tp-locations"] = "TP Locations",
             ["underwater-drops"] = "Underwater Drops",
+            ["caves"] = "Caves",
             ["map-mods"] = "Map Mods",
             ["steam-mods"] = "Steam Mods",
             ["building"] = "Building",

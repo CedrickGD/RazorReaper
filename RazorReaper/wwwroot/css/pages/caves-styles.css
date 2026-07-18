@@ -1,0 +1,360 @@
+/* ===== CAVE DATABASE PAGE ===== */
+
+.caves-page {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Map selector */
+
+.caves-page .caves-map-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+}
+
+.caves-page .caves-map-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-round);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 400;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.caves-page .caves-map-chip:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+}
+
+.caves-page .caves-map-chip.active {
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
+    background: rgba(var(--accent-purple-rgb), 0.1);
+    color: var(--text-primary);
+}
+
+.caves-page .caves-map-chip-name {
+    font-weight: 500;
+}
+
+.caves-page .caves-map-chip-count {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-round);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Layout */
+
+.caves-page .caves-body {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.caves-page .caves-list-card,
+.caves-page .caves-detail-card {
+    padding: var(--space-5) !important;
+    margin-bottom: 0 !important;
+}
+
+/* Cave list */
+
+.caves-page .caves-list-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.caves-page .caves-list-header h3 {
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+}
+
+.caves-page .caves-list-count {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.caves-page .caves-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: var(--space-1);
+}
+
+.caves-page .cave-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-control);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.caves-page .cave-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.caves-page .cave-row.active {
+    background: rgba(var(--accent-purple-rgb), 0.1);
+    border-color: rgba(var(--accent-purple-rgb), 0.3);
+}
+
+.caves-page .cave-diff-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-round);
+    flex-shrink: 0;
+}
+
+.caves-page .cave-diff-dot.diff-easy {
+    background: rgba(var(--accent-green-rgb), 0.7);
+}
+
+.caves-page .cave-diff-dot.diff-medium {
+    background: rgba(var(--accent-orange-rgb), 0.7);
+}
+
+.caves-page .cave-diff-dot.diff-hard {
+    background: rgba(var(--accent-red-rgb), 0.7);
+}
+
+.caves-page .cave-row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.caves-page .cave-row-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.caves-page .cave-row-sub {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Detail card */
+
+.caves-page .cave-empty {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.caves-page .cave-image-slot {
+    margin-bottom: var(--space-4);
+}
+
+.caves-page .cave-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 160px;
+    border-radius: var(--radius-panel);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.caves-page .cave-image-placeholder svg {
+    width: 28px;
+    height: 28px;
+    opacity: 0.6;
+}
+
+.caves-page .cave-image {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: var(--radius-panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.caves-page .cave-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.caves-page .cave-detail-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.caves-page .cave-detail-title {
+    margin: 0 !important;
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+}
+
+.caves-page .cave-detail-map {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.caves-page .cave-diff-chip {
+    padding: 0.2rem var(--space-3);
+    border-radius: var(--radius-round);
+    font-size: 0.72rem;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.caves-page .cave-diff-chip.diff-easy {
+    background: rgba(var(--accent-green-rgb), 0.1);
+    color: var(--accent-green-soft);
+}
+
+.caves-page .cave-diff-chip.diff-medium {
+    background: rgba(var(--accent-orange-rgb), 0.1);
+    color: var(--accent-orange-soft);
+}
+
+.caves-page .cave-diff-chip.diff-hard {
+    background: rgba(var(--accent-red-rgb), 0.1);
+    color: var(--accent-red-soft);
+}
+
+/* Detail rows */
+
+.caves-page .cave-detail-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.caves-page .cave-detail-row {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: var(--space-3) 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.caves-page .cave-detail-row:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.caves-page .cave-detail-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.caves-page .cave-detail-value {
+    font-size: 0.88rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-width: 0;
+}
+
+.caves-page .cave-coords-value {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+}
+
+.caves-page .cave-coords {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+}
+
+.caves-page .cave-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0.25rem var(--space-3);
+    border-radius: var(--radius-chip);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.caves-page .cave-copy-btn:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.09);
+}
+
+.caves-page .cave-copy-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.caves-page .cave-hazard-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+}
+
+.caves-page .cave-hazard-chip {
+    padding: 0.15rem var(--space-2);
+    border-radius: var(--radius-chip);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 400;
+}
+
+/* Responsive */
+
+@media (max-width: 900px) {
+    .caves-page .caves-body {
+        grid-template-columns: 1fr;
+    }
+
+    .caves-page .caves-list {
+        max-height: 300px;
+    }
+}
