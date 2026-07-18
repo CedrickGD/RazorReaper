@@ -238,6 +238,14 @@ namespace RazorReaper
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
+
+            // Automation platform (input simulation, hotkeys, macros, calibration, screen sampling)
+            services.AddSingleton<RazorReaper.Services.Automation.IInputSimulator, RazorReaper.Services.Automation.InputSimulator>();
+            services.AddSingleton<RazorReaper.Services.Automation.IAutomationHotkeyService, RazorReaper.Services.Automation.AutomationHotkeyService>();
+            services.AddSingleton<RazorReaper.Services.Automation.IMacroEngine, RazorReaper.Services.Automation.MacroEngine>();
+            services.AddSingleton<RazorReaper.Services.Automation.ICalibrationService, RazorReaper.Services.Automation.CalibrationService>();
+            services.AddSingleton<RazorReaper.Services.Automation.IInputRecorderService, RazorReaper.Services.Automation.InputRecorderService>();
+            services.AddSingleton<RazorReaper.Services.Automation.IScreenSampler, RazorReaper.Services.Automation.ScreenSampler>();
             
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();
