@@ -1,0 +1,305 @@
+@page "/auto-antidote"
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@using RazorReaper.Services.Automation
+@using RazorReaper.Components.Shared
+@inject IAutoAntidoteService Antidote
+@inject ILogger<AutoAntidote> Logger
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">Auto Antidote</h1>
+    <p class="page-subtitle">Watches the HUD for your calibrated icon and refreshes the antidote automatically</p>
+</header>
+
+<div class="aa-page">
+
+    <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
+        <Actions>
+            @if (Antidote.State == AutoAntidoteState.Off)
+            {
+                <button class="btn btn-primary" @onclick="StartWatching">Start</button>
+            }
+            else
+            {
+                <button class="btn btn-danger" @onclick="StopWatching">Stop</button>
+            }
+        </Actions>
+    </StatusHeader>
+
+    <div class="aa-grid">
+
+        @* ── Calibration ─────────────────────────────────────────────────── *@
+        <div class="content-card aa-card">
+            <h3 class="aa-card-title">Calibration</h3>
+            <p class="aa-card-desc">Two quick steps teach the watcher what your antidote icon looks like.</p>
+
+            <div class="aa-steps">
+                <div class="aa-step">
+                    <span class="aa-step-num @(Antidote.HasRegion ? "done" : "")">1</span>
+                    <div class="aa-step-body">
+                        <div class="aa-step-title">Capture the HUD icon region</div>
+                        <div class="aa-step-desc">Hover one corner of the icon until the countdown ends, then hover the opposite corner.</div>
+                        @if (_capturingRegion)
+                        {
+                            <div class="aa-countdown">
+                                @(_regionSeconds > 0
+                                    ? $"Hover corner {_regionCorner} — capturing in {_regionSeconds}s"
+                                    : $"Reading corner {_regionCorner}…")
+                            </div>
+                        }
+                        else if (Antidote.HasRegion)
+                        {
+                            <div class="aa-step-state">Region set · @Antidote.RegionSummary</div>
+                        }
+                    </div>
+                    <button class="btn btn-secondary aa-step-btn" @onclick="CaptureRegion" disabled="@_capturingRegion">
+                        @(_capturingRegion ? "Capturing…" : Antidote.HasRegion ? "Recapture" : "Capture")
+                    </button>
+                </div>
+
+                <div class="aa-step">
+                    <span class="aa-step-num @(Antidote.HasReference ? "done" : "")">2</span>
+                    <div class="aa-step-body">
+                        <div class="aa-step-title">Capture a reference snapshot</div>
+                        <div class="aa-step-desc">With the icon visible in-game, snapshot the region so the watcher knows what to look for.</div>
+                        @if (Antidote.HasReference)
+                        {
+                            <div class="aa-step-state">Reference stored for this session</div>
+                        }
+                    </div>
+                    <button class="btn btn-secondary aa-step-btn" @onclick="CaptureReference" disabled="@(!Antidote.HasRegion || _capturingRegion)">
+                        @(Antidote.HasReference ? "Recapture" : "Capture")
+                    </button>
+                </div>
+            </div>
+
+            @if (Antidote.HasReference)
+            {
+                <div class="aa-match">
+                    <div class="aa-match-head">
+                        <span class="aa-match-label">Live match</span>
+                        <span class="aa-match-value @MatchClass">@MatchText</span>
+                    </div>
+                    <div class="aa-match-bar">
+                        <div class="aa-match-fill" style="width: @(MatchWidth)%"></div>
+                        <div class="aa-match-threshold" style="left: @(ThresholdText)%"></div>
+                    </div>
+                    <div class="aa-match-hint">Values above the marker count as "icon visible" — updates while watching.</div>
+                </div>
+            }
+        </div>
+
+        @* ── Settings ────────────────────────────────────────────────────── *@
+        <div class="content-card aa-card">
+            <h3 class="aa-card-title">Settings</h3>
+            <p class="aa-card-desc">Choose what fires the refresh and how the input burst behaves.</p>
+
+            <div class="aa-rows">
+                <SettingRow Title="Trigger" Description="Fire when the icon appears (debuff) or when it disappears (buff expiring).">
+                    <div class="aa-seg">
+                        <button class="aa-seg-btn @(Antidote.Settings.Mode == AutoAntidoteTriggerMode.IconAppears ? "active" : "")"
+                                @onclick="() => SetMode(AutoAntidoteTriggerMode.IconAppears)">Icon appears</button>
+                        <button class="aa-seg-btn @(Antidote.Settings.Mode == AutoAntidoteTriggerMode.IconDisappears ? "active" : "")"
+                                @onclick="() => SetMode(AutoAntidoteTriggerMode.IconDisappears)">Icon disappears</button>
+                    </div>
+                </SettingRow>
+
+                <SettingRow Title="Scan interval" Description="How often the region is checked.">
+                    <input type="number" class="aa-num" min="250" max="10000" step="50"
+                           @bind="Antidote.Settings.ScanIntervalMs" @bind:after="SaveSettings" />
+                    <span class="aa-unit">ms</span>
+                </SettingRow>
+
+                <SettingRow Title="Match tolerance" Description="Higher tolerance accepts more pixel difference before the icon counts as changed.">
+                    <input type="range" class="aa-slider" min="1" max="30" step="1"
+                           @bind="Tolerance" @bind:after="SaveSettings" />
+                    <span class="aa-unit">±@Tolerance%</span>
+                </SettingRow>
+
+                <SettingRow Title="Burst key" Description="The key pressed when the watcher triggers.">
+                    <HotkeyField Value="@Antidote.Settings.BurstKey" ValueChanged="OnBurstKeyChanged" Placeholder="Press a key" />
+                </SettingRow>
+
+                <SettingRow Title="Presses" Description="How many times the key is pressed per trigger.">
+                    <input type="number" class="aa-num" min="1" max="20"
+                           @bind="Antidote.Settings.BurstPresses" @bind:after="SaveSettings" />
+                </SettingRow>
+
+                <SettingRow Title="Press delay" Description="Pause between presses inside one burst.">
+                    <input type="number" class="aa-num" min="0" max="5000" step="50"
+                           @bind="Antidote.Settings.BurstDelayMs" @bind:after="SaveSettings" />
+                    <span class="aa-unit">ms</span>
+                </SettingRow>
+
+                <SettingRow Title="Cooldown" Description="Minimum time between triggers.">
+                    <input type="number" class="aa-num" min="0" max="600"
+                           @bind="Antidote.Settings.CooldownSeconds" @bind:after="SaveSettings" />
+                    <span class="aa-unit">s</span>
+                </SettingRow>
+
+                <SettingRow Title="Toggle hotkey" Description="Starts or stops watching system-wide, even while ARK has focus.">
+                    <HotkeyField Value="@Antidote.Settings.ToggleHotkey" ValueChanged="OnToggleHotkeyChanged" Placeholder="Press a combination" />
+                </SettingRow>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="aa-note">
+        <p>Detection is screen capture only — RazorReaper reads pixels like a screenshot tool and never touches game memory or files.</p>
+    </div>
+
+</div>
+
+@code {
+    private bool _capturingRegion;
+    private int _regionCorner;
+    private int _regionSeconds;
+
+    protected override void OnInitialized()
+    {
+        Antidote.Changed += OnServiceChanged;
+    }
+
+    private void OnServiceChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // ── Status header ──────────────────────────────────────────────────────
+
+    private string StatusState => Antidote.State switch
+    {
+        AutoAntidoteState.Watching => "online",
+        AutoAntidoteState.Cooldown => "warning",
+        _ => "off"
+    };
+
+    private string StatusLabel => Antidote.State switch
+    {
+        AutoAntidoteState.Watching => "Watching",
+        AutoAntidoteState.Cooldown => "Triggered — cooling down",
+        _ => "Off"
+    };
+
+    private string StatusDescription
+    {
+        get
+        {
+            if (Antidote.State == AutoAntidoteState.Off)
+            {
+                return Antidote.HasRegion && Antidote.HasReference
+                    ? $"Ready — press {Antidote.Settings.ToggleHotkey} or Start to begin."
+                    : "Calibrate the icon region and reference snapshot to get started.";
+            }
+
+            var text = Antidote.TriggerCount == 1 ? "1 trigger" : $"{Antidote.TriggerCount} triggers";
+            if (Antidote.LastTriggerAt is DateTime last)
+                text += $" · last at {last:HH:mm:ss}";
+            return text;
+        }
+    }
+
+    // ── Live match preview ─────────────────────────────────────────────────
+
+    private string MatchText => Antidote.LastMatchPercent is double m
+        ? m.ToString("F1", CultureInfo.InvariantCulture) + "%"
+        : "—";
+
+    private string MatchClass => Antidote.LastMatchPercent is double m
+        && m >= Antidote.Settings.MatchThresholdPercent ? "high" : "";
+
+    private string MatchWidth => Math.Clamp(Antidote.LastMatchPercent ?? 0, 0, 100)
+        .ToString("F1", CultureInfo.InvariantCulture);
+
+    private string ThresholdText => Math.Clamp(Antidote.Settings.MatchThresholdPercent, 0, 100)
+        .ToString("F0", CultureInfo.InvariantCulture);
+
+    // ── Settings plumbing ──────────────────────────────────────────────────
+
+    // The slider edits "tolerance" (how much difference is allowed); the service
+    // stores the equivalent similarity threshold: threshold = 100 - tolerance.
+    private int Tolerance
+    {
+        get => (int)Math.Clamp(Math.Round(100 - Antidote.Settings.MatchThresholdPercent), 1, 30);
+        set => Antidote.Settings.MatchThresholdPercent = 100 - Math.Clamp(value, 1, 30);
+    }
+
+    private void SaveSettings() => Antidote.SaveSettings();
+
+    private void SetMode(AutoAntidoteTriggerMode mode)
+    {
+        if (Antidote.Settings.Mode == mode) return;
+        Antidote.Settings.Mode = mode;
+        Antidote.SaveSettings();
+    }
+
+    private void OnBurstKeyChanged(string value)
+    {
+        Antidote.Settings.BurstKey = value;
+        Antidote.SaveSettings();
+    }
+
+    private void OnToggleHotkeyChanged(string value)
+    {
+        Antidote.Settings.ToggleHotkey = value;
+        Antidote.SaveSettings();
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────
+
+    private void StartWatching() => Antidote.Start();
+
+    private void StopWatching() => Antidote.Stop();
+
+    private async Task CaptureRegion()
+    {
+        if (_capturingRegion) return;
+        _capturingRegion = true;
+        _regionCorner = 1;
+        _regionSeconds = 0;
+        StateHasChanged();
+        try
+        {
+            var progress = new Progress<RegionCaptureProgress>(p =>
+            {
+                _regionCorner = p.CornerIndex;
+                _regionSeconds = p.SecondsRemaining;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            await Antidote.CaptureRegionAsync(progress);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Auto Antidote region capture failed from page");
+        }
+        finally
+        {
+            _capturingRegion = false;
+            _regionCorner = 0;
+            _regionSeconds = 0;
+            StateHasChanged();
+        }
+    }
+
+    private void CaptureReference()
+    {
+        try
+        {
+            Antidote.CaptureReference();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Auto Antidote reference capture failed from page");
+        }
+    }
+
+    // Deliberately does NOT stop the watcher — it is a singleton that keeps
+    // running when the user navigates away (toggle hotkey remains the hard stop).
+    public void Dispose()
+    {
+        Antidote.Changed -= OnServiceChanged;
+    }
+}

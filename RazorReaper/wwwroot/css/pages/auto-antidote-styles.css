@@ -1,0 +1,286 @@
+/* ── Auto Antidote page ─────────────────────────────────────────────────────
+   Styles for Components/Pages/AutoAntidote.razor. Uses only the design tokens
+   from theme.css (radius/spacing scales, accent + status variables, glass
+   backgrounds); shared primitives (SettingRow, StatusHeader, HotkeyField) are
+   styled in css/shared/primitives.css. */
+
+.aa-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: 1200px;
+}
+
+.aa-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.aa-card {
+    margin-bottom: 0 !important;
+    padding: var(--space-5) !important;
+}
+
+h3.aa-card-title {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    margin-bottom: var(--space-1) !important;
+}
+
+.aa-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+}
+
+/* ── Calibration steps ──────────────────────────────────────────────────── */
+
+.aa-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.aa-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.aa-step-num {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: var(--radius-round);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+    .aa-step-num.done {
+        color: var(--accent-purple-light);
+        background: rgba(var(--accent-purple-rgb), 0.12);
+        border-color: rgba(var(--accent-purple-rgb), 0.45);
+    }
+
+.aa-step-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    flex: 1;
+}
+
+.aa-step-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.aa-step-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.aa-step-state {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.aa-countdown {
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    color: var(--accent-orange);
+}
+
+.btn.aa-step-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+/* ── Live match preview ─────────────────────────────────────────────────── */
+
+.aa-match {
+    margin-top: var(--space-4);
+    padding: var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.aa-match-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.aa-match-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.aa-match-value {
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+    .aa-match-value.high {
+        color: var(--accent-purple-light);
+    }
+
+.aa-match-bar {
+    position: relative;
+    height: 6px;
+    border-radius: var(--radius-round);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.aa-match-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: var(--radius-round);
+    background: rgba(var(--accent-purple-rgb), 0.6);
+    transition: width 0.3s ease;
+}
+
+.aa-match-threshold {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateX(-1px);
+}
+
+.aa-match-hint {
+    margin-top: var(--space-2);
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+/* ── Settings ───────────────────────────────────────────────────────────── */
+
+.aa-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.aa-seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-control);
+}
+
+.aa-seg-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+    .aa-seg-btn:hover {
+        color: var(--text-primary);
+    }
+
+    .aa-seg-btn.active {
+        background: rgba(var(--accent-purple-rgb), 0.18);
+        color: var(--text-primary);
+    }
+
+input.aa-num {
+    width: 110px;
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    text-align: center;
+}
+
+.aa-unit {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    min-width: 2.2rem;
+}
+
+input.aa-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 150px;
+    height: 4px;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: var(--radius-round) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+
+    input.aa-slider:focus {
+        border: none !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+    }
+
+    input.aa-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: var(--radius-round);
+        background: var(--accent-purple);
+        border: none;
+    }
+
+/* ── Info note ──────────────────────────────────────────────────────────── */
+
+.aa-note {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35);
+}
+
+    .aa-note p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+    .aa-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
