@@ -237,6 +237,7 @@ namespace RazorReaper
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
+            services.AddSingleton<ICharPresetService, CharPresetService>();
             
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();

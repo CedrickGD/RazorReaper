@@ -1,0 +1,617 @@
+@page "/char-manager"
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+
+@inject ICharPresetService PresetService
+@inject INotificationService Notifications
+@inject IActivityService Activity
+@inject IProcessService ProcessService
+@inject ILogger<CharManager> Logger
+
+<div class="char-manager-page">
+    <header class="page-header">
+        <h1 class="page-title">Char Manager</h1>
+        <p class="page-subtitle">Manage the appearance presets saved on ARK's character creation screen.</p>
+    </header>
+
+    @if (!_arkFound)
+    {
+        <div class="content-card cm-empty-card">
+            <div class="cm-empty-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h3>ARK installation not found</h3>
+            <p>RazorReaper couldn't locate ARK: Survival Evolved through Steam. Make sure the game is installed, then rescan.</p>
+            <button type="button" class="cm-btn primary" @onclick="Refresh">Rescan</button>
+        </div>
+    }
+    else if (!_folderFound)
+    {
+        <div class="content-card cm-empty-card">
+            <div class="cm-empty-icon">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                </svg>
+            </div>
+            <h3>Presets folder missing</h3>
+            <p>The ARK install was found, but SavedArksLocal doesn't exist yet. Start the game once, then rescan.</p>
+            <p class="cm-empty-path">@_presetsFolder</p>
+            <button type="button" class="cm-btn primary" @onclick="Refresh">Rescan</button>
+        </div>
+    }
+    else
+    {
+        <StatusHeader State="online" Label="@HeaderLabel" Description="@_presetsFolder">
+            <Actions>
+                <button type="button" class="cm-btn" @onclick="Refresh" disabled="@_busy">Rescan</button>
+                <button type="button" class="cm-btn" @onclick="OpenPresetsFolder" disabled="@_busy">Open folder</button>
+                <button type="button" class="cm-btn primary" @onclick="ImportPresetAsync" disabled="@_busy">Import…</button>
+            </Actions>
+        </StatusHeader>
+
+        <div class="content-card cm-info-card">
+            <p class="cm-info-text">Presets are the saved templates on ARK's character creation screen — changes here apply the next time you create a character.</p>
+            <p class="cm-info-note">Before a preset is deleted or edited, a copy is kept in <code>@_backupFolder</code>.</p>
+        </div>
+
+        <div class="content-card cm-presets-card">
+            @if (_presets.Count == 0)
+            {
+                <div class="cm-empty-state">
+                    <p>No character presets yet.</p>
+                    <p>Save one in-game from the character creation screen, or import a .arkcharactersetting file.</p>
+                </div>
+            }
+            else
+            {
+                <div class="cm-rows">
+                    @foreach (var preset in _presets)
+                    {
+                        <div class="cm-preset" @key="preset.FileName">
+                            <SettingRow Title="@preset.Name" Description="@RowDescription(preset)">
+                                @if (_renamingFile == preset.FileName)
+                                {
+                                    <input class="cm-input"
+                                           @bind="_renameValue"
+                                           @bind:event="oninput"
+                                           @onkeydown="e => OnRenameKeyDown(e)"
+                                           placeholder="New name" />
+                                    <button type="button" class="cm-btn primary" @onclick="ConfirmRenameAsync" disabled="@_busy">Save</button>
+                                    <button type="button" class="cm-btn" @onclick="CancelRename" disabled="@_busy">Cancel</button>
+                                }
+                                else if (_confirmDeleteFile == preset.FileName)
+                                {
+                                    <span class="cm-confirm-text">Delete this preset?</span>
+                                    <button type="button" class="cm-btn danger" @onclick="() => ConfirmDeleteAsync(preset)" disabled="@_busy">Delete</button>
+                                    <button type="button" class="cm-btn" @onclick="CancelDelete" disabled="@_busy">Cancel</button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="cm-btn" @onclick="() => ToggleEditorAsync(preset)" disabled="@_busy">
+                                        @(_editorFile == preset.FileName ? "Close" : "Edit")
+                                    </button>
+                                    <button type="button" class="cm-btn" @onclick="() => StartRename(preset)" disabled="@_busy">Rename</button>
+                                    <button type="button" class="cm-btn" @onclick="() => DuplicateAsync(preset)" disabled="@_busy">Duplicate</button>
+                                    <button type="button" class="cm-btn" @onclick="() => ExportAsync(preset)" disabled="@_busy">Export</button>
+                                    <button type="button" class="cm-btn danger" @onclick="() => StartDelete(preset)" disabled="@_busy">Delete</button>
+                                }
+                            </SettingRow>
+
+                            @if (_editorFile == preset.FileName)
+                            {
+                                <div class="cm-editor">
+                                    @if (_document is null)
+                                    {
+                                        <div class="cm-editor-loading">Reading preset…</div>
+                                    }
+                                    else
+                                    {
+                                        @if (_document.ColorSliders.Count > 0)
+                                        {
+                                            <div class="cm-editor-section">
+                                                <div class="cm-editor-title">Colors</div>
+                                                <div class="cm-slider-grid">
+                                                    @foreach (var slider in _document.ColorSliders)
+                                                    {
+                                                        <div class="cm-slider" @key="slider.Key">
+                                                            <span class="cm-slider-label">@slider.Label</span>
+                                                            <input type="range" min="0" max="1" step="0.01"
+                                                                   value="@SliderAttr(slider.Value)"
+                                                                   @oninput="e => OnSliderInput(slider, e)" />
+                                                            <span class="cm-slider-value">@SliderText(slider.Value)</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (_document.BoneSliders.Count > 0)
+                                        {
+                                            <div class="cm-editor-section">
+                                                <div class="cm-editor-title">Body proportions</div>
+                                                <div class="cm-slider-grid">
+                                                    @foreach (var slider in _document.BoneSliders)
+                                                    {
+                                                        <div class="cm-slider" @key="slider.Key">
+                                                            <span class="cm-slider-label">@slider.Label</span>
+                                                            <input type="range" min="0" max="1" step="0.01"
+                                                                   value="@SliderAttr(slider.Value)"
+                                                                   @oninput="e => OnSliderInput(slider, e)" />
+                                                            <span class="cm-slider-value">@SliderText(slider.Value)</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        <div class="cm-editor-footer">
+                                            <span class="cm-editor-note">A backup copy is saved before changes are written.</span>
+                                            <div class="cm-editor-actions">
+                                                <button type="button" class="cm-btn" @onclick="ResetEditor" disabled="@(_busy || !_editorDirty)">Reset</button>
+                                                <button type="button" class="cm-btn primary" @onclick="SaveEditorAsync" disabled="@(_busy || !_editorDirty)">
+                                                    @(_saving ? "Saving…" : "Save changes")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<CharPresetInfo> _presets = new();
+    private string? _presetsFolder;
+    private string _backupFolder = "";
+    private bool _arkFound;
+    private bool _folderFound;
+    private bool _busy;
+    private bool _saving;
+
+    private string? _renamingFile;
+    private string _renameValue = "";
+    private string? _confirmDeleteFile;
+
+    private string? _editorFile;
+    private CharPresetDocument? _document;
+    private List<float> _originalValues = new();
+    private bool _editorDirty;
+
+    private string HeaderLabel => _presets.Count == 1
+        ? "1 preset found"
+        : $"{_presets.Count} presets found";
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _backupFolder = PresetService.GetBackupFolderPath();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve the character preset backup folder");
+        }
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        try
+        {
+            _presetsFolder = PresetService.GetPresetsFolderPath();
+            _arkFound = _presetsFolder is not null;
+            _folderFound = _arkFound && PresetService.PresetsFolderExists();
+            _presets = _folderFound ? PresetService.ListPresets() : new List<CharPresetInfo>();
+
+            if (_editorFile is not null && _presets.All(p => p.FileName != _editorFile))
+            {
+                CloseEditor();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load the ARK character preset list");
+            Notifications.ShowError("Could not read the character presets folder — see the log for details.");
+        }
+    }
+
+    private static string RowDescription(CharPresetInfo preset) =>
+        $"{preset.FileName} · {FormatSize(preset.SizeBytes)} · {preset.ModifiedLocal.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}";
+
+    private static string SliderAttr(float value) =>
+        Math.Clamp(value, 0f, 1f).ToString("0.###", CultureInfo.InvariantCulture);
+
+    private static string SliderText(float value) =>
+        Math.Clamp(value, 0f, 1f).ToString("0.00", CultureInfo.InvariantCulture);
+
+    private void WarnIfArkRunning()
+    {
+        try
+        {
+            if (ProcessService.IsProcessRunning("ShooterGame"))
+            {
+                Notifications.ShowWarning("ARK is running — reopen the character creation screen to see the change.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "ARK process check failed");
+        }
+    }
+
+    private void OpenPresetsFolder()
+    {
+        if (_presetsFolder is null) return;
+        try
+        {
+            ProcessService.Start(_presetsFolder);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to open the presets folder");
+            Notifications.ShowError("Could not open the presets folder.");
+        }
+    }
+
+    // ── Rename ───────────────────────────────────────────────────────────────
+
+    private void StartRename(CharPresetInfo preset)
+    {
+        _confirmDeleteFile = null;
+        _renamingFile = preset.FileName;
+        _renameValue = preset.Name;
+    }
+
+    private void CancelRename()
+    {
+        _renamingFile = null;
+        _renameValue = "";
+    }
+
+    private async Task OnRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ConfirmRenameAsync();
+        else if (e.Key == "Escape") CancelRename();
+    }
+
+    private async Task ConfirmRenameAsync()
+    {
+        if (_busy || _renamingFile is null) return;
+
+        var fileName = _renamingFile;
+        _busy = true;
+        try
+        {
+            var result = await PresetService.RenameAsync(fileName, _renameValue);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(result.Message);
+                Activity.AddActivity($"Renamed character preset to '{_renameValue.Trim()}'", "success");
+                if (_editorFile == fileName) CloseEditor();
+                CancelRename();
+            }
+            else
+            {
+                Notifications.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Renaming preset {FileName} failed", fileName);
+            Notifications.ShowError("Renaming failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            Refresh();
+        }
+    }
+
+    // ── Duplicate ────────────────────────────────────────────────────────────
+
+    private async Task DuplicateAsync(CharPresetInfo preset)
+    {
+        if (_busy) return;
+
+        _busy = true;
+        try
+        {
+            var result = await PresetService.DuplicateAsync(preset.FileName);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(result.Message);
+                Activity.AddActivity($"Duplicated character preset '{preset.Name}'", "success");
+            }
+            else
+            {
+                Notifications.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Duplicating preset {FileName} failed", preset.FileName);
+            Notifications.ShowError("Duplicating failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            Refresh();
+        }
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────────
+
+    private void StartDelete(CharPresetInfo preset)
+    {
+        CancelRename();
+        _confirmDeleteFile = preset.FileName;
+    }
+
+    private void CancelDelete()
+    {
+        _confirmDeleteFile = null;
+    }
+
+    private async Task ConfirmDeleteAsync(CharPresetInfo preset)
+    {
+        if (_busy) return;
+
+        _busy = true;
+        try
+        {
+            WarnIfArkRunning();
+            var result = await PresetService.DeleteAsync(preset.FileName);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(result.Message);
+                Activity.AddActivity($"Deleted character preset '{preset.Name}'", "warning");
+                if (_editorFile == preset.FileName) CloseEditor();
+            }
+            else
+            {
+                Notifications.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Deleting preset {FileName} failed", preset.FileName);
+            Notifications.ShowError("Deleting failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            _confirmDeleteFile = null;
+            Refresh();
+        }
+    }
+
+    // ── Import / Export ──────────────────────────────────────────────────────
+
+    private async Task ImportPresetAsync()
+    {
+        if (_busy) return;
+
+        string? picked;
+        try
+        {
+            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.WinUI, new[] { ".arkcharactersetting" } }
+            });
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Select a .arkcharactersetting preset file",
+                FileTypes = fileTypes
+            });
+            picked = result?.FullPath;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Preset file picker failed");
+            Notifications.ShowError("Could not open the file picker.");
+            return;
+        }
+
+        if (picked is null) return;
+
+        _busy = true;
+        try
+        {
+            var result = await PresetService.ImportAsync(picked);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(result.Message);
+                Activity.AddActivity("Imported a character preset", "success");
+            }
+            else
+            {
+                Notifications.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Importing preset from {Path} failed", picked);
+            Notifications.ShowError("Importing failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            Refresh();
+        }
+    }
+
+    private async Task ExportAsync(CharPresetInfo preset)
+    {
+        if (_busy) return;
+
+        string? folder;
+        try
+        {
+            folder = await PickFolderAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Folder picker failed");
+            Notifications.ShowError("Could not open the folder picker.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(folder)) return;
+
+        _busy = true;
+        try
+        {
+            var result = await PresetService.ExportAsync(preset.FileName, folder);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(result.Message);
+                Activity.AddActivity($"Exported character preset '{preset.Name}'", "success");
+            }
+            else
+            {
+                Notifications.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exporting preset {FileName} failed", preset.FileName);
+            Notifications.ShowError("Exporting failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static async Task<string?> PickFolderAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+
+        var windows = Microsoft.Maui.Controls.Application.Current?.Windows;
+        if (windows == null || windows.Count == 0) return null;
+
+        var window = windows[0].Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+        if (window == null) return null;
+
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    // ── Slider editor ────────────────────────────────────────────────────────
+
+    private async Task ToggleEditorAsync(CharPresetInfo preset)
+    {
+        if (_editorFile == preset.FileName)
+        {
+            CloseEditor();
+            return;
+        }
+
+        CancelRename();
+        CancelDelete();
+        _editorFile = preset.FileName;
+        _document = null;
+        _editorDirty = false;
+        StateHasChanged();
+
+        var result = await PresetService.ParseAsync(preset.FileName);
+        if (_editorFile != preset.FileName) return;
+
+        if (result.Success && result.Document is not null)
+        {
+            _document = result.Document;
+            _originalValues = _document.ColorSliders.Concat(_document.BoneSliders).Select(s => s.Value).ToList();
+        }
+        else
+        {
+            Notifications.ShowError(result.Error ?? "Could not read this preset.");
+            CloseEditor();
+        }
+    }
+
+    private void CloseEditor()
+    {
+        _editorFile = null;
+        _document = null;
+        _originalValues = new List<float>();
+        _editorDirty = false;
+    }
+
+    private void OnSliderInput(CharPresetSlider slider, ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            slider.Value = Math.Clamp(value, 0f, 1f);
+            _editorDirty = true;
+        }
+    }
+
+    private void ResetEditor()
+    {
+        if (_document is null) return;
+
+        var sliders = _document.ColorSliders.Concat(_document.BoneSliders).ToList();
+        for (var i = 0; i < sliders.Count && i < _originalValues.Count; i++)
+        {
+            sliders[i].Value = _originalValues[i];
+        }
+        _editorDirty = false;
+    }
+
+    private async Task SaveEditorAsync()
+    {
+        if (_busy || _document is null) return;
+
+        _busy = true;
+        _saving = true;
+        try
+        {
+            WarnIfArkRunning();
+            var result = await PresetService.SaveSlidersAsync(_document);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(result.Message);
+                Activity.AddActivity($"Edited character preset '{Path.GetFileNameWithoutExtension(_document.FileName)}'", "success");
+                _originalValues = _document.ColorSliders.Concat(_document.BoneSliders).Select(s => s.Value).ToList();
+                _editorDirty = false;
+            }
+            else
+            {
+                Notifications.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Saving preset edits failed");
+            Notifications.ShowError("Saving failed — see the log for details.");
+        }
+        finally
+        {
+            _busy = false;
+            _saving = false;
+            Refresh();
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] units = { "B", "KB", "MB" };
+        double size = bytes;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return unit == 0 ? $"{size:0} {units[unit]}" : $"{size:0.0} {units[unit]}";
+    }
+}

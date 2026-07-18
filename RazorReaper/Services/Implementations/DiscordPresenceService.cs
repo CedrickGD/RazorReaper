@@ -53,6 +53,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["paintings"] = "Paintings",
             ["custom-lab"] = "Sky Changer",
             ["loading-screen"] = "Loading Screen",
+            ["char-manager"] = "Char Manager",
             ["dino-prices"] = "Mutagen Prices",
             ["line-list"] = "Line List",
             ["oc-bps"] = "OC BPs",

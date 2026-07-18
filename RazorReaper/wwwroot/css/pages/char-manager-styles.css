@@ -1,0 +1,300 @@
+/* ── Char Manager page ───────────────────────────────────────────────────────
+   Styles for Components/Pages/CharManager.razor, namespaced under
+   .char-manager-page. Uses only theme.css design tokens (radius/spacing
+   scales, accent + status variables) plus neutral white/black rgba surfaces.
+   Shared chrome (.setting-row / .status-header) lives in shared/primitives.css. */
+
+.char-manager-page .status-header {
+    margin-bottom: var(--space-5);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.char-manager-page .cm-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-chip);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+    .char-manager-page .cm-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .char-manager-page .cm-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .char-manager-page .cm-btn.primary {
+        background: rgba(var(--accent-purple-rgb), 0.12);
+        border-color: rgba(var(--accent-purple-rgb), 0.4);
+        color: var(--accent-purple-light);
+    }
+
+        .char-manager-page .cm-btn.primary:hover:not(:disabled) {
+            background: rgba(var(--accent-purple-rgb), 0.22);
+            border-color: var(--accent-purple);
+        }
+
+    .char-manager-page .cm-btn.danger {
+        background: rgba(var(--accent-red-rgb), 0.1);
+        border-color: rgba(var(--accent-red-rgb), 0.35);
+        color: var(--accent-red-soft);
+    }
+
+        .char-manager-page .cm-btn.danger:hover:not(:disabled) {
+            background: rgba(var(--accent-red-rgb), 0.18);
+            border-color: var(--accent-red);
+        }
+
+/* ── Info card: neutral surface, thin colored left border only ──────────── */
+
+.char-manager-page .cm-info-card {
+    border-left: 3px solid rgba(var(--accent-blue-rgb), 0.35) !important;
+    display: grid;
+    gap: var(--space-2);
+}
+
+.char-manager-page .cm-info-text {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.char-manager-page .cm-info-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+    .char-manager-page .cm-info-note code {
+        font-family: var(--font-mono);
+        font-size: 0.76rem;
+        color: var(--text-secondary);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0 var(--space-1);
+        border-radius: var(--radius-sm);
+        overflow-wrap: anywhere;
+    }
+
+/* ── Preset rows ────────────────────────────────────────────────────────── */
+
+.char-manager-page .cm-presets-card {
+    display: block;
+}
+
+.char-manager-page .cm-rows {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.char-manager-page .cm-preset {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.char-manager-page .cm-input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-control);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 400;
+    padding: var(--space-2) var(--space-3);
+    min-width: 200px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+    .char-manager-page .cm-input:focus {
+        border-color: rgba(var(--accent-purple-rgb), 0.6);
+    }
+
+.char-manager-page .cm-confirm-text {
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+    white-space: nowrap;
+}
+
+/* ── Empty states ───────────────────────────────────────────────────────── */
+
+.char-manager-page .cm-empty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-3);
+}
+
+.char-manager-page .cm-empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-panel);
+    background: rgba(var(--accent-red-rgb), 0.12);
+    color: var(--accent-red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .char-manager-page .cm-empty-icon svg {
+        width: 26px;
+        height: 26px;
+    }
+
+.char-manager-page .cm-empty-card h3 {
+    margin: 0 !important;
+}
+
+.char-manager-page .cm-empty-card p {
+    margin: 0;
+    max-width: 480px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.char-manager-page .cm-empty-path {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.char-manager-page .cm-empty-state {
+    text-align: center;
+    padding: var(--space-5) var(--space-4);
+    display: grid;
+    gap: var(--space-1);
+}
+
+    .char-manager-page .cm-empty-state p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.88rem;
+    }
+
+        .char-manager-page .cm-empty-state p:first-child {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+/* ── Slider editor ──────────────────────────────────────────────────────── */
+
+.char-manager-page .cm-editor {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-panel);
+    padding: var(--space-4);
+    display: grid;
+    gap: var(--space-4);
+}
+
+.char-manager-page .cm-editor-loading {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.char-manager-page .cm-editor-section {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.char-manager-page .cm-editor-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.char-manager-page .cm-slider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-2) var(--space-4);
+}
+
+.char-manager-page .cm-slider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.char-manager-page .cm-slider-label {
+    flex: 0 0 118px;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.char-manager-page .cm-slider input[type="range"] {
+    flex: 1;
+    min-width: 60px;
+    height: 4px;
+    accent-color: var(--accent-purple);
+    cursor: pointer;
+}
+
+.char-manager-page .cm-slider-value {
+    flex: 0 0 34px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.char-manager-page .cm-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: var(--space-3);
+}
+
+.char-manager-page .cm-editor-note {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.char-manager-page .cm-editor-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* ── Narrow layout: stack the row controls under the text ───────────────── */
+
+@media (max-width: 900px) {
+    .char-manager-page .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .char-manager-page .setting-row-control {
+        flex-wrap: wrap;
+    }
+
+    .char-manager-page .cm-input {
+        min-width: 140px;
+    }
+}
