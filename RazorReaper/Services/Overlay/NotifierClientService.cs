@@ -24,7 +24,8 @@ public enum NotifierAlertType
     RareDino,
     Resource,
     Osd,
-    ElementNode
+    ElementNode,
+    TribeLog
 }
 
 /// <summary>Which app sound plays for an alert type. Maps to the existing JS sound helpers.</summary>
@@ -108,6 +109,11 @@ public interface INotifierClientService : IDisposable
     void SetClusterEnabled(string id, bool enabled);
     void SetClusterLabel(string id, string label);
 
+    /// <summary>Trigger phrases for tribe-log alerts. When non-empty, a tribe-log alert only
+    /// passes if its subject or text contains one of these (case-insensitive). Empty = all pass.</summary>
+    IReadOnlyList<string> TribeTriggers { get; }
+    void SetTribeTriggers(IEnumerable<string> phrases);
+
     /// <summary>Begin connecting (no-op with a clear status when no endpoint is set).</summary>
     void Start();
     /// <summary>Stop and stay disconnected.</summary>
@@ -125,6 +131,7 @@ public sealed class NotifierClientService : INotifierClientService
     private const string EndpointKey = "notifier.endpoint";
     private const string SpeciesKey = "notifier.species";
     private const string ClustersKey = "notifier.clusters";
+    private const string TribeTriggersKey = "notifier.tribetriggers";
     private const int RecentCapacity = 40;
     private const int MaxBackoffSeconds = 30;
 
@@ -140,6 +147,7 @@ public sealed class NotifierClientService : INotifierClientService
     private readonly Dictionary<NotifierAlertType, NotifierSound> _typeSound = new();
     private readonly HashSet<string> _enabledSpecies = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<NotifierCluster> _clusters = new();
+    private readonly List<string> _tribeTriggers = new();
 
     private string _endpoint = "";
     private NotifierConnectionState _state = NotifierConnectionState.Disconnected;
@@ -164,6 +172,8 @@ public sealed class NotifierClientService : INotifierClientService
             "Element veins and charge nodes coming online."),
         new(NotifierAlertType.Osd, "osd", "OSD / events",
             "Orbital supply drops and timed server events."),
+        new(NotifierAlertType.TribeLog, "tribe-log", "Tribe log",
+            "Tribe-log events matching your trigger phrases below."),
     };
 
     // 24 rare / aberrant / tek / notable ARK: Survival Evolved species — facts only.
@@ -255,6 +265,10 @@ public sealed class NotifierClientService : INotifierClientService
                 _clusters.Add(new NotifierCluster { Id = "cluster-2", Label = "Cluster 2", Enabled = true });
                 _clusters.Add(new NotifierCluster { Id = "cluster-3", Label = "Cluster 3", Enabled = true });
             }
+
+            var triggersRaw = Preferences.Get(TribeTriggersKey, "") ?? "";
+            foreach (var t in triggersRaw.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                _tribeTriggers.Add(t);
         }
         catch (Exception ex)
         {
@@ -272,6 +286,12 @@ public sealed class NotifierClientService : INotifierClientService
     {
         try { Preferences.Set(ClustersKey, JsonSerializer.Serialize(_clusters, JsonOpts)); }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to persist Notifier clusters"); }
+    }
+
+    private void SaveTribeTriggers()
+    {
+        try { Preferences.Set(TribeTriggersKey, string.Join('\n', _tribeTriggers)); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to persist Notifier tribe triggers"); }
     }
 
     // ── State exposure ────────────────────────────────────────────────────────────────────────
@@ -388,6 +408,27 @@ public sealed class NotifierClientService : INotifierClientService
             c.Label = string.IsNullOrWhiteSpace(label) ? id : label.Trim();
         }
         SaveClusters();
+        RaiseChanged();
+    }
+
+    public IReadOnlyList<string> TribeTriggers
+    {
+        get { lock (_gate) return _tribeTriggers.ToList(); }
+    }
+
+    public void SetTribeTriggers(IEnumerable<string> phrases)
+    {
+        lock (_gate)
+        {
+            _tribeTriggers.Clear();
+            foreach (var p in phrases ?? Enumerable.Empty<string>())
+            {
+                var t = p?.Trim();
+                if (!string.IsNullOrEmpty(t) && !_tribeTriggers.Contains(t, StringComparer.OrdinalIgnoreCase))
+                    _tribeTriggers.Add(t);
+            }
+        }
+        SaveTribeTriggers();
         RaiseChanged();
     }
 
@@ -584,6 +625,7 @@ public sealed class NotifierClientService : INotifierClientService
             "resource" or "resources" or "harvest" => NotifierAlertType.Resource,
             "osd" or "drop" or "event" => NotifierAlertType.Osd,
             "element-node" or "element" or "node" or "elementnode" => NotifierAlertType.ElementNode,
+            "tribe-log" or "tribelog" or "tribe" => NotifierAlertType.TribeLog,
             _ => null
         };
     }
@@ -617,6 +659,13 @@ public sealed class NotifierClientService : INotifierClientService
             {
                 var id = MatchSpeciesId(alert.Subject);
                 if (id == null || !_enabledSpecies.Contains(id)) return false;
+            }
+
+            if (alert.Type == NotifierAlertType.TribeLog && _tribeTriggers.Count > 0)
+            {
+                var hay = $"{alert.Subject} {alert.Text}";
+                if (!_tribeTriggers.Any(t => hay.Contains(t, StringComparison.OrdinalIgnoreCase)))
+                    return false;
             }
 
             if (!string.IsNullOrWhiteSpace(alert.Cluster))
@@ -659,11 +708,12 @@ public sealed class NotifierClientService : INotifierClientService
     public void TestAlert()
     {
         var n = Interlocked.Increment(ref _testCounter);
-        var type = (n % 4) switch
+        var type = (n % 5) switch
         {
             1 => NotifierAlertType.RareDino,
             2 => NotifierAlertType.Resource,
             3 => NotifierAlertType.ElementNode,
+            4 => NotifierAlertType.TribeLog,
             _ => NotifierAlertType.Osd
         };
         TestAlert(type);
@@ -676,6 +726,7 @@ public sealed class NotifierClientService : INotifierClientService
             NotifierAlertType.RareDino => SpeciesStatic[Random.Shared.Next(SpeciesStatic.Count)].Name,
             NotifierAlertType.Resource => "Metal node",
             NotifierAlertType.ElementNode => "Charge node",
+            NotifierAlertType.TribeLog => "Your Tribe: Bob was killed by a Raptor!",
             _ => "Orbital supply drop"
         };
         var text = ComposeText(type, subject, "Test") + " (test)";
@@ -691,6 +742,7 @@ public sealed class NotifierClientService : INotifierClientService
     {
         NotifierAlertType.RareDino => HudAlertSeverity.Success,
         NotifierAlertType.ElementNode => HudAlertSeverity.Warning,
+        NotifierAlertType.TribeLog => HudAlertSeverity.Warning,
         _ => HudAlertSeverity.Info
     };
 
@@ -702,6 +754,7 @@ public sealed class NotifierClientService : INotifierClientService
             NotifierAlertType.Resource => string.IsNullOrWhiteSpace(subject) ? "Resource available" : $"Resource: {subject}",
             NotifierAlertType.ElementNode => string.IsNullOrWhiteSpace(subject) ? "Element node active" : $"Element node: {subject}",
             NotifierAlertType.Osd => string.IsNullOrWhiteSpace(subject) ? "OSD event" : subject!,
+            NotifierAlertType.TribeLog => string.IsNullOrWhiteSpace(subject) ? "Tribe log" : subject!,
             _ => subject ?? "Alert"
         };
         return string.IsNullOrWhiteSpace(clusterLabel) ? body : $"{body} · {clusterLabel}";

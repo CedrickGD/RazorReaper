@@ -81,6 +81,15 @@ input.nt-input-wide {
     font-family: var(--font-mono);
 }
 
+textarea.nt-triggers {
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 0.82rem !important;
+    line-height: 1.5;
+}
+
 select.nt-select {
     padding: var(--space-2) var(--space-3) !important;
     font-size: 0.82rem !important;

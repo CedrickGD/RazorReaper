@@ -112,6 +112,17 @@
             </div>
         </div>
 
+        @* ── Tribe log triggers ──────────────────────────────────────────── *@
+        <div class="content-card nt-card">
+            <h3 class="nt-card-title">Tribe log triggers</h3>
+            <p class="nt-card-desc">Only applies while Tribe log is enabled. One phrase per line; a tribe-log alert shows if it contains any of them (case-insensitive). Leave empty to show every tribe-log message.</p>
+
+            <textarea class="nt-input nt-triggers" spellcheck="false" rows="5"
+                      placeholder="One phrase per line — e.g. was killed, destroyed, starved to death, an enemy tribe name…"
+                      value="@_tribeTriggersDraft"
+                      @onchange="ApplyTribeTriggers"></textarea>
+        </div>
+
     </div>
 
     @* ── Recent alerts ───────────────────────────────────────────────────── *@
@@ -145,12 +156,21 @@
 
 @code {
     private string _endpointDraft = "";
+    private string _tribeTriggersDraft = "";
 
     protected override void OnInitialized()
     {
         _endpointDraft = NotifierClient.Endpoint;
+        _tribeTriggersDraft = string.Join('\n', NotifierClient.TribeTriggers);
         NotifierClient.Changed += OnChanged;
         NotifierClient.AlertReceived += OnAlertReceived;
+    }
+
+    private void ApplyTribeTriggers(ChangeEventArgs e)
+    {
+        var raw = e?.Value?.ToString() ?? "";
+        _tribeTriggersDraft = raw;
+        NotifierClient.SetTribeTriggers(raw.Split('\n'));
     }
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
