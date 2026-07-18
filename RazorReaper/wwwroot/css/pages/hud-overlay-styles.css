@@ -1,0 +1,209 @@
+/* ── HUD Overlay page ────────────────────────────────────────────────────────
+   Styles for Components/Pages/HudOverlay.razor. Uses only the design tokens from
+   theme.css (radius/spacing scales, accent + status variables, inset surfaces);
+   shared primitives (SettingRow, StatusHeader, Switch) are styled in
+   css/shared/primitives.css. Nested panels recede via --surface-inset. */
+
+.hud-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: 1200px;
+}
+
+.hud-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.hud-card {
+    margin-bottom: 0 !important;
+    padding: var(--space-5) !important;
+}
+
+h3.hud-card-title {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    margin-bottom: var(--space-1) !important;
+}
+
+.hud-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+}
+
+.hud-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+/* ── Module reorder controls ────────────────────────────────────────────── */
+
+.hud-mod-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.hud-reorder {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: var(--radius-chip);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+    .hud-reorder:hover:not(:disabled) {
+        color: var(--text-primary);
+        border-color: rgba(var(--accent-purple-rgb), 0.3);
+        background: var(--surface-inset-hover);
+    }
+
+    .hud-reorder:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+
+    .hud-reorder svg {
+        display: block;
+    }
+
+/* ── Corner / segmented selectors ───────────────────────────────────────── */
+
+.hud-corner-seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    padding: 2px;
+    width: 220px;
+    max-width: 220px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-control);
+}
+
+.hud-seg-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+    .hud-seg-btn:hover:not(:disabled) {
+        color: var(--text-primary);
+    }
+
+    .hud-seg-btn.active {
+        background: rgba(var(--accent-purple-rgb), 0.18);
+        color: var(--text-primary);
+    }
+
+    .hud-seg-btn.custom {
+        grid-column: 1 / -1;
+        font-size: 0.74rem;
+    }
+
+    .hud-seg-btn:disabled {
+        cursor: default;
+    }
+
+/* ── Numbers, units, sliders, select ────────────────────────────────────── */
+
+input.hud-num {
+    width: 96px;
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    text-align: center;
+}
+
+.hud-unit {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    min-width: 2.8rem;
+    text-align: right;
+}
+
+.hud-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+input.hud-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 150px;
+    height: 4px;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: var(--radius-round) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+
+    input.hud-slider:focus {
+        border: none !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+    }
+
+    input.hud-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: var(--radius-round);
+        background: var(--accent-purple);
+        border: none;
+    }
+
+select.hud-select {
+    min-width: 200px;
+    max-width: 240px;
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    cursor: pointer;
+}
+
+/* ── Info note ──────────────────────────────────────────────────────────── */
+
+.hud-note {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35);
+}
+
+    .hud-note p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+    .hud-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

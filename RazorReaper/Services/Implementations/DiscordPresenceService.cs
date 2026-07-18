@@ -68,6 +68,8 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["macros"] = "Macros",
             ["fed-suit"] = "Fed Suit",
             ["auto-antidote"] = "Auto Antidote",
+            ["hud-overlay"] = "HUD Overlay",
+            ["notifier"] = "Notifier",
             ["crosshair"] = "Crosshair",
             ["crafting-scripts"] = "Macro / AHK",
             ["compact-ark"] = "Compact ARK",

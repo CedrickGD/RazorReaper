@@ -249,6 +249,10 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.IFastTransferMacro, RazorReaper.Services.Automation.FastTransferMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IFedSuitMacro, RazorReaper.Services.Automation.FedSuitMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IAutoAntidoteService, RazorReaper.Services.Automation.AutoAntidoteService>();
+
+            // Overlay platform (HUD overlay window + notifier client)
+            services.AddSingleton<RazorReaper.Services.Overlay.IHudOverlayService, RazorReaper.Services.Overlay.HudOverlayService>();
+            services.AddSingleton<RazorReaper.Services.Overlay.INotifierClientService, RazorReaper.Services.Overlay.NotifierClientService>();
             
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();

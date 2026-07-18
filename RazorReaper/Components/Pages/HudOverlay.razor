@@ -1,0 +1,333 @@
+@page "/hud-overlay"
+@using System.Linq
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Models
+@using RazorReaper.Services.Overlay
+@inject IHudOverlayService Hud
+@inject IJSRuntime JS
+@inject ILogger<HudOverlay> Logger
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">HUD Overlay</h1>
+    <p class="page-subtitle">A click-through on-screen panel with clock, session timer, server info, tool status and alerts</p>
+</header>
+
+<div class="hud-page">
+
+    <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
+        <Actions>
+            @if (Hud.IsRunning)
+            {
+                <button class="btn btn-danger" @onclick="() => Hud.Toggle()">Disable</button>
+            }
+            else
+            {
+                <button class="btn btn-primary" @onclick="() => Hud.Toggle()">Enable</button>
+            }
+            <button class="btn @(Hud.IsMoveMode ? "btn-primary" : "btn-secondary")"
+                    disabled="@(!Hud.IsRunning)" @onclick="ToggleMoveMode">
+                @(Hud.IsMoveMode ? "Move mode: on" : "Move mode")
+            </button>
+            <button class="btn btn-secondary" disabled="@(!Hud.IsRunning)" @onclick="() => Hud.TestAlert()">
+                Test alert
+            </button>
+        </Actions>
+    </StatusHeader>
+
+    <div class="hud-grid">
+
+        @* ── Modules ─────────────────────────────────────────────────────── *@
+        <div class="content-card hud-card">
+            <h3 class="hud-card-title">Modules</h3>
+            <p class="hud-card-desc">Toggle each panel line and reorder it with the arrows.</p>
+
+            <div class="hud-rows">
+                @{
+                    var ordered = _settings.Modules.OrderBy(m => m.Order).ToList();
+                }
+                @for (var i = 0; i < ordered.Count; i++)
+                {
+                    var module = ordered[i];
+                    var isFirst = i == 0;
+                    var isLast = i == ordered.Count - 1;
+
+                    <SettingRow Title="@module.Title" Description="@ModuleDescription(module.Id)">
+                        <div class="hud-mod-controls">
+                            <button class="hud-reorder" title="Move up" disabled="@isFirst"
+                                    @onclick="() => MoveModule(module.Id, -1)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
+                            </button>
+                            <button class="hud-reorder" title="Move down" disabled="@isLast"
+                                    @onclick="() => MoveModule(module.Id, 1)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                            </button>
+                            <Switch Compact="true" Value="@module.Enabled"
+                                    ValueChanged="@(v => SetModuleEnabled(module.Id, v))" />
+                        </div>
+                    </SettingRow>
+                }
+            </div>
+        </div>
+
+        @* ── Placement ───────────────────────────────────────────────────── *@
+        <div class="content-card hud-card">
+            <h3 class="hud-card-title">Placement</h3>
+            <p class="hud-card-desc">Choose where the panel sits and how it looks. Changes apply instantly.</p>
+
+            <div class="hud-rows">
+
+                <SettingRow Title="Monitor" Description="Which display the overlay draws on.">
+                    <select class="hud-select" value="@_settings.MonitorDeviceName" @onchange="OnMonitorChanged">
+                        <option value="">Primary display</option>
+                        @foreach (var mon in _monitors)
+                        {
+                            <option value="@mon.DeviceName">@mon.FriendlyName@(mon.IsPrimary ? " · primary" : "")</option>
+                        }
+                    </select>
+                </SettingRow>
+
+                <SettingRow Title="Corner" Description="Anchor the panel to a screen corner.">
+                    <div class="hud-corner-seg">
+                        @foreach (var c in Corners)
+                        {
+                            <button class="hud-seg-btn @(_settings.Anchor == c.Anchor ? "active" : "")"
+                                    @onclick="() => SetAnchor(c.Anchor)">@c.Label</button>
+                        }
+                        @if (_settings.Anchor == HudAnchor.Custom)
+                        {
+                            <button class="hud-seg-btn custom active" disabled>Custom (dragged)</button>
+                        }
+                    </div>
+                </SettingRow>
+
+                <SettingRow Title="Alert corner" Description="Where notifier alerts stack up.">
+                    <div class="hud-corner-seg">
+                        @foreach (var c in Corners)
+                        {
+                            <button class="hud-seg-btn @(_settings.AlertCorner == c.Anchor ? "active" : "")"
+                                    @onclick="() => SetAlertCorner(c.Anchor)">@c.Label</button>
+                        }
+                    </div>
+                </SettingRow>
+
+                <SettingRow Title="Offset X" Description="Horizontal margin from the corner." Disabled="@IsCustom">
+                    <input type="number" class="hud-num" min="0" max="2000" step="1"
+                           @bind="_settings.OffsetX" @bind:after="Apply" disabled="@IsCustom" />
+                    <span class="hud-unit">px</span>
+                </SettingRow>
+
+                <SettingRow Title="Offset Y" Description="Vertical margin from the corner." Disabled="@IsCustom">
+                    <input type="number" class="hud-num" min="0" max="2000" step="1"
+                           @bind="_settings.OffsetY" @bind:after="Apply" disabled="@IsCustom" />
+                    <span class="hud-unit">px</span>
+                </SettingRow>
+
+                <SettingRow Title="Opacity" Description="Overall transparency of the overlay.">
+                    <div class="hud-slider-wrap">
+                        <input type="range" class="hud-slider" min="20" max="100" step="5"
+                               @bind="OpacityPercent" @bind:after="Apply" />
+                        <span class="hud-unit">@OpacityPercent%</span>
+                    </div>
+                </SettingRow>
+
+                <SettingRow Title="Scale" Description="Size of the panel and alert text.">
+                    <div class="hud-slider-wrap">
+                        <input type="range" class="hud-slider" min="50" max="200" step="5"
+                               @bind="ScalePercent" @bind:after="Apply" />
+                        <span class="hud-unit">@ScalePercent%</span>
+                    </div>
+                </SettingRow>
+
+                <SettingRow Title="Compact mode" Description="Collapse every module into one condensed line.">
+                    <Switch Value="@_settings.Compact" ValueChanged="OnCompactChanged" />
+                </SettingRow>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div class="hud-note">
+        <p>The overlay is click-through except in move mode — turn on move mode to drag the panel into place, then turn it back off.</p>
+    </div>
+
+</div>
+
+@code {
+    private HudSettings _settings = new();
+    private IReadOnlyList<MonitorInfo> _monitors = Array.Empty<MonitorInfo>();
+
+    private static readonly (HudAnchor Anchor, string Label)[] Corners =
+    {
+        (HudAnchor.TopLeft, "Top left"),
+        (HudAnchor.TopRight, "Top right"),
+        (HudAnchor.BottomLeft, "Bottom left"),
+        (HudAnchor.BottomRight, "Bottom right"),
+    };
+
+    protected override void OnInitialized()
+    {
+        _settings = Hud.Settings;
+        _monitors = Hud.GetMonitors();
+        Hud.Changed += OnServiceChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Push the user's live theme accent to the overlay so its highlights match the app.
+        if (firstRender) await PushAccentAsync();
+    }
+
+    private void OnServiceChanged() => _ = InvokeAsync(() =>
+    {
+        _settings = Hud.Settings; // re-sync (covers move-mode drag persisting a Custom position)
+        StateHasChanged();
+    });
+
+    // ── Status header ──────────────────────────────────────────────────────
+
+    private string StatusState => Hud.IsRunning ? "online" : "off";
+
+    private string StatusLabel => Hud.IsRunning ? "On" : "Off";
+
+    private string StatusDescription
+    {
+        get
+        {
+            if (!Hud.IsRunning) return "Overlay is off — enable it to draw on screen.";
+            var total = _settings.Modules.Count;
+            var enabled = _settings.Modules.Count(m => m.Enabled);
+            var text = $"{enabled} of {total} modules enabled";
+            return Hud.IsMoveMode ? text + " · move mode on" : text;
+        }
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────
+
+    private void ToggleMoveMode() => Hud.SetMoveMode(!Hud.IsMoveMode);
+
+    // ── Modules ────────────────────────────────────────────────────────────
+
+    private static string ModuleDescription(HudModuleKind id) => id switch
+    {
+        HudModuleKind.Clock => "Current time of day.",
+        HudModuleKind.SessionTimer => "Time elapsed since RazorReaper launched.",
+        HudModuleKind.ServerInfo => "Server name, players and ping from the Server page.",
+        HudModuleKind.ToolStatus => "Shows which RazorReaper tool is currently active.",
+        HudModuleKind.Notifier => "On-screen stack of tool alerts.",
+        _ => ""
+    };
+
+    private void SetModuleEnabled(HudModuleKind id, bool enabled)
+    {
+        var list = _settings.Modules.ToList();
+        var i = list.FindIndex(m => m.Id == id);
+        if (i < 0 || list[i].Enabled == enabled) return;
+        list[i] = list[i] with { Enabled = enabled };
+        _settings.Modules = list;
+        Apply();
+    }
+
+    private void MoveModule(HudModuleKind id, int direction)
+    {
+        var list = _settings.Modules.OrderBy(m => m.Order).ToList();
+        var i = list.FindIndex(m => m.Id == id);
+        var j = i + direction;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+
+        (list[i], list[j]) = (list[j], list[i]);
+        for (var k = 0; k < list.Count; k++)
+            list[k] = list[k] with { Order = k };
+
+        _settings.Modules = list;
+        Apply();
+    }
+
+    // ── Placement ──────────────────────────────────────────────────────────
+
+    private bool IsCustom => _settings.Anchor == HudAnchor.Custom;
+
+    private void SetAnchor(HudAnchor anchor)
+    {
+        if (_settings.Anchor == anchor) return;
+        _settings.Anchor = anchor;
+        Apply();
+    }
+
+    private void SetAlertCorner(HudAnchor anchor)
+    {
+        if (_settings.AlertCorner == anchor) return;
+        _settings.AlertCorner = anchor;
+        Apply();
+    }
+
+    private void OnMonitorChanged(ChangeEventArgs e)
+    {
+        _settings.MonitorDeviceName = e.Value?.ToString() ?? "";
+        Apply();
+    }
+
+    private void OnCompactChanged(bool value)
+    {
+        _settings.Compact = value;
+        Apply();
+    }
+
+    private int OpacityPercent
+    {
+        get => (int)Math.Round(_settings.Opacity * 100);
+        set => _settings.Opacity = Math.Clamp(value, 20, 100) / 100.0;
+    }
+
+    private int ScalePercent
+    {
+        get => (int)Math.Round(_settings.Scale * 100);
+        set => _settings.Scale = Math.Clamp(value, 50, 200) / 100.0;
+    }
+
+    // ── Service plumbing ───────────────────────────────────────────────────
+
+    private void Apply() => Hud.UpdateSettings(_settings);
+
+    private async Task PushAccentAsync()
+    {
+        try
+        {
+            var raw = await JS.InvokeAsync<string>(
+                "eval",
+                "getComputedStyle(document.documentElement).getPropertyValue('--accent-purple-rgb')");
+            if (TryParseRgb(raw, out var r, out var g, out var b)) Hud.SetAccent(r, g, b);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to read theme accent for HUD overlay");
+        }
+    }
+
+    private static bool TryParseRgb(string? raw, out byte r, out byte g, out byte b)
+    {
+        r = g = b = 0;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        var parts = raw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3) return false;
+        if (int.TryParse(parts[0], out var ri) &&
+            int.TryParse(parts[1], out var gi) &&
+            int.TryParse(parts[2], out var bi))
+        {
+            r = (byte)Math.Clamp(ri, 0, 255);
+            g = (byte)Math.Clamp(gi, 0, 255);
+            b = (byte)Math.Clamp(bi, 0, 255);
+            return true;
+        }
+        return false;
+    }
+
+    // Singleton service keeps running when we leave; only restore click-through so
+    // an editing session in move mode never traps the cursor over the game.
+    public void Dispose()
+    {
+        Hud.Changed -= OnServiceChanged;
+        if (Hud.IsMoveMode) Hud.SetMoveMode(false);
+    }
+}
