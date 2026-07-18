@@ -1,0 +1,416 @@
+@page "/stretched-res"
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@using RazorReaper.Components.Shared
+@implements IDisposable
+@inject IStretchedResService Stretched
+@inject INotificationService NotificationService
+@inject ILogger<StretchedRes> Logger
+
+<header class="page-header">
+    <h1 class="page-title">Stretched Res</h1>
+    <p class="page-subtitle">Switch the desktop to a stretched resolution — safely, with a 15-second auto-revert.</p>
+</header>
+
+<div class="stretched-res-page">
+
+    @* ============================================================
+       CONFIRMATION — the safety gate. Only shows while a change is
+       pending; a live countdown reverts automatically if ignored.
+       ============================================================ *@
+    @if (Stretched.IsPendingConfirmation)
+    {
+        <section class="content-card stretched-confirm-card">
+            <div class="stretched-confirm-head">
+                <div class="stretched-confirm-text">
+                    <div class="stretched-confirm-title">Keep this resolution?</div>
+                    <div class="stretched-confirm-sub">
+                        Now showing @(Stretched.PendingResolution?.Label ?? "the new mode").
+                        Reverts to @(Stretched.PreviousResolution?.Label ?? "the previous mode") automatically if you don't confirm.
+                    </div>
+                </div>
+                <div class="stretched-countdown" aria-live="polite">
+                    @Stretched.SecondsRemaining<span class="stretched-countdown-unit">s</span>
+                </div>
+            </div>
+            <div class="stretched-countdown-bar">
+                <div class="stretched-countdown-fill" style="width: @CountdownPercentCss%"></div>
+            </div>
+            <div class="stretched-confirm-actions">
+                <button class="btn btn-primary" @onclick="Keep">Keep resolution</button>
+                <button class="btn btn-secondary" @onclick="RevertNow">Revert now</button>
+            </div>
+        </section>
+    }
+
+    @* ============================================================
+       STATUS — current vs native resolution + detected GPU.
+       ============================================================ *@
+    <section class="content-card">
+        <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
+            <Actions>
+                <button class="btn btn-secondary" @onclick="RestoreNative" disabled="@Stretched.IsPendingConfirmation">
+                    Restore native
+                </button>
+            </Actions>
+        </StatusHeader>
+
+        <div class="stretched-facts">
+            <div class="stretched-fact">
+                <div class="stretched-fact-label">Current</div>
+                <div class="stretched-fact-value">@CurrentLabel</div>
+                <div class="stretched-fact-sub">@CurrentAspectSub</div>
+            </div>
+            <div class="stretched-fact">
+                <div class="stretched-fact-label">Native</div>
+                <div class="stretched-fact-value">@NativeLabel</div>
+                <div class="stretched-fact-sub">The panel's full resolution</div>
+            </div>
+            <div class="stretched-fact">
+                <div class="stretched-fact-label">Graphics</div>
+                <div class="stretched-fact-value stretched-fact-value-sm">@GpuLabel</div>
+                <div class="stretched-fact-sub">@GpuVendorSub</div>
+            </div>
+        </div>
+    </section>
+
+    @* ============================================================
+       PRESETS + CUSTOM — apply a temporary desktop resolution.
+       ============================================================ *@
+    <section class="content-card">
+        <h3>Stretched presets</h3>
+        <p class="stretched-intro">Each applies the desktop resolution temporarily — you get 15 seconds to confirm before it reverts on its own.</p>
+
+        <div class="stretched-preset-grid">
+            @foreach (var preset in presets)
+            {
+                <button type="button"
+                        class="stretched-preset @(IsChosen(preset.Width, preset.Height) ? "active" : "")"
+                        @onclick="() => Apply(preset.Width, preset.Height, false)"
+                        disabled="@ApplyDisabled"
+                        @key="preset.Name">
+                    <span class="stretched-preset-res">@preset.Width × @preset.Height</span>
+                    <span class="stretched-preset-aspect">@preset.AspectLabel</span>
+                    <span class="stretched-preset-note">@preset.Note</span>
+                </button>
+            }
+        </div>
+
+        <div class="stretched-custom">
+            <div class="stretched-custom-fields">
+                <label class="stretched-field">
+                    <span class="stretched-field-label">Width</span>
+                    <input type="number" class="stretched-num" min="640" max="7680" step="1"
+                           @bind="customWidth" disabled="@ApplyDisabled" />
+                </label>
+                <span class="stretched-custom-x">×</span>
+                <label class="stretched-field">
+                    <span class="stretched-field-label">Height</span>
+                    <input type="number" class="stretched-num" min="640" max="4320" step="1"
+                           @bind="customHeight" disabled="@ApplyDisabled" />
+                </label>
+                <button class="btn btn-primary" @onclick="ApplyCustom" disabled="@ApplyDisabled">Apply custom</button>
+            </div>
+            @if (!string.IsNullOrEmpty(customError))
+            {
+                <div class="stretched-custom-error">@customError</div>
+            }
+        </div>
+
+        <div class="stretched-safety-note">
+            If the screen goes black or unreadable, don't touch anything — the resolution reverts by itself after 15 seconds.
+        </div>
+    </section>
+
+    @* ============================================================
+       GPU SCALING GUIDANCE — neutral info card, vendor-aware.
+       ============================================================ *@
+    <section class="content-card stretched-info-card">
+        <h3>Make the GPU stretch the image</h3>
+        <p class="stretched-info-lead">
+            A stretched resolution only fills the screen when your GPU scales it to the whole panel. @VendorLead
+        </p>
+
+        @if (gpu.Vendor == GpuVendor.Nvidia)
+        {
+            <ol class="stretched-steps">
+                <li>Right-click the desktop and open <strong>NVIDIA Control Panel</strong>.</li>
+                <li>Go to <strong>Display → Adjust desktop size and position</strong>.</li>
+                <li>Set <strong>Scaling</strong> to <strong>Full-screen</strong>.</li>
+                <li>Set <strong>Perform scaling on</strong> to <strong>GPU</strong>, then click <strong>Apply</strong>.</li>
+                <li>Apply a stretched resolution above — it now fills the whole panel.</li>
+            </ol>
+        }
+        else if (gpu.Vendor == GpuVendor.Amd)
+        {
+            <ol class="stretched-steps">
+                <li>Open <strong>AMD Software</strong> → <strong>Display</strong>.</li>
+                <li>Turn <strong>GPU Scaling</strong> on and set <strong>Scaling Mode</strong> to <strong>Full panel</strong>.</li>
+                <li>Apply a stretched resolution above.</li>
+            </ol>
+        }
+        else if (gpu.Vendor == GpuVendor.Intel)
+        {
+            <ol class="stretched-steps">
+                <li>Open the <strong>Intel Graphics Command Center</strong> → <strong>Display</strong>.</li>
+                <li>Under <strong>Scale</strong>, choose <strong>Full Screen</strong> and turn off <strong>Maintain Display Scaling</strong>.</li>
+                <li>Apply a stretched resolution above.</li>
+            </ol>
+        }
+        else
+        {
+            <ol class="stretched-steps">
+                <li>Open your GPU's control panel (NVIDIA Control Panel, AMD Software, or Intel Graphics Command Center).</li>
+                <li>Set the display scaling mode to <strong>full-screen</strong> and perform scaling on the <strong>GPU</strong>.</li>
+                <li>Apply a stretched resolution above.</li>
+            </ol>
+        }
+    </section>
+
+    @* ============================================================
+       ARK (opt-in) — mirror the resolution into GameUserSettings.ini.
+       ============================================================ *@
+    <section class="content-card">
+        <h3>ARK game resolution</h3>
+        <SettingRow Title="Write resolution to GameUserSettings.ini"
+                    Description="Optional — sets ARK's ResolutionSizeX/Y and windowed-fullscreen to match your chosen size. A timestamped backup is made first."
+                    Disabled="@(!lastChosenWidth.HasValue)">
+            <button class="btn btn-secondary" @onclick="WriteArkAsync" disabled="@(!CanWriteArk)">
+                @ArkButtonLabel
+            </button>
+        </SettingRow>
+        @if (arkRunning)
+        {
+            <div class="stretched-ark-note">Close ARK before writing — the game rewrites GameUserSettings.ini when it exits.</div>
+        }
+    </section>
+
+</div>
+
+@code {
+    // Auto-revert window mirrored from the service (display only, for the countdown bar).
+    private const int AutoRevertSeconds = 15;
+
+    private IReadOnlyList<StretchedPreset> presets = Array.Empty<StretchedPreset>();
+    private GpuInfo gpu = new(GpuVendor.Unknown, string.Empty);
+    private DisplayResolution current = new(0, 0, 0);
+    private DisplayResolution native = new(0, 0, 0);
+
+    private int customWidth = 1440;
+    private int customHeight = 1080;
+    private string? customError;
+
+    // The last preset/custom size the user chose this session (or restored from Preferences).
+    // Drives the "active" highlight and the ARK write target — never auto-applied.
+    private int? lastChosenWidth;
+    private int? lastChosenHeight;
+
+    private bool arkRunning;
+
+    private bool ApplyDisabled => Stretched.IsPendingConfirmation;
+
+    private bool CanWriteArk => lastChosenWidth.HasValue && lastChosenHeight.HasValue && !arkRunning;
+
+    private bool HasCurrent => current.Width > 0 && current.Height > 0;
+    private bool HasNative => native.Width > 0 && native.Height > 0;
+
+    private bool IsStretchedActive =>
+        HasCurrent && HasNative &&
+        (current.Width != native.Width || current.Height != native.Height);
+
+    private string CurrentLabel => HasCurrent ? current.Label : "—";
+    private string CurrentAspectSub =>
+        HasCurrent
+            ? (IsStretchedActive ? $"{current.AspectLabel} · stretched" : $"{current.AspectLabel} · native")
+            : "Not detected";
+    private string NativeLabel => HasNative ? native.Label : "—";
+    private string GpuLabel => string.IsNullOrWhiteSpace(gpu.AdapterName) ? "Unknown" : gpu.AdapterName;
+    private string GpuVendorSub => gpu.Vendor switch
+    {
+        GpuVendor.Nvidia => "NVIDIA — GPU scaling supported",
+        GpuVendor.Amd => "AMD — GPU scaling supported",
+        GpuVendor.Intel => "Intel — GPU scaling supported",
+        _ => "Set your GPU to full-screen scaling"
+    };
+
+    private string VendorLead => gpu.Vendor switch
+    {
+        GpuVendor.Nvidia => "Your NVIDIA GPU handles this in the NVIDIA Control Panel.",
+        GpuVendor.Amd => "On your AMD GPU, enable GPU scaling in AMD Software.",
+        GpuVendor.Intel => "On Intel graphics, set the scale in the Intel Graphics Command Center.",
+        _ => "Set your GPU's scaling mode to full-screen so the image fills the panel."
+    };
+
+    private string StatusState =>
+        Stretched.IsPendingConfirmation ? "warning"
+        : IsStretchedActive ? "online"
+        : "off";
+
+    private string StatusLabel =>
+        Stretched.IsPendingConfirmation ? "Awaiting confirmation"
+        : IsStretchedActive ? "Stretched resolution active"
+        : "Native resolution";
+
+    private string StatusDescription =>
+        Stretched.IsPendingConfirmation
+            ? "Confirm below to keep the new resolution, or it reverts automatically."
+            : HasCurrent
+                ? $"Desktop is at {current.Label} ({current.AspectLabel})."
+                : "Could not read the current desktop resolution.";
+
+    private string ArkButtonLabel
+    {
+        get
+        {
+            if (arkRunning) return "Close ARK first";
+            if (!lastChosenWidth.HasValue || !lastChosenHeight.HasValue) return "Choose a resolution first";
+            return $"Write {lastChosenWidth} × {lastChosenHeight}";
+        }
+    }
+
+    // Invariant culture so the inline width never gets a decimal comma.
+    private string CountdownPercentCss
+    {
+        get
+        {
+            var pct = Math.Clamp(Stretched.SecondsRemaining / (double)AutoRevertSeconds * 100.0, 0, 100);
+            return pct.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    private bool IsChosen(int width, int height) =>
+        lastChosenWidth == width && lastChosenHeight == height;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            presets = Stretched.GetPresets();
+            gpu = Stretched.GetGpuInfo();
+            native = Stretched.GetNativeResolution();
+            RefreshCurrent();
+
+            var last = Stretched.LoadLastChoice();
+            if (last is { } l)
+            {
+                customWidth = l.Width;
+                customHeight = l.Height;
+                lastChosenWidth = l.Width;
+                lastChosenHeight = l.Height;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize Stretched Res page");
+        }
+
+        // NEVER auto-applies — the page only reads state on load.
+        Stretched.StateChanged += OnServiceStateChanged;
+    }
+
+    private void OnServiceStateChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            RefreshCurrent();
+            StateHasChanged();
+        });
+    }
+
+    private void RefreshCurrent()
+    {
+        current = Stretched.GetCurrentResolution();
+        arkRunning = Stretched.IsArkRunning();
+    }
+
+    private void Apply(int width, int height, bool isCustom)
+    {
+        if (Stretched.IsPendingConfirmation)
+        {
+            return;
+        }
+
+        customError = null;
+        var result = Stretched.ApplyResolution(width, height);
+        if (!result.Success)
+        {
+            NotificationService.ShowError(result.Error ?? "Could not apply that resolution.");
+            return;
+        }
+
+        Stretched.SaveLastChoice(width, height, isCustom);
+        lastChosenWidth = width;
+        lastChosenHeight = height;
+        RefreshCurrent();
+    }
+
+    private void ApplyCustom()
+    {
+        var validation = Stretched.ValidateResolution(customWidth, customHeight);
+        if (!validation.Success)
+        {
+            customError = validation.Error;
+            return;
+        }
+
+        Apply(customWidth, customHeight, true);
+    }
+
+    private void Keep()
+    {
+        Stretched.ConfirmKeep();
+        RefreshCurrent();
+    }
+
+    private void RevertNow()
+    {
+        Stretched.RevertNow();
+        RefreshCurrent();
+    }
+
+    private void RestoreNative()
+    {
+        Stretched.RestoreNative();
+        RefreshCurrent();
+    }
+
+    private async Task WriteArkAsync()
+    {
+        if (!lastChosenWidth.HasValue || !lastChosenHeight.HasValue)
+        {
+            return;
+        }
+
+        arkRunning = Stretched.IsArkRunning();
+        if (arkRunning)
+        {
+            NotificationService.ShowWarning("Close ARK first — it rewrites GameUserSettings.ini when it exits.");
+            return;
+        }
+
+        try
+        {
+            var result = await Stretched.WriteArkResolutionAsync(lastChosenWidth.Value, lastChosenHeight.Value);
+            if (result.Success)
+            {
+                NotificationService.ShowSuccess($"Wrote {lastChosenWidth} × {lastChosenHeight} to GameUserSettings.ini.");
+            }
+            else
+            {
+                NotificationService.ShowError(result.Error ?? "Could not write ARK's resolution.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to write ARK resolution from Stretched Res page");
+            NotificationService.ShowError($"ARK write failed: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe only. A pending change is deliberately left to the service's
+        // auto-revert so navigating away can never strand the display.
+        Stretched.StateChanged -= OnServiceStateChanged;
+    }
+}
