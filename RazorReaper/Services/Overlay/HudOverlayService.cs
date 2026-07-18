@@ -64,8 +64,13 @@ public sealed class HudOverlayService : IHudOverlayService
     private static readonly TimeSpan SaveDebounce = TimeSpan.FromMilliseconds(400);
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
+    private const string GameProcessName = "ShooterGame";
+
     private readonly ILogger<HudOverlayService> _logger;
+    private readonly IProcessService _process;
     private readonly string _settingsPath;
+
+    private volatile bool _gameRunning;
 
     private readonly object _lock = new();
     private readonly List<HudAlert> _alerts = new();
@@ -87,9 +92,10 @@ public sealed class HudOverlayService : IHudOverlayService
     public bool IsMoveMode { get { lock (_lock) return _moveMode; } }
     public HudSettings Settings { get { lock (_lock) return _settings.Clone(); } }
 
-    public HudOverlayService(ILogger<HudOverlayService> logger)
+    public HudOverlayService(ILogger<HudOverlayService> logger, IProcessService process)
     {
         _logger = logger;
+        _process = process;
         _settingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RazorReaper", "hud-overlay.json");
@@ -269,6 +275,10 @@ public sealed class HudOverlayService : IHudOverlayService
     {
         try
         {
+            // Cheap game-detection outside the lock (~1 ms); drives the ServerInfo fallback.
+            try { _gameRunning = _process.IsProcessRunning(GameProcessName); }
+            catch { /* leave the last known value */ }
+
             HudOverlayWindow? window;
             HudSnapshot snapshot;
             lock (_lock)
@@ -307,10 +317,18 @@ public sealed class HudOverlayService : IHudOverlayService
             .Take(AlertMaxVisible)
             .ToList();
 
+        // When no server is set from the app, fall back to a best-effort session label:
+        // "Single Player" while the game runs, otherwise leave it blank ("No server set").
+        // (We can't tell single-player from a Steam-joined server without reading the game,
+        // so a server joined outside the app still reads as "Single Player".)
+        var server = _server;
+        if (string.IsNullOrWhiteSpace(server.Name) && _gameRunning)
+            server = new HudServerInfo("Single Player", null, null, null);
+
         return new HudSnapshot(
             TimeText: DateTime.Now.ToString("HH:mm:ss"),
             SessionText: sessionText,
-            Server: _server,
+            Server: server,
             ActiveTool: _activeTool,
             Alerts: visibleAlerts,
             Modules: _settings.Modules.ToList(),

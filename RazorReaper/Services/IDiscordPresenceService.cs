@@ -42,6 +42,13 @@ public interface IDiscordPresenceService
     void SetActivityForPath(string relativePath);
 
     /// <summary>
+    /// Resolve a relative path to the same friendly tool label used for Rich Presence
+    /// (e.g. "custom-lab" → "Sky Changer"). Lets other surfaces — like the HUD overlay's
+    /// tool module — show the current page without duplicating the route map.
+    /// </summary>
+    string ResolveToolLabel(string relativePath);
+
+    /// <summary>
     /// Set the displayed activity label directly, for pages that want to override the
     /// route-derived label (e.g. the Sky Changer page sets "Sky Changer").
     /// </summary>

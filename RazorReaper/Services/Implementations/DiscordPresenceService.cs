@@ -132,6 +132,8 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
     public void SetActivityForPath(string relativePath) => SetActivityLabel(ResolveLabel(relativePath));
 
+    public string ResolveToolLabel(string relativePath) => ResolveLabel(relativePath);
+
     public void SetActivityLabel(string label)
     {
         // Always remember where the user is, even while RPC is off — so toggling it on

@@ -3,11 +3,13 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services
+@using RazorReaper.Services.Overlay
 @inject NavigationManager Navigation
 @inject IAutoUpdateManager AutoUpdateManager
 @inject INotificationService NotificationService
 @inject IUpdateService UpdateService
 @inject IDiscordPresenceService DiscordPresence
+@inject IHudOverlayService HudOverlay
 @inject ILicenseService LicenseService
 
 <NotificationContainer />
@@ -35,13 +37,22 @@
 
         var result = await LicenseService.ValidateLicenseAsync();
 
-        // Reflect the current page in Discord Rich Presence, then keep it synced on navigation.
-        DiscordPresence.SetActivityForPath(Navigation.ToBaseRelativePath(Navigation.Uri));
+        // Reflect the current page in Discord Rich Presence and the HUD tool module,
+        // then keep both synced on navigation.
+        ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
         Navigation.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => DiscordPresence.SetActivityForPath(Navigation.ToBaseRelativePath(e.Location));
+        => ReflectPage(Navigation.ToBaseRelativePath(e.Location));
+
+    private void ReflectPage(string relativePath)
+    {
+        DiscordPresence.SetActivityForPath(relativePath);
+        // The HUD tool module shows the current page (like Rich Presence) — far more useful
+        // than "Idle" since the app is minimized while you're in the game.
+        HudOverlay.SetActiveTool(DiscordPresence.ResolveToolLabel(relativePath));
+    }
 
     public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
 }
