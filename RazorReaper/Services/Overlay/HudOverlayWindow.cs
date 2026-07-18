@@ -600,21 +600,17 @@ internal sealed class HudOverlayWindow : IDisposable
         }
         if (rows.Count == 0) return RectangleF.Empty;
 
-        // Brand header: logo + wordmark, sits above the module rows.
+        // Brand header: logo only (no wordmark), sits above the module rows.
         var logo = GetLogo();
-        using var brandFont = new Font("Segoe UI Semibold", 12.5f * s, FontStyle.Bold, GraphicsUnit.Pixel);
-        const string brandText = "RazorReaper";
-        float logoSize = 22f * s, logoGap = 8f * s, headerGap = 10f * s;
-        float brandW = g.MeasureString(brandText, brandFont, 1000, fmt).Width;
-        float brandH = brandFont.GetHeight(g);
-        float headerH = Math.Max(logo != null ? logoSize : 0f, brandH);
-        float headerW = (logo != null ? logoSize + logoGap : 0f) + brandW;
+        float logoSize = 24f * s, headerGap = 10f * s;
+        float headerH = logo != null ? logoSize : 0f;
+        float headerBlockH = logo != null ? headerH + headerGap : 0f;
 
         // Measure.
         float labelH = labelFont.GetHeight(g);
         float valueH = valueFont.GetHeight(g);
         float subH = subFont.GetHeight(g);
-        float contentW = headerW, contentH = headerH + headerGap;
+        float contentW = logo != null ? logoSize : 0f, contentH = headerBlockH;
         foreach (var row in rows)
         {
             var lw = g.MeasureString(row.Label, labelFont, (int)maxTextW, fmt).Width;
@@ -643,22 +639,15 @@ internal sealed class HudOverlayWindow : IDisposable
         float textW = rect.Width - (barW + padX * 2f - 3f) - padX;
         float y = rect.Y + padY;
 
-        // Brand header (logo + wordmark), then advance past it.
+        // Brand header (logo only), then advance past it.
+        if (logo != null)
         {
-            float hx = tx;
-            if (logo != null)
-            {
-                var prevInterp = g.InterpolationMode;
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                g.DrawImage(logo, new RectangleF(hx, y + (headerH - logoSize) / 2f, logoSize, logoSize));
-                g.InterpolationMode = prevInterp;
-                hx += logoSize + logoGap;
-            }
-            using var brandBrush = new SolidBrush(TextValue);
-            g.DrawString(brandText, brandFont, brandBrush,
-                new RectangleF(hx, y + (headerH - brandH) / 2f, textW, brandH + 1f), fmt);
+            var prevInterp = g.InterpolationMode;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(logo, new RectangleF(tx, y, logoSize, logoSize));
+            g.InterpolationMode = prevInterp;
+            y += headerH + headerGap;
         }
-        y += headerH + headerGap;
 
         using var labelBrush = new SolidBrush(TextLabel);
         foreach (var row in rows)
