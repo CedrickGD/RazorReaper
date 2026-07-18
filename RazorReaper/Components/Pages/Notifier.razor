@@ -1,0 +1,253 @@
+@page "/notifier"
+@using Microsoft.JSInterop
+@using RazorReaper.Services.Overlay
+@using RazorReaper.Components.Shared
+@inject INotifierClientService NotifierClient
+@inject IJSRuntime JS
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">Notifier</h1>
+    <p class="page-subtitle">Live in-game alerts for rare dinos, resources and OSD events</p>
+</header>
+
+<div class="nt-page">
+
+    <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@NotifierClient.StateDetail">
+        <Actions>
+            @if (IsConnectingOrConnected)
+            {
+                <button class="btn btn-danger" @onclick="Disconnect">Disconnect</button>
+            }
+            else
+            {
+                <button class="btn btn-primary" @onclick="Connect" disabled="@(!CanConnect)">Connect</button>
+            }
+            <button class="btn btn-secondary" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert()">Test alert</button>
+        </Actions>
+    </StatusHeader>
+
+    <div class="nt-grid">
+
+        @* ── Endpoint ────────────────────────────────────────────────────── *@
+        <div class="content-card nt-card">
+            <h3 class="nt-card-title">Endpoint</h3>
+            <p class="nt-card-desc">Where the client streams alerts from. Stored locally.</p>
+
+            <div class="nt-rows">
+                <SettingRow Title="Stream URL" Description="An SSE or HTTP stream endpoint (https://…/notifier/stream).">
+                    <input class="nt-input nt-input-wide" type="url" spellcheck="false"
+                           placeholder="https://…" @bind="_endpointDraft" @bind:after="ApplyEndpoint" />
+                </SettingRow>
+            </div>
+
+            <div class="nt-note">
+                <p>A Notifier backend is required. The hosted service is not available yet — the client stays offline until an endpoint is online. Use <strong>Test alert</strong> to preview the HUD and sound wiring.</p>
+            </div>
+        </div>
+
+        @* ── Alert types ─────────────────────────────────────────────────── *@
+        <div class="content-card nt-card">
+            <h3 class="nt-card-title">Alert types</h3>
+            <p class="nt-card-desc">Choose which alerts pass, their sound, and preview each one.</p>
+
+            <div class="nt-rows">
+                @foreach (var def in NotifierClient.TypeDefs)
+                {
+                    <SettingRow Title="@def.Label" Description="@def.Description">
+                        <div class="nt-type-control">
+                            <select class="nt-select"
+                                    @bind:get="NotifierClient.GetTypeSound(def.Type)"
+                                    @bind:set="v => NotifierClient.SetTypeSound(def.Type, v)">
+                                <option value="@NotifierSound.None">Silent</option>
+                                <option value="@NotifierSound.Notification">Notification</option>
+                                <option value="@NotifierSound.Click">Click</option>
+                            </select>
+                            <button class="nt-mini" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert(def.Type)">Test</button>
+                            <Switch Value="NotifierClient.IsTypeEnabled(def.Type)"
+                                    ValueChanged="v => NotifierClient.SetTypeEnabled(def.Type, v)" />
+                        </div>
+                    </SettingRow>
+                }
+            </div>
+        </div>
+
+        @* ── Rare dino filter ────────────────────────────────────────────── *@
+        <div class="content-card nt-card">
+            <div class="nt-card-head">
+                <div>
+                    <h3 class="nt-card-title">Rare dino species</h3>
+                    <p class="nt-card-desc">Only applies while Rare dinos is enabled. <span class="nt-count">@SpeciesEnabledCount / @NotifierClient.Species.Count on</span></p>
+                </div>
+                <div class="nt-head-actions">
+                    <button class="nt-mini" @onclick="() => NotifierClient.SetAllSpecies(true)">All</button>
+                    <button class="nt-mini" @onclick="() => NotifierClient.SetAllSpecies(false)">None</button>
+                </div>
+            </div>
+
+            <div class="nt-species-grid @(RareEnabled ? "" : "is-disabled")">
+                @foreach (var sp in NotifierClient.Species)
+                {
+                    <button class="nt-chip @(NotifierClient.IsSpeciesEnabled(sp.Id) ? "on" : "")"
+                            disabled="@(!RareEnabled)"
+                            @onclick="() => ToggleSpecies(sp.Id)">@sp.Name</button>
+                }
+            </div>
+        </div>
+
+        @* ── Clusters ────────────────────────────────────────────────────── *@
+        <div class="content-card nt-card">
+            <h3 class="nt-card-title">Clusters</h3>
+            <p class="nt-card-desc">Enable the clusters you play on. Real cluster names roll out later — rename these to match.</p>
+
+            <div class="nt-rows">
+                @foreach (var c in NotifierClient.Clusters)
+                {
+                    <div class="nt-cluster-row">
+                        <input class="nt-input" type="text" spellcheck="false"
+                               value="@c.Label" @onchange="e => OnClusterLabel(c.Id, e)" />
+                        <Switch Value="c.Enabled" ValueChanged="v => NotifierClient.SetClusterEnabled(c.Id, v)" />
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+
+    @* ── Recent alerts ───────────────────────────────────────────────────── *@
+    <div class="content-card nt-card nt-recent-card">
+        <h3 class="nt-card-title">Recent alerts</h3>
+        <p class="nt-card-desc">The last alerts received or tested.</p>
+
+        @{
+            var recent = NotifierClient.RecentAlerts;
+        }
+        @if (recent.Count == 0)
+        {
+            <div class="nt-empty">No alerts yet. Connect to a backend or send a test alert.</div>
+        }
+        else
+        {
+            <div class="nt-alert-list">
+                @foreach (var a in recent)
+                {
+                    <div class="nt-alert-row">
+                        <span class="nt-type-chip nt-type-@TypeCss(a.Type)">@TypeShort(a.Type)</span>
+                        <div class="nt-alert-text">@a.Text</div>
+                        <span class="nt-alert-time">@a.TimestampUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+</div>
+
+@code {
+    private string _endpointDraft = "";
+
+    protected override void OnInitialized()
+    {
+        _endpointDraft = NotifierClient.Endpoint;
+        NotifierClient.Changed += OnChanged;
+        NotifierClient.AlertReceived += OnAlertReceived;
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnAlertReceived(NotifierAlert alert)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await PlaySound(NotifierClient.GetTypeSound(alert.Type));
+            StateHasChanged();
+        });
+    }
+
+    // ── Status header ──────────────────────────────────────────────────────
+
+    private bool IsConnectingOrConnected =>
+        NotifierClient.State is NotifierConnectionState.Connected or NotifierConnectionState.Connecting;
+
+    private bool CanConnect => !string.IsNullOrWhiteSpace(NotifierClient.Endpoint);
+
+    private string StatusState => NotifierClient.State switch
+    {
+        NotifierConnectionState.Connected => "online",
+        NotifierConnectionState.Connecting => "warning",
+        NotifierConnectionState.Error => "error",
+        _ => "off"
+    };
+
+    private string StatusLabel => NotifierClient.State switch
+    {
+        NotifierConnectionState.Connected => "Connected",
+        NotifierConnectionState.Connecting => "Connecting…",
+        NotifierConnectionState.Error => "Connection error",
+        _ => "Disconnected"
+    };
+
+    // ── Filters ────────────────────────────────────────────────────────────
+
+    private bool RareEnabled => NotifierClient.IsTypeEnabled(NotifierAlertType.RareDino);
+
+    private int SpeciesEnabledCount => NotifierClient.Species.Count(s => NotifierClient.IsSpeciesEnabled(s.Id));
+
+    private void ToggleSpecies(string id) => NotifierClient.SetSpeciesEnabled(id, !NotifierClient.IsSpeciesEnabled(id));
+
+    private void ApplyEndpoint() => NotifierClient.SetEndpoint(_endpointDraft ?? "");
+
+    private void OnClusterLabel(string id, ChangeEventArgs e)
+        => NotifierClient.SetClusterLabel(id, e?.Value?.ToString() ?? "");
+
+    // ── Actions ────────────────────────────────────────────────────────────
+
+    private void Connect() => NotifierClient.Start();
+
+    private void Disconnect() => NotifierClient.Stop();
+
+    private async Task PlaySound(NotifierSound sound)
+    {
+        try
+        {
+            switch (sound)
+            {
+                case NotifierSound.Notification:
+                    await JS.InvokeVoidAsync("playNotificationSound");
+                    break;
+                case NotifierSound.Click:
+                    await JS.InvokeVoidAsync("playClickSound");
+                    break;
+            }
+        }
+        catch
+        {
+            // Sound playback failures must never bubble up.
+        }
+    }
+
+    // ── Alert chip mapping ─────────────────────────────────────────────────
+
+    private static string TypeShort(NotifierAlertType type) => type switch
+    {
+        NotifierAlertType.RareDino => "Dino",
+        NotifierAlertType.Resource => "Resource",
+        NotifierAlertType.ElementNode => "Element",
+        _ => "OSD"
+    };
+
+    private static string TypeCss(NotifierAlertType type) => type switch
+    {
+        NotifierAlertType.RareDino => "dino",
+        NotifierAlertType.Resource => "resource",
+        NotifierAlertType.ElementNode => "element",
+        _ => "osd"
+    };
+
+    // Singleton client keeps running when the user navigates away; only detach handlers.
+    public void Dispose()
+    {
+        NotifierClient.Changed -= OnChanged;
+        NotifierClient.AlertReceived -= OnAlertReceived;
+    }
+}

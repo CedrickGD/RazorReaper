@@ -1,0 +1,295 @@
+/* ── Notifier page ──────────────────────────────────────────────────────────
+   Styles for Components/Pages/Notifier.razor. Design tokens only (radius/spacing
+   scales, accent + status variables, inset surfaces). Shared primitives
+   (SettingRow, StatusHeader, Switch) are styled in css/shared/primitives.css.
+   Colored text is reserved for dynamic status values (connection dot, alert
+   type chips); everything else is neutral. No blue. */
+
+.nt-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: 1200px;
+}
+
+.nt-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.nt-card {
+    margin-bottom: 0 !important;
+    padding: var(--space-5) !important;
+}
+
+.nt-recent-card {
+    grid-column: 1 / -1;
+}
+
+h3.nt-card-title {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    margin-bottom: var(--space-1) !important;
+}
+
+.nt-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+}
+
+.nt-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.nt-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.nt-head-actions {
+    display: inline-flex;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+/* ── Rows ───────────────────────────────────────────────────────────────── */
+
+.nt-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
+
+input.nt-input {
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    min-width: 0;
+}
+
+input.nt-input-wide {
+    width: 320px;
+    max-width: 100%;
+    font-family: var(--font-mono);
+}
+
+select.nt-select {
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.82rem !important;
+    color: var(--text-primary);
+    background: var(--surface-inset);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+}
+
+    select.nt-select:focus {
+        outline: none;
+        border-color: var(--accent-purple);
+    }
+
+/* ── Small buttons ──────────────────────────────────────────────────────── */
+
+.nt-mini {
+    border: 1px solid var(--border-color);
+    background: var(--surface-inset);
+    color: var(--text-secondary);
+    font-family: var(--font-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+    .nt-mini:hover {
+        color: var(--text-primary);
+        background: var(--surface-inset-hover);
+        border-color: var(--border-hover);
+    }
+
+/* ── Alert type row control ─────────────────────────────────────────────── */
+
+.nt-type-control {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* ── Info note (neutral surface + low-alpha accent left border) ─────────── */
+
+.nt-note {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35);
+}
+
+    .nt-note p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .nt-note strong {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+/* ── Species whitelist grid ─────────────────────────────────────────────── */
+
+.nt-species-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-2);
+    transition: opacity 0.2s ease;
+}
+
+    .nt-species-grid.is-disabled {
+        opacity: 0.45;
+        pointer-events: none;
+    }
+
+.nt-chip {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--border-color);
+    background: var(--surface-inset);
+    color: var(--text-secondary);
+    font-family: var(--font-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+    .nt-chip:hover {
+        background: var(--surface-inset-hover);
+        color: var(--text-primary);
+    }
+
+    .nt-chip.on {
+        background: rgba(var(--accent-purple-rgb), 0.18);
+        border-color: rgba(var(--accent-purple-rgb), 0.45);
+        color: var(--text-primary);
+    }
+
+/* ── Clusters ───────────────────────────────────────────────────────────── */
+
+.nt-cluster-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+    .nt-cluster-row .nt-input {
+        flex: 1;
+    }
+
+/* ── Recent alerts ──────────────────────────────────────────────────────── */
+
+.nt-empty {
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.nt-alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.nt-alert-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nt-alert-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nt-alert-time {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ── Alert type chips (dynamic status colors) ───────────────────────────── */
+
+.nt-type-chip {
+    flex-shrink: 0;
+    min-width: 62px;
+    text-align: center;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-chip);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+}
+
+    .nt-type-chip.nt-type-dino {
+        color: var(--accent-green-soft);
+        background: rgba(var(--accent-green-rgb), 0.12);
+        border-color: rgba(var(--accent-green-rgb), 0.4);
+    }
+
+    .nt-type-chip.nt-type-element {
+        color: var(--accent-orange);
+        background: rgba(var(--accent-orange-rgb), 0.12);
+        border-color: rgba(var(--accent-orange-rgb), 0.4);
+    }
+
+    .nt-type-chip.nt-type-resource {
+        color: var(--accent-purple-light);
+        background: rgba(var(--accent-purple-rgb), 0.12);
+        border-color: rgba(var(--accent-purple-rgb), 0.4);
+    }
+
+    .nt-type-chip.nt-type-osd {
+        color: var(--text-secondary);
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.14);
+    }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+    .nt-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
