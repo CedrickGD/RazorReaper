@@ -239,6 +239,7 @@ namespace RazorReaper
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
             services.AddSingleton<IStretchedResService, StretchedResService>();
+            services.AddSingleton<RazorReaper.Services.Gamma.IGammaService, RazorReaper.Services.Gamma.GammaService>();
 
             // Automation platform (input simulation, hotkeys, macros, calibration, screen sampling)
             services.AddSingleton<RazorReaper.Services.Automation.IInputSimulator, RazorReaper.Services.Automation.InputSimulator>();

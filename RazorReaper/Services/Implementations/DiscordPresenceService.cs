@@ -47,6 +47,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["ini-changer"] = "INI Changer",
             ["ini-builder"] = "INI Builder",
             ["vision"] = "Vision Tools",
+            ["gamma"] = "Gamma",
             ["launch-options"] = "Launch Options",
             ["fonts"] = "Fonts",
             ["pixel"] = "Pixel Glitch",

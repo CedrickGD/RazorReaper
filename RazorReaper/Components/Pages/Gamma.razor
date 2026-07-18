@@ -1,0 +1,366 @@
+@page "/gamma"
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services.Gamma
+@using RazorReaper.Components.Shared
+@inject IGammaService GammaSvc
+@inject IJSRuntime JSRuntime
+@inject ILogger<Gamma> Logger
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">Gamma</h1>
+    <p class="page-subtitle">System-wide screen gamma with hotkey and Logitech G HUB triggers</p>
+</header>
+
+<div class="gm-page">
+
+    <StatusHeader State="@(GammaSvc.IsListening ? "online" : "off")"
+                  Label="@(GammaSvc.IsListening ? "Listening" : "Off")"
+                  Description="@StatusDescription">
+        <Actions>
+            @if (GammaSvc.IsListening)
+            {
+                <button class="btn btn-danger" @onclick="StopListening">Stop listening</button>
+            }
+            else
+            {
+                <button class="btn btn-primary" @onclick="StartListening">Start listening</button>
+            }
+            <button class="btn btn-secondary" @onclick="ResetToDefault">Reset to 1.0</button>
+        </Actions>
+    </StatusHeader>
+
+    @if (_listenError)
+    {
+        <div class="gm-note gm-note-warn">
+            <p>Couldn't install the global hooks. Another tool may already hold a low-level keyboard or mouse hook — close it and try again.</p>
+        </div>
+    }
+
+    <div class="gm-grid">
+
+        @* ── Live preview ────────────────────────────────────────────────── *@
+        <div class="content-card gm-card">
+            <h3 class="gm-card-title">Live preview</h3>
+            <p class="gm-card-desc">Drag to change gamma instantly. 1.00 is neutral; higher brightens the mid-tones.</p>
+
+            <div class="gm-preview-value-row">
+                <span class="gm-preview-value">@FormatGamma(GammaSvc.CurrentGamma)</span>
+                <span class="gm-preview-unit">gamma</span>
+            </div>
+
+            <input type="range" class="gm-slider"
+                   min="0.10" max="2.50" step="0.05"
+                   @bind="PreviewValue" @bind:event="oninput" @bind:after="OnPreviewChanged" />
+
+            <div class="gm-slider-scale">
+                <span>0.10</span>
+                <span>1.00</span>
+                <span>2.50</span>
+            </div>
+
+            <div class="gm-preview-actions">
+                <button class="btn btn-secondary" @onclick="() => GammaSvc.ApplyValue(PreviewValue)">Apply / test</button>
+            </div>
+        </div>
+
+        @* ── Presets ─────────────────────────────────────────────────────── *@
+        <div class="content-card gm-card">
+            <h3 class="gm-card-title">Presets</h3>
+            <p class="gm-card-desc">Six named levels. Edit the value (0.10–2.50) and choose which take part in the cycle.</p>
+
+            <div class="gm-preset-list">
+                @foreach (var p in GammaSvc.Presets)
+                {
+                    <div class="gm-preset-row">
+                        <input class="gm-preset-name" type="text" spellcheck="false"
+                               @bind="p.Name" @bind:after="() => GammaSvc.UpdatePreset(p.Id, name: p.Name)" />
+                        <input class="gm-preset-val" type="number" min="0.10" max="2.50" step="0.05"
+                               @bind="p.Value" @bind:after="() => GammaSvc.UpdatePreset(p.Id, value: p.Value)" />
+                        <div class="gm-preset-cycle">
+                            <Switch Value="p.InCycle" Compact="true"
+                                    ValueChanged="@((bool v) => GammaSvc.UpdatePreset(p.Id, inCycle: v))" />
+                            <span class="gm-preset-cycle-label">Cycle</span>
+                        </div>
+                        <button class="btn btn-secondary gm-preset-apply" @onclick="() => GammaSvc.ApplyPreset(p.Id)">Apply</button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ── Trigger mode ────────────────────────────────────────────────── *@
+        <div class="content-card gm-card">
+            <h3 class="gm-card-title">Triggers</h3>
+            <p class="gm-card-desc">
+                Cycle steps through the enabled presets on one key. Direct binds a key or mouse button to each preset.
+                Bindable inputs: any key (incl. F13–F24 from G HUB), Mouse 3 / 4 / 5.
+            </p>
+
+            <div class="gm-seg">
+                <button class="gm-seg-btn @(GammaSvc.Mode == TriggerMode.Cycle ? "active" : "")"
+                        @onclick="() => GammaSvc.SetMode(TriggerMode.Cycle)">Cycle</button>
+                <button class="gm-seg-btn @(GammaSvc.Mode == TriggerMode.Direct ? "active" : "")"
+                        @onclick="() => GammaSvc.SetMode(TriggerMode.Direct)">Direct</button>
+            </div>
+
+            @if (GammaSvc.Mode == TriggerMode.Cycle)
+            {
+                <div class="gm-trigger-list">
+                    <div class="gm-trigger-row">
+                        <span class="gm-trigger-label">Advance cycle</span>
+                        @{ var cyc = GammaSvc.CycleTrigger; }
+                        <button class="gm-capture-btn @(IsCapturing("cycle") ? "capturing" : "")"
+                                @onclick='() => BeginCapture("cycle")'>
+                            @(IsCapturing("cycle") ? "Press key or mouse… (Esc)" : (cyc.IsEmpty ? "Set trigger" : cyc.Describe()))
+                        </button>
+                        @if (!cyc.IsEmpty && !IsCapturing("cycle"))
+                        {
+                            <button class="gm-trigger-clear" title="Clear" @onclick="() => GammaSvc.SetCycleTrigger(TriggerInput.None)">×</button>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="gm-trigger-list">
+                    @foreach (var p in GammaSvc.Presets)
+                    {
+                        var binding = GammaSvc.DirectBindings.FirstOrDefault(b => b.PresetId == p.Id);
+                        var trig = binding?.Trigger ?? TriggerInput.None;
+                        var target = "preset:" + p.Id;
+                        <div class="gm-trigger-row">
+                            <span class="gm-trigger-label">@p.Name</span>
+                            <button class="gm-capture-btn @(IsCapturing(target) ? "capturing" : "")"
+                                    @onclick="() => BeginCapture(target)">
+                                @(IsCapturing(target) ? "Press key or mouse… (Esc)" : (trig.IsEmpty ? "Set trigger" : trig.Describe()))
+                            </button>
+                            @if (!trig.IsEmpty && !IsCapturing(target))
+                            {
+                                <button class="gm-trigger-clear" title="Clear" @onclick="() => GammaSvc.RemoveDirectBinding(trig)">×</button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @* ── Monitors ────────────────────────────────────────────────────── *@
+        <div class="content-card gm-card">
+            <h3 class="gm-card-title">Monitors</h3>
+            <p class="gm-card-desc">Apply gamma to every display, or pick a subset.</p>
+
+            <SettingRow Title="All monitors" Description="Turn off to choose which displays are affected.">
+                <Switch Value="GammaSvc.ApplyToAllMonitors"
+                        ValueChanged="@((bool v) => GammaSvc.SetTargets(v, GammaSvc.SelectedMonitors))" />
+            </SettingRow>
+
+            @if (!GammaSvc.ApplyToAllMonitors)
+            {
+                <div class="gm-monitor-list">
+                    @if (_monitors.Count == 0)
+                    {
+                        <p class="gm-empty">No displays detected.</p>
+                    }
+                    else
+                    {
+                        @foreach (var m in _monitors)
+                        {
+                            var selected = GammaSvc.SelectedMonitors.Contains(m.DeviceName);
+                            <label class="gm-monitor-row">
+                                <input type="checkbox" checked="@selected"
+                                       @onchange="e => ToggleMonitor(m.DeviceName, e)" />
+                                <span class="gm-monitor-name">@m.FriendlyName</span>
+                                @if (m.IsPrimary)
+                                {
+                                    <span class="gm-monitor-tag">Primary</span>
+                                }
+                            </label>
+                        }
+                    }
+                </div>
+            }
+        </div>
+
+    </div>
+
+    @* ── G HUB export ─────────────────────────────────────────────────────── *@
+    <div class="content-card gm-card gm-lua-card">
+        <div class="gm-lua-head">
+            <div>
+                <h3 class="gm-card-title">Logitech G HUB script</h3>
+                <p class="gm-card-desc">Maps mouse buttons to the keyboard hotkeys above so a button press changes your gamma. Paste into a G HUB Lua script and keep listening on.</p>
+            </div>
+            <button class="btn btn-secondary" @onclick="CopyLua">@_copyLabel</button>
+        </div>
+        <textarea class="gm-lua-area" readonly spellcheck="false" rows="12">@_lua</textarea>
+    </div>
+
+    <div class="gm-note">
+        <p>Gamma changes are system-wide and affect every app, not just ARK. The original ramp is restored automatically when RazorReaper closes.</p>
+    </div>
+
+</div>
+
+@code {
+    private double PreviewValue { get; set; } = GammaPresets.Default;
+    private IReadOnlyList<GammaMonitor> _monitors = Array.Empty<GammaMonitor>();
+    private string _lua = "";
+    private string _copyLabel = "Copy";
+    private string? _capturingTarget;
+    private bool _listenError;
+
+    private string StatusDescription
+    {
+        get
+        {
+            string modeText = GammaSvc.Mode == TriggerMode.Cycle ? "Cycle mode" : "Direct mode";
+            return GammaSvc.IsListening
+                ? $"Watching triggers · {modeText}"
+                : $"Idle · {modeText} · press Start listening to enable hotkeys";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        GammaSvc.StateChanged += OnStateChanged;
+        PreviewValue = GammaSvc.CurrentGamma;
+        RefreshMonitors();
+        _lua = GammaSvc.GenerateLua();
+    }
+
+    private void OnStateChanged()
+    {
+        _lua = GammaSvc.GenerateLua();
+        // CurrentGamma tracks previews/triggers; keep the slider in step (drag sets the same value).
+        PreviewValue = GammaSvc.CurrentGamma;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshMonitors()
+    {
+        try { _monitors = GammaSvc.ListMonitors(); }
+        catch (Exception ex) { Logger.LogWarning(ex, "Gamma ListMonitors failed"); }
+    }
+
+    private static string FormatGamma(double g) => g.ToString("0.00", CultureInfo.InvariantCulture);
+
+    // ── Preview ─────────────────────────────────────────────────────────────
+
+    private void OnPreviewChanged() => GammaSvc.Preview(PreviewValue);
+
+    // ── Listening / reset ───────────────────────────────────────────────────
+
+    private void StartListening()
+    {
+        _listenError = !GammaSvc.StartListening();
+    }
+
+    private void StopListening()
+    {
+        _listenError = false;
+        GammaSvc.StopListening();
+    }
+
+    private void ResetToDefault()
+    {
+        GammaSvc.ResetToDefault();
+        PreviewValue = GammaSvc.CurrentGamma;
+    }
+
+    // ── Trigger capture ─────────────────────────────────────────────────────
+
+    private bool IsCapturing(string target) => _capturingTarget == target;
+
+    private void BeginCapture(string target)
+    {
+        // Only one capture at a time — cancel any in-flight capture first.
+        if (_capturingTarget != null)
+            GammaSvc.CancelCapture();
+
+        _capturingTarget = target;
+        StateHasChanged();
+
+        GammaSvc.BeginCapture(
+            onCaptured: trigger => _ = InvokeAsync(() => OnTriggerCaptured(target, trigger)),
+            onCancelled: () => _ = InvokeAsync(() => OnCaptureCancelled(target)));
+    }
+
+    private void OnTriggerCaptured(string target, TriggerInput trigger)
+    {
+        if (_capturingTarget == target)
+            _capturingTarget = null;
+
+        if (target == "cycle")
+        {
+            GammaSvc.SetCycleTrigger(trigger);
+        }
+        else if (target.StartsWith("preset:", StringComparison.Ordinal))
+        {
+            string presetId = target.Substring("preset:".Length);
+            // Keep one trigger per preset: drop this preset's previous binding first.
+            var existing = GammaSvc.DirectBindings.FirstOrDefault(b => b.PresetId == presetId);
+            if (existing != null && !existing.Trigger.Equals(trigger))
+                GammaSvc.RemoveDirectBinding(existing.Trigger);
+            GammaSvc.SetDirectBinding(trigger, presetId);
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnCaptureCancelled(string target)
+    {
+        if (_capturingTarget == target)
+            _capturingTarget = null;
+        StateHasChanged();
+    }
+
+    // ── Monitors ────────────────────────────────────────────────────────────
+
+    private void ToggleMonitor(string deviceName, ChangeEventArgs e)
+    {
+        bool add = e.Value is bool b ? b : (e.Value?.ToString() == "true");
+        var selected = GammaSvc.SelectedMonitors.ToList();
+        if (add)
+        {
+            if (!selected.Contains(deviceName))
+                selected.Add(deviceName);
+        }
+        else
+        {
+            selected.Remove(deviceName);
+        }
+        GammaSvc.SetTargets(false, selected);
+    }
+
+    // ── G HUB export ────────────────────────────────────────────────────────
+
+    private async Task CopyLua()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _lua);
+            _copyLabel = "Copied";
+            StateHasChanged();
+            await Task.Delay(1500);
+            _copyLabel = "Copy";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Gamma Lua copy failed");
+        }
+    }
+
+    // Deliberately does NOT stop listening — the service is a singleton that keeps
+    // running (and firing triggers) when the user navigates away.
+    public void Dispose()
+    {
+        GammaSvc.StateChanged -= OnStateChanged;
+        if (_capturingTarget != null)
+        {
+            try { GammaSvc.CancelCapture(); } catch { }
+            _capturingTarget = null;
+        }
+    }
+}

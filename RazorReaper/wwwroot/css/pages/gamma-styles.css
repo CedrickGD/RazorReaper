@@ -1,0 +1,373 @@
+/* ── Gamma page ─────────────────────────────────────────────────────────────
+   Styles for Components/Pages/Gamma.razor. Uses only the design tokens from
+   theme.css (radius/spacing scales, accent + status variables, surface-inset
+   backgrounds); shared primitives (SettingRow, StatusHeader, Switch) are styled
+   in css/shared/primitives.css. */
+
+.gm-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: 1200px;
+}
+
+.gm-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.gm-card {
+    margin-bottom: 0 !important;
+    padding: var(--space-5) !important;
+}
+
+h3.gm-card-title {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    margin-bottom: var(--space-1) !important;
+}
+
+.gm-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+    line-height: 1.45;
+}
+
+/* ── Live preview ───────────────────────────────────────────────────────── */
+
+.gm-preview-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.gm-preview-value {
+    font-size: 2rem;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    color: var(--accent-purple-light);
+    line-height: 1;
+}
+
+.gm-preview-unit {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+input.gm-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: var(--radius-round) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+
+    input.gm-slider:focus {
+        border: none !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+    }
+
+    input.gm-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: var(--radius-round);
+        background: var(--accent-purple);
+        border: none;
+    }
+
+.gm-slider-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--space-2);
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.gm-preview-actions {
+    margin-top: var(--space-4);
+}
+
+/* ── Presets ────────────────────────────────────────────────────────────── */
+
+.gm-preset-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.gm-preset-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+    .gm-preset-row:hover {
+        background: var(--surface-inset-hover);
+    }
+
+input.gm-preset-name {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+}
+
+input.gm-preset-val {
+    width: 76px;
+    flex-shrink: 0;
+    padding: var(--space-2) var(--space-2) !important;
+    font-size: 0.85rem !important;
+    text-align: center;
+}
+
+.gm-preset-cycle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.gm-preset-cycle-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.btn.gm-preset-apply {
+    flex-shrink: 0;
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.78rem;
+}
+
+/* ── Segmented mode control ─────────────────────────────────────────────── */
+
+.gm-seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    margin-bottom: var(--space-4);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-control);
+}
+
+.gm-seg-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: var(--space-1) var(--space-4);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+    .gm-seg-btn:hover {
+        color: var(--text-primary);
+    }
+
+    .gm-seg-btn.active {
+        background: rgba(var(--accent-purple-rgb), 0.18);
+        color: var(--text-primary);
+    }
+
+/* ── Trigger rows ───────────────────────────────────────────────────────── */
+
+.gm-trigger-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.gm-trigger-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gm-trigger-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.gm-capture-btn {
+    flex-shrink: 0;
+    min-width: 170px;
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+    .gm-capture-btn:hover {
+        border-color: rgba(255, 255, 255, 0.24);
+    }
+
+    .gm-capture-btn.capturing {
+        color: var(--accent-purple-light);
+        background: rgba(var(--accent-purple-rgb), 0.1);
+        border-color: rgba(var(--accent-purple-rgb), 0.5);
+    }
+
+.gm-trigger-clear {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+    .gm-trigger-clear:hover {
+        color: var(--accent-red);
+        border-color: rgba(var(--accent-red-rgb), 0.5);
+    }
+
+/* ── Monitors ───────────────────────────────────────────────────────────── */
+
+.gm-monitor-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.gm-monitor-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+    .gm-monitor-row:hover {
+        background: var(--surface-inset-hover);
+    }
+
+.gm-monitor-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.gm-monitor-tag {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-chip);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.gm-empty {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* ── G HUB export ───────────────────────────────────────────────────────── */
+
+.gm-lua-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+    .gm-lua-head .gm-card-desc {
+        margin-bottom: 0;
+        max-width: 640px;
+    }
+
+    .gm-lua-head .btn {
+        flex-shrink: 0;
+    }
+
+textarea.gm-lua-area {
+    width: 100%;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: var(--space-3) !important;
+    background: var(--surface-inset) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: var(--radius-panel) !important;
+}
+
+/* ── Info note ──────────────────────────────────────────────────────────── */
+
+.gm-note {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35);
+}
+
+    .gm-note.gm-note-warn {
+        border-left-color: rgba(var(--accent-orange-rgb), 0.5);
+    }
+
+    .gm-note p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+    .gm-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .gm-lua-head {
+        flex-direction: column;
+    }
+}
