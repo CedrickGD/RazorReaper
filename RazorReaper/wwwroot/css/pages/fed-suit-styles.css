@@ -1,0 +1,98 @@
+/* ── Fed Suit page ───────────────────────────────────────────────────────────
+   Layout plus small extensions over the shared primitives (SettingRow,
+   StatusHeader, HotkeyField, Switch — styled in css/shared/primitives.css).
+   Tokens only: radius/spacing scales and accent/status variables from theme.css. */
+
+.fedsuit-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 960px;
+}
+
+/* Vertical rhythm comes from the flex gap, not per-card margins. */
+.fedsuit-page .content-card {
+    margin-bottom: 0 !important;
+}
+
+.fedsuit-page .fs-card {
+    padding: var(--space-5) !important;
+}
+
+/* Design restraint: 600 only for titles (the global h3 rule forces 700). */
+.fedsuit-page h3 {
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    margin-bottom: 0 !important;
+}
+
+.fs-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.fs-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+/* Neutral info card with a low-alpha left border. */
+.fs-info-card {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(255, 255, 255, 0.18);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+/* Dynamic status only — orange = warning per the app's color conventions. */
+.fs-hotkey-warning {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--accent-orange);
+}
+
+.fedsuit-page .btn.fs-sm-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.8rem;
+}
+
+.fedsuit-page .status-header-actions .btn {
+    padding: var(--space-2) var(--space-4);
+    font-size: 0.82rem;
+}
+
+.fedsuit-page .fs-num {
+    width: 110px;
+    padding: var(--space-2) var(--space-3) !important;
+    text-align: center;
+    font-family: var(--font-mono) !important;
+    font-size: 0.85rem !important;
+}
+
+/* Muted badge for coordinates / resolution. */
+.fs-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-chip);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.fs-badge.set {
+    color: var(--text-primary);
+}
