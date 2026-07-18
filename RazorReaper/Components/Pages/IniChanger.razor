@@ -14,6 +14,7 @@
 @inject ILogger<IniChanger> Logger
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@inject ITextureBackupService BackupService
 
 
         <header class="page-header">
@@ -112,11 +113,18 @@
                             </svg>
                             Water
                         </button>
-                        <button class="ini-btn ini-btn-danger" @onclick="DeleteWaterSurfaceFiles" data-tooltip="Remove water surface files" data-tooltip-pos="bottom">
+                        <button class="ini-btn @(WaterSurfaceRemoved ? "ini-btn-accent" : "ini-btn-danger")" @onclick="ToggleWaterSurface" data-tooltip="@(WaterSurfaceRemoved ? "Restore the water surface" : "Remove the water surface (reversible)")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                @if (WaterSurfaceRemoved)
+                                {
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                }
+                                else
+                                {
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                }
                             </svg>
-                            Remove
+                            @(WaterSurfaceRemoved ? "Restore Water" : "Remove Water")
                         </button>
                     </div>
 
@@ -1021,65 +1029,65 @@
         }
     }
 
-    private async Task DeleteWaterSurfaceFiles()
+    private static readonly string[] WaterSurfaceFileNames = { "SoftEdgeGradient_Linear.uasset", "SoftEdgeGradient.uasset" };
+
+    private string WaterSurfaceKey => BackupService.SanitizeCategoryKey("Water Surface");
+
+    /// <summary>True while the water-surface files are backed up (i.e. removed from the game).</summary>
+    private bool WaterSurfaceRemoved => BackupService.IsBackedUp(WaterSurfaceKey);
+
+    private static Dictionary<string, string[]> BuildWaterSurfaceGroup(string arkBasePath) => new()
+    {
+        {
+            Path.Combine(arkBasePath, "ShooterGame", "Content", "PrimalEarth", "Effects", "Textures", "Generic"),
+            WaterSurfaceFileNames
+        }
+    };
+
+    /// <summary>
+    /// Reversible water-surface toggle: ON backs up + removes the soft-edge gradient
+    /// textures that draw the ocean surface (making it see-through), OFF restores them.
+    /// Fully reversible via TextureBackupService; changes apply on the next map load.
+    /// </summary>
+    private async Task ToggleWaterSurface()
     {
         try
         {
-            Logger.LogInformation("Deleting water surface files");
-
-            // Run file operations on background thread
-            await Task.Run(() =>
+            string? arkBasePath = ArkUtilities.FindArkPath();
+            if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
             {
-                string? arkBasePath = ArkUtilities.FindArkPath();
+                NotificationService.ShowError("ARK installation not found!");
+                return;
+            }
 
-                if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
+            var group = BuildWaterSurfaceGroup(arkBasePath);
+
+            if (WaterSurfaceRemoved)
+            {
+                int restored = await BackupService.RestoreFilesAsync(WaterSurfaceKey, group);
+                NotificationService.ShowSuccess($"Water surface restored ({restored} file(s)) — applies on next map load.");
+                ActivityService.AddActivity("Water surface restored", "success");
+            }
+            else
+            {
+                int removed = await BackupService.BackupFilesAsync(WaterSurfaceKey, group);
+                if (removed > 0)
                 {
-                    InvokeAsync(() => NotificationService.ShowError("ARK installation not found!"));
-                    return;
+                    NotificationService.ShowSuccess($"Water surface removed ({removed} file(s)) — reversible, applies on next map load.");
+                    ActivityService.AddActivity("Water surface removed", "success");
                 }
-
-                string shooterGamePath = Path.Combine(arkBasePath, "ShooterGame", "Content", "PrimalEarth");
-                int deletedCount = 0;
-
-                var waterSurfaceFiles = new Dictionary<string, string[]>
+                else
                 {
-                    { Path.Combine(shooterGamePath, "Effects", "Textures", "Generic"), new[] {
-                        "SoftEdgeGradient_Linear.uasset",
-                        "SoftEdgeGradient.uasset"
-                    }}
-                };
-
-                foreach (var folder in waterSurfaceFiles)
-                {
-                    string folderPath = folder.Key;
-                    if (!Directory.Exists(folderPath))
-                        continue;
-
-                    foreach (string fileName in folder.Value)
-                    {
-                        string filePath = Path.Combine(folderPath, fileName);
-                        if (File.Exists(filePath))
-                        {
-                            File.Delete(filePath);
-                            deletedCount++;
-                            Logger.LogInformation("Deleted water file: {FileName}", fileName);
-                        }
-                    }
+                    NotificationService.ShowInfo("Water surface files were not found (already removed, or a different ARK version).");
                 }
+            }
 
-                int count = deletedCount;
-                InvokeAsync(() =>
-                {
-                    NotificationService.ShowSuccess($"Successfully deleted {count} water surface file(s)");
-                    ActivityService.AddActivity($"Water surface files deleted: {count} file(s)", "success");
-                });
-                Logger.LogInformation("Deleted {Count} water surface files", deletedCount);
-            });
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error deleting water surface files");
-            NotificationService.ShowError($"Error deleting water surface files: {ex.Message}");
+            Logger.LogError(ex, "Error toggling water surface");
+            NotificationService.ShowError($"Error toggling water surface: {ex.Message}");
         }
     }
 
