@@ -64,7 +64,7 @@
 .loading-screen-page .ls-info-card {
     /* .content-card in theme.css sets the border with !important,
        so the info accent override needs !important too. */
-    border-left: 3px solid rgba(var(--accent-blue-rgb), 0.5) !important;
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.5) !important;
 }
 
 .loading-screen-page .ls-info-header {
@@ -79,7 +79,7 @@
     height: 40px;
     border-radius: var(--radius-panel);
     background: rgba(255, 255, 255, 0.06);
-    color: var(--accent-blue);
+    color: var(--accent-purple);
     display: flex;
     align-items: center;
     justify-content: center;

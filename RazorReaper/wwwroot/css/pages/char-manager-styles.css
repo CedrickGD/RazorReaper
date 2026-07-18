@@ -62,7 +62,7 @@
 /* ── Info card: neutral surface, thin colored left border only ──────────── */
 
 .char-manager-page .cm-info-card {
-    border-left: 3px solid rgba(var(--accent-blue-rgb), 0.35) !important;
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35) !important;
     display: grid;
     gap: var(--space-2);
 }

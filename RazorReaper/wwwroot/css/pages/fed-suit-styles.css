@@ -44,7 +44,7 @@
 .fs-info-card {
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-panel);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-left: 3px solid rgba(255, 255, 255, 0.18);
     color: var(--text-secondary);

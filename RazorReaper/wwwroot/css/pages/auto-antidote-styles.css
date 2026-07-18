@@ -49,7 +49,7 @@ h3.aa-card-title {
     gap: var(--space-3);
     padding: var(--space-3);
     border-radius: var(--radius-panel);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -118,7 +118,7 @@ h3.aa-card-title {
     margin-top: var(--space-4);
     padding: var(--space-3);
     border-radius: var(--radius-panel);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -265,7 +265,7 @@ input.aa-slider {
 .aa-note {
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-panel);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35);
 }

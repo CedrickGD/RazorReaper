@@ -147,7 +147,7 @@
 }
 
 .uw-page .uw-dot-cave {
-    background: rgba(var(--accent-blue-rgb), 0.75);
+    background: rgba(var(--accent-purple-rgb), 0.75);
 }
 
 .uw-page .uw-dot-wreck {
@@ -156,7 +156,7 @@
 
 /* Info card */
 .uw-page .uw-info-card {
-    border-left: 3px solid rgba(var(--accent-blue-rgb), 0.35) !important;
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.35) !important;
     padding: var(--space-4) var(--space-5) !important;
 }
 

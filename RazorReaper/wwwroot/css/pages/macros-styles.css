@@ -48,7 +48,7 @@
 .mac-badge {
     padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-round);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
     font-size: 0.72rem;
@@ -89,7 +89,7 @@
     padding: var(--space-3) var(--space-4);
     border-left: 3px solid rgba(255, 255, 255, 0.18);
     border-radius: var(--radius-chip);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     color: var(--text-secondary);
     font-size: 0.8rem;
     line-height: 1.5;
@@ -191,13 +191,13 @@
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-panel);
-    background: var(--glass-bg);
+    background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.08);
     transition: border-color 0.2s ease, background 0.2s ease;
 }
 
     .mac-list-item:hover {
-        background: var(--glass-hover);
+        background: var(--surface-inset-hover);
     }
 
     .mac-list-item.loaded {
