@@ -59,6 +59,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["oc-bps"] = "OC BPs",
             ["bosses"] = "Bosses",
             ["tp-locations"] = "TP Locations",
+            ["underwater-drops"] = "Underwater Drops",
             ["map-mods"] = "Map Mods",
             ["steam-mods"] = "Steam Mods",
             ["building"] = "Building",

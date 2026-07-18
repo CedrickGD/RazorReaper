@@ -1,0 +1,220 @@
+@page "/underwater-drops"
+@using System.Globalization
+
+<div class="uw-page">
+    <header class="page-header">
+        <h1 class="page-title">Underwater Drops</h1>
+        <p class="page-subtitle">Underwater loot crate locations with coordinates, searchable by map and crate type.</p>
+    </header>
+
+    <div class="uw-layout">
+        <section class="content-card uw-controls">
+            <div class="uw-toolbar">
+                <div class="uw-search-block">
+                    <label class="uw-label">Search</label>
+                    <div class="uw-search-wrapper">
+                        <svg class="uw-search-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        <input type="text"
+                               class="uw-search-input"
+                               placeholder="Search area, map or note..."
+                               @bind="searchQuery"
+                               @bind:event="oninput" />
+                    </div>
+                </div>
+                <div class="uw-count">
+                    <span>Showing:</span>
+                    <span class="uw-count-value">@filteredCount / @UnderwaterDropsData.Drops.Count</span>
+                </div>
+            </div>
+
+            <div class="uw-filter-row">
+                <div class="uw-filter-group">
+                    <span class="uw-label">Map</span>
+                    <div class="uw-chip-row">
+                        <button type="button"
+                                class="uw-chip @(selectedMap is null ? "active" : "")"
+                                @onclick="() => SelectMap(null)">All maps</button>
+                        @foreach (var map in UnderwaterDropsData.Maps)
+                        {
+                            var mapName = map;
+                            <button type="button"
+                                    class="uw-chip @(selectedMap == mapName ? "active" : "")"
+                                    @onclick="() => SelectMap(mapName)">@mapName</button>
+                        }
+                    </div>
+                </div>
+                <div class="uw-filter-group">
+                    <span class="uw-label">Crate type</span>
+                    <div class="uw-chip-row">
+                        <button type="button"
+                                class="uw-chip @(selectedTier is null ? "active" : "")"
+                                @onclick="() => SelectTier(null)">All types</button>
+                        <button type="button"
+                                class="uw-chip @(selectedTier == UnderwaterDropTier.DeepSea ? "active" : "")"
+                                @onclick="() => SelectTier(UnderwaterDropTier.DeepSea)">
+                            <span class="uw-dot uw-dot-deepsea"></span>Deep sea
+                        </button>
+                        <button type="button"
+                                class="uw-chip @(selectedTier == UnderwaterDropTier.CaveCrate ? "active" : "")"
+                                @onclick="() => SelectTier(UnderwaterDropTier.CaveCrate)">
+                            <span class="uw-dot uw-dot-cave"></span>Cave crate
+                        </button>
+                        <button type="button"
+                                class="uw-chip @(selectedTier == UnderwaterDropTier.Shipwreck ? "active" : "")"
+                                @onclick="() => SelectTier(UnderwaterDropTier.Shipwreck)">
+                            <span class="uw-dot uw-dot-wreck"></span>Shipwreck
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-card uw-info-card">
+            <p>Deep-sea crates need character level 80 to open and respawn on a timer after being looted.</p>
+        </section>
+
+        @if (filteredGroups.Count > 0)
+        {
+            @foreach (var group in filteredGroups)
+            {
+                <section class="content-card uw-map-card">
+                    <div class="uw-map-header">
+                        <h2>@group.MapName</h2>
+                        <span class="uw-map-count">@group.Entries.Count @(group.Entries.Count == 1 ? "location" : "locations")</span>
+                    </div>
+                    <div class="uw-table">
+                        <div class="uw-table-header">
+                            <div>Type</div>
+                            <div>Area</div>
+                            <div>Lat</div>
+                            <div>Lon</div>
+                            <div>Access</div>
+                        </div>
+                        <div class="uw-table-body">
+                            @foreach (var drop in group.Entries)
+                            {
+                                <div class="uw-row" @key="drop">
+                                    <div class="uw-cell-tier">
+                                        <span class="uw-dot @TierDotClass(drop.Tier)"></span>
+                                        <span class="uw-tier-name">@TierLabel(drop.Tier)</span>
+                                    </div>
+                                    <div class="uw-cell-area">@drop.Area</div>
+                                    <div class="uw-cell-coord">@FormatCoord(drop.Lat)</div>
+                                    <div class="uw-cell-coord">@FormatCoord(drop.Lon)</div>
+                                    <div class="uw-cell-note">@drop.Note</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </section>
+            }
+        }
+        else
+        {
+            <section class="content-card uw-empty-card">
+                <div class="uw-empty">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                    </svg>
+                    <h3>No drops found</h3>
+                    <p>Try a different search, map or crate type.</p>
+                </div>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private sealed class MapGroup
+    {
+        public string MapName { get; init; } = "";
+        public List<UnderwaterDrop> Entries { get; init; } = new();
+    }
+
+    private string _searchQuery = "";
+    private string searchQuery
+    {
+        get => _searchQuery;
+        set { _searchQuery = value; UpdateFiltered(); }
+    }
+
+    private string? selectedMap;
+    private UnderwaterDropTier? selectedTier;
+
+    private List<MapGroup> filteredGroups = new();
+    private int filteredCount;
+
+    protected override void OnInitialized()
+    {
+        UpdateFiltered();
+    }
+
+    private void SelectMap(string? map)
+    {
+        selectedMap = map;
+        UpdateFiltered();
+    }
+
+    private void SelectTier(UnderwaterDropTier? tier)
+    {
+        selectedTier = tier;
+        UpdateFiltered();
+    }
+
+    private void UpdateFiltered()
+    {
+        IEnumerable<UnderwaterDrop> query = UnderwaterDropsData.Drops;
+
+        if (selectedMap is not null)
+        {
+            query = query.Where(d => d.Map == selectedMap);
+        }
+
+        if (selectedTier is not null)
+        {
+            query = query.Where(d => d.Tier == selectedTier);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            var term = _searchQuery.Trim();
+            query = query.Where(d =>
+                d.Area.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                d.Map.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                d.Note.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                TierLabel(d.Tier).Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var matches = query.ToList();
+        filteredCount = matches.Count;
+        filteredGroups = UnderwaterDropsData.Maps
+            .Select(map => new MapGroup
+            {
+                MapName = map,
+                Entries = matches.Where(d => d.Map == map).ToList()
+            })
+            .Where(g => g.Entries.Count > 0)
+            .ToList();
+    }
+
+    private static string TierLabel(UnderwaterDropTier tier) => tier switch
+    {
+        UnderwaterDropTier.DeepSea => "Deep sea",
+        UnderwaterDropTier.CaveCrate => "Cave crate",
+        UnderwaterDropTier.Shipwreck => "Shipwreck",
+        _ => "Unknown"
+    };
+
+    private static string TierDotClass(UnderwaterDropTier tier) => tier switch
+    {
+        UnderwaterDropTier.DeepSea => "uw-dot-deepsea",
+        UnderwaterDropTier.CaveCrate => "uw-dot-cave",
+        UnderwaterDropTier.Shipwreck => "uw-dot-wreck",
+        _ => ""
+    };
+
+    private static string FormatCoord(double value)
+        => value.ToString("0.0", CultureInfo.InvariantCulture);
+}
