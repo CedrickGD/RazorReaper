@@ -1,0 +1,205 @@
+@page "/tp-locations"
+@using System.Globalization
+@using System.Linq
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@inject IJSRuntime JSRuntime
+@inject INotificationService NotificationService
+@inject IActivityService ActivityService
+@inject ILogger<TpLocations> Logger
+
+<header class="page-header">
+    <h1 class="page-title">TP Locations</h1>
+    <p class="page-subtitle">Teleport-worthy spots across every map, with copyable setplayerpos commands where documented.</p>
+</header>
+
+<div class="tp-page">
+    <section class="content-card tp-toolbar-card">
+        <div class="tp-map-tabs">
+            <button class="tp-map-tab @(selectedMap == AllMaps ? "active" : "")" @onclick="() => SelectMap(AllMaps)">All Maps</button>
+            @foreach (var map in TpLocationData.Maps)
+            {
+                var mapName = map;
+                <button class="tp-map-tab @(selectedMap == mapName ? "active" : "")" @onclick="() => SelectMap(mapName)">@mapName</button>
+            }
+        </div>
+
+        <div class="tp-filter-row">
+            <div class="tp-search-wrapper">
+                <svg class="tp-search-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+                <input type="text"
+                       class="tp-search-input"
+                       placeholder="Search locations..."
+                       @bind="searchQuery"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="tp-category-tabs">
+                <button class="tp-category-tab @(selectedCategory == AllCategories ? "active" : "")" @onclick="() => SelectCategory(AllCategories)">All</button>
+                @foreach (var category in TpLocationData.Categories)
+                {
+                    var categoryKey = category;
+                    <button class="tp-category-tab @(selectedCategory == categoryKey ? "active" : "")" @onclick="() => SelectCategory(categoryKey)">@CategoryLabel(categoryKey)</button>
+                }
+            </div>
+
+            <div class="tp-count">
+                <span class="tp-count-value">@filtered.Count</span>
+                <span>of @TpLocationData.Entries.Count locations</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-card tp-results-card">
+        @if (filtered.Count > 0)
+        {
+            <div class="tp-rows">
+                @foreach (var entry in filtered)
+                {
+                    <div @key="entry" class="tp-row">
+                        <div class="tp-row-main">
+                            <div class="tp-row-title">
+                                <span class="tp-row-name">@entry.Name</span>
+                                <span class="tp-chip">@CategoryLabel(entry.Category)</span>
+                            </div>
+                            <p class="tp-row-note">
+                                @if (selectedMap == AllMaps)
+                                {
+                                    <span class="tp-row-map">@entry.Map</span>
+                                }
+                                @entry.Note
+                            </p>
+                        </div>
+                        <div class="tp-row-coords">
+                            <span class="tp-coord-label">Lat</span>
+                            <span class="tp-coord-value">@FormatCoord(entry.Lat)</span>
+                            <span class="tp-coord-label">Lon</span>
+                            <span class="tp-coord-value">@FormatCoord(entry.Lon)</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(entry.SetPlayerPos))
+                        {
+                            <button class="tp-copy-btn" title="Copy: cheat setplayerpos @entry.SetPlayerPos" @onclick="() => CopyCommand(entry)">
+                                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 20 20">
+                                    <rect x="7" y="7" width="9" height="9" rx="2" />
+                                    <path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" />
+                                </svg>
+                                <span>Copy</span>
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="tp-copy-placeholder"></span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="tp-empty">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+                <h3>No locations found</h3>
+                <p>Try a different search, map, or category filter.</p>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private const string AllMaps = "All Maps";
+    private const string AllCategories = "all";
+
+    private string selectedMap = AllMaps;
+    private string selectedCategory = AllCategories;
+    private List<TpLocationEntry> filtered = new();
+
+    private string _searchQuery = "";
+    private string searchQuery
+    {
+        get => _searchQuery;
+        set { _searchQuery = value; UpdateFiltered(); }
+    }
+
+    protected override void OnInitialized()
+    {
+        UpdateFiltered();
+    }
+
+    private void SelectMap(string map)
+    {
+        selectedMap = map;
+        UpdateFiltered();
+    }
+
+    private void SelectCategory(string category)
+    {
+        selectedCategory = category;
+        UpdateFiltered();
+    }
+
+    private void UpdateFiltered()
+    {
+        IEnumerable<TpLocationEntry> query = TpLocationData.Entries;
+
+        if (selectedMap != AllMaps)
+        {
+            query = query.Where(e => e.Map == selectedMap);
+        }
+
+        if (selectedCategory != AllCategories)
+        {
+            query = query.Where(e => e.Category == selectedCategory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            var term = _searchQuery.Trim();
+            query = query.Where(e =>
+                e.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || e.Note.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || e.Map.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        filtered = query.ToList();
+    }
+
+    private static string FormatCoord(double value)
+        => value.ToString("0.0", CultureInfo.InvariantCulture);
+
+    private static string CategoryLabel(string category) => category switch
+    {
+        "obelisk" => "Obelisk",
+        "cave" => "Cave",
+        "loot" => "Loot",
+        "resource" => "Resource",
+        "landmark" => "Landmark",
+        "terminal" => "Terminal",
+        _ => category
+    };
+
+    private async Task CopyCommand(TpLocationEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.SetPlayerPos))
+        {
+            return;
+        }
+
+        var command = $"cheat setplayerpos {entry.SetPlayerPos}";
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", command);
+            NotificationService.ShowSuccess($"{entry.Name} teleport command copied.");
+            ActivityService.AddActivity($"Copied TP command: {entry.Name}", "info");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy teleport command for {Location}", entry.Name);
+            NotificationService.ShowError("Failed to copy the teleport command.");
+        }
+    }
+}

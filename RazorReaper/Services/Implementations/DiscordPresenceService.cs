@@ -58,6 +58,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             ["line-list"] = "Line List",
             ["oc-bps"] = "OC BPs",
             ["bosses"] = "Bosses",
+            ["tp-locations"] = "TP Locations",
             ["map-mods"] = "Map Mods",
             ["steam-mods"] = "Steam Mods",
             ["building"] = "Building",
