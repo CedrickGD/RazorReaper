@@ -53,6 +53,10 @@ public sealed class NotifierCluster
     public bool Enabled { get; set; } = true;
 }
 
+/// <summary>A channel the backend is watching. Managed live from the app via the backend's
+/// /notifier/channels endpoint — no Railway edit, no redeploy.</summary>
+public sealed record NotifierWatchedChannel(string ChannelId, string Cluster, string Type);
+
 /// <summary>A parsed alert that passed the user's filters (or a local test).</summary>
 public sealed record NotifierAlert(
     NotifierAlertType Type,
@@ -113,6 +117,13 @@ public interface INotifierClientService : IDisposable
     /// passes if its subject or text contains one of these (case-insensitive). Empty = all pass.</summary>
     IReadOnlyList<string> TribeTriggers { get; }
     void SetTribeTriggers(IEnumerable<string> phrases);
+
+    /// <summary>List the channels the backend is currently watching. Requires a configured endpoint.</summary>
+    Task<IReadOnlyList<NotifierWatchedChannel>> GetWatchedChannelsAsync(CancellationToken ct = default);
+    /// <summary>Add or update a watched channel on the backend. Applies live (no redeploy). Returns the new list.</summary>
+    Task<IReadOnlyList<NotifierWatchedChannel>> AddWatchedChannelAsync(string channelId, string cluster, string type, CancellationToken ct = default);
+    /// <summary>Remove a watched channel from the backend. Applies live. Returns the new list.</summary>
+    Task<IReadOnlyList<NotifierWatchedChannel>> RemoveWatchedChannelAsync(string channelId, CancellationToken ct = default);
 
     /// <summary>Begin connecting (no-op with a clear status when no endpoint is set).</summary>
     void Start();
@@ -774,6 +785,77 @@ public sealed class NotifierClientService : INotifierClientService
         TaskCanceledException => "Connection timed out",
         _ => "Connection failed"
     };
+
+    // ── Channel management (backend /notifier/channels) ────────────────────────────────────────
+    // Derives the channels URL from the configured stream endpoint, reusing its token, so the user
+    // never touches the backend host directly. All three mutate the backend's live watched-channel
+    // map and return the updated list.
+
+    private static readonly JsonSerializerOptions ChannelJsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private sealed record ChannelsResponse(bool Ok, List<ChannelDto>? Channels);
+    private sealed record ChannelDto(string? ChannelId, string? Cluster, string? Type);
+
+    /// <summary>Turn ".../notifier/stream?token=X" into ".../notifier/channels?token=X[&extra]".</summary>
+    private string BuildChannelsUrl(string? extraQuery = null)
+    {
+        string ep;
+        lock (_gate) ep = _endpoint;
+        if (string.IsNullOrWhiteSpace(ep) || !Uri.TryCreate(ep, UriKind.Absolute, out var uri))
+            throw new InvalidOperationException("Set the stream endpoint first (Endpoint field above).");
+        var url = $"{uri.GetLeftPart(UriPartial.Authority)}/notifier/channels{uri.Query}";
+        if (!string.IsNullOrEmpty(extraQuery))
+            url += (string.IsNullOrEmpty(uri.Query) ? "?" : "&") + extraQuery;
+        return url;
+    }
+
+    public async Task<IReadOnlyList<NotifierWatchedChannel>> GetWatchedChannelsAsync(CancellationToken ct = default)
+    {
+        using var resp = await _http.GetAsync(BuildChannelsUrl(), ct).ConfigureAwait(false);
+        return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<NotifierWatchedChannel>> AddWatchedChannelAsync(string channelId, string cluster, string type, CancellationToken ct = default)
+    {
+        var payload = new { channelId = (channelId ?? "").Trim(), cluster = (cluster ?? "").Trim(), type = (type ?? "").Trim() };
+        using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        using var resp = await _http.PostAsync(BuildChannelsUrl(), content, ct).ConfigureAwait(false);
+        return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<NotifierWatchedChannel>> RemoveWatchedChannelAsync(string channelId, CancellationToken ct = default)
+    {
+        var url = BuildChannelsUrl("id=" + Uri.EscapeDataString(channelId ?? ""));
+        using var req = new HttpRequestMessage(HttpMethod.Delete, url);
+        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+    }
+
+    private static async Task<IReadOnlyList<NotifierWatchedChannel>> ParseChannelsAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(resp.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Unauthorized => "Unauthorized — the token in your endpoint URL is wrong.",
+                System.Net.HttpStatusCode.ServiceUnavailable => "The backend has no token configured yet.",
+                System.Net.HttpStatusCode.BadRequest => "That doesn't look like a valid Discord channel ID (digits only).",
+                _ => $"The backend returned {(int)resp.StatusCode}."
+            });
+        }
+        var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<ChannelsResponse>(body, ChannelJsonOpts);
+            return (parsed?.Channels ?? new List<ChannelDto>())
+                .Select(c => new NotifierWatchedChannel(c.ChannelId ?? "", c.Cluster ?? "", c.Type ?? ""))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Couldn't read the backend's response.", ex);
+        }
+    }
 
     private void SetState(NotifierConnectionState state, string detail)
     {

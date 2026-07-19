@@ -125,6 +125,60 @@
 
     </div>
 
+    @* ── Watched channels (managed live via the backend) ──────────────────── *@
+    <div class="content-card nt-card nt-channels-card">
+        <div class="nt-card-head">
+            <div>
+                <h3 class="nt-card-title">Watched channels</h3>
+                <p class="nt-card-desc">Discord channels the backend relays from. Add or remove them here — it applies live, no restart. The bot must be a member of the channel's server.</p>
+            </div>
+            <div class="nt-head-actions">
+                <button class="nt-mini" @onclick="() => LoadChannels(false)" disabled="@_channelsBusy">Refresh</button>
+            </div>
+        </div>
+
+        <div class="nt-channel-add">
+            <input class="nt-input nt-chan-id" type="text" spellcheck="false" inputmode="numeric"
+                   placeholder="Channel ID (digits only)" @bind="_newChannelId" />
+            <input class="nt-input nt-chan-cluster" type="text" spellcheck="false"
+                   placeholder="Cluster / label" @bind="_newCluster" />
+            <select class="nt-select" @bind="_newType">
+                <option value="rare-dino">Rare dino</option>
+                <option value="resource">Resource</option>
+                <option value="element-node">Element node</option>
+                <option value="osd">OSD / events</option>
+                <option value="tribe-log">Tribe log</option>
+            </select>
+            <button class="nt-mini nt-chan-add" @onclick="AddChannel"
+                    disabled="@(_channelsBusy || string.IsNullOrWhiteSpace(_newChannelId))">Add channel</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_channelError))
+        {
+            <div class="nt-channel-error">@_channelError</div>
+        }
+
+        @if (_watchedChannels.Count == 0)
+        {
+            <div class="nt-empty">No channels loaded. Add one above, or hit <strong>Refresh</strong> to pull the current list from the backend.</div>
+        }
+        else
+        {
+            <div class="nt-channel-list">
+                @foreach (var ch in _watchedChannels)
+                {
+                    <div class="nt-channel-row">
+                        <span class="nt-type-chip nt-type-@TypeCssFromKey(ch.Type)">@ch.Type</span>
+                        <span class="nt-chan-cluster-label">@ch.Cluster</span>
+                        <span class="nt-chan-id-label">@ch.ChannelId</span>
+                        <button class="nt-chan-remove" title="Remove channel" data-sound-skip="true"
+                                @onclick="() => RemoveChannel(ch.ChannelId)" disabled="@_channelsBusy">&times;</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
     @* ── Recent alerts ───────────────────────────────────────────────────── *@
     <div class="content-card nt-card nt-recent-card">
         <h3 class="nt-card-title">Recent alerts</h3>
@@ -158,13 +212,96 @@
     private string _endpointDraft = "";
     private string _tribeTriggersDraft = "";
 
+    // Watched-channel manager state.
+    private List<NotifierWatchedChannel> _watchedChannels = new();
+    private string _newChannelId = "";
+    private string _newCluster = "";
+    private string _newType = "osd";
+    private bool _channelsBusy;
+    private string _channelError = "";
+
     protected override void OnInitialized()
     {
         _endpointDraft = NotifierClient.Endpoint;
         _tribeTriggersDraft = string.Join('\n', NotifierClient.TribeTriggers);
         NotifierClient.Changed += OnChanged;
         NotifierClient.AlertReceived += OnAlertReceived;
+
+        // Best-effort silent load so the list is populated when a backend is already configured.
+        if (!string.IsNullOrWhiteSpace(NotifierClient.Endpoint))
+            _ = LoadChannels(quiet: true);
     }
+
+    // ── Watched channels ────────────────────────────────────────────────────
+
+    private async Task LoadChannels(bool quiet)
+    {
+        _channelsBusy = true;
+        if (!quiet) _channelError = "";
+        try
+        {
+            _watchedChannels = (await NotifierClient.GetWatchedChannelsAsync()).ToList();
+            if (quiet) _channelError = "";
+        }
+        catch (Exception ex)
+        {
+            if (!quiet) _channelError = ex.Message;
+        }
+        finally
+        {
+            _channelsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddChannel()
+    {
+        if (string.IsNullOrWhiteSpace(_newChannelId)) return;
+        _channelsBusy = true;
+        _channelError = "";
+        try
+        {
+            _watchedChannels = (await NotifierClient.AddWatchedChannelAsync(_newChannelId.Trim(), _newCluster ?? "", _newType ?? "osd")).ToList();
+            _newChannelId = "";
+            _newCluster = "";
+        }
+        catch (Exception ex)
+        {
+            _channelError = ex.Message;
+        }
+        finally
+        {
+            _channelsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveChannel(string channelId)
+    {
+        _channelsBusy = true;
+        _channelError = "";
+        try
+        {
+            _watchedChannels = (await NotifierClient.RemoveWatchedChannelAsync(channelId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _channelError = ex.Message;
+        }
+        finally
+        {
+            _channelsBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string TypeCssFromKey(string type) => type switch
+    {
+        "rare-dino" => "dino",
+        "resource" => "resource",
+        "element-node" => "element",
+        _ => "osd"
+    };
 
     private void ApplyTribeTriggers(ChangeEventArgs e)
     {
