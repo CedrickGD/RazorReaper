@@ -71,17 +71,25 @@
                 <div class="cave-image-slot">
                     @if (string.IsNullOrEmpty(sel.ImagePath))
                     {
-                        <div class="cave-image-placeholder">
+                        <label class="cave-image-dropzone">
+                            <InputFile OnChange="@(e => AttachImage(sel, e))" accept="image/png,image/jpeg,image/webp,image/gif" />
                             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 16.5 10 4l7 12.5H3Z" />
                                 <path d="M7.6 16.5a2.4 2.4 0 0 1 4.8 0" />
                             </svg>
-                            <span>No image yet</span>
-                        </div>
+                            <span>Add image or GIF</span>
+                        </label>
                     }
                     else
                     {
                         <img class="cave-image" src="@sel.ImagePath" alt="@sel.Name" />
+                        <div class="cave-image-actions">
+                            <label class="cave-image-btn">
+                                <InputFile OnChange="@(e => AttachImage(sel, e))" accept="image/png,image/jpeg,image/webp,image/gif" />
+                                Replace
+                            </label>
+                            <button type="button" class="cave-image-btn danger" @onclick="() => RemoveImage(sel)">Remove</button>
+                        </div>
                     }
                 </div>
 
@@ -491,7 +499,7 @@
                 Loadout = c.Loadout,
                 Loot = c.Loot,
                 SetPlayerPos = c.SetPlayerPos,
-                ImagePath = c.ImagePath,
+                ImagePath = SpotImage(c.Map, c.Name) ?? c.ImagePath,
                 Source = "Cave DB"
             });
         }
@@ -510,6 +518,7 @@
                     Lon = s.Longitude,
                     HasCoords = !string.IsNullOrWhiteSpace(s.Latitude) && !string.IsNullOrWhiteSpace(s.Longitude),
                     Note = string.IsNullOrWhiteSpace(s.Note) ? null : s.Note,
+                    ImagePath = SpotImage(map, s.Name),
                     Source = "Mesa"
                 });
             }
@@ -526,6 +535,7 @@
                 Lon = e.Longitude,
                 HasCoords = !string.IsNullOrWhiteSpace(e.Latitude) && !string.IsNullOrWhiteSpace(e.Longitude),
                 Note = string.IsNullOrWhiteSpace(e.Note) ? null : e.Note,
+                ImagePath = SpotImage(map, e.Name),
                 Source = "Added",
                 UserSpot = e
             });
@@ -579,6 +589,54 @@
         {
             Logger.LogError(ex, "Failed to copy teleport command");
             NotificationService.ShowError("Failed to copy the command.");
+        }
+    }
+
+    // ── Per-spot preview image / GIF ──
+
+    private string? SpotImage(string map, string name)
+        => customStore != null
+           && customStore.SpotImages.TryGetValue($"{map}|{name}", out var url)
+           && !string.IsNullOrEmpty(url)
+            ? url
+            : null;
+
+    private async Task AttachImage(MergedSpot spot, InputFileChangeEventArgs e)
+    {
+        if (customStore == null || e.File is null) return;
+
+        const long maxBytes = 8 * 1024 * 1024;
+        if (e.File.Size > maxBytes)
+        {
+            NotificationService.ShowError("Image must be under 8 MB.");
+            return;
+        }
+
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxBytes);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var mime = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/png" : e.File.ContentType;
+            customStore.SpotImages[$"{spot.Map}|{spot.Name}"] = $"data:{mime};base64,{base64}";
+            await CustomDataService.SaveAsync(customStore);
+            NotificationService.ShowSuccess("Preview image added.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to attach spot image");
+            NotificationService.ShowError("Failed to add the image.");
+        }
+    }
+
+    private async Task RemoveImage(MergedSpot spot)
+    {
+        if (customStore == null) return;
+        if (customStore.SpotImages.Remove($"{spot.Map}|{spot.Name}"))
+        {
+            await CustomDataService.SaveAsync(customStore);
+            NotificationService.ShowSuccess("Preview image removed.");
         }
     }
 
