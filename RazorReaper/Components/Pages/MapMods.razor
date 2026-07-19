@@ -1,118 +1,195 @@
 @page "/map-mods"
 @using RazorReaper.Models
 @using RazorReaper.Services
+@using Microsoft.Extensions.Logging
 @inject ICustomServerDataService CustomDataService
 @inject INotificationService NotificationService
+@inject IActivityService ActivityService
+@inject ILogger<MapMods> Logger
 
-<header class="page-header map-mods-header">
-    <div class="map-mods-header-content">
-        <div class="map-mods-logo-wrap">
-            <img class="map-mods-logo" src="/images/mesa-logo.png" alt="Mesa server logo" />
-        </div>
-        <div>
-            <h1 class="page-title">Map Mods</h1>
-            <p class="page-subtitle">Mesa Ark' server map mods with custom coordinates and landmarks.</p>
-        </div>
-    </div>
-    <div class="map-mods-header-stats">
-        <div class="map-mods-stat">
-            <span class="map-mods-stat-label">Maps</span>
-            <span class="map-mods-stat-value">@MapCount</span>
-        </div>
-        <div class="map-mods-stat">
-            <span class="map-mods-stat-label">Spots</span>
-            <span class="map-mods-stat-value">@TotalSpotCount</span>
-        </div>
-    </div>
-</header>
+<div class="caves-page map-mods-merged">
+    <header class="page-header">
+        <h1 class="page-title">Map Mods</h1>
+        <p class="page-subtitle">Modded map spots — caves, landmarks, obelisks and POIs — with coordinates and notes.</p>
+    </header>
 
-<div class="map-mods-layout">
-    <section class="map-mods-category">
-        <div class="map-mods-category-body">
-            @foreach (var map in maps)
+    <div class="caves-map-selector">
+        @foreach (var map in AllMaps())
+        {
+            <button @key="map"
+                    class="caves-map-chip @(map == selectedMap ? "active" : "")"
+                    @onclick="() => SelectMap(map)">
+                <span class="caves-map-chip-name">@map</span>
+                <span class="caves-map-chip-count">@CountFor(map)</span>
+            </button>
+        }
+    </div>
+
+    <div class="caves-body">
+        @{
+            var current = CurrentSpots();
+            var types = current.Select(s => s.Type).Distinct().OrderBy(t => t, StringComparer.OrdinalIgnoreCase).ToList();
+            var spots = typeFilter is null ? current : current.Where(s => s.Type == typeFilter).ToList();
+            var sel = spots.FirstOrDefault(s => Key(s) == selectedKey) ?? spots.FirstOrDefault();
+        }
+        <section class="content-card caves-list-card">
+            <div class="caves-list-header">
+                <h3>@selectedMap</h3>
+                <div class="mm-list-header-right">
+                    <span class="caves-list-count">@spots.Count spots</span>
+                    <button class="cs-icon-btn small" title="Add spot" @onclick="() => OpenAddMesaSpot(selectedMap)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            @if (types.Count > 1)
             {
-                <details class="map-mods-map-card" open>
-                    <summary class="map-mods-map-header">
-                        <div class="map-mods-map-heading">
-                            <h2>@map.Name</h2>
-                            @if (!string.IsNullOrWhiteSpace(map.Note))
-                            {
-                                <p>@map.Note</p>
-                            }
-                        </div>
-                        <div class="map-mods-map-meta">
-                            <span class="map-mods-map-count">@(map.Spots.Count + GetMesaExtraSpots(map.Name).Count) spots</span>
-                            <button class="cs-icon-btn small" @onclick="() => OpenAddMesaSpot(map.Name)" @onclick:stopPropagation="true" title="Add spot">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            </button>
-                            <span class="map-mods-map-toggle" aria-hidden="true"></span>
-                        </div>
-                    </summary>
-
-                    <div class="map-mods-grid">
-                        @foreach (var spot in map.Spots)
-                        {
-                            <article class="map-mods-spot">
-                                <div class="map-mods-spot-header">
-                                    <h3>@spot.Name</h3>
-                                    @if (!string.IsNullOrWhiteSpace(spot.Type))
-                                    {
-                                        <span class="map-mods-spot-type">@spot.Type</span>
-                                    }
-                                </div>
-                                <div class="map-mods-coordinates">
-                                    <span class="map-mods-coordinate-label">Lat</span>
-                                    <span class="map-mods-coordinate-value">@spot.Latitude</span>
-                                    <span class="map-mods-coordinate-divider">/</span>
-                                    <span class="map-mods-coordinate-label">Lon</span>
-                                    <span class="map-mods-coordinate-value">@spot.Longitude</span>
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(spot.Note))
-                                {
-                                    <p class="map-mods-spot-note">@spot.Note</p>
-                                }
-                            </article>
-                        }
-                        @foreach (var extra in GetMesaExtraSpots(map.Name))
-                        {
-                            <article class="map-mods-spot">
-                                <div class="map-mods-spot-header">
-                                    <h3>@extra.Name</h3>
-                                    <div class="cs-spot-actions">
-                                        @if (!string.IsNullOrWhiteSpace(extra.Type))
-                                        {
-                                            <span class="map-mods-spot-type">@extra.Type</span>
-                                        }
-                                        <button class="cs-icon-btn tiny" @onclick="() => OpenEditMesaSpot(map.Name, extra)" title="Edit">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                        </button>
-                                        <button class="cs-icon-btn tiny danger" @onclick="() => ConfirmDeleteMesaSpot(map.Name, extra)" title="Delete">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="map-mods-coordinates">
-                                    <span class="map-mods-coordinate-label">Lat</span>
-                                    <span class="map-mods-coordinate-value">@extra.Latitude</span>
-                                    <span class="map-mods-coordinate-divider">/</span>
-                                    <span class="map-mods-coordinate-label">Lon</span>
-                                    <span class="map-mods-coordinate-value">@extra.Longitude</span>
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(extra.Note))
-                                {
-                                    <p class="map-mods-spot-note">@extra.Note</p>
-                                }
-                            </article>
-                        }
-                    </div>
-                </details>
+                <div class="caves-type-filter">
+                    <button class="caves-type-chip @(typeFilter is null ? "active" : "")" @onclick="() => SetTypeFilter(null)">All</button>
+                    @foreach (var t in types)
+                    {
+                        <button @key="t" class="caves-type-chip @(typeFilter == t ? "active" : "")" @onclick="() => SetTypeFilter(t)">@t</button>
+                    }
+                </div>
             }
-        </div>
-    </section>
+
+            <div class="caves-list">
+                @foreach (var spot in spots)
+                {
+                    <button @key="spot"
+                            class="cave-row @(spot == sel ? "active" : "")"
+                            @onclick="() => SelectSpot(spot)">
+                        <span class="cave-diff-dot @TypeDotClass(spot.Type)"></span>
+                        <span class="cave-row-text">
+                            <span class="cave-row-name">@spot.Name</span>
+                            <span class="cave-row-sub">@RowSub(spot)</span>
+                        </span>
+                    </button>
+                }
+                @if (spots.Count == 0)
+                {
+                    <p class="cave-empty">No spots here yet.</p>
+                }
+            </div>
+        </section>
+
+        <section class="content-card caves-detail-card">
+            @if (sel is null)
+            {
+                <p class="cave-empty">Select a spot to see its details.</p>
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(sel.ImagePath))
+                {
+                    <div class="cave-image-slot">
+                        <img class="cave-image" src="@sel.ImagePath" alt="@sel.Name" />
+                    </div>
+                }
+
+                <div class="cave-detail-header">
+                    <div class="cave-detail-titles">
+                        <h3 class="cave-detail-title">@sel.Name</h3>
+                        <span class="cave-detail-map">@sel.Map</span>
+                    </div>
+                    <span class="cave-type-chip">@(string.IsNullOrWhiteSpace(sel.Type) ? "Spot" : sel.Type)</span>
+                </div>
+
+                <div class="cave-detail-rows">
+                    @if (!string.IsNullOrEmpty(sel.Artifact))
+                    {
+                        <div class="cave-detail-row">
+                            <span class="cave-detail-label">Artifact</span>
+                            <span class="cave-detail-value">@sel.Artifact</span>
+                        </div>
+                    }
+                    @if (sel.Difficulty is not null)
+                    {
+                        <div class="cave-detail-row">
+                            <span class="cave-detail-label">Difficulty</span>
+                            <span class="cave-detail-value"><span class="cave-diff-chip @DiffClass(sel.Difficulty.Value)">@sel.Difficulty</span></span>
+                        </div>
+                    }
+                    <div class="cave-detail-row">
+                        <span class="cave-detail-label">Coordinates</span>
+                        <span class="cave-detail-value cave-coords-value">
+                            @if (sel.HasCoords)
+                            {
+                                <span class="cave-coords">Lat @sel.Lat / Lon @sel.Lon</span>
+                                <button class="cave-copy-btn" @onclick="() => CopyCoords(sel)">
+                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>
+                                    <span>Copy coords</span>
+                                </button>
+                                @if (!string.IsNullOrEmpty(sel.SetPlayerPos))
+                                {
+                                    <button class="cave-copy-btn" @onclick="() => CopyTeleport(sel)">
+                                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>
+                                        <span>Copy teleport</span>
+                                    </button>
+                                }
+                            }
+                            else
+                            {
+                                <span class="cave-coords">Not documented</span>
+                            }
+                        </span>
+                    </div>
+                    @if (sel.Hazards is { Length: > 0 })
+                    {
+                        <div class="cave-detail-row">
+                            <span class="cave-detail-label">Hazards</span>
+                            <span class="cave-detail-value">
+                                <span class="cave-hazard-chips">
+                                    @foreach (var hazard in sel.Hazards)
+                                    {
+                                        <span @key="hazard" class="cave-hazard-chip">@hazard</span>
+                                    }
+                                </span>
+                            </span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(sel.Loadout))
+                    {
+                        <div class="cave-detail-row">
+                            <span class="cave-detail-label">Loadout</span>
+                            <span class="cave-detail-value">@sel.Loadout</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(sel.Loot))
+                    {
+                        <div class="cave-detail-row">
+                            <span class="cave-detail-label">Loot</span>
+                            <span class="cave-detail-value">@sel.Loot</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(sel.Note))
+                    {
+                        <div class="cave-detail-row">
+                            <span class="cave-detail-label">Note</span>
+                            <span class="cave-detail-value">@sel.Note</span>
+                        </div>
+                    }
+                    <div class="cave-detail-row">
+                        <span class="cave-detail-label">Source</span>
+                        <span class="cave-detail-value cave-source-tag">@sel.Source</span>
+                    </div>
+                </div>
+
+                @if (sel.UserSpot is not null)
+                {
+                    <div class="cave-detail-actions">
+                        <button class="btn btn-secondary" @onclick="() => OpenEditMesaSpot(sel.Map, sel.UserSpot!)">Edit spot</button>
+                        <button class="btn btn-danger" @onclick="() => ConfirmDeleteMesaSpot(sel.Map, sel.UserSpot!)">Delete</button>
+                    </div>
+                }
+            }
+        </section>
+    </div>
 </div>
 
 @* ═══════════════════════════════════════════════════════════════════════ *@
-@* ══ YOUR SERVERS — fully user-managed section below the Mesa block ══ *@
+@* ══ YOUR SERVERS — fully user-managed section below the browser ══ *@
 @* ═══════════════════════════════════════════════════════════════════════ *@
 
 <div class="cs-section">
@@ -367,7 +444,186 @@
 }
 
 @code {
-    // ── Original Mesa data (UNTOUCHED) ──
+    // ── Merged browser state (Cave design over the merged spot dataset) ──
+    private string selectedMap = "";
+    private string? typeFilter;
+    private string? selectedKey;
+
+    private sealed class MergedSpot
+    {
+        public string Map = "";
+        public string Name = "";
+        public string Type = "";
+        public string Lat = "";
+        public string Lon = "";
+        public bool HasCoords;
+        public string? Note;
+        public string? Artifact;
+        public CaveDifficulty? Difficulty;
+        public string[]? Hazards;
+        public string? Loadout;
+        public string? Loot;
+        public string? SetPlayerPos;
+        public string? ImagePath;
+        public string Source = "";
+        public CustomSpot? UserSpot;
+    }
+
+    private static string Key(MergedSpot s) => $"{s.Map}|{s.Name}";
+
+    // Union of every map that has at least one spot (official cave maps first, then Mesa/extra maps).
+    private List<string> AllMaps()
+    {
+        var order = new List<string>();
+        foreach (var m in CaveDatabase.Maps) order.Add(m);
+        foreach (var m in maps) if (!order.Contains(m.Name)) order.Add(m.Name);
+        if (customStore?.MesaExtraSpots != null)
+            foreach (var k in customStore.MesaExtraSpots.Keys) if (!order.Contains(k)) order.Add(k);
+        return order.Where(m => BuildSpots(m).Count > 0).ToList();
+    }
+
+    // Merge the three sources for a map into one unified, name-sorted list.
+    private List<MergedSpot> BuildSpots(string map)
+    {
+        var list = new List<MergedSpot>();
+
+        foreach (var c in CaveDatabase.All.Where(c => c.Map == map))
+        {
+            list.Add(new MergedSpot
+            {
+                Map = c.Map,
+                Name = c.Name,
+                Type = "Cave",
+                Lat = c.Lat is not null ? FormatCoord(c.Lat.Value) : "",
+                Lon = c.Lon is not null ? FormatCoord(c.Lon.Value) : "",
+                HasCoords = c.Lat is not null && c.Lon is not null,
+                Artifact = c.Artifact,
+                Difficulty = c.Difficulty,
+                Hazards = c.Hazards,
+                Loadout = c.Loadout,
+                Loot = c.Loot,
+                SetPlayerPos = c.SetPlayerPos,
+                ImagePath = c.ImagePath,
+                Source = "Cave DB"
+            });
+        }
+
+        var mesa = maps.FirstOrDefault(m => m.Name == map);
+        if (mesa != null)
+        {
+            foreach (var s in mesa.Spots)
+            {
+                list.Add(new MergedSpot
+                {
+                    Map = map,
+                    Name = s.Name,
+                    Type = string.IsNullOrWhiteSpace(s.Type) ? "Spot" : s.Type,
+                    Lat = s.Latitude,
+                    Lon = s.Longitude,
+                    HasCoords = !string.IsNullOrWhiteSpace(s.Latitude) && !string.IsNullOrWhiteSpace(s.Longitude),
+                    Note = string.IsNullOrWhiteSpace(s.Note) ? null : s.Note,
+                    Source = "Mesa"
+                });
+            }
+        }
+
+        foreach (var e in GetMesaExtraSpots(map))
+        {
+            list.Add(new MergedSpot
+            {
+                Map = map,
+                Name = e.Name,
+                Type = string.IsNullOrWhiteSpace(e.Type) ? "Spot" : e.Type,
+                Lat = e.Latitude,
+                Lon = e.Longitude,
+                HasCoords = !string.IsNullOrWhiteSpace(e.Latitude) && !string.IsNullOrWhiteSpace(e.Longitude),
+                Note = string.IsNullOrWhiteSpace(e.Note) ? null : e.Note,
+                Source = "Added",
+                UserSpot = e
+            });
+        }
+
+        return list.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private List<MergedSpot> CurrentSpots() => BuildSpots(selectedMap);
+
+    private int CountFor(string map) => BuildSpots(map).Count;
+
+    private void SelectMap(string map)
+    {
+        selectedMap = map;
+        typeFilter = null;
+        selectedKey = null;
+    }
+
+    private void SetTypeFilter(string? type)
+    {
+        typeFilter = type;
+        selectedKey = null;
+    }
+
+    private void SelectSpot(MergedSpot spot) => selectedKey = Key(spot);
+
+    private static string TypeDotClass(string type) => type.ToLowerInvariant() switch
+    {
+        "cave" => "type-cave",
+        "landmark" => "type-landmark",
+        "obelisk" => "type-obelisk",
+        "poi" => "type-poi",
+        _ => "type-other"
+    };
+
+    private static string RowSub(MergedSpot s)
+    {
+        if (!string.IsNullOrEmpty(s.Artifact)) return s.Artifact;
+        if (!string.IsNullOrEmpty(s.Note)) return s.Note!;
+        if (s.HasCoords) return $"Lat {s.Lat} / Lon {s.Lon}";
+        return s.Type;
+    }
+
+    private static string DiffClass(CaveDifficulty difficulty) => difficulty switch
+    {
+        CaveDifficulty.Easy => "diff-easy",
+        CaveDifficulty.Medium => "diff-medium",
+        _ => "diff-hard"
+    };
+
+    private static string FormatCoord(double value)
+        => value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+
+    private async Task CopyCoords(MergedSpot spot)
+    {
+        if (!spot.HasCoords) return;
+        try
+        {
+            await Clipboard.Default.SetTextAsync($"Lat {spot.Lat} / Lon {spot.Lon}");
+            NotificationService.ShowSuccess("Coordinates copied.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy coordinates");
+            NotificationService.ShowError("Failed to copy.");
+        }
+    }
+
+    private async Task CopyTeleport(MergedSpot spot)
+    {
+        if (string.IsNullOrEmpty(spot.SetPlayerPos)) return;
+        try
+        {
+            await Clipboard.Default.SetTextAsync(spot.SetPlayerPos);
+            NotificationService.ShowSuccess("Teleport command copied.");
+            ActivityService.AddActivity($"Copied teleport: {spot.Name}", "info");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy teleport command");
+            NotificationService.ShowError("Failed to copy the command.");
+        }
+    }
+
+    // ── Mesa modded data (server map edits) ──
     private readonly List<MapModsMap> maps = new()
     {
         new MapModsMap
@@ -510,9 +766,6 @@
         }
     };
 
-    private int MapCount => maps.Count;
-    private int TotalSpotCount => maps.Sum(map => map.Spots.Count + GetMesaExtraSpots(map.Name).Count);
-
     private sealed class MapModsMap
     {
         public string Name { get; init; } = "";
@@ -562,6 +815,7 @@
     protected override async Task OnInitializedAsync()
     {
         customStore = await CustomDataService.LoadAsync();
+        selectedMap = AllMaps().FirstOrDefault() ?? "";
     }
 
     // ── Mesa extra spots ──

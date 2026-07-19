@@ -347,6 +347,71 @@
     font-weight: 400;
 }
 
+/* ===== Merged "Map Mods" additions — spot browser over the cave design ===== */
+
+.caves-page .mm-list-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.caves-page .caves-type-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+}
+
+.caves-page .caves-type-chip {
+    padding: 0.2rem var(--space-3);
+    border-radius: var(--radius-round);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.caves-page .caves-type-chip:hover {
+    color: var(--text-primary);
+}
+
+.caves-page .caves-type-chip.active {
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
+    background: rgba(var(--accent-purple-rgb), 0.1);
+    color: var(--text-primary);
+}
+
+.caves-page .cave-diff-dot.type-cave { background: rgba(var(--accent-purple-rgb), 0.75); }
+.caves-page .cave-diff-dot.type-landmark { background: rgba(var(--accent-green-rgb), 0.7); }
+.caves-page .cave-diff-dot.type-obelisk { background: rgba(var(--accent-orange-rgb), 0.7); }
+.caves-page .cave-diff-dot.type-poi { background: rgba(255, 255, 255, 0.45); }
+.caves-page .cave-diff-dot.type-other { background: rgba(255, 255, 255, 0.28); }
+
+.caves-page .cave-type-chip {
+    padding: 0.2rem var(--space-3);
+    border-radius: var(--radius-round);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.caves-page .cave-source-tag {
+    color: var(--text-secondary);
+}
+
+.caves-page .cave-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
 /* Responsive */
 
 @media (max-width: 900px) {
