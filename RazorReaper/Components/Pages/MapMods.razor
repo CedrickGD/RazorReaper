@@ -27,9 +27,7 @@
 
     <div class="caves-body">
         @{
-            var current = CurrentSpots();
-            var types = current.Select(s => s.Type).Distinct().OrderBy(t => t, StringComparer.OrdinalIgnoreCase).ToList();
-            var spots = typeFilter is null ? current : current.Where(s => s.Type == typeFilter).ToList();
+            var spots = CurrentSpots();
             var sel = spots.FirstOrDefault(s => Key(s) == selectedKey) ?? spots.FirstOrDefault();
         }
         <section class="content-card caves-list-card">
@@ -43,24 +41,13 @@
                 </div>
             </div>
 
-            @if (types.Count > 1)
-            {
-                <div class="caves-type-filter">
-                    <button class="caves-type-chip @(typeFilter is null ? "active" : "")" @onclick="() => SetTypeFilter(null)">All</button>
-                    @foreach (var t in types)
-                    {
-                        <button @key="t" class="caves-type-chip @(typeFilter == t ? "active" : "")" @onclick="() => SetTypeFilter(t)">@t</button>
-                    }
-                </div>
-            }
-
             <div class="caves-list">
                 @foreach (var spot in spots)
                 {
                     <button @key="spot"
                             class="cave-row @(spot == sel ? "active" : "")"
                             @onclick="() => SelectSpot(spot)">
-                        <span class="cave-diff-dot @TypeDotClass(spot.Type)"></span>
+                        <span class="cave-diff-dot @DotClass(spot)"></span>
                         <span class="cave-row-text">
                             <span class="cave-row-name">@spot.Name</span>
                             <span class="cave-row-sub">@RowSub(spot)</span>
@@ -81,19 +68,36 @@
             }
             else
             {
-                @if (!string.IsNullOrEmpty(sel.ImagePath))
-                {
-                    <div class="cave-image-slot">
+                <div class="cave-image-slot">
+                    @if (string.IsNullOrEmpty(sel.ImagePath))
+                    {
+                        <div class="cave-image-placeholder">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 16.5 10 4l7 12.5H3Z" />
+                                <path d="M7.6 16.5a2.4 2.4 0 0 1 4.8 0" />
+                            </svg>
+                            <span>No image yet</span>
+                        </div>
+                    }
+                    else
+                    {
                         <img class="cave-image" src="@sel.ImagePath" alt="@sel.Name" />
-                    </div>
-                }
+                    }
+                </div>
 
                 <div class="cave-detail-header">
                     <div class="cave-detail-titles">
                         <h3 class="cave-detail-title">@sel.Name</h3>
                         <span class="cave-detail-map">@sel.Map</span>
                     </div>
-                    <span class="cave-type-chip">@(string.IsNullOrWhiteSpace(sel.Type) ? "Spot" : sel.Type)</span>
+                    @if (sel.Difficulty is not null)
+                    {
+                        <span class="cave-diff-chip @DiffClass(sel.Difficulty.Value)">@sel.Difficulty</span>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(sel.Type))
+                    {
+                        <span class="cave-diff-chip diff-none">@sel.Type</span>
+                    }
                 </div>
 
                 <div class="cave-detail-rows">
@@ -104,34 +108,23 @@
                             <span class="cave-detail-value">@sel.Artifact</span>
                         </div>
                     }
-                    @if (sel.Difficulty is not null)
-                    {
-                        <div class="cave-detail-row">
-                            <span class="cave-detail-label">Difficulty</span>
-                            <span class="cave-detail-value"><span class="cave-diff-chip @DiffClass(sel.Difficulty.Value)">@sel.Difficulty</span></span>
-                        </div>
-                    }
                     <div class="cave-detail-row">
-                        <span class="cave-detail-label">Coordinates</span>
+                        <span class="cave-detail-label">Entrance</span>
                         <span class="cave-detail-value cave-coords-value">
                             @if (sel.HasCoords)
                             {
                                 <span class="cave-coords">Lat @sel.Lat / Lon @sel.Lon</span>
-                                <button class="cave-copy-btn" @onclick="() => CopyCoords(sel)">
-                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>
-                                    <span>Copy coords</span>
-                                </button>
-                                @if (!string.IsNullOrEmpty(sel.SetPlayerPos))
-                                {
-                                    <button class="cave-copy-btn" @onclick="() => CopyTeleport(sel)">
-                                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>
-                                        <span>Copy teleport</span>
-                                    </button>
-                                }
                             }
                             else
                             {
                                 <span class="cave-coords">Not documented</span>
+                            }
+                            @if (!string.IsNullOrEmpty(sel.SetPlayerPos))
+                            {
+                                <button class="cave-copy-btn" @onclick="() => CopyTeleport(sel)">
+                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>
+                                    <span>Copy teleport</span>
+                                </button>
                             }
                         </span>
                     </div>
@@ -170,10 +163,6 @@
                             <span class="cave-detail-value">@sel.Note</span>
                         </div>
                     }
-                    <div class="cave-detail-row">
-                        <span class="cave-detail-label">Source</span>
-                        <span class="cave-detail-value cave-source-tag">@sel.Source</span>
-                    </div>
                 </div>
 
                 @if (sel.UserSpot is not null)
@@ -446,7 +435,6 @@
 @code {
     // ── Merged browser state (Cave design over the merged spot dataset) ──
     private string selectedMap = "";
-    private string? typeFilter;
     private string? selectedKey;
 
     private sealed class MergedSpot
@@ -553,33 +541,19 @@
     private void SelectMap(string map)
     {
         selectedMap = map;
-        typeFilter = null;
-        selectedKey = null;
-    }
-
-    private void SetTypeFilter(string? type)
-    {
-        typeFilter = type;
         selectedKey = null;
     }
 
     private void SelectSpot(MergedSpot spot) => selectedKey = Key(spot);
 
-    private static string TypeDotClass(string type) => type.ToLowerInvariant() switch
-    {
-        "cave" => "type-cave",
-        "landmark" => "type-landmark",
-        "obelisk" => "type-obelisk",
-        "poi" => "type-poi",
-        _ => "type-other"
-    };
+    // Cave rows keep the original difficulty colours; spots without a difficulty get a neutral dot.
+    private static string DotClass(MergedSpot s)
+        => s.Difficulty is not null ? DiffClass(s.Difficulty.Value) : "diff-none";
 
     private static string RowSub(MergedSpot s)
     {
-        if (!string.IsNullOrEmpty(s.Artifact)) return s.Artifact;
-        if (!string.IsNullOrEmpty(s.Note)) return s.Note!;
-        if (s.HasCoords) return $"Lat {s.Lat} / Lon {s.Lon}";
-        return s.Type;
+        if (s.Difficulty is not null) return s.Artifact ?? "No artifact";
+        return !string.IsNullOrEmpty(s.Note) ? s.Note! : s.Type;
     }
 
     private static string DiffClass(CaveDifficulty difficulty) => difficulty switch
@@ -591,21 +565,6 @@
 
     private static string FormatCoord(double value)
         => value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
-
-    private async Task CopyCoords(MergedSpot spot)
-    {
-        if (!spot.HasCoords) return;
-        try
-        {
-            await Clipboard.Default.SetTextAsync($"Lat {spot.Lat} / Lon {spot.Lon}");
-            NotificationService.ShowSuccess("Coordinates copied.");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to copy coordinates");
-            NotificationService.ShowError("Failed to copy.");
-        }
-    }
 
     private async Task CopyTeleport(MergedSpot spot)
     {
