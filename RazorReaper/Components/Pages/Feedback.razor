@@ -1,0 +1,194 @@
+@page "/feedback"
+@using RazorReaper.Services
+@inject IFeedbackService FeedbackService
+@inject INotificationService NotificationService
+
+<header class="page-header">
+    <h1 class="page-title">Feedback</h1>
+    <p class="page-subtitle">Tell us what's working, what's broken, or what you'd like to see next.</p>
+</header>
+
+<div class="feedback-card">
+    <div class="feedback-field">
+        <label class="feedback-label" for="feedback-message">Your feedback</label>
+        <textarea id="feedback-message"
+                  class="feedback-textarea"
+                  placeholder="Share a bug, an idea, or anything on your mind..."
+                  maxlength="4000"
+                  rows="7"
+                  @bind="_message"
+                  @bind:event="oninput"
+                  disabled="@_submitting"></textarea>
+        <div class="feedback-counter">@_message.Length / 4000</div>
+    </div>
+
+    <div class="feedback-field">
+        <label class="feedback-label" for="feedback-contact">Contact (optional)</label>
+        <input id="feedback-contact"
+               class="feedback-input"
+               type="text"
+               placeholder="Discord or email — if you'd like a reply"
+               maxlength="256"
+               @bind="_contact"
+               @bind:event="oninput"
+               disabled="@_submitting" />
+    </div>
+
+    <p class="feedback-note">
+        Your machine name, hardware ID, license and app version are attached automatically so we can
+        follow up on issues.
+    </p>
+
+    <div class="feedback-actions">
+        <button class="feedback-submit" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
+            @if (_submitting)
+            {
+                <span class="feedback-spinner"></span>
+                <span>Sending...</span>
+            }
+            else
+            {
+                <span>Send Feedback</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    private string _message = string.Empty;
+    private string _contact = string.Empty;
+    private bool _submitting = false;
+
+    private async Task Submit()
+    {
+        if (_submitting || string.IsNullOrWhiteSpace(_message))
+        {
+            return;
+        }
+
+        _submitting = true;
+        StateHasChanged();
+
+        var result = await FeedbackService.SubmitAsync(_message, _contact);
+
+        _submitting = false;
+
+        if (result.Success)
+        {
+            NotificationService.ShowSuccess(result.Message);
+            _message = string.Empty;
+            _contact = string.Empty;
+        }
+        else
+        {
+            NotificationService.ShowError(result.Message);
+        }
+
+        StateHasChanged();
+    }
+}
+
+<style>
+    .feedback-card {
+        max-width: 640px;
+        background: var(--background-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 28px;
+    }
+
+    .feedback-field {
+        margin-bottom: 20px;
+    }
+
+    .feedback-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+
+    .feedback-textarea,
+    .feedback-input {
+        width: 100%;
+        background: var(--background-dark);
+        border: 1px solid var(--border-hover);
+        border-radius: 8px;
+        padding: 12px 14px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .feedback-textarea {
+        resize: vertical;
+        min-height: 140px;
+        line-height: 1.55;
+    }
+
+    .feedback-textarea:focus,
+    .feedback-input:focus {
+        outline: none;
+        border-color: var(--accent-purple);
+        box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.2);
+    }
+
+    .feedback-counter {
+        margin-top: 6px;
+        text-align: right;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .feedback-note {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin: 0 0 20px;
+    }
+
+    .feedback-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .feedback-submit {
+        background: var(--accent-purple);
+        color: #fff;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s ease, opacity 0.2s ease;
+    }
+
+    .feedback-submit:hover:not(:disabled) {
+        background: var(--accent-purple-dark);
+    }
+
+    .feedback-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .feedback-spinner {
+        width: 15px;
+        height: 15px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: feedback-spin 1s ease-in-out infinite;
+    }
+
+    @@keyframes feedback-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>

@@ -1,0 +1,229 @@
+@using RazorReaper.Models
+@using RazorReaper.Services
+@inject IAnnouncementService AnnouncementService
+@implements IDisposable
+
+@if (_visible.Count > 0)
+{
+    <div class="announcement-stack">
+        @foreach (var a in _visible)
+        {
+            <div class="announcement announcement-@LevelClass(a.Level)" @key="a.Id">
+                <div class="announcement-icon">
+                    @if (a.Level == "critical")
+                    {
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    }
+                    else if (a.Level == "warning")
+                    {
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a1 1 0 00-1 1v4a1 1 0 002 0V6a1 1 0 00-1-1zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                    }
+                    else
+                    {
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                    }
+                </div>
+                <div class="announcement-content">
+                    <p class="announcement-title">@a.Title</p>
+                    <p class="announcement-body">@a.Body</p>
+                </div>
+                <button class="announcement-close" title="Dismiss" @onclick="() => Dismiss(a)">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    // Dismissed announcement ids persist in Preferences so a dismissed banner stays gone
+    // across launches — until that specific announcement is edited/replaced (new id).
+    private const string DismissedPreferenceKey = "rr.announcements.dismissed";
+
+    private List<Announcement> _visible = new();
+    private HashSet<long> _dismissed = new();
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new CancellationTokenSource();
+        LoadDismissed();
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var token = _cts?.Token ?? CancellationToken.None;
+            var active = await AnnouncementService.GetActiveAsync(token);
+            _visible = active.Where(a => !_dismissed.Contains(a.Id)).ToList();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+            // Component disposed mid-fetch.
+        }
+        catch
+        {
+            // Service already swallows network errors; nothing to show.
+        }
+    }
+
+    private void Dismiss(Announcement a)
+    {
+        _dismissed.Add(a.Id);
+        _visible.RemoveAll(x => x.Id == a.Id);
+        SaveDismissed();
+        StateHasChanged();
+    }
+
+    private void LoadDismissed()
+    {
+        try
+        {
+            var raw = Preferences.Get(DismissedPreferenceKey, string.Empty);
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (long.TryParse(part, out var id))
+                    {
+                        _dismissed.Add(id);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Preferences unavailable; treat as nothing dismissed.
+        }
+    }
+
+    private void SaveDismissed()
+    {
+        try
+        {
+            // Cap the persisted set so it can't grow without bound over the app's lifetime.
+            var ids = _dismissed.OrderByDescending(x => x).Take(200);
+            Preferences.Set(DismissedPreferenceKey, string.Join(',', ids));
+        }
+        catch
+        {
+            // Non-critical if persistence fails.
+        }
+    }
+
+    private static string LevelClass(string level) => level switch
+    {
+        "critical" => "critical",
+        "warning" => "warning",
+        _ => "info"
+    };
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}
+
+<style>
+    .announcement-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .announcement {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        background: var(--background-card);
+        animation: announcement-in 0.25s ease;
+    }
+
+    @@keyframes announcement-in {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .announcement-info {
+        border-color: rgba(var(--accent-purple-rgb), 0.35);
+        background: rgba(var(--accent-purple-rgb), 0.08);
+    }
+
+    .announcement-warning {
+        border-color: rgba(var(--accent-orange-rgb), 0.4);
+        background: rgba(var(--accent-orange-rgb), 0.09);
+    }
+
+    .announcement-critical {
+        border-color: rgba(var(--accent-red-rgb), 0.45);
+        background: rgba(var(--accent-red-rgb), 0.1);
+    }
+
+    .announcement-icon {
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+        margin-top: 1px;
+    }
+
+    .announcement-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .announcement-info .announcement-icon { color: var(--accent-purple); }
+    .announcement-warning .announcement-icon { color: var(--accent-orange); }
+    .announcement-critical .announcement-icon { color: var(--accent-red); }
+
+    .announcement-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .announcement-title {
+        margin: 0 0 2px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .announcement-body {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+    }
+
+    .announcement-close {
+        flex-shrink: 0;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    .announcement-close svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .announcement-close:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.06);
+    }
+</style>

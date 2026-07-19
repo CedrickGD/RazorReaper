@@ -24,6 +24,33 @@ public class AppConfiguration
     /// Telemetry and remote dashboard reporting settings.
     /// </summary>
     public TelemetrySettings Telemetry { get; set; } = new();
+
+    /// <summary>
+    /// Admin panel API settings (announcements + feedback).
+    /// </summary>
+    public AdminPanelSettings AdminPanel { get; set; } = new();
+}
+
+/// <summary>
+/// Settings for the admin panel HTTP API that serves announcements and receives feedback.
+/// Same surface the license flow already talks to.
+/// </summary>
+public class AdminPanelSettings
+{
+    /// <summary>
+    /// Base URL of the admin panel (Cloudflare Pages) API. No trailing slash.
+    /// </summary>
+    public string BaseUrl { get; set; } = "https://rr-admin-panel.pages.dev";
+
+    /// <summary>
+    /// Per-request timeout in seconds for announcement/feedback calls.
+    /// </summary>
+    public int RequestTimeoutSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// How often the app re-fetches active announcements, in minutes.
+    /// </summary>
+    public int AnnouncementRefreshMinutes { get; set; } = 15;
 }
 
 /// <summary>

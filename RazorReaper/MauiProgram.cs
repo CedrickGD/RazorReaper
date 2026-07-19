@@ -226,6 +226,8 @@ namespace RazorReaper
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();
             services.AddSingleton<ITelemetryService, TelemetryService>();
+            services.AddSingleton<IAnnouncementService, AnnouncementService>();
+            services.AddSingleton<IFeedbackService, FeedbackService>();
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<RazorReaper.Services.Steam.ISteamFavoritesService, RazorReaper.Services.Steam.SteamFavoritesService>();
