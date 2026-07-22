@@ -11,6 +11,7 @@
 @inject IDiscordPresenceService DiscordPresence
 @inject IHudOverlayService HudOverlay
 @inject ILicenseService LicenseService
+@inject IAccessGateService AccessGate
 
 <NotificationContainer />
 <GlobalSearch />
@@ -25,6 +26,14 @@
 
 </div>
 
+@* Full-screen access gate: covers the entire app (nav included) whenever this machine is
+   suspended or banned. Rendered last so it sits on top; it fails open, so it only appears when
+   the server has affirmatively reported a suspension. *@
+@if (AccessGate.IsSuspended)
+{
+    <AccessBlocked />
+}
+
 @code {
     protected override async Task OnInitializedAsync()
     {
@@ -37,11 +46,17 @@
 
         var result = await LicenseService.ValidateLicenseAsync();
 
+        // Re-render the layout whenever the access gate flips so the full-screen block
+        // appears/disappears live (a mid-session suspend, or an admin lift, both land here).
+        AccessGate.OnAccessStateChanged += HandleAccessChanged;
+
         // Reflect the current page in Discord Rich Presence and the HUD tool module,
         // then keep both synced on navigation.
         ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
         Navigation.LocationChanged += OnLocationChanged;
     }
+
+    private void HandleAccessChanged() => InvokeAsync(StateHasChanged);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => ReflectPage(Navigation.ToBaseRelativePath(e.Location));
@@ -54,5 +69,9 @@
         HudOverlay.SetActiveTool(DiscordPresence.ResolveToolLabel(relativePath));
     }
 
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+    }
 }

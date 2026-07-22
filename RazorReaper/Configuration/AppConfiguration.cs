@@ -51,6 +51,12 @@ public class AdminPanelSettings
     /// How often the app re-fetches active announcements, in minutes.
     /// </summary>
     public int AnnouncementRefreshMinutes { get; set; } = 15;
+
+    /// <summary>
+    /// How often the app re-checks its access status (suspension/ban), in seconds. Kept short so a
+    /// suspension — or a lift — takes effect within one cycle. Clamped to [15, 3600].
+    /// </summary>
+    public int AccessCheckIntervalSeconds { get; set; } = 60;
 }
 
 /// <summary>
