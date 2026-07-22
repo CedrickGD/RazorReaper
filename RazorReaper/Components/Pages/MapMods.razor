@@ -3,6 +3,7 @@
 @using RazorReaper.Services
 @using Microsoft.Extensions.Logging
 @inject ICustomServerDataService CustomDataService
+@inject IMediaCacheService MediaCache
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ILogger<MapMods> Logger
@@ -69,7 +70,16 @@
             else
             {
                 <div class="cave-image-slot">
-                    @if (string.IsNullOrEmpty(sel.ImagePath))
+                    @{
+                        var previewSrc = ResolveMedia(sel.ImagePath);
+                    }
+                    @if (previewSrc is null && IsRemoteMediaLoading(sel.ImagePath))
+                    {
+                        <div class="cave-image-placeholder">
+                            <span>Loading preview…</span>
+                        </div>
+                    }
+                    else if (previewSrc is null)
                     {
                         <label class="cave-image-dropzone">
                             <InputFile OnChange="@(e => AttachImage(sel, e))" accept="image/png,image/jpeg,image/webp,image/gif" />
@@ -82,7 +92,7 @@
                     }
                     else
                     {
-                        <img class="cave-image" src="@sel.ImagePath" alt="@sel.Name" />
+                        <img class="cave-image" src="@previewSrc" alt="@sel.Name" />
                         <div class="cave-image-actions">
                             <label class="cave-image-btn">
                                 <InputFile OnChange="@(e => AttachImage(sel, e))" accept="image/png,image/jpeg,image/webp,image/gif" />
@@ -590,6 +600,63 @@
             Logger.LogError(ex, "Failed to copy teleport command");
             NotificationService.ShowError("Failed to copy the command.");
         }
+    }
+
+    // ── Remote media resolution (http(s) ImagePath → cached data URL) ──
+
+    private readonly Dictionary<string, string> resolvedMedia = new(StringComparer.Ordinal);
+    private readonly HashSet<string> pendingMedia = new(StringComparer.Ordinal);
+    private readonly HashSet<string> failedMedia = new(StringComparer.Ordinal);
+
+    // Local paths and data: URLs pass through unchanged. Remote URLs resolve through the
+    // media cache in the background; returns null while loading or after a failed fetch.
+    private string? ResolveMedia(string? imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath))
+            return null;
+
+        if (!IsRemoteUrl(imagePath))
+            return imagePath;
+
+        if (resolvedMedia.TryGetValue(imagePath, out var resolved))
+            return resolved;
+
+        if (!failedMedia.Contains(imagePath) && pendingMedia.Add(imagePath))
+            _ = LoadRemoteMediaAsync(imagePath);
+
+        return null;
+    }
+
+    private bool IsRemoteMediaLoading(string? imagePath)
+        => !string.IsNullOrEmpty(imagePath) && IsRemoteUrl(imagePath) && pendingMedia.Contains(imagePath);
+
+    private static bool IsRemoteUrl(string path)
+        => path.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+           || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    private async Task LoadRemoteMediaAsync(string url)
+    {
+        // Started from render; yield so no state changes happen mid-render.
+        await Task.Yield();
+
+        string? dataUrl = null;
+        try
+        {
+            dataUrl = await MediaCache.GetDataUrlAsync(url);
+        }
+        catch (Exception ex)
+        {
+            // The media cache never throws by contract; belt-and-suspenders.
+            Logger.LogError(ex, "Unexpected failure resolving remote media {Url}", url);
+        }
+
+        if (dataUrl is not null)
+            resolvedMedia[url] = dataUrl;
+        else
+            failedMedia.Add(url);
+
+        pendingMedia.Remove(url);
+        await InvokeAsync(StateHasChanged);
     }
 
     // ── Per-spot preview image / GIF ──
