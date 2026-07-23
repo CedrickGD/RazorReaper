@@ -16,9 +16,10 @@ public interface IMediaCacheService
 
     /// <summary>
     /// Returns the local cached file path for the remote file, downloading it if needed.
-    /// Returns null on any failure (never throws).
+    /// Returns null on any failure (never throws). <paramref name="progress"/> receives
+    /// download progress in 0..1 (reported only while downloading with a known size).
     /// </summary>
-    Task<string?> GetLocalPathAsync(string url, CancellationToken ct = default);
+    Task<string?> GetLocalPathAsync(string url, IProgress<double>? progress = null, CancellationToken ct = default);
 
     /// <summary>Total size in bytes of all files in the media cache.</summary>
     Task<long> GetCacheSizeBytesAsync();

@@ -10,7 +10,9 @@ public sealed class MediaCacheService : IMediaCacheService
     private const long MaxDownloadBytes = 512L * 1024 * 1024;
     private const long DataUrlWarnBytes = 32L * 1024 * 1024;
     private const string TempExtension = ".download";
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(100);
+    // Downloads are aborted only when they STALL (no bytes for this long) — a
+    // fixed total timeout killed large videos that were merely sharing bandwidth.
+    private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(30);
 
     private readonly string _cacheDir;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -18,6 +20,12 @@ public sealed class MediaCacheService : IMediaCacheService
 
     // One gate per cache key so concurrent requests for the same URL download only once.
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _downloadLocks = new(StringComparer.Ordinal);
+
+    // A media-heavy page requests dozens of files at once. Unbounded parallelism
+    // makes every download crawl; two lanes keep images snappy while a couple of
+    // large videos stream at full speed.
+    private readonly SemaphoreSlim _imageLane = new(4, 4);
+    private readonly SemaphoreSlim _videoLane = new(2, 2);
 
     public MediaCacheService(IHttpClientFactory httpClientFactory, ILogger<MediaCacheService> logger)
     {
@@ -30,7 +38,7 @@ public sealed class MediaCacheService : IMediaCacheService
 
     public async Task<string?> GetDataUrlAsync(string url, CancellationToken ct = default)
     {
-        var path = await GetLocalPathAsync(url, ct);
+        var path = await GetLocalPathAsync(url, null, ct);
         if (path is null)
             return null;
 
@@ -59,7 +67,7 @@ public sealed class MediaCacheService : IMediaCacheService
         }
     }
 
-    public async Task<string?> GetLocalPathAsync(string url, CancellationToken ct = default)
+    public async Task<string?> GetLocalPathAsync(string url, IProgress<double>? progress = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(url)
             || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
@@ -92,7 +100,17 @@ public sealed class MediaCacheService : IMediaCacheService
             if (cached is not null)
                 return cached;
 
-            return await DownloadAsync(uri, key, ct);
+            try
+            {
+                return await DownloadAsync(uri, key, progress, ct);
+            }
+            catch (Exception firstAttempt) when (firstAttempt is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                // One retry covers transient stalls / dropped connections.
+                _logger.LogWarning(firstAttempt, "Retrying media download from {Url}", url);
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+                return await DownloadAsync(uri, key, progress, ct);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -153,62 +171,87 @@ public sealed class MediaCacheService : IMediaCacheService
         });
     }
 
-    private async Task<string?> DownloadAsync(Uri uri, string key, CancellationToken ct)
+    private async Task<string?> DownloadAsync(Uri uri, string key, IProgress<double>? progress, CancellationToken ct)
     {
-        var client = _httpClientFactory.CreateClient();
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(RequestTimeout);
-        var linkedCt = timeoutCts.Token;
-
-        var tempPath = Path.Combine(_cacheDir, key + TempExtension);
+        var extensionGuess = ExtensionFromUrl(uri);
+        var lane = extensionGuess is ".mp4" or ".webm" ? _videoLane : _imageLane;
+        await lane.WaitAsync(ct);
         try
         {
-            using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, linkedCt);
-            response.EnsureSuccessStatusCode();
+            var client = _httpClientFactory.CreateClient();
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            // Stall watchdog: re-armed after every received chunk, so a slow but
+            // progressing download of any size never gets killed.
+            timeoutCts.CancelAfter(StallTimeout);
+            var linkedCt = timeoutCts.Token;
 
-            if (response.Content.Headers.ContentLength is { } contentLength && contentLength > MaxDownloadBytes)
+            var tempPath = Path.Combine(_cacheDir, key + TempExtension);
+            try
             {
-                _logger.LogWarning(
-                    "Media at {Url} reports {Bytes} bytes, exceeding the {Limit} byte cache limit; skipping",
-                    uri, contentLength, MaxDownloadBytes);
-                return null;
-            }
+                using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, linkedCt);
+                response.EnsureSuccessStatusCode();
 
-            var extension = ExtensionFromUrl(uri)
-                ?? ExtensionFromContentType(response.Content.Headers.ContentType?.MediaType);
-            var finalPath = Path.Combine(_cacheDir, key + extension);
-
-            long bytesRead = 0;
-            await using (var contentStream = await response.Content.ReadAsStreamAsync(linkedCt))
-            await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-            {
-                var buffer = new byte[8192];
-                int read;
-                while ((read = await contentStream.ReadAsync(buffer, linkedCt)) > 0)
+                var contentLength = response.Content.Headers.ContentLength;
+                if (contentLength is { } knownLength && knownLength > MaxDownloadBytes)
                 {
-                    bytesRead += read;
-                    if (bytesRead > MaxDownloadBytes)
-                        throw new InvalidOperationException($"Download from {uri} exceeded the {MaxDownloadBytes} byte cache limit.");
-
-                    await fileStream.WriteAsync(buffer.AsMemory(0, read), linkedCt);
+                    _logger.LogWarning(
+                        "Media at {Url} reports {Bytes} bytes, exceeding the {Limit} byte cache limit; skipping",
+                        uri, knownLength, MaxDownloadBytes);
+                    return null;
                 }
-            }
 
-            if (bytesRead == 0)
+                var extension = extensionGuess
+                    ?? ExtensionFromContentType(response.Content.Headers.ContentType?.MediaType);
+                var finalPath = Path.Combine(_cacheDir, key + extension);
+
+                long bytesRead = 0;
+                var lastReportedPercent = -1;
+                await using (var contentStream = await response.Content.ReadAsStreamAsync(linkedCt))
+                await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                {
+                    var buffer = new byte[65536];
+                    int read;
+                    while ((read = await contentStream.ReadAsync(buffer, linkedCt)) > 0)
+                    {
+                        timeoutCts.CancelAfter(StallTimeout);
+                        bytesRead += read;
+                        if (bytesRead > MaxDownloadBytes)
+                            throw new InvalidOperationException($"Download from {uri} exceeded the {MaxDownloadBytes} byte cache limit.");
+
+                        await fileStream.WriteAsync(buffer.AsMemory(0, read), linkedCt);
+
+                        if (progress is not null && contentLength is { } total && total > 0)
+                        {
+                            var percent = (int)(bytesRead * 100 / total);
+                            if (percent > lastReportedPercent)
+                            {
+                                lastReportedPercent = percent;
+                                progress.Report(Math.Min(1d, (double)bytesRead / total));
+                            }
+                        }
+                    }
+                }
+
+                if (bytesRead == 0)
+                {
+                    _logger.LogWarning("Media at {Url} returned an empty body; not caching", uri);
+                    TryDeleteFile(tempPath);
+                    return null;
+                }
+
+                File.Move(tempPath, finalPath, overwrite: true);
+                _logger.LogDebug("Cached media from {Url} at {Path} ({Bytes} bytes)", uri, finalPath, bytesRead);
+                return finalPath;
+            }
+            catch
             {
-                _logger.LogWarning("Media at {Url} returned an empty body; not caching", uri);
                 TryDeleteFile(tempPath);
-                return null;
+                throw;
             }
-
-            File.Move(tempPath, finalPath, overwrite: true);
-            _logger.LogDebug("Cached media from {Url} at {Path} ({Bytes} bytes)", uri, finalPath, bytesRead);
-            return finalPath;
         }
-        catch
+        finally
         {
-            TryDeleteFile(tempPath);
-            throw;
+            lane.Release();
         }
     }
 

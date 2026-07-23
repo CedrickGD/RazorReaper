@@ -8,7 +8,8 @@
 else if (failed)
 {
     <div class="hosted-media-placeholder hosted-media-failed" @attributes="Attributes">
-        <span>Media unavailable — check your connection</span>
+        <span>Image unavailable</span>
+        <button type="button" class="hosted-media-retry" @onclick="RetryAsync">Retry</button>
     </div>
 }
 else
@@ -36,11 +37,24 @@ else
         }
 
         loadedFor = Src;
+        await ResolveAsync();
+    }
+
+    private async Task RetryAsync()
+    {
+        failed = false;
+        resolvedSrc = null;
+        await ResolveAsync();
+    }
+
+    private async Task ResolveAsync()
+    {
+        var requested = Src;
         resolvedSrc = null;
         failed = false;
 
-        var src = await HostedMedia.GetSrcAsync(Src);
-        if (loadedFor != Src)
+        var src = await HostedMedia.GetSrcAsync(requested);
+        if (loadedFor != requested)
         {
             return; // Parameter changed while downloading; a newer resolve owns the state.
         }

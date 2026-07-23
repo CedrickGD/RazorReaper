@@ -11,6 +11,7 @@ public interface IHostedMediaService
     /// Resolves a hosted media path (e.g. "images/building/wall-3-correct.jpg")
     /// to a local virtual-host URL the WebView can load. Returns null while the
     /// file is unavailable (download failed and nothing cached yet).
+    /// <paramref name="progress"/> receives download progress in 0..1.
     /// </summary>
-    Task<string?> GetSrcAsync(string relativePath, CancellationToken ct = default);
+    Task<string?> GetSrcAsync(string relativePath, IProgress<double>? progress = null, CancellationToken ct = default);
 }

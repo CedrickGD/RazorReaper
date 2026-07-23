@@ -223,10 +223,26 @@
     height: 18px;
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.12);
-    border-top-color: rgba(var(--accent-purple-rgb), 0.8);
+    border-top-color: rgba(var(--accent-purple-rgb, 168, 85, 247), 0.8);
     animation: hosted-media-spin 0.9s linear infinite;
 }
 
 @keyframes hosted-media-spin {
     to { transform: rotate(360deg); }
+}
+
+.hosted-media-retry {
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.hosted-media-retry:hover {
+    border-color: rgba(var(--accent-purple-rgb, 168, 85, 247), 0.6);
+    color: rgba(255, 255, 255, 0.9);
 }

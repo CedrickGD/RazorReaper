@@ -26,7 +26,7 @@ public sealed class HostedMediaService : IHostedMediaService
         }
     }
 
-    public async Task<string?> GetSrcAsync(string relativePath, CancellationToken ct = default)
+    public async Task<string?> GetSrcAsync(string relativePath, IProgress<double>? progress = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
         {
@@ -36,7 +36,7 @@ public sealed class HostedMediaService : IHostedMediaService
         var normalized = relativePath.Replace('\\', '/').TrimStart('/');
         var remoteUrl = _baseUrl + string.Join('/', normalized.Split('/').Select(Uri.EscapeDataString));
 
-        var localPath = await _mediaCache.GetLocalPathAsync(remoteUrl, ct);
+        var localPath = await _mediaCache.GetLocalPathAsync(remoteUrl, progress, ct);
         if (localPath is null)
         {
             _logger.LogWarning("Hosted media unavailable: {Path}", normalized);

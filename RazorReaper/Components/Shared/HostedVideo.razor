@@ -9,15 +9,18 @@
 }
 else if (failed)
 {
-    <div class="hosted-media-placeholder hosted-media-failed hosted-media-video" @attributes="Attributes">
-        <span>Video unavailable — check your connection</span>
+    <div class="hosted-media-placeholder hosted-media-video" @attributes="Attributes">
+        <span>Video unavailable</span>
+        <button type="button" class="hosted-media-retry" @onclick="RetryAsync">Retry</button>
     </div>
 }
 else
 {
     <div class="hosted-media-placeholder hosted-media-video" @attributes="Attributes">
         <span class="hosted-media-spinner"></span>
-        <span class="hosted-media-note">Loading video…</span>
+        <span class="hosted-media-note">
+            @(progressPercent is { } percent ? $"Loading video… {percent}%" : "Loading video…")
+        </span>
     </div>
 }
 
@@ -29,6 +32,7 @@ else
 
     private string? resolvedSrc;
     private bool failed;
+    private int? progressPercent;
     private string? loadedFor;
 
     private string MimeType => Path.GetExtension(Src).ToLowerInvariant() switch
@@ -45,15 +49,40 @@ else
         }
 
         loadedFor = Src;
+        await ResolveAsync();
+    }
+
+    private async Task RetryAsync()
+    {
+        failed = false;
+        resolvedSrc = null;
+        await ResolveAsync();
+    }
+
+    private async Task ResolveAsync()
+    {
+        var requested = Src;
         resolvedSrc = null;
         failed = false;
+        progressPercent = null;
 
-        var src = await HostedMedia.GetSrcAsync(Src);
-        if (loadedFor != Src)
+        var progress = new Progress<double>(value =>
+        {
+            var percent = (int)(value * 100);
+            if (percent != progressPercent)
+            {
+                progressPercent = percent;
+                _ = InvokeAsync(StateHasChanged);
+            }
+        });
+
+        var src = await HostedMedia.GetSrcAsync(requested, progress);
+        if (loadedFor != requested)
         {
             return; // Parameter changed while downloading; a newer resolve owns the state.
         }
 
+        progressPercent = null;
         if (src is null)
         {
             failed = true;
