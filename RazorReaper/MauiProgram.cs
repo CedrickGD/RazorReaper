@@ -262,6 +262,7 @@ namespace RazorReaper
             
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();
+            services.AddSingleton<IAccessGateService, AccessGateService>();
         }
     }
 }

@@ -7,7 +7,10 @@ namespace RazorReaper.Services.Implementations;
 
 public class UpdateService : IUpdateService
 {
-    private const string UpdateManifestUrl = "https://raw.githubusercontent.com/CedrickGD/RazorReaper/master/update.xml";
+    // Served by the backend worker (proxies the manifest + installer from GitHub with a
+    // server-side token), so the source repo can go private without breaking the updater.
+    // The worker rewrites <url> to its own /update/download endpoint. See backend-worker.
+    private const string UpdateManifestUrl = "https://backend.rr-admin-panel.workers.dev/update/update.xml";
     private static readonly Version FallbackVersion = new Version(0, 0, 0, 0);
     private readonly HttpClient httpClient;
     private readonly ITelemetryService telemetryService;

@@ -26,10 +26,10 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     // (the RRlogo.png art asset; Discord derived the key from the filename).
     private const string LargeImageKey = "rrlogo";
 
-    // /releases/latest always redirects to the newest release, so the "Download" button
-    // tracks new versions with zero maintenance.
-    private const string ReleasesLatestUrl = "https://github.com/CedrickGD/RazorReaper/releases/latest";
-    private const string RepoUrl = "https://github.com/CedrickGD/RazorReaper";
+    // Profile buttons point at the shop — the public funnel. Deliberately NOT the GitHub
+    // repo/releases: RPC buttons show on every user's profile, and the repo should not be
+    // advertised to anyone who happens to hover a player.
+    private const string ShopUrl = "https://rr.sellhub.cx";
 
     private const string DefaultLabel = "Main Menu";
     private const string FallbackLabel = "Browsing";
@@ -241,8 +241,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 // Fully qualified: MAUI's global usings also expose Microsoft.Maui.Controls.Button.
                 Buttons = new[]
                 {
-                    new DiscordRPC.Button { Label = "⬇ Download", Url = ReleasesLatestUrl },
-                    new DiscordRPC.Button { Label = "⭐ GitHub", Url = RepoUrl },
+                    new DiscordRPC.Button { Label = "🛒 Get RazorReaper", Url = ShopUrl },
                 },
             });
         }

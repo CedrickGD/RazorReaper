@@ -10,6 +10,7 @@ namespace RazorReaper
         private readonly ITelemetryService telemetryService;
         private readonly IAutoUpdateManager autoUpdateManager;
         private readonly IDiscordPresenceService discordPresence;
+        private readonly IAccessGateService accessGate;
         private int telemetryShutdownStarted;
         private Task? telemetryShutdownTask;
 
@@ -18,17 +19,20 @@ namespace RazorReaper
             IScopeModeStartupService scopeModeStartupService,
             ITelemetryService telemetryService,
             IAutoUpdateManager autoUpdateManager,
-            IDiscordPresenceService discordPresence)
+            IDiscordPresenceService discordPresence,
+            IAccessGateService accessGate)
         {
             this.telemetryService = telemetryService;
             this.autoUpdateManager = autoUpdateManager;
             this.discordPresence = discordPresence;
+            this.accessGate = accessGate;
 
             InitializeComponent();
             RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
             RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
             RunStartupTask("update-check", () => autoUpdateManager.RunStartupCheckAsync());
             RunStartupTask("telemetry-start", () => this.telemetryService.StartAsync());
+            RunStartupTask("access-gate", () => this.accessGate.StartAsync());
             RunStartupTask("discord-rpc", () => { discordPresence.Initialize(); return Task.CompletedTask; });
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
