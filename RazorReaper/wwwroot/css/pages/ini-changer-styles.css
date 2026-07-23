@@ -390,6 +390,23 @@
         transform: scale(1.06);
     }
 
+/* Preset thumbs resolve asynchronously from the media CDN; the shared placeholder
+   has to fill the fixed 16:9 boxes instead of using its free-standing framing. */
+.ini-active-thumb .hosted-media-placeholder,
+.preset-gallery-image .hosted-media-placeholder {
+    height: 100%;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+}
+
+    .ini-active-thumb .hosted-media-placeholder svg,
+    .preset-gallery-image .hosted-media-placeholder svg {
+        width: 28px;
+        height: 28px;
+        opacity: 0.5;
+    }
+
 .preset-gallery-active-badge {
     position: absolute;
     top: 0.55rem;

@@ -6,53 +6,52 @@ namespace RazorReaper.Services.Implementations;
 /// <summary>
 /// Per-preset image override storage. Each preset can have a single user-supplied image saved
 /// under <c>LocalAppData/RazorReaper/PresetImages/&lt;slug&gt;.&lt;ext&gt;</c>. Overrides win
-/// over the bundled <c>wwwroot/images/presets/&lt;slug&gt;.&lt;ext&gt;</c> image when reading.
+/// over the hosted <c>images/presets/&lt;slug&gt;.png</c> CDN image when reading.
 /// </summary>
 public partial class IniPresetService
 {
-    private const string DefaultPresetImage = "/images/presets/default.png";
+    private const string DefaultPresetImage = "images/presets/default.png";
 
     /// <inheritdoc/>
-    public string GetPresetImagePath(string presetName)
+    public async Task<string?> GetPresetImageSourceAsync(string presetName, CancellationToken ct = default)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(presetName))
+            if (!string.IsNullOrWhiteSpace(presetName))
             {
-                return DefaultPresetImage;
-            }
+                var slug = ToSlug(presetName);
 
-            var slug = ToSlug(presetName);
-
-            // 1) User override wins. We base64-encode it so the WebView can load it without
-            //    needing a writable wwwroot or a custom URI handler.
-            var overridePath = FindOverrideImagePath(slug);
-            if (overridePath != null)
-            {
-                var dataUrl = TryReadAsDataUrl(overridePath);
-                if (dataUrl != null)
+                // 1) User override wins. We base64-encode it so the WebView can load it without
+                //    needing a writable wwwroot or a custom URI handler.
+                var overridePath = FindOverrideImagePath(slug);
+                if (overridePath != null)
                 {
-                    return dataUrl;
+                    var dataUrl = await TryReadAsDataUrlAsync(overridePath, ct);
+                    if (dataUrl != null)
+                    {
+                        return dataUrl;
+                    }
+                }
+
+                // 2) Hosted preset image from the media CDN. Only built-in presets ship CDN
+                //    images — skipping the lookup for customs avoids a guaranteed 404 on
+                //    every resolve (the media cache does not remember misses).
+                if (GetPresetByName(presetName)?.IsCustom != true)
+                {
+                    var hosted = await _hostedMedia.GetSrcAsync($"images/presets/{slug}.png", ct: ct);
+                    if (hosted != null)
+                    {
+                        return hosted;
+                    }
                 }
             }
 
-            // 2) Bundled preset image (shipped under wwwroot/images/presets). Try each
-            //    supported extension so authors can drop PNG/JPG/WEBP without code changes.
-            var bundledDir = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "presets");
-            foreach (var ext in AllowedImageExtensions)
-            {
-                if (File.Exists(Path.Combine(bundledDir, $"{slug}{ext}")))
-                {
-                    return $"/images/presets/{slug}{ext}";
-                }
-            }
-
-            return DefaultPresetImage;
+            return await _hostedMedia.GetSrcAsync(DefaultPresetImage, ct: ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting image path for preset: {PresetName}", presetName);
-            return DefaultPresetImage;
+            _logger.LogError(ex, "Error resolving image source for preset: {PresetName}", presetName);
+            return null;
         }
     }
 
@@ -183,7 +182,7 @@ public partial class IniPresetService
         return null;
     }
 
-    private string? TryReadAsDataUrl(string filePath)
+    private async Task<string?> TryReadAsDataUrlAsync(string filePath, CancellationToken ct)
     {
         try
         {
@@ -197,7 +196,7 @@ public partial class IniPresetService
                 _ => "image/jpeg"
             };
 
-            var bytes = File.ReadAllBytes(filePath);
+            var bytes = await File.ReadAllBytesAsync(filePath, ct);
             return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
         }
         catch (Exception ex)

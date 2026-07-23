@@ -19,6 +19,7 @@ public partial class IniPresetService : IIniPresetService
 {
     private readonly ILogger<IniPresetService> _logger;
     private readonly ITelemetryService _telemetryService;
+    private readonly IHostedMediaService _hostedMedia;
     private readonly List<IniPreset> _presets;
     private readonly List<IniPreset> _customPresets = new();
     private readonly string _customPresetsPath;
@@ -29,10 +30,11 @@ public partial class IniPresetService : IIniPresetService
     private const string CustomImagesFolderName = "PresetImages";
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
 
-    public IniPresetService(ILogger<IniPresetService> logger, ITelemetryService telemetryService)
+    public IniPresetService(ILogger<IniPresetService> logger, ITelemetryService telemetryService, IHostedMediaService hostedMedia)
     {
         _logger = logger;
         _telemetryService = telemetryService;
+        _hostedMedia = hostedMedia;
         _presets = IniPresetCatalog.BuildAll();
         _customPresetsPath = GetCustomPresetsPath();
         _customImagesDir = GetCustomImagesDir();

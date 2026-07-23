@@ -38,7 +38,26 @@
                     <div class="ini-active-thumb @(activePreset == null ? "is-empty" : "")">
                         @if (activePreset != null)
                         {
-                            <img src="@PresetService.GetPresetImagePath(activePreset.Name)" alt="@activePreset.Name preview" onclick="rrZoom(this)" />
+                            var activeSrc = GetPresetImageSource(activePreset.Name);
+                            if (activeSrc != null)
+                            {
+                                <img src="@activeSrc" alt="@activePreset.Name preview" onclick="rrZoom(this)" />
+                            }
+                            else
+                            {
+                                <div class="hosted-media-placeholder">
+                                    @if (IsPresetImageResolved(activePreset.Name))
+                                    {
+                                        <svg fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <span class="hosted-media-spinner"></span>
+                                    }
+                                </div>
+                            }
                             @if (activePreset.IsCustom)
                             {
                                 <span class="ini-active-custom">Custom</span>
@@ -158,7 +177,26 @@
                         var isActive = selectedPreset == preset.Name;
                         <div @key="@($"{preset.Name}-{imageVersion}")" class="preset-gallery-card @(isActive ? "active" : "")">
                             <div class="preset-gallery-image" @onclick="() => OnGalleryImageClick(preset)" @onclick:stopPropagation="true">
-                                <img src="@PresetService.GetPresetImagePath(preset.Name)" alt="@preset.Name preview" />
+                                @{ var gallerySrc = GetPresetImageSource(preset.Name); }
+                                @if (gallerySrc != null)
+                                {
+                                    <img src="@gallerySrc" alt="@preset.Name preview" />
+                                }
+                                else
+                                {
+                                    <div class="hosted-media-placeholder">
+                                        @if (IsPresetImageResolved(preset.Name))
+                                        {
+                                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                            </svg>
+                                        }
+                                        else
+                                        {
+                                            <span class="hosted-media-spinner"></span>
+                                        }
+                                    </div>
+                                }
                                 @if (isActive)
                                 {
                                     <div class="preset-gallery-active-badge">
@@ -299,8 +337,13 @@
     // Bumped after a preset image override is saved/reset so @key forces a fresh <img> render
     // (data URL changes need a new DOM node to defeat the WebView's in-memory image cache).
     private int imageVersion = 0;
+    // Resolved image source per preset name (data URL for overrides, virtual-host URL for
+    // hosted CDN images). Sources resolve asynchronously — no entry yet renders a spinner,
+    // an entry holding null means resolve finished with nothing available (offline and
+    // nothing cached yet) and renders a static no-image placeholder.
+    private readonly Dictionary<string, string?> presetImageSources = new(StringComparer.OrdinalIgnoreCase);
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         // Restore the visual indicator for the last applied preset so the hero card
         // shows it across sessions. We deliberately do NOT reload the .ini content into
@@ -311,6 +354,28 @@
         {
             selectedPreset = lastApplied;
         }
+
+        await RefreshPresetImagesAsync();
+    }
+
+    private string? GetPresetImageSource(string presetName) =>
+        presetImageSources.TryGetValue(presetName, out var src) ? src : null;
+
+    /// <summary>True once the preset's image resolve has completed (even with no result).</summary>
+    private bool IsPresetImageResolved(string presetName) =>
+        presetImageSources.ContainsKey(presetName);
+
+    /// <summary>
+    /// Re-resolves every preset's image source. Each card updates as its own resolve
+    /// completes so a first-run CDN download shows images progressively.
+    /// </summary>
+    private async Task RefreshPresetImagesAsync()
+    {
+        await Task.WhenAll(PresetService.GetAllPresets().Select(async preset =>
+        {
+            presetImageSources[preset.Name] = await PresetService.GetPresetImageSourceAsync(preset.Name);
+            await InvokeAsync(StateHasChanged);
+        }));
     }
 
     private void ToggleEditor()
@@ -344,10 +409,13 @@
         }
 
         // Normal mode: open the shared lightbox with this preset's image.
-        await JSRuntime.InvokeVoidAsync(
-            "rrZoomUrl",
-            PresetService.GetPresetImagePath(preset.Name),
-            $"{preset.Name} preview");
+        var src = GetPresetImageSource(preset.Name);
+        if (src == null)
+        {
+            return; // Still resolving (or unavailable) — nothing to zoom yet.
+        }
+
+        await JSRuntime.InvokeVoidAsync("rrZoomUrl", src, $"{preset.Name} preview");
     }
 
     private string IniEditorStatusLabel()
@@ -558,6 +626,7 @@
             PresetService.SetLastAppliedPresetName(preset.Name);
             showAddPresetDialog = false;
             ClearPresetImage();
+            await RefreshPresetImagesAsync();
 
             NotificationService.ShowSuccess("Preset saved successfully.");
             ActivityService.AddActivity($"Custom preset saved: {preset.Name}", "success");
@@ -621,6 +690,7 @@
                 PresetService.SetLastAppliedPresetName(string.Empty);
             }
 
+            presetImageSources.Remove(preset.Name);
             NotificationService.ShowSuccess("Custom preset removed.");
             ActivityService.AddActivity($"Custom preset removed: {preset.Name}", "warning");
             StateHasChanged();
@@ -668,6 +738,7 @@
             }
 
             imageVersion++;
+            await RefreshPresetImagesAsync();
             NotificationService.ShowSuccess($"Image updated for '{preset.Name}'.");
             ActivityService.AddActivity($"Preset image updated: {preset.Name}", "success");
             StateHasChanged();
@@ -679,7 +750,7 @@
         }
     }
 
-    private void ResetPresetImageOverride(IniPreset preset)
+    private async Task ResetPresetImageOverride(IniPreset preset)
     {
         try
         {
@@ -691,6 +762,7 @@
             }
 
             imageVersion++;
+            await RefreshPresetImagesAsync();
             NotificationService.ShowSuccess($"Reset image for '{preset.Name}'.");
             ActivityService.AddActivity($"Preset image reset: {preset.Name}", "info");
             StateHasChanged();

@@ -21,11 +21,15 @@ public interface IIniPresetService
     IniPreset? GetPresetByName(string name);
 
     /// <summary>
-    /// Gets the image path for a preset.
+    /// Resolves the preview image for a preset to a WebView-loadable source. A user override
+    /// (LocalAppData) wins and is returned as a data URL; otherwise the preset's hosted CDN
+    /// image is used, falling back to the hosted default thumbnail.
     /// </summary>
     /// <param name="presetName">The preset name.</param>
-    /// <returns>The relative path to the preset's image.</returns>
-    string GetPresetImagePath(string presetName);
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>An image source (data URL or local virtual-host URL), or null while nothing
+    /// is available (download failed and nothing cached yet).</returns>
+    Task<string?> GetPresetImageSourceAsync(string presetName, CancellationToken ct = default);
 
     /// <summary>
     /// Adds a custom preset and persists it for future sessions.
