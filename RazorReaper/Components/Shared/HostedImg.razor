@@ -1,0 +1,57 @@
+@inject IHostedMediaService HostedMedia
+@using RazorReaper.Services
+
+@if (resolvedSrc is not null)
+{
+    <img src="@resolvedSrc" @attributes="Attributes" />
+}
+else if (failed)
+{
+    <div class="hosted-media-placeholder hosted-media-failed" @attributes="Attributes">
+        <span>Media unavailable — check your connection</span>
+    </div>
+}
+else
+{
+    <div class="hosted-media-placeholder" @attributes="Attributes">
+        <span class="hosted-media-spinner"></span>
+    </div>
+}
+
+@code {
+    /// <summary>Hosted media path relative to the CDN root, e.g. "images/building/wall-3-correct.jpg".</summary>
+    [Parameter, EditorRequired] public string Src { get; set; } = string.Empty;
+
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? Attributes { get; set; }
+
+    private string? resolvedSrc;
+    private bool failed;
+    private string? loadedFor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loadedFor == Src)
+        {
+            return;
+        }
+
+        loadedFor = Src;
+        resolvedSrc = null;
+        failed = false;
+
+        var src = await HostedMedia.GetSrcAsync(Src);
+        if (loadedFor != Src)
+        {
+            return; // Parameter changed while downloading; a newer resolve owns the state.
+        }
+
+        if (src is null)
+        {
+            failed = true;
+        }
+        else
+        {
+            resolvedSrc = src;
+        }
+    }
+}

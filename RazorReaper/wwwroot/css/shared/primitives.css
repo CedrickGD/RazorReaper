@@ -196,3 +196,37 @@
         border-color: var(--accent-purple);
         box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.15);
     }
+
+/* ── Hosted media placeholders (HostedImg / HostedVideo) ── */
+.hosted-media-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 120px;
+    width: 100%;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 12px;
+}
+
+.hosted-media-placeholder.hosted-media-video {
+    aspect-ratio: 16 / 9;
+    min-height: 160px;
+}
+
+.hosted-media-spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-top-color: rgba(var(--accent-purple-rgb), 0.8);
+    animation: hosted-media-spin 0.9s linear infinite;
+}
+
+@keyframes hosted-media-spin {
+    to { transform: rotate(360deg); }
+}

@@ -20,6 +20,15 @@
                 webView2.CoreWebView2.Settings.IsZoomControlEnabled = false;
                 webView2.CoreWebView2.Settings.IsPinchZoomEnabled = false;
 
+                // Serve the hosted-media cache through a virtual host so large
+                // files (videos) stream from disk with Range support instead of
+                // being embedded as base64 data URLs.
+                System.IO.Directory.CreateDirectory(Services.MediaCachePaths.Directory);
+                webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    Services.MediaCachePaths.VirtualHost,
+                    Services.MediaCachePaths.Directory,
+                    Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+
                 // Reset zoom factor to 1.0 on every launch (clears any persisted zoom).
                 webView2.CoreWebView2.NavigationCompleted += (_, _) =>
                 {

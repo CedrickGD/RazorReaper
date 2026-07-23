@@ -23,10 +23,7 @@ public sealed class MediaCacheService : IMediaCacheService
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _cacheDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "RazorReaper",
-            "MediaCache");
+        _cacheDir = MediaCachePaths.Directory;
         Directory.CreateDirectory(_cacheDir);
         CleanupStaleTempFiles();
     }

@@ -192,7 +192,7 @@
             <div class="pixel-modal-body">
                 @foreach (var imgUrl in CategoryPreviewImages[previewCategory])
                 {
-                    <img src="@imgUrl" alt="@previewCategory preview" class="preview-img" />
+                    <HostedImg Src="@imgUrl.TrimStart('/')" alt="@($"{previewCategory} preview")" class="preview-img" />
                 }
             </div>
         </div>

@@ -1,0 +1,66 @@
+@inject IHostedMediaService HostedMedia
+@using RazorReaper.Services
+
+@if (resolvedSrc is not null)
+{
+    <video @attributes="Attributes">
+        <source src="@resolvedSrc" type="@MimeType" />
+    </video>
+}
+else if (failed)
+{
+    <div class="hosted-media-placeholder hosted-media-failed hosted-media-video" @attributes="Attributes">
+        <span>Video unavailable — check your connection</span>
+    </div>
+}
+else
+{
+    <div class="hosted-media-placeholder hosted-media-video" @attributes="Attributes">
+        <span class="hosted-media-spinner"></span>
+        <span class="hosted-media-note">Loading video…</span>
+    </div>
+}
+
+@code {
+    /// <summary>Hosted media path relative to the CDN root, e.g. "videos/raising.mp4".</summary>
+    [Parameter, EditorRequired] public string Src { get; set; } = string.Empty;
+
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? Attributes { get; set; }
+
+    private string? resolvedSrc;
+    private bool failed;
+    private string? loadedFor;
+
+    private string MimeType => Path.GetExtension(Src).ToLowerInvariant() switch
+    {
+        ".webm" => "video/webm",
+        _ => "video/mp4",
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loadedFor == Src)
+        {
+            return;
+        }
+
+        loadedFor = Src;
+        resolvedSrc = null;
+        failed = false;
+
+        var src = await HostedMedia.GetSrcAsync(Src);
+        if (loadedFor != Src)
+        {
+            return; // Parameter changed while downloading; a newer resolve owns the state.
+        }
+
+        if (src is null)
+        {
+            failed = true;
+        }
+        else
+        {
+            resolvedSrc = src;
+        }
+    }
+}
