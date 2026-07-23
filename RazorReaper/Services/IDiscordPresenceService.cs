@@ -2,7 +2,7 @@ namespace RazorReaper.Services;
 
 /// <summary>
 /// Drives the Discord Rich Presence shown on the user's profile while Razor Reaper
-/// is running ("Playing Razor Reaper" + current tool + version + GitHub buttons).
+/// is running ("Playing Razor Reaper" + current tool + version + shop button).
 /// Connects to the local Discord desktop client over IPC; every operation is a no-op
 /// when Rich Presence is disabled, Discord isn't running, or no Application ID is set.
 /// </summary>

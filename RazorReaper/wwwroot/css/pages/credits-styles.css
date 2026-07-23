@@ -146,23 +146,6 @@
     box-shadow: 0 8px 20px rgba(255, 0, 0, 0.2);
 }
 
-/* GitHub button — white/gray */
-.cr-link-btn.github {
-    border-color: rgba(255, 255, 255, 0.18);
-    color: #ccc;
-}
-
-.cr-link-btn.github svg {
-    color: #e6e6e6;
-}
-
-.cr-link-btn.github:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.35);
-    color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
-}
 
 /* ── Community & Support card ── */
 .cr-community-card {
