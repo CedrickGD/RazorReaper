@@ -26,13 +26,30 @@ namespace RazorReaper.WinUI
 
         public App()
         {
+            // An elevated relaunch (Restart as Administrator) starts a second process while the
+            // old, non-elevated one is still exiting and still holds the single-instance mutex.
+            // That handoff must NOT be treated as a duplicate launch — otherwise the new elevated
+            // instance bails here (before MAUI even starts) and nothing comes back up.
+            var relaunchedElevated = Environment.GetCommandLineArgs()
+                .Contains(RazorReaper.Services.Elevation.IElevationService.RestartMarker, StringComparer.OrdinalIgnoreCase);
+
             _mutex = new Mutex(true, "RazorReaper_SingleInstance_Mutex", out bool isNewInstance);
 
             if (!isNewInstance)
             {
-                BringExistingInstanceToFront();
-                Environment.Exit(0);
-                return;
+                if (relaunchedElevated)
+                {
+                    // Wait for the outgoing instance to release the mutex (it does so when it exits),
+                    // then continue as the sole instance instead of exiting as a "duplicate".
+                    try { _mutex.WaitOne(TimeSpan.FromSeconds(15)); }
+                    catch (AbandonedMutexException) { /* prior instance exited; ownership is ours now */ }
+                }
+                else
+                {
+                    BringExistingInstanceToFront();
+                    Environment.Exit(0);
+                    return;
+                }
             }
 
             this.InitializeComponent();
