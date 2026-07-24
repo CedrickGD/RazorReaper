@@ -596,6 +596,28 @@ internal sealed class HudOverlayWindow : IDisposable
                         Array.Empty<(string, Color)>()));
                     break;
                 }
+                case HudModuleKind.ActiveScripts:
+                {
+                    var count = snap.ActiveScripts.Count;
+                    if (count == 0)
+                    {
+                        rows.Add((m.Title.ToUpperInvariant(), "None", TextMuted, Array.Empty<(string, Color)>()));
+                    }
+                    else
+                    {
+                        var subs = new List<(string, Color)>();
+                        for (var i = 0; i < count; i++)
+                        {
+                            if (i > 0) subs.Add(("  ·  ", TextMuted));
+                            subs.Add((snap.ActiveScripts[i], TextValue));
+                        }
+                        rows.Add((m.Title.ToUpperInvariant(),
+                            count == 1 ? "1 active" : $"{count} active",
+                            Color.FromArgb(220, StatusGreen),
+                            subs.ToArray()));
+                    }
+                    break;
+                }
             }
         }
         if (rows.Count == 0) return RectangleF.Empty;
@@ -738,6 +760,10 @@ internal sealed class HudOverlayWindow : IDisposable
                     break;
                 case HudModuleKind.ToolStatus:
                     if (!string.IsNullOrWhiteSpace(snap.ActiveTool)) parts.Add(snap.ActiveTool!);
+                    break;
+                case HudModuleKind.ActiveScripts:
+                    if (snap.ActiveScripts.Count == 1) parts.Add(snap.ActiveScripts[0]);
+                    else if (snap.ActiveScripts.Count > 1) parts.Add($"{snap.ActiveScripts.Count} scripts");
                     break;
             }
         }

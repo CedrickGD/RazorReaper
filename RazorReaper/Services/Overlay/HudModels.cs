@@ -7,7 +7,9 @@ public enum HudModuleKind
     SessionTimer,
     ServerInfo,
     Notifier,
-    ToolStatus
+    ToolStatus,
+    // Appended last: settings JSON persists these as numbers, so existing values must not shift.
+    ActiveScripts
 }
 
 /// <summary>Screen placement for the HUD panel and the alert stack.</summary>
@@ -48,6 +50,7 @@ public sealed record HudSnapshot(
     string SessionText,
     HudServerInfo Server,
     string? ActiveTool,
+    IReadOnlyList<string> ActiveScripts,
     IReadOnlyList<HudAlert> Alerts,
     IReadOnlyList<HudModule> Modules,
     bool Compact,
@@ -100,7 +103,8 @@ public sealed class HudSettings
         new HudModule(HudModuleKind.SessionTimer, "Session", true, 1),
         new HudModule(HudModuleKind.ServerInfo, "Server", true, 2),
         new HudModule(HudModuleKind.ToolStatus, "Tool", true, 3),
-        new HudModule(HudModuleKind.Notifier, "Alerts", true, 4),
+        new HudModule(HudModuleKind.ActiveScripts, "Scripts", true, 4),
+        new HudModule(HudModuleKind.Notifier, "Alerts", true, 5),
     };
 
     /// <summary>Clamp ranges and make sure every module kind exists exactly once (survives old JSON).</summary>
