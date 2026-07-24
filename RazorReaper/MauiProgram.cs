@@ -14,6 +14,10 @@ namespace RazorReaper
     {
         public static MauiApp CreateMauiApp()
         {
+            // If we were relaunched elevated, wait for the prior instance to exit before we touch
+            // the WebView2 data folder (only one process may hold a given folder at a time).
+            WaitForPriorInstanceIfRelaunched();
+
             ConfigureWebView2UserDataFolder();
 
             var builder = MauiApp.CreateBuilder();
@@ -50,15 +54,56 @@ namespace RazorReaper
             return builder.Build();
         }
 
+        private static bool IsProcessElevated()
+        {
+            try
+            {
+                using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                return new System.Security.Principal.WindowsPrincipal(identity)
+                    .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            }
+            catch { return false; }
+        }
+
+        private static void WaitForPriorInstanceIfRelaunched()
+        {
+            try
+            {
+                var args = Environment.GetCommandLineArgs();
+                var idx = Array.IndexOf(args, RazorReaper.Services.Elevation.IElevationService.RestartMarker);
+                if (idx >= 0 && idx + 1 < args.Length && int.TryParse(args[idx + 1], out var pid))
+                {
+                    try
+                    {
+                        using var prior = System.Diagnostics.Process.GetProcessById(pid);
+                        prior.WaitForExit(5000);
+                    }
+                    catch
+                    {
+                        // Prior process already gone (the common case) — nothing to wait for.
+                    }
+                }
+            }
+            catch
+            {
+                // Never let startup argument parsing block the app from launching.
+            }
+        }
+
         private static void ConfigureWebView2UserDataFolder()
         {
 #if WINDOWS
             try
             {
+                // Elevated and normal instances get separate WebView2 data folders: a folder can
+                // only be held by one process at a time, and during an elevate-relaunch the old
+                // instance's WebView2 processes may still hold the normal folder for a moment,
+                // which would otherwise crash the new elevated instance before it can render.
+                var webViewFolderName = IsProcessElevated() ? "WebView2-admin" : "WebView2";
                 var userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "RazorReaper",
-                    "WebView2");
+                    webViewFolderName);
 
                 Directory.CreateDirectory(userDataFolder);
                 Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", userDataFolder);
@@ -233,6 +278,8 @@ namespace RazorReaper
             services.AddSingleton<IMediaCacheService, MediaCacheService>();
             services.AddSingleton<IHostedMediaService, HostedMediaService>();
             services.AddSingleton<RazorReaper.Services.Steam.ISteamFavoritesService, RazorReaper.Services.Steam.SteamFavoritesService>();
+            services.AddSingleton<RazorReaper.Services.Steam.ISteamServerHistoryService, RazorReaper.Services.Steam.SteamServerHistoryService>();
+            services.AddSingleton<RazorReaper.Services.ServerQuery.IServerQueryService, RazorReaper.Services.ServerQuery.ServerQueryService>();
             services.AddSingleton<ILineListService, LineListService>();
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
             services.AddSingleton<ICompactArkService, CompactArkService>();
@@ -240,6 +287,8 @@ namespace RazorReaper
             services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
+            services.AddSingleton<RazorReaper.Services.Media.IFfmpegProvider, RazorReaper.Services.Media.FfmpegProvider>();
+            services.AddSingleton<RazorReaper.Services.Media.IVideoConverter, RazorReaper.Services.Media.VideoConverter>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
             services.AddSingleton<IStretchedResService, StretchedResService>();
@@ -252,14 +301,58 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.ICalibrationService, RazorReaper.Services.Automation.CalibrationService>();
             services.AddSingleton<RazorReaper.Services.Automation.IInputRecorderService, RazorReaper.Services.Automation.InputRecorderService>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenSampler, RazorReaper.Services.Automation.ScreenSampler>();
+            services.AddSingleton<RazorReaper.Services.Automation.IScreenOcr, RazorReaper.Services.Automation.ScreenOcr>();
+            services.AddSingleton<RazorReaper.Services.Automation.IForegroundGate, RazorReaper.Services.Automation.ForegroundGate>();
             services.AddSingleton<RazorReaper.Services.Automation.IFastTransferMacro, RazorReaper.Services.Automation.FastTransferMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IFedSuitMacro, RazorReaper.Services.Automation.FedSuitMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IAutoAntidoteService, RazorReaper.Services.Automation.AutoAntidoteService>();
 
-            // Overlay platform (HUD overlay window + notifier client)
+            // ATS3-parity automation scripts (each derives from AutomationScriptBase)
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.YutyScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.AutoWalkScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.MammothScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.AstroScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.AutoDownloadScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.FastTpScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.TakeAllScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.TekSaddleScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.NoglinScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.InvSizeScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.AntiAfkScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.ExoSuitScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.TurretManagerScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.FlakScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.DinoReadyScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.CraftingScript>();
+
+            // Expose every script as AutomationScriptBase so the Scripts hub + Global Hotkeys page
+            // enumerate them uniformly (registration order = display order). Add new scripts here too.
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.YutyScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AutoWalkScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.MammothScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FastTpScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.TakeAllScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AutoDownloadScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AstroScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.TekSaddleScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.NoglinScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.InvSizeScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AntiAfkScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.ExoSuitScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.TurretManagerScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FlakScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.DinoReadyScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.CraftingScript>());
+
+            services.AddSingleton<RazorReaper.Services.Desync.IDesyncService, RazorReaper.Services.Desync.DesyncService>();
+            services.AddSingleton<RazorReaper.Services.FileModifier.IFileModifierService, RazorReaper.Services.FileModifier.FileModifierService>();
+
+            // Overlay platform (HUD overlay window + notifier client + session auto-detect)
             services.AddSingleton<RazorReaper.Services.Overlay.IHudOverlayService, RazorReaper.Services.Overlay.HudOverlayService>();
             services.AddSingleton<RazorReaper.Services.Overlay.INotifierClientService, RazorReaper.Services.Overlay.NotifierClientService>();
+            services.AddSingleton<RazorReaper.Services.Overlay.ISessionHudService, RazorReaper.Services.Overlay.SessionHudService>();
             
+            services.AddSingleton<RazorReaper.Services.Elevation.IElevationService, RazorReaper.Services.Elevation.ElevationService>();
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();
         }
