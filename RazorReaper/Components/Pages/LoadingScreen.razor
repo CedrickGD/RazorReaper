@@ -1,6 +1,7 @@
 @page "/loading-screen"
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.Media
 
 @inject ILoadingScreenService MovieService
 @inject INotificationService Notifications
@@ -67,10 +68,47 @@
                 </div>
             </div>
             <p class="ls-info-text">
-                Replace both the .mp4 and .wmv variant of a movie with a video in the same format — RazorReaper does not convert.
+                Pick any video and RazorReaper converts it to ARK's format for you. Turn on <em>Replace both formats</em>
+                to update the .mp4 and .wmv variants together, and set the audio volume before replacing.
                 Originals are backed up to <code>@_backupFolder</code> and changes apply on the next game start.
+                The first conversion downloads the video converter (~80&nbsp;MB), stored under your app data.
             </p>
         </div>
+
+        <div class="content-card ls-options-card">
+            <div class="ls-option-row">
+                <div class="ls-option-label">
+                    <span class="ls-option-title">Audio volume</span>
+                    <span class="ls-option-desc">Applied to the converted video. 100% keeps the original loudness; 0% mutes it.</span>
+                </div>
+                <div class="ls-volume">
+                    <input type="range" class="ls-slider" min="0" max="200" step="5"
+                           @bind="_volumePercent" @bind:event="oninput" disabled="@_busy" />
+                    <span class="ls-volume-value">@_volumePercent%</span>
+                </div>
+            </div>
+            <div class="ls-option-row">
+                <div class="ls-option-label">
+                    <span class="ls-option-title">Replace both formats</span>
+                    <span class="ls-option-desc">Convert and swap the .mp4 and .wmv variant of a movie in one go.</span>
+                </div>
+                <Switch Value="_bothFormats" ValueChanged="v => _bothFormats = v" />
+            </div>
+        </div>
+
+        @if (_busy && _progressActive)
+        {
+            <div class="content-card ls-progress-card">
+                <div class="ls-progress-head">
+                    <span class="ls-progress-label">@_progressLabel</span>
+                    <span class="ls-progress-percent">@(_progressPercent >= 0 ? $"{_progressPercent}%" : "")</span>
+                </div>
+                <div class="ls-progress-track">
+                    <div class="ls-progress-fill @(_progressPercent < 0 ? "indeterminate" : "")"
+                         style="width:@(_progressPercent >= 0 ? _progressPercent : 100)%"></div>
+                </div>
+            </div>
+        }
 
         <div class="content-card ls-movies-card">
             @if (_movies.Count == 0)
@@ -125,6 +163,13 @@
     private bool _busy;
     private bool _restoringAll;
     private int _replacedCount;
+
+    private int _volumePercent = 100;
+    private bool _bothFormats;
+
+    private bool _progressActive;
+    private string _progressLabel = "";
+    private int _progressPercent;
 
     private static readonly (ArkMovieKind Kind, string Title)[] GroupOrder =
     {
@@ -206,11 +251,11 @@
         {
             var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
             {
-                { DevicePlatform.WinUI, new[] { movie.Extension } }
+                { DevicePlatform.WinUI, MovieService.SupportedSourceExtensions.ToArray() }
             });
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = $"Select a {movie.Extension} replacement for {movie.FileName}",
+                PickerTitle = $"Select a video for {movie.DisplayName}",
                 FileTypes = fileTypes
             });
             picked = result?.FullPath;
@@ -224,20 +269,64 @@
 
         if (picked is null) return;
 
+        // A same-format pick with default volume and a single target needs no conversion —
+        // fall back to the fast byte-copy path so ffmpeg never has to be involved.
+        var pickedExt = Path.GetExtension(picked).ToLowerInvariant();
+        var needsConvert = _bothFormats
+            || _volumePercent != 100
+            || !string.Equals(pickedExt, movie.Extension, StringComparison.OrdinalIgnoreCase);
+
         _busy = true;
         try
         {
             WarnIfArkRunning();
-            var op = await MovieService.ReplaceAsync(movie.FileName, picked);
-            if (op.Success)
+
+            if (!needsConvert)
             {
-                Notifications.ShowSuccess(op.Message);
-                Activity.AddActivity($"Replaced ARK video {movie.FileName}", "success");
+                var op = await MovieService.ReplaceAsync(movie.FileName, picked);
+                ReportReplace(movie, op);
+                return;
             }
-            else
+
+            // Make sure the converter is present (downloads ~80 MB on first use).
+            if (!MovieService.ConverterReady)
             {
-                Notifications.ShowError(op.Message);
+                _progressActive = true;
+                _progressLabel = "Downloading video converter…";
+                _progressPercent = -1;
+                await InvokeAsync(StateHasChanged);
+
+                var setupProgress = new Progress<FfmpegSetupProgress>(p =>
+                {
+                    _progressLabel = p.Phase == FfmpegSetupPhase.Extracting
+                        ? "Preparing video converter…"
+                        : "Downloading video converter…";
+                    _progressPercent = p.Percent;
+                    _ = InvokeAsync(StateHasChanged);
+                });
+
+                var ready = await MovieService.EnsureConverterAsync(setupProgress);
+                if (!ready)
+                {
+                    Notifications.ShowError("Could not download the video converter — check your connection and try again.");
+                    return;
+                }
             }
+
+            _progressActive = true;
+            _progressLabel = _bothFormats ? "Converting both formats…" : "Converting video…";
+            _progressPercent = 0;
+            await InvokeAsync(StateHasChanged);
+
+            var convertProgress = new Progress<int>(p =>
+            {
+                _progressPercent = p;
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = await MovieService.ConvertAndReplaceAsync(
+                movie.FileName, picked, _volumePercent, _bothFormats, convertProgress);
+            ReportReplace(movie, result);
         }
         catch (Exception ex)
         {
@@ -247,7 +336,21 @@
         finally
         {
             _busy = false;
+            _progressActive = false;
             Refresh();
+        }
+    }
+
+    private void ReportReplace(ArkMovieInfo movie, MovieOperationResult op)
+    {
+        if (op.Success)
+        {
+            Notifications.ShowSuccess(op.Message);
+            Activity.AddActivity($"Replaced ARK video {movie.DisplayName}", "success");
+        }
+        else
+        {
+            Notifications.ShowError(op.Message);
         }
     }
 
