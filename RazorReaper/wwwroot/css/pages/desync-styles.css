@@ -1,0 +1,18 @@
+/* Desync page — admin warning + risk note. */
+
+.dsy-warn {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-control);
+    background: rgba(var(--accent-orange-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-orange-rgb), 0.3);
+    color: var(--accent-orange);
+    font-size: 0.9rem;
+}
+
+.dsy-note {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}

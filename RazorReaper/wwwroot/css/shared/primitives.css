@@ -246,3 +246,34 @@
     border-color: rgba(var(--accent-purple-rgb, 168, 85, 247), 0.6);
     color: rgba(255, 255, 255, 0.9);
 }
+
+/* ── ElevationPrompt (shared "Restart as Administrator" bar) ─────────────── */
+
+.elevation-prompt {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-control);
+    background: rgba(var(--accent-orange-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-orange-rgb), 0.3);
+    color: var(--accent-orange);
+}
+
+.elevation-prompt-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.elevation-prompt-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.elevation-prompt .btn {
+    flex-shrink: 0;
+}

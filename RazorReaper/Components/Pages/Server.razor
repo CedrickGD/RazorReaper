@@ -6,12 +6,14 @@
 @using Microsoft.Win32
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.ServerQuery
 @using RazorReaper.Services.Steam
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
 @inject ILogger<Server> Logger
 @inject IActivityService ActivityService
 @inject ISteamFavoritesService SteamFavoritesService
+@inject IServerQueryService ServerQuery
 @implements IDisposable
 
 
@@ -343,7 +345,6 @@
 
 
 @code {
-    private const int SourceQueryTimeoutMs = 3500;
     private const int PingTimeoutMs = 2500;
 
     private string serverInput = "";
@@ -542,7 +543,7 @@
     {
         try
         {
-            var serverInfo = await QuerySourceServer(server.IpAddress, server.QueryPort);
+            var serverInfo = await ServerQuery.QueryAsync(server.IpAddress, server.QueryPort);
             if (serverInfo != null)
             {
                 server.IsOnline = true;
@@ -628,7 +629,7 @@
             serverInput = $"{ip}:{queryPort}";
             currentServer = CreatePendingServer(ip, queryPort);
 
-            var serverInfo = await QuerySourceServer(ip, queryPort, queryCancellation.Token);
+            var serverInfo = await ServerQuery.QueryAsync(ip, queryPort, queryCancellation.Token);
             if (!IsCurrentQuery(requestId) || currentServer == null)
             {
                 return;
@@ -687,185 +688,6 @@
                 await InvokeAsync(StateHasChanged);
             }
         }
-    }
-
-    private async Task<ServerQueryResult?> QuerySourceServer(string ip, int port, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            using var client = new UdpClient();
-            client.Client.ReceiveTimeout = SourceQueryTimeoutMs;
-            client.Client.SendTimeout = SourceQueryTimeoutMs;
-
-            if (!IPAddress.TryParse(ip, out var parsedAddress))
-            {
-                return null;
-            }
-
-            var endpoint = new IPEndPoint(parsedAddress, port);
-
-            var infoQuery = new byte[] {
-                0xFF, 0xFF, 0xFF, 0xFF,
-                0x54,
-                0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
-                0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20,
-                0x51, 0x75, 0x65, 0x72, 0x79, 0x00
-            };
-
-            await client.SendAsync(infoQuery, infoQuery.Length, endpoint);
-            var response = await client.ReceiveAsync().WaitAsync(TimeSpan.FromMilliseconds(SourceQueryTimeoutMs), cancellationToken);
-
-            Logger.LogDebug("Query response length: {Length} bytes", response.Buffer.Length);
-
-            if (response.Buffer.Length > 6)
-            {
-                var data = response.Buffer;
-                int offset = 4;
-
-                if (data[4] == 0x49)
-                {
-                    offset = 5;
-                    var protocol = data[offset++];
-                    Logger.LogDebug("Protocol version: {Protocol}", protocol);
-
-                    var name = ReadString(data, ref offset);
-                    var map = ReadString(data, ref offset);
-                    var folder = ReadString(data, ref offset);
-                    var game = ReadString(data, ref offset);
-
-                    Logger.LogDebug("Server: {Name}, Map: {Map}, Game: {Game}", name, map, game);
-
-                    if (offset + 2 < data.Length)
-                    {
-                        offset += 2;
-
-                        var players = data[offset++];
-                        var maxPlayers = data[offset++];
-                        var bots = data[offset++];
-
-                        Logger.LogDebug("Players: {Players}/{MaxPlayers}, Bots: {Bots}", players, maxPlayers, bots);
-
-                        offset += 2;
-
-                        offset += 2;
-
-                        var version = ReadString(data, ref offset);
-                        Logger.LogDebug("Version: {Version}", version);
-
-                        return new ServerQueryResult
-                        {
-                            Name = name,
-                            Map = map,
-                            Players = players,
-                            MaxPlayers = maxPlayers,
-                            Version = version
-                        };
-                    }
-                }
-                else if (data[4] == 0x41)
-                {
-                    Logger.LogDebug("Received challenge response, sending challenge query...");
-
-                    var challenge = new byte[4];
-                    Array.Copy(data, 5, challenge, 0, 4);
-
-                    var challengeQuery = new byte[infoQuery.Length + 4];
-                    Array.Copy(infoQuery, challengeQuery, infoQuery.Length);
-                    Array.Copy(challenge, 0, challengeQuery, infoQuery.Length, 4);
-
-                    await client.SendAsync(challengeQuery, challengeQuery.Length, endpoint);
-                    var challengeResponse = await client.ReceiveAsync().WaitAsync(TimeSpan.FromMilliseconds(SourceQueryTimeoutMs), cancellationToken);
-
-                    return ProcessInfoResponse(challengeResponse.Buffer);
-                }
-            }
-        }
-        catch (TimeoutException)
-        {
-            Logger.LogDebug("Query timed out for {IP}:{Port}", ip, port);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Query error for {IP}:{Port}", ip, port);
-        }
-        return null;
-    }
-
-    private ServerQueryResult? ProcessInfoResponse(byte[] data)
-    {
-        try
-        {
-            if (data.Length > 6 && data[4] == 0x49)
-            {
-                int offset = 5;
-                var protocol = data[offset++];
-
-                var name = ReadString(data, ref offset);
-                var map = ReadString(data, ref offset);
-                var folder = ReadString(data, ref offset);
-                var game = ReadString(data, ref offset);
-
-                if (offset + 2 < data.Length)
-                {
-                    offset += 2;
-                    var players = data[offset++];
-                    var maxPlayers = data[offset++];
-                    var bots = data[offset++];
-                    offset += 2;
-                    offset += 2;
-
-                    var version = ReadString(data, ref offset);
-
-                    return new ServerQueryResult
-                    {
-                        Name = name,
-                        Map = map,
-                        Players = players,
-                        MaxPlayers = maxPlayers,
-                        Version = version
-                    };
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Error processing server info response");
-        }
-        return null;
-    }
-
-    private string ReadString(byte[] data, ref int offset)
-    {
-        if (offset >= data.Length) return "";
-
-        var start = offset;
-        while (offset < data.Length && data[offset] != 0)
-        {
-            offset++;
-        }
-
-        if (offset > start)
-        {
-            try
-            {
-                var result = System.Text.Encoding.UTF8.GetString(data, start, offset - start);
-                offset++;
-                return result;
-            }
-            catch
-            {
-                var result = System.Text.Encoding.ASCII.GetString(data, start, offset - start);
-                offset++;
-                return result;
-            }
-        }
-
-        if (offset < data.Length) offset++;
-        return "";
     }
 
     private void CancelActiveQuery(bool resetBusyState = false)
@@ -951,7 +773,7 @@
         };
     }
 
-    private static void ApplyServerInfo(GameServer server, ServerQueryResult serverInfo)
+    private static void ApplyServerInfo(GameServer server, ServerQueryInfo serverInfo)
     {
         server.IsOnline = true;
         server.Name = string.IsNullOrWhiteSpace(serverInfo.Name) ? server.Name : serverInfo.Name;
@@ -1266,15 +1088,6 @@
             "skipped" => "Skipped",
             _ => "Failed"
         };
-    }
-
-    public class ServerQueryResult
-    {
-        public string Name { get; set; } = "";
-        public string Map { get; set; } = "";
-        public int Players { get; set; }
-        public int MaxPlayers { get; set; }
-        public string Version { get; set; } = "";
     }
 
     public class GameServer

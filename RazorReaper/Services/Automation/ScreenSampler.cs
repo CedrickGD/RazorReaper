@@ -1,8 +1,11 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using System.Drawing.Imaging;
 using Microsoft.Extensions.Logging;
 // Disambiguate from Microsoft.Maui.Graphics implicit usings.
+using Bitmap = System.Drawing.Bitmap;
 using Color = System.Drawing.Color;
+using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
 
 namespace RazorReaper.Services.Automation;
@@ -15,6 +18,64 @@ public sealed record ScreenCapture(int Width, int Height, byte[] Bgra)
 {
     /// <summary>True when the capture actually holds pixels.</summary>
     public bool IsEmpty => Width <= 0 || Height <= 0 || Bgra.Length == 0;
+}
+
+/// <summary>
+/// A template bitmap for on-screen matching: 32-bit BGRA (row-major, top-down) with an optional
+/// per-pixel <see cref="Mask"/> (false = transparent/ignored during matching). Load ARK HUD icons
+/// exported as PNG-with-transparency via <see cref="FromFile"/>.
+/// </summary>
+public sealed record TemplateImage(int Width, int Height, byte[] Bgra, bool[]? Mask = null)
+{
+    public bool IsEmpty => Width <= 0 || Height <= 0 || Bgra.Length < Width * Height * 4;
+
+    /// <summary>
+    /// Loads a PNG/BMP as a template. Pixels with alpha ≤ <paramref name="alphaThreshold"/> are
+    /// masked out (ignored when matching) so transparent icon edges never hurt the score.
+    /// Returns null on any load failure.
+    /// </summary>
+    public static TemplateImage? FromFile(string path, byte alphaThreshold = 16)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
+            using var bmp = new Bitmap(path);
+            int w = bmp.Width, h = bmp.Height;
+            if (w <= 0 || h <= 0) return null;
+
+            var data = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                int stride = Math.Abs(data.Stride);
+                var raw = new byte[stride * h];
+                Marshal.Copy(data.Scan0, raw, 0, raw.Length);
+
+                var bgra = new byte[w * h * 4];
+                var mask = new bool[w * h];
+                var hasTransparent = false;
+                for (int y = 0; y < h; y++)
+                {
+                    int rowOff = y * stride;
+                    for (int x = 0; x < w; x++)
+                    {
+                        int si = rowOff + x * 4;       // 32bppArgb little-endian → B,G,R,A
+                        int di = (y * w + x) * 4;
+                        byte a = raw[si + 3];
+                        bgra[di] = raw[si];
+                        bgra[di + 1] = raw[si + 1];
+                        bgra[di + 2] = raw[si + 2];
+                        bgra[di + 3] = a;
+                        var keep = a > alphaThreshold;
+                        mask[y * w + x] = keep;
+                        if (!keep) hasTransparent = true;
+                    }
+                }
+                return new TemplateImage(w, h, bgra, hasTransparent ? mask : null);
+            }
+            finally { bmp.UnlockBits(data); }
+        }
+        catch { return null; }
+    }
 }
 
 /// <summary>
@@ -44,6 +105,18 @@ public interface IScreenSampler
     /// Returns false when no reference exists or the dimensions differ.
     /// </summary>
     bool MatchesReference(string key, Rectangle region, double tolerance);
+
+    /// <summary>
+    /// Slides <paramref name="template"/> across <paramref name="searchRegion"/> and returns the
+    /// screen-space top-left of the best match when its <paramref name="score"/> (0..1, 1 = identical)
+    /// is at or above <paramref name="threshold"/>, else null. Masked template pixels are ignored, so
+    /// a transparent-background icon matches wherever it appears in the (larger) region — this is what
+    /// enables buff-strip / HUD-icon detection at a variable position.
+    /// </summary>
+    Point? FindTemplate(Rectangle searchRegion, TemplateImage template, double threshold, out double score);
+
+    /// <summary>Convenience: true when <see cref="FindTemplate"/> finds a match at/above the threshold.</summary>
+    bool ContainsTemplate(Rectangle searchRegion, TemplateImage template, double threshold);
 
     /// <summary>
     /// Most frequent color in the region (quantized to 16 levels per channel, then averaged inside
@@ -187,6 +260,62 @@ public sealed class ScreenSampler : IScreenSampler
         var meanDiff = diffSum / (double)(pixels * 3);
         return meanDiff <= tolerance;
     }
+
+    public Point? FindTemplate(Rectangle searchRegion, TemplateImage template, double threshold, out double score)
+    {
+        score = 0;
+        if (template is null || template.IsEmpty) return null;
+        if (searchRegion.Width < template.Width || searchRegion.Height < template.Height) return null;
+
+        var capture = CaptureRegion(searchRegion);
+        if (capture.IsEmpty) return null;
+
+        int sw = capture.Width, sh = capture.Height, tw = template.Width, th = template.Height;
+        byte[] sd = capture.Bgra, td = template.Bgra;
+        bool[]? mask = template.Mask;
+
+        long valid = 0;
+        if (mask is null) valid = (long)tw * th;
+        else { for (var i = 0; i < mask.Length; i++) if (mask[i]) valid++; }
+        if (valid == 0) return null;
+
+        double best = -1;
+        int bestX = -1, bestY = -1;
+        for (var oy = 0; oy <= sh - th; oy++)
+        {
+            for (var ox = 0; ox <= sw - tw; ox++)
+            {
+                long diff = 0;
+                for (var y = 0; y < th; y++)
+                {
+                    var sBase = ((oy + y) * sw + ox) * 4;
+                    var tBase = y * tw * 4;
+                    var mBase = y * tw;
+                    for (var x = 0; x < tw; x++)
+                    {
+                        if (mask is not null && !mask[mBase + x]) continue;
+                        var si = sBase + x * 4;
+                        var ti = tBase + x * 4;
+                        diff += Math.Abs(sd[si] - td[ti]);
+                        diff += Math.Abs(sd[si + 1] - td[ti + 1]);
+                        diff += Math.Abs(sd[si + 2] - td[ti + 2]);
+                    }
+                }
+                var mean = diff / (double)(valid * 3); // 0..255
+                var s = 1.0 - mean / 255.0;
+                if (s > best) { best = s; bestX = ox; bestY = oy; }
+            }
+            if (best >= 0.999) break; // effectively perfect — stop early
+        }
+
+        score = best < 0 ? 0 : best;
+        if (best >= threshold && bestX >= 0)
+            return new Point(searchRegion.Left + bestX, searchRegion.Top + bestY);
+        return null;
+    }
+
+    public bool ContainsTemplate(Rectangle searchRegion, TemplateImage template, double threshold)
+        => FindTemplate(searchRegion, template, threshold, out _) is not null;
 
     public Color DominantColor(Rectangle region)
     {

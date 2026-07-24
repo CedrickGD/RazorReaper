@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services;
+using RazorReaper.Services.Media;
 
 namespace RazorReaper.Services
 {
@@ -48,6 +49,31 @@ namespace RazorReaper.Services
         /// <summary>Backs up the original (first time only), then copies the user's file over the game file.</summary>
         Task<MovieOperationResult> ReplaceAsync(string movieFileName, string userFilePath, CancellationToken cancellationToken = default);
 
+        /// <summary>True when ffmpeg is already available locally (no download needed to convert).</summary>
+        bool ConverterReady { get; }
+
+        /// <summary>File extensions the converter accepts as a source video (for the file picker).</summary>
+        IReadOnlyList<string> SupportedSourceExtensions { get; }
+
+        /// <summary>
+        /// Make sure ffmpeg is available, downloading it once if needed. Reports setup progress.
+        /// Returns true when the converter is ready to use.
+        /// </summary>
+        Task<bool> EnsureConverterAsync(IProgress<FfmpegSetupProgress>? progress, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Convert any source video to the movie's container(s) with the given volume, then replace.
+        /// When <paramref name="bothFormats"/> is true, both the .mp4 and .wmv siblings that exist
+        /// are converted and replaced. Reports 0..100 conversion progress.
+        /// </summary>
+        Task<MovieOperationResult> ConvertAndReplaceAsync(
+            string movieFileName,
+            string userFilePath,
+            int volumePercent,
+            bool bothFormats,
+            IProgress<int>? progress,
+            CancellationToken cancellationToken = default);
+
         /// <summary>Copies the pristine backup back over the game file, then removes the backup.</summary>
         Task<MovieOperationResult> RestoreAsync(string movieFileName, CancellationToken cancellationToken = default);
 
@@ -66,6 +92,10 @@ namespace RazorReaper.Services.Implementations
         // ARK ships every movie in two containers; the game picks by name + extension,
         // so replacements must keep the exact same container. No transcoding is done.
         private static readonly string[] SupportedExtensions = { ".mp4", ".wmv" };
+
+        // Containers the converter accepts as a source (output is always .mp4/.wmv).
+        private static readonly string[] SourceExtensions =
+            { ".mp4", ".wmv", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".flv", ".mpg", ".mpeg" };
 
         // Base names shipped by the game (verified against a real install — each exists
         // as an .mp4/.wmv pair in ShooterGame/Content/Movies).
@@ -86,17 +116,32 @@ namespace RazorReaper.Services.Implementations
 
         private readonly ILogger<LoadingScreenService> _logger;
         private readonly IArkPathProvider _arkPathProvider;
+        private readonly IFfmpegProvider _ffmpeg;
+        private readonly IVideoConverter _converter;
         private readonly string _backupRoot;
 
-        public LoadingScreenService(ILogger<LoadingScreenService> logger, IArkPathProvider arkPathProvider)
+        public LoadingScreenService(
+            ILogger<LoadingScreenService> logger,
+            IArkPathProvider arkPathProvider,
+            IFfmpegProvider ffmpeg,
+            IVideoConverter converter)
         {
             _logger = logger;
             _arkPathProvider = arkPathProvider;
+            _ffmpeg = ffmpeg;
+            _converter = converter;
             _backupRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "RazorReaper",
                 "MovieBackups");
         }
+
+        public bool ConverterReady => _ffmpeg.IsInstalled;
+
+        public IReadOnlyList<string> SupportedSourceExtensions => SourceExtensions;
+
+        public async Task<bool> EnsureConverterAsync(IProgress<FfmpegSetupProgress>? progress, CancellationToken cancellationToken = default)
+            => await _ffmpeg.EnsureAsync(progress, cancellationToken) is not null;
 
         public string? GetMoviesFolderPath()
         {
@@ -240,29 +285,8 @@ namespace RazorReaper.Services.Implementations
                         return new MovieOperationResult(false, "That is the game's own video file — pick your replacement video instead.");
                     }
 
-                    var backupPath = GetBackupPath(movieFileName);
-                    var hasBackup = File.Exists(backupPath);
-
-                    if (!hasBackup && !File.Exists(targetPath))
-                    {
-                        return new MovieOperationResult(false, $"{movieFileName} was not found in the Movies folder, so there is no original to replace.");
-                    }
-
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    // Back up the pristine original exactly once. Replacing again later keeps
-                    // the first backup, so the untouched file is never overwritten by a custom one.
-                    if (!hasBackup)
-                    {
-                        Directory.CreateDirectory(_backupRoot);
-                        File.Copy(targetPath, backupPath, overwrite: false);
-                        _logger.LogInformation("Backed up original movie {FileName} to {BackupPath}", movieFileName, backupPath);
-                    }
-
-                    File.Copy(userFilePath, targetPath, overwrite: true);
-                    _logger.LogInformation("Replaced movie {FileName} with {SourcePath}", movieFileName, userFilePath);
-
-                    return new MovieOperationResult(true, $"{movieFileName} replaced — your video plays on the next game start.");
+                    return ApplyReplacementCore(moviesDir, movieFileName, userFilePath);
                 }
                 catch (OperationCanceledException)
                 {
@@ -274,6 +298,136 @@ namespace RazorReaper.Services.Implementations
                     return new MovieOperationResult(false, $"Replacing {movieFileName} failed: {ex.Message}");
                 }
             }, cancellationToken);
+        }
+
+        public async Task<MovieOperationResult> ConvertAndReplaceAsync(
+            string movieFileName,
+            string userFilePath,
+            int volumePercent,
+            bool bothFormats,
+            IProgress<int>? progress,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var (moviesDir, dirError) = ResolveMoviesDir();
+                if (moviesDir is null)
+                {
+                    return new MovieOperationResult(false, dirError!);
+                }
+
+                if (!IsSafeFileName(movieFileName))
+                {
+                    return new MovieOperationResult(false, "Invalid movie file name.");
+                }
+
+                if (string.IsNullOrWhiteSpace(userFilePath) || !File.Exists(userFilePath))
+                {
+                    return new MovieOperationResult(false, "The selected video file no longer exists.");
+                }
+
+                if (!_ffmpeg.IsInstalled)
+                {
+                    return new MovieOperationResult(false, "The video converter isn't ready yet — let ffmpeg finish downloading.");
+                }
+
+                // Work out which container(s) to produce. "Both formats" targets the .mp4 and
+                // .wmv siblings of this movie that already exist (so a restore stays meaningful).
+                var baseName = Path.GetFileNameWithoutExtension(movieFileName);
+                var targets = new List<string>();
+                if (bothFormats)
+                {
+                    foreach (var ext in SupportedExtensions)
+                    {
+                        var candidate = baseName + ext;
+                        if (File.Exists(Path.Combine(moviesDir, candidate)) || File.Exists(GetBackupPath(candidate)))
+                        {
+                            targets.Add(candidate);
+                        }
+                    }
+                }
+                if (targets.Count == 0)
+                {
+                    targets.Add(movieFileName);
+                }
+
+                var tempDir = Path.Combine(Path.GetTempPath(), "RazorReaperMovieConvert", Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(tempDir);
+                try
+                {
+                    var succeeded = 0;
+                    for (var i = 0; i < targets.Count; i++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var target = targets[i];
+                        var targetExt = Path.GetExtension(target).ToLowerInvariant();
+                        var tempOut = Path.Combine(tempDir, target);
+
+                        // Split the 0..100 bar evenly across each target being produced.
+                        var slice = i;
+                        var stepProgress = progress is null ? null : new Progress<int>(p =>
+                            progress.Report((int)((slice + p / 100.0) / targets.Count * 100)));
+
+                        var convert = await _converter.ConvertAsync(userFilePath, tempOut, volumePercent, stepProgress, cancellationToken);
+                        if (!convert.Success || convert.OutputPath is null)
+                        {
+                            return new MovieOperationResult(false, $"{target}: {convert.Message}");
+                        }
+
+                        var apply = ApplyReplacementCore(moviesDir, target, convert.OutputPath);
+                        if (!apply.Success)
+                        {
+                            return apply;
+                        }
+                        succeeded++;
+                    }
+
+                    progress?.Report(100);
+                    var what = succeeded == 1 ? targets[0] : $"{succeeded} formats of {baseName}";
+                    return new MovieOperationResult(true, $"{what} converted and replaced — plays on the next game start.");
+                }
+                finally
+                {
+                    try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true); }
+                    catch (Exception ex) { _logger.LogDebug(ex, "Could not delete temp convert dir {Dir}", tempDir); }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to convert+replace movie {FileName}", movieFileName);
+                return new MovieOperationResult(false, $"Converting {movieFileName} failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>Backup-once then overwrite the game file. Caller has validated inputs.</summary>
+        private MovieOperationResult ApplyReplacementCore(string moviesDir, string movieFileName, string sourcePath)
+        {
+            var targetPath = Path.Combine(moviesDir, movieFileName);
+            var backupPath = GetBackupPath(movieFileName);
+            var hasBackup = File.Exists(backupPath);
+
+            if (!hasBackup && !File.Exists(targetPath))
+            {
+                return new MovieOperationResult(false, $"{movieFileName} was not found in the Movies folder, so there is no original to replace.");
+            }
+
+            // Back up the pristine original exactly once. Replacing again later keeps
+            // the first backup, so the untouched file is never overwritten by a custom one.
+            if (!hasBackup)
+            {
+                Directory.CreateDirectory(_backupRoot);
+                File.Copy(targetPath, backupPath, overwrite: false);
+                _logger.LogInformation("Backed up original movie {FileName} to {BackupPath}", movieFileName, backupPath);
+            }
+
+            File.Copy(sourcePath, targetPath, overwrite: true);
+            _logger.LogInformation("Replaced movie {FileName} from {SourcePath}", movieFileName, sourcePath);
+
+            return new MovieOperationResult(true, $"{movieFileName} replaced — your video plays on the next game start.");
         }
 
         public Task<MovieOperationResult> RestoreAsync(string movieFileName, CancellationToken cancellationToken = default)

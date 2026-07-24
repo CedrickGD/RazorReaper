@@ -103,8 +103,19 @@
                                 @onclick="() => SetMode(AutoAntidoteTriggerMode.IconAppears)">Icon appears</button>
                         <button class="aa-seg-btn @(Antidote.Settings.Mode == AutoAntidoteTriggerMode.IconDisappears ? "active" : "")"
                                 @onclick="() => SetMode(AutoAntidoteTriggerMode.IconDisappears)">Icon disappears</button>
+                        <button class="aa-seg-btn @(Antidote.Settings.Mode == AutoAntidoteTriggerMode.TimerBelow ? "active" : "")"
+                                @onclick="() => SetMode(AutoAntidoteTriggerMode.TimerBelow)">Timer below</button>
                     </div>
                 </SettingRow>
+
+                @if (Antidote.Settings.Mode == AutoAntidoteTriggerMode.TimerBelow)
+                {
+                    <SettingRow Title="Timer threshold" Description="Fires when the buff seconds read from the region drop to/below this. Calibrate the region over the buff timer text.">
+                        <input class="aa-num" type="number" min="1" max="600"
+                               value="@Antidote.Settings.TimerThresholdSeconds"
+                               @onchange="SetTimerThreshold" />
+                    </SettingRow>
+                }
 
                 <SettingRow Title="Scan interval" Description="How often the region is checked.">
                     <input type="number" class="aa-num" min="250" max="10000" step="50"
@@ -234,6 +245,15 @@
         if (Antidote.Settings.Mode == mode) return;
         Antidote.Settings.Mode = mode;
         Antidote.SaveSettings();
+    }
+
+    private void SetTimerThreshold(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var seconds))
+        {
+            Antidote.Settings.TimerThresholdSeconds = seconds;
+            Antidote.SaveSettings();
+        }
     }
 
     private void OnBurstKeyChanged(string value)

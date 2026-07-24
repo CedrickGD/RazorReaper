@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Models;
+using RazorReaper.Services.Automation;
 
 namespace RazorReaper.Services.Overlay;
 
@@ -53,6 +54,9 @@ public interface IHudOverlayService : IDisposable
 
     /// <summary>Restart the SessionTimer module from now (defaults to app process start).</summary>
     void ResetSessionTimer();
+
+    /// <summary>Anchor the SessionTimer to a known moment (e.g. the detected server-join time).</summary>
+    void SetSessionStart(DateTime startUtc);
 }
 
 public sealed class HudOverlayService : IHudOverlayService
@@ -68,6 +72,7 @@ public sealed class HudOverlayService : IHudOverlayService
 
     private readonly ILogger<HudOverlayService> _logger;
     private readonly IProcessService _process;
+    private readonly AutomationScriptBase[] _scripts;
     private readonly string _settingsPath;
 
     private volatile bool _gameRunning;
@@ -92,10 +97,14 @@ public sealed class HudOverlayService : IHudOverlayService
     public bool IsMoveMode { get { lock (_lock) return _moveMode; } }
     public HudSettings Settings { get { lock (_lock) return _settings.Clone(); } }
 
-    public HudOverlayService(ILogger<HudOverlayService> logger, IProcessService process)
+    public HudOverlayService(
+        ILogger<HudOverlayService> logger,
+        IProcessService process,
+        IEnumerable<AutomationScriptBase> scripts)
     {
         _logger = logger;
         _process = process;
+        _scripts = scripts.ToArray();
         _settingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RazorReaper", "hud-overlay.json");
@@ -111,6 +120,10 @@ public sealed class HudOverlayService : IHudOverlayService
             _sessionStartUtc = DateTime.UtcNow;
         }
 
+        // Repaint promptly when a script starts/stops so the ActiveScripts module stays live.
+        // (Also instantiates every script at boot, which registers their global hotkeys.)
+        foreach (var script in _scripts) script.Changed += OnScriptChanged;
+
         // Restore last session's on/off state so the HUD comes back after an app restart.
         if (_settings.Enabled)
         {
@@ -118,6 +131,8 @@ public sealed class HudOverlayService : IHudOverlayService
             catch (Exception ex) { _logger.LogWarning(ex, "HUD overlay auto-start failed"); }
         }
     }
+
+    private void OnScriptChanged() => TickNow();
 
     // ─── Lifecycle ─────────────────────────────────────────────────────────────────────────
 
@@ -269,6 +284,13 @@ public sealed class HudOverlayService : IHudOverlayService
         TickNow();
     }
 
+    public void SetSessionStart(DateTime startUtc)
+    {
+        if (startUtc > DateTime.UtcNow) startUtc = DateTime.UtcNow;
+        lock (_lock) _sessionStartUtc = startUtc;
+        TickNow();
+    }
+
     // ─── Snapshot loop ─────────────────────────────────────────────────────────────────────
 
     private void OnTick(object? state)
@@ -325,11 +347,24 @@ public sealed class HudOverlayService : IHudOverlayService
         if (string.IsNullOrWhiteSpace(server.Name) && _gameRunning)
             server = new HudServerInfo("Single Player", null, null, null);
 
+        // Script state lives in each script (volatile), not under our lock — cheap to read.
+        IReadOnlyList<string> activeScripts = Array.Empty<string>();
+        if (_scripts.Length > 0)
+        {
+            List<string>? running = null;
+            foreach (var script in _scripts)
+            {
+                if (script.IsRunning) (running ??= new List<string>()).Add(script.DisplayName);
+            }
+            if (running != null) activeScripts = running;
+        }
+
         return new HudSnapshot(
             TimeText: DateTime.Now.ToString("HH:mm:ss"),
             SessionText: sessionText,
             Server: server,
             ActiveTool: _activeTool,
+            ActiveScripts: activeScripts,
             Alerts: visibleAlerts,
             Modules: _settings.Modules.ToList(),
             Compact: _settings.Compact,
@@ -456,6 +491,7 @@ public sealed class HudOverlayService : IHudOverlayService
             _saveCts = null;
         }
 
+        foreach (var script in _scripts) script.Changed -= OnScriptChanged;
         timer?.Dispose();
         SaveNow(); // flush any pending debounced write so the last edits aren't lost on exit
         window?.Dispose();

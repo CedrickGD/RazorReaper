@@ -1,0 +1,43 @@
+@using RazorReaper.Services
+@using RazorReaper.Services.Elevation
+@inject IElevationService Elevation
+@inject INotificationService Notifications
+@inject NavigationManager Navigation
+
+@if (!Elevation.IsElevated)
+{
+    <div class="elevation-prompt">
+        <svg class="elevation-prompt-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 2.5 4 5v4.2c0 3.4 2.4 6 6 7.3 3.6-1.3 6-3.9 6-7.3V5l-6-2.5Z" />
+            <path d="M10 8v3.2" />
+            <path d="M10 6.2h.01" />
+        </svg>
+        <div class="elevation-prompt-text">@Message</div>
+        <button class="btn btn-primary" @onclick="Relaunch" disabled="@_busy">
+            @(_busy ? "Restarting…" : "Restart as Administrator")
+        </button>
+    </div>
+}
+
+@code {
+    /// <summary>Why this feature needs administrator rights (shown next to the button).</summary>
+    [Parameter] public string Message { get; set; } = "This feature needs administrator rights.";
+
+    private bool _busy;
+
+    private void Relaunch()
+    {
+        if (_busy) return;
+        _busy = true;
+
+        // Come back to whatever page we're on now after the elevated relaunch.
+        var currentRoute = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        // On success the process exits and this never returns; only failure/cancel comes back.
+        if (!Elevation.RelaunchAsAdministrator(currentRoute, out var error))
+        {
+            _busy = false;
+            Notifications.ShowWarning(error ?? "Could not restart with administrator rights.");
+        }
+    }
+}

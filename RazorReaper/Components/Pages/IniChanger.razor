@@ -831,6 +831,7 @@
                     return;
                 }
 
+                BackupLiveIni(iniPath);
                 currentIniContent = "";
                 File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
 
@@ -859,6 +860,38 @@
         PresetService.SetLastAppliedPresetName(preset.Name);
         ActivityService.AddActivity($"Preset selected: {preset.Name}", "info");
         Logger.LogInformation("Preset selected: {PresetName}", preset.Name);
+    }
+
+    // Safety net: snapshot the live INI before we overwrite or clear it, so a bad preset is always
+    // recoverable. Keeps the newest 20 snapshots under %LOCALAPPDATA%\RazorReaper\IniBackups
+    // (same convention the INI Builder uses for GameUserSettings/Game.ini).
+    private void BackupLiveIni(string iniPath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(iniPath) || !File.Exists(iniPath)) return;
+
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RazorReaper", "IniBackups");
+            Directory.CreateDirectory(dir);
+
+            var name = Path.GetFileNameWithoutExtension(iniPath);
+            var dest = Path.Combine(dir, $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}.ini");
+            File.Copy(iniPath, dest, overwrite: true);
+
+            foreach (var stale in new DirectoryInfo(dir)
+                         .GetFiles($"{name}_*.ini")
+                         .OrderByDescending(f => f.LastWriteTimeUtc)
+                         .Skip(20))
+            {
+                try { stale.Delete(); } catch { /* pruning is best-effort */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "BaseDeviceProfiles backup failed");
+        }
     }
 
     private async Task SaveChanges()
@@ -891,6 +924,7 @@
                     Directory.CreateDirectory(directory);
                 }
 
+                BackupLiveIni(iniPath);
                 File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
                 InvokeAsync(() =>
                 {

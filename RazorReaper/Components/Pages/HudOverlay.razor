@@ -212,9 +212,10 @@
     private static string ModuleDescription(HudModuleKind id) => id switch
     {
         HudModuleKind.Clock => "Current time of day.",
-        HudModuleKind.SessionTimer => "Time elapsed since RazorReaper launched.",
-        HudModuleKind.ServerInfo => "Server name, players and ping from the Server page.",
+        HudModuleKind.SessionTimer => "Time on the current server, or since RazorReaper launched.",
+        HudModuleKind.ServerInfo => "Auto-detected server: name, players and live ping.",
         HudModuleKind.ToolStatus => "Shows which RazorReaper tool is currently active.",
+        HudModuleKind.ActiveScripts => "Automation scripts that are currently running.",
         HudModuleKind.Notifier => "On-screen stack of tool alerts.",
         _ => ""
     };

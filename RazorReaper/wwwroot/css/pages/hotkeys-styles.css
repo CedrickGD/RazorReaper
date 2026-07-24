@@ -1,0 +1,65 @@
+/* Global Hotkeys overview — one row per script: status dot, name, bound key, on/off toggle. */
+
+.hk-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.hk-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+    .hk-row:last-child {
+        border-bottom: 0;
+    }
+
+.hk-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+    .hk-dot.on {
+        background: var(--accent-green);
+        box-shadow: 0 0 8px rgba(var(--accent-green-rgb), 0.7);
+    }
+
+.hk-name {
+    font-size: 0.95rem;
+}
+
+.hk-key {
+    justify-self: end;
+}
+
+.hk-combo {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-chip);
+    padding: 0.25rem 0.6rem;
+    color: var(--accent-purple-light);
+}
+
+.hk-unset {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.hk-note {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+    .hk-note a {
+        color: var(--accent-purple-light);
+    }

@@ -10,6 +10,9 @@
 @inject IUpdateService UpdateService
 @inject IDiscordPresenceService DiscordPresence
 @inject IHudOverlayService HudOverlay
+@* Resolved here so server auto-detection for the HUD runs without any page being open. *@
+@inject ISessionHudService SessionHud
+@inject RazorReaper.Services.Elevation.IElevationService Elevation
 @inject ILicenseService LicenseService
 @inject IAccessGateService AccessGate
 
@@ -45,6 +48,14 @@
         }
 
         var result = await LicenseService.ValidateLicenseAsync();
+
+        // If we were just relaunched elevated, jump straight back to the page the user was on
+        // instead of landing on Home.
+        var returnRoute = Elevation.ConsumePendingReturnRoute();
+        if (!string.IsNullOrWhiteSpace(returnRoute))
+        {
+            Navigation.NavigateTo(returnRoute);
+        }
 
         // Re-render the layout whenever the access gate flips so the full-screen block
         // appears/disappears live (a mid-session suspend, or an admin lift, both land here).

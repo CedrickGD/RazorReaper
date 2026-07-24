@@ -14,7 +14,12 @@ public enum AutoAntidoteTriggerMode
     /// <summary>Fire when the calibrated icon appears (e.g. a debuff icon showing up).</summary>
     IconAppears,
     /// <summary>Fire when the calibrated icon disappears (e.g. a buff icon expiring).</summary>
-    IconDisappears
+    IconDisappears,
+    /// <summary>
+    /// Read the remaining seconds out of the calibrated region with OCR and fire once the timer
+    /// drops to/below the threshold — precise refreshing instead of inferring from the icon.
+    /// </summary>
+    TimerBelow
 }
 
 /// <summary>Lifecycle state of the Auto Antidote watcher.</summary>
@@ -47,6 +52,8 @@ public sealed class AutoAntidoteSettings
     public int CooldownSeconds { get; set; } = 5;
     /// <summary>System-wide start/stop hotkey, e.g. "Alt + A".</summary>
     public string ToggleHotkey { get; set; } = "Alt + A";
+    /// <summary>Seconds remaining at/below which <see cref="AutoAntidoteTriggerMode.TimerBelow"/> fires.</summary>
+    public int TimerThresholdSeconds { get; set; } = 10;
 }
 
 /// <summary>
@@ -110,6 +117,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
     private const int MaxCooldownSeconds = 600;
 
     private readonly IScreenSampler _sampler;
+    private readonly IScreenOcr _ocr;
     private readonly ICalibrationService _calibration;
     private readonly IMacroEngine _macros;
     private readonly IAutomationHotkeyService _hotkeys;
@@ -125,6 +133,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
     private volatile AutoAntidoteState _state = AutoAntidoteState.Off;
     private ScreenCapture? _reference;
     private double? _lastMatchPercent;
+    private double? _lastTimerSeconds;
     private int _triggerCount;
     private DateTime? _lastTriggerAt;
     private int _hotkeyId;
@@ -137,6 +146,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
 
     public AutoAntidoteService(
         IScreenSampler sampler,
+        IScreenOcr ocr,
         ICalibrationService calibration,
         IMacroEngine macros,
         IAutomationHotkeyService hotkeys,
@@ -147,6 +157,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         ILogger<AutoAntidoteService> logger)
     {
         _sampler = sampler;
+        _ocr = ocr;
         _calibration = calibration;
         _macros = macros;
         _hotkeys = hotkeys;
@@ -344,6 +355,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
             Settings.BurstDelayMs = Preferences.Get("antidote.burstdelay", 250);
             Settings.CooldownSeconds = Preferences.Get("antidote.cooldown", 5);
             Settings.ToggleHotkey = Preferences.Get("antidote.hotkey", DefaultToggleHotkey);
+            Settings.TimerThresholdSeconds = Preferences.Get("antidote.timerthreshold", 10);
         }
         catch (Exception ex)
         {
@@ -372,6 +384,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
             Preferences.Set("antidote.burstdelay", Settings.BurstDelayMs);
             Preferences.Set("antidote.cooldown", Settings.CooldownSeconds);
             Preferences.Set("antidote.hotkey", Settings.ToggleHotkey);
+            Preferences.Set("antidote.timerthreshold", Settings.TimerThresholdSeconds);
         }
         catch (Exception ex)
         {
@@ -396,6 +409,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         Settings.BurstPresses = Math.Clamp(Settings.BurstPresses, 1, MaxBurstPresses);
         Settings.BurstDelayMs = Math.Clamp(Settings.BurstDelayMs, 0, MaxBurstDelayMs);
         Settings.CooldownSeconds = Math.Clamp(Settings.CooldownSeconds, 0, MaxCooldownSeconds);
+        Settings.TimerThresholdSeconds = Math.Clamp(Settings.TimerThresholdSeconds, 1, 600);
         if (string.IsNullOrWhiteSpace(Settings.BurstKey)) Settings.BurstKey = "5";
         if (string.IsNullOrWhiteSpace(Settings.ToggleHotkey)) Settings.ToggleHotkey = DefaultToggleHotkey;
     }
@@ -454,6 +468,31 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
                     _notifications.ShowWarning("Auto Antidote stopped — no calibrated region for the current resolution.");
                     TryActivity("Auto Antidote stopped (region missing)", "warning");
                     return;
+                }
+
+                // OCR mode: read the remaining seconds straight off the HUD and refresh just before
+                // it runs out — more precise than inferring from the icon appearing/disappearing.
+                if (Settings.Mode == AutoAntidoteTriggerMode.TimerBelow)
+                {
+                    if (IsGameForeground())
+                    {
+                        var seconds = await _ocr.ReadSecondsAsync(region);
+                        _lastTimerSeconds = seconds;
+                        if (seconds is double s && s <= Math.Clamp(Settings.TimerThresholdSeconds, 1, 600))
+                        {
+                            await HandleTriggerAsync(ct);
+                            RaiseChanged();
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        _lastTimerSeconds = null;
+                    }
+
+                    RaiseChanged();
+                    await Task.Delay(Math.Clamp(Settings.ScanIntervalMs, MinScanIntervalMs, MaxScanIntervalMs), ct);
+                    continue;
                 }
 
                 var reference = _reference;
