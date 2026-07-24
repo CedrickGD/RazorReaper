@@ -1,0 +1,75 @@
+/* Scripts hub — master-detail: compact script list on the left, selected script's
+   config on the right. Uses the shared theme tokens/components (no new design). */
+
+.scripts-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.scripts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-card);
+    padding: 0.5rem;
+}
+
+.script-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: var(--radius-control);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.9rem;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+    .script-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .script-item.active {
+        background: rgba(var(--accent-purple-rgb), 0.12);
+        border-color: rgba(var(--accent-purple-rgb), 0.3);
+    }
+
+.script-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+    .script-dot.on {
+        background: var(--accent-green);
+        box-shadow: 0 0 8px rgba(var(--accent-green-rgb), 0.7);
+    }
+
+.script-item-name {
+    flex: 1;
+}
+
+.scripts-detail .content-card {
+    margin-bottom: 0;
+}
+
+.script-input {
+    width: 130px !important;
+    text-align: right;
+}
+
+@media (max-width: 820px) {
+    .scripts-layout {
+        grid-template-columns: 1fr;
+    }
+}

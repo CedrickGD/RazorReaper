@@ -1,0 +1,56 @@
+@page "/hotkeys"
+@using RazorReaper.Services.Automation
+@inject IEnumerable<AutomationScriptBase> AllScripts
+@implements IDisposable
+
+<div class="page-header">
+    <h1 class="page-title">Global Hotkeys</h1>
+    <p class="page-subtitle">Every automation script's start/stop hotkey at a glance — toggle any of them on or off right here.</p>
+</div>
+
+<div class="content-card">
+    <div class="hk-list">
+        @foreach (var script in _scripts)
+        {
+            <div class="hk-row">
+                <span class="hk-dot @(script.IsRunning ? "on" : "")"></span>
+                <span class="hk-name">@script.DisplayName</span>
+                <span class="hk-key">
+                    @if (string.IsNullOrWhiteSpace(script.StartStopHotkey))
+                    {
+                        <span class="hk-unset">no hotkey</span>
+                    }
+                    else
+                    {
+                        <kbd class="hk-combo">@script.StartStopHotkey</kbd>
+                    }
+                </span>
+                <Switch Value="script.IsRunning" ValueChanged="@(v => Toggle(script, v))" />
+            </div>
+        }
+    </div>
+    <p class="hk-note">Bind a script's hotkey on the <a href="/scripts">Scripts</a> page. Hotkeys work system-wide, even while ARK is focused.</p>
+</div>
+
+@code {
+    private List<AutomationScriptBase> _scripts = new();
+
+    protected override void OnInitialized()
+    {
+        _scripts = AllScripts.ToList();
+        foreach (var s in _scripts) s.Changed += OnChanged;
+    }
+
+    private void Toggle(AutomationScriptBase script, bool on)
+    {
+        if (on) script.Start();
+        else script.Stop();
+    }
+
+    private async void OnChanged() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        foreach (var s in _scripts) s.Changed -= OnChanged;
+    }
+}

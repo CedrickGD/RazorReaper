@@ -1,0 +1,510 @@
+@page "/scripts"
+@using RazorReaper.Services.Automation
+@using RazorReaper.Services.Automation.Scripts
+@inject IEnumerable<AutomationScriptBase> AllScripts
+@implements IDisposable
+
+<div class="page-header">
+    <h1 class="page-title">Scripts</h1>
+    <p class="page-subtitle">ARK automation scripts — start, stop, and configure. External input only, BattlEye-safe.</p>
+</div>
+
+<div class="scripts-layout">
+    <aside class="scripts-list">
+        @foreach (var script in _scripts)
+        {
+            <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
+                <span class="script-dot @(script.IsRunning ? "on" : "")"></span>
+                <span class="script-item-name">@script.DisplayName</span>
+            </button>
+        }
+    </aside>
+
+    <section class="scripts-detail">
+        @if (_selected is not null)
+        {
+            <div class="content-card">
+                <StatusHeader State="@(_selected.IsRunning ? "online" : "off")"
+                              Label="@_selected.DisplayName"
+                              Description="@Describe(_selected)">
+                    <Actions>
+                        @if (_selected.IsRunning)
+                        {
+                            <button class="btn btn-danger" @onclick="() => _selected.Stop()">Stop</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary" @onclick="() => _selected.Start()">Start</button>
+                        }
+                    </Actions>
+                </StatusHeader>
+
+                @if (_selected is YutyScript yuty)
+                {
+                    <SettingRow Title="Roar key" Description="Key pressed each interval (ARK default: C).">
+                        <input class="script-input" value="@yuty.RoarKey" @onchange="SetYutyKey" />
+                    </SettingRow>
+                    <SettingRow Title="Interval" Description="Milliseconds between roars.">
+                        <input class="script-input" type="number" min="200" max="60000" value="@yuty.IntervalMs" @onchange="SetYutyInterval" />
+                    </SettingRow>
+                }
+                else if (_selected is AutoWalkScript walk)
+                {
+                    <SettingRow Title="Forward key" Description="Key held while running (ARK default: W).">
+                        <input class="script-input" value="@walk.ForwardKey" @onchange="SetWalkKey" />
+                    </SettingRow>
+                }
+                else if (_selected is MammothScript mammoth)
+                {
+                    <SettingRow Title="Interval" Description="Milliseconds between drum cycles (left + right click).">
+                        <input class="script-input" type="number" min="100" max="10000" value="@mammoth.IntervalMs" @onchange="SetMammothInterval" />
+                    </SettingRow>
+                }
+                else if (_selected is AutoDownloadScript download)
+                {
+                    <SettingRow Title="Chat command" Description="Sent each cycle (opens chat, types, sends).">
+                        <input class="script-input" value="@download.Command" @onchange="SetDownloadCommand" />
+                    </SettingRow>
+                    <SettingRow Title="Delay" Description="Milliseconds between sends.">
+                        <input class="script-input" type="number" min="500" max="120000" value="@download.DelayMs" @onchange="SetDownloadDelay" />
+                    </SettingRow>
+                }
+                else if (_selected is FastTpScript fasttp)
+                {
+                    <SettingRow Title="Destination" Description="Name typed into the teleport search field.">
+                        <input class="script-input" value="@fasttp.Destination" @onchange="SetTpDestination" />
+                    </SettingRow>
+                    <SettingRow Title="Confirm with Enter" Description="Press Enter after typing to pick the first match.">
+                        <Switch Value="fasttp.ConfirmWithEnter" ValueChanged="SetTpConfirm" />
+                    </SettingRow>
+                }
+                else if (_selected is TakeAllScript takeall)
+                {
+                    <SettingRow Title="Click interval" Description="Milliseconds between scan + click attempts.">
+                        <input class="script-input" type="number" min="20" max="2000" value="@takeall.ClickIntervalMs" @onchange="SetTakeAllInterval" />
+                    </SettingRow>
+                    <SettingRow Title="Match threshold" Description="Similarity % at which the button counts as visible.">
+                        <input class="script-input" type="number" min="50" max="100" value="@takeall.MatchThresholdPercent" @onchange="SetTakeAllThreshold" />
+                    </SettingRow>
+                }
+                else if (_selected is TekSaddleScript tek)
+                {
+                    <SettingRow Title="Match threshold" Description="Similarity % at which the buff counts as active.">
+                        <input class="script-input" type="number" min="50" max="100" value="@tek.MatchThresholdPercent" @onchange="SetTekThreshold" />
+                    </SettingRow>
+                    <SettingRow Title="Click delay" Description="Milliseconds between spammed clicks (20 ≈ 50/s).">
+                        <input class="script-input" type="number" min="5" max="500" value="@tek.ClickDelayMs" @onchange="SetTekDelay" />
+                    </SettingRow>
+                }
+                else if (_selected is NoglinScript noglin)
+                {
+                    <SettingRow Title="Match threshold" Description="Similarity % at which the mind-control icon counts as visible.">
+                        <input class="script-input" type="number" min="50" max="100" value="@noglin.MatchThresholdPercent" @onchange="SetNoglinThreshold" />
+                    </SettingRow>
+                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                        <input class="script-input" type="number" min="100" max="5000" value="@noglin.ScanIntervalMs" @onchange="SetNoglinScan" />
+                    </SettingRow>
+                    <SettingRow Title="Restore after" Description="Clean scans before FPS is restored.">
+                        <input class="script-input" type="number" min="1" max="20" value="@noglin.RestoreAfterCleanScans" @onchange="SetNoglinCleanScans" />
+                    </SettingRow>
+                }
+                else if (_selected is InvSizeScript invsize)
+                {
+                    <SettingRow Title="Pulse interval" Description="Milliseconds between Shift+right-click pulses.">
+                        <input class="script-input" type="number" min="20" max="2000" value="@invsize.IntervalMs" @onchange="SetInvSizeInterval" />
+                    </SettingRow>
+                }
+                else if (_selected is AntiAfkScript antiafk)
+                {
+                    <SettingRow Title="Inventory key" Description="Key toggled to reset the idle timer (default: I).">
+                        <input class="script-input" value="@antiafk.InventoryKey" @onchange="SetAntiAfkKey" />
+                    </SettingRow>
+                    <SettingRow Title="Interval (seconds)" Description="Seconds between pulses.">
+                        <input class="script-input" type="number" min="30" max="3600" value="@antiafk.IntervalSeconds" @onchange="SetAntiAfkInterval" />
+                    </SettingRow>
+                }
+                else if (_selected is ExoSuitScript exo)
+                {
+                    <SettingRow Title="Access key" Description="Opens your inventory (default: I).">
+                        <input class="script-input" value="@exo.AccessKey" @onchange="SetExoAccess" />
+                    </SettingRow>
+                    <SettingRow Title="Search filter" Description="Typed into the inventory search (default: exo).">
+                        <input class="script-input" value="@exo.SearchTerm" @onchange="SetExoSearch" />
+                    </SettingRow>
+                    <SettingRow Title="Transfer key" Description="Pressed to move the filtered items (default: T).">
+                        <input class="script-input" value="@exo.TransferKey" @onchange="SetExoTransfer" />
+                    </SettingRow>
+                    <SettingRow Title="Transfer presses" Description="Presses per cycle.">
+                        <input class="script-input" type="number" min="1" max="50" value="@exo.TransferPresses" @onchange="SetExoPresses" />
+                    </SettingRow>
+                    <SettingRow Title="Per-press delay" Description="Milliseconds between presses.">
+                        <input class="script-input" type="number" min="10" max="2000" value="@exo.PerPressDelayMs" @onchange="SetExoPerPress" />
+                    </SettingRow>
+                    <SettingRow Title="Repeat delay" Description="Milliseconds between cycles.">
+                        <input class="script-input" type="number" min="100" max="20000" value="@exo.RepeatDelayMs" @onchange="SetExoRepeat" />
+                    </SettingRow>
+                }
+                else if (_selected is TurretManagerScript turret)
+                {
+                    <SettingRow Title="Match threshold" Description="Similarity % at which the turret inventory counts as open.">
+                        <input class="script-input" type="number" min="50" max="100" value="@turret.MatchThresholdPercent" @onchange="SetTurretThreshold" />
+                    </SettingRow>
+                    <SettingRow Title="Transfer key" Description="Pressed to push ammo into the turret (default: T).">
+                        <input class="script-input" value="@turret.TransferKey" @onchange="SetTurretKey" />
+                    </SettingRow>
+                    <SettingRow Title="Transfer presses" Description="Presses per detection.">
+                        <input class="script-input" type="number" min="1" max="20" value="@turret.TransferPresses" @onchange="SetTurretPresses" />
+                    </SettingRow>
+                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                        <input class="script-input" type="number" min="100" max="5000" value="@turret.ScanIntervalMs" @onchange="SetTurretScan" />
+                    </SettingRow>
+                }
+                else if (_selected is FlakScript flak)
+                {
+                    <SettingRow Title="Match threshold" Description="Similarity % at which the durability warning counts as visible.">
+                        <input class="script-input" type="number" min="50" max="100" value="@flak.MatchThresholdPercent" @onchange="SetFlakThreshold" />
+                    </SettingRow>
+                    <SettingRow Title="Equip key" Description="Hotbar key bound to the replacement armor (default: 0).">
+                        <input class="script-input" value="@flak.EquipKey" @onchange="SetFlakKey" />
+                    </SettingRow>
+                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                        <input class="script-input" type="number" min="200" max="5000" value="@flak.ScanIntervalMs" @onchange="SetFlakScan" />
+                    </SettingRow>
+                }
+                else if (_selected is DinoReadyScript dino)
+                {
+                    <SettingRow Title="Presses" Description="How many times to click the calibrated + button.">
+                        <input class="script-input" type="number" min="1" max="200" value="@dino.Presses" @onchange="SetDinoPresses" />
+                    </SettingRow>
+                    <SettingRow Title="Click delay" Description="Milliseconds between clicks.">
+                        <input class="script-input" type="number" min="20" max="1000" value="@dino.ClickDelayMs" @onchange="SetDinoDelay" />
+                    </SettingRow>
+                }
+                else if (_selected is CraftingScript crafting)
+                {
+                    <SettingRow Title="Mode" Description="Watcher = you walk and open stations; Walk = the script walks the row.">
+                        <select class="script-input" value="@crafting.Mode" @onchange="SetCraftMode">
+                            <option value="Watcher">Watcher</option>
+                            <option value="Walk">Walk</option>
+                        </select>
+                    </SettingRow>
+                    <SettingRow Title="Craft key" Description="Starts a craft inside the open station (default: E).">
+                        <input class="script-input" value="@crafting.CraftKey" @onchange="SetCraftKey" />
+                    </SettingRow>
+                    <SettingRow Title="Access key" Description="Opens/closes the station (default: F).">
+                        <input class="script-input" value="@crafting.AccessKey" @onchange="SetCraftAccess" />
+                    </SettingRow>
+                    <SettingRow Title="Craft presses" Description="Craft presses per station.">
+                        <input class="script-input" type="number" min="1" max="20" value="@crafting.CraftPresses" @onchange="SetCraftPresses" />
+                    </SettingRow>
+                    <SettingRow Title="Ping compensation" Description="Extra ms added to every wait so lag can't desync the sequence.">
+                        <input class="script-input" type="number" min="0" max="3000" value="@crafting.PingCompensationMs" @onchange="SetCraftPing" />
+                    </SettingRow>
+                    @if (crafting.Mode == CraftingMode.Watcher)
+                    {
+                        <SettingRow Title="Match threshold" Description="Similarity % at which the station inventory counts as open.">
+                            <input class="script-input" type="number" min="50" max="100" value="@crafting.MatchThresholdPercent" @onchange="SetCraftThreshold" />
+                        </SettingRow>
+                        <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                            <input class="script-input" type="number" min="100" max="5000" value="@crafting.ScanIntervalMs" @onchange="SetCraftScan" />
+                        </SettingRow>
+                    }
+                    else
+                    {
+                        <SettingRow Title="Forward key" Description="Held to walk between stations (default: W).">
+                            <input class="script-input" value="@crafting.ForwardKey" @onchange="SetCraftForward" />
+                        </SettingRow>
+                        <SettingRow Title="Walk time" Description="Milliseconds held forward between stations.">
+                            <input class="script-input" type="number" min="100" max="10000" value="@crafting.WalkMs" @onchange="SetCraftWalkMs" />
+                        </SettingRow>
+                    }
+                }
+
+                <SettingRow Title="Start / Stop hotkey" Description="System-wide toggle — works even while ARK is focused.">
+                    <HotkeyField Value="@_selected.StartStopHotkey" ValueChanged="OnHotkeyChanged" />
+                </SettingRow>
+            </div>
+
+            @if (_selected is ICalibratableScript cal)
+            {
+                <div class="content-card">
+                    <h3>Calibration</h3>
+                    <SettingRow Title="Button region" Description='@(cal.HasRegion ? cal.RegionSummary : "Not set for this resolution.")'>
+                        <button class="btn btn-secondary" @onclick="CalibrateRegion" disabled="@_calibrating">Calibrate region</button>
+                    </SettingRow>
+                    <SettingRow Title="Reference snapshot" Description='@(cal.HasReference ? "Captured." : "Capture with the target visible on screen.")'>
+                        <button class="btn btn-secondary" @onclick="CaptureReferenceSnapshot" disabled="@(!cal.HasRegion || _calibrating)">Capture reference</button>
+                    </SettingRow>
+                    @if (!string.IsNullOrEmpty(_calStatus))
+                    {
+                        <div class="setting-row-desc" style="margin-top: 0.5rem;">@_calStatus</div>
+                    }
+                </div>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    private readonly List<AutomationScriptBase> _scripts = new();
+    private AutomationScriptBase? _selected;
+
+    protected override void OnInitialized()
+    {
+        _scripts.AddRange(AllScripts);
+        _selected = _scripts.FirstOrDefault();
+        foreach (var s in _scripts) s.Changed += OnScriptChanged;
+    }
+
+    private static string Describe(AutomationScriptBase script) => script switch
+    {
+        YutyScript => "Spams the Yutyrannus courage roar on an interval while mounted.",
+        AutoWalkScript => "Holds the forward key so you keep running hands-free (released when ARK loses focus).",
+        MammothScript => "Alternates left/right clicks to keep the Mammoth war drum going AFK.",
+        AstroScript => "One-shot: fires the Astrocetus downward-teleport sequence when you press Start.",
+        AutoDownloadScript => "Repeats a chat command (default /download) on an interval.",
+        FastTpScript => "With the teleport menu open, types a destination and confirms (one-shot).",
+        TakeAllScript => "Clicks the container Take-All button whenever it's visible (calibrated region).",
+        TekSaddleScript => "While the Tek Saddle buff is up and you hold left-click, spams extra clicks.",
+        NoglinScript => "Detects the Noglin mind-control icon and drops FPS to 1 until it clears.",
+        InvSizeScript => "Experimental: Shift+right-click spam to inflate inventory (needs your blueprint hotkeys; lag/loss risk).",
+        AntiAfkScript => "Opens/closes inventory on an interval to avoid the idle kick.",
+        ExoSuitScript => "Exo-Mek farming: opens inventory, filters \"exo\", spams transfer, repeats.",
+        TurretManagerScript => "When a turret inventory is open, presses transfer to refill its ammo.",
+        FlakScript => "Watches for a low-durability warning and re-equips replacement armor.",
+        DinoReadyScript => "Single-stat leveler: clicks a calibrated stat + button N times (one-shot).",
+        CraftingScript => "Crafts at Fabricator/Chem Bench/Replicator — Watcher or Walk mode, with ping compensation.",
+        _ => ""
+    };
+
+    private void SetYutyKey(ChangeEventArgs e)
+    {
+        if (_selected is YutyScript y)
+        {
+            y.RoarKey = e.Value?.ToString() ?? "C";
+            y.SaveSettings();
+        }
+    }
+
+    private void SetYutyInterval(ChangeEventArgs e)
+    {
+        if (_selected is YutyScript y && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            y.IntervalMs = v;
+            y.SaveSettings();
+        }
+    }
+
+    private void SetWalkKey(ChangeEventArgs e)
+    {
+        if (_selected is AutoWalkScript w)
+        {
+            w.ForwardKey = e.Value?.ToString() ?? "W";
+            w.SaveSettings();
+        }
+    }
+
+    private void SetMammothInterval(ChangeEventArgs e)
+    {
+        if (_selected is MammothScript m && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            m.IntervalMs = v;
+            m.SaveSettings();
+        }
+    }
+
+    private void SetDownloadCommand(ChangeEventArgs e)
+    {
+        if (_selected is AutoDownloadScript d)
+        {
+            d.Command = e.Value?.ToString() ?? "/download";
+            d.SaveSettings();
+        }
+    }
+
+    private void SetDownloadDelay(ChangeEventArgs e)
+    {
+        if (_selected is AutoDownloadScript d && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            d.DelayMs = v;
+            d.SaveSettings();
+        }
+    }
+
+    private void SetTpDestination(ChangeEventArgs e)
+    {
+        if (_selected is FastTpScript f)
+        {
+            f.Destination = e.Value?.ToString() ?? "";
+            f.SaveSettings();
+        }
+    }
+
+    private void SetTpConfirm(bool value)
+    {
+        if (_selected is FastTpScript f)
+        {
+            f.ConfirmWithEnter = value;
+            f.SaveSettings();
+        }
+    }
+
+    private void SetTakeAllInterval(ChangeEventArgs e)
+    {
+        if (_selected is TakeAllScript t && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            t.ClickIntervalMs = v;
+            t.SaveSettings();
+        }
+    }
+
+    private void SetTakeAllThreshold(ChangeEventArgs e)
+    {
+        if (_selected is TakeAllScript t && double.TryParse(e.Value?.ToString(), out var v))
+        {
+            t.MatchThresholdPercent = v;
+            t.SaveSettings();
+        }
+    }
+
+    private void SetTekThreshold(ChangeEventArgs e)
+    {
+        if (_selected is TekSaddleScript t && double.TryParse(e.Value?.ToString(), out var v))
+        {
+            t.MatchThresholdPercent = v;
+            t.SaveSettings();
+        }
+    }
+
+    private void SetTekDelay(ChangeEventArgs e)
+    {
+        if (_selected is TekSaddleScript t && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            t.ClickDelayMs = v;
+            t.SaveSettings();
+        }
+    }
+
+    private void SetNoglinThreshold(ChangeEventArgs e)
+    {
+        if (_selected is NoglinScript n && double.TryParse(e.Value?.ToString(), out var v))
+        {
+            n.MatchThresholdPercent = v;
+            n.SaveSettings();
+        }
+    }
+
+    private void SetNoglinScan(ChangeEventArgs e)
+    {
+        if (_selected is NoglinScript n && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            n.ScanIntervalMs = v;
+            n.SaveSettings();
+        }
+    }
+
+    private void SetNoglinCleanScans(ChangeEventArgs e)
+    {
+        if (_selected is NoglinScript n && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            n.RestoreAfterCleanScans = v;
+            n.SaveSettings();
+        }
+    }
+
+    private void SetInvSizeInterval(ChangeEventArgs e)
+    {
+        if (_selected is InvSizeScript i && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            i.IntervalMs = v;
+            i.SaveSettings();
+        }
+    }
+
+    private void SetAntiAfkKey(ChangeEventArgs e)
+    {
+        if (_selected is AntiAfkScript a)
+        {
+            a.InventoryKey = e.Value?.ToString() ?? "I";
+            a.SaveSettings();
+        }
+    }
+
+    private void SetAntiAfkInterval(ChangeEventArgs e)
+    {
+        if (_selected is AntiAfkScript a && int.TryParse(e.Value?.ToString(), out var v))
+        {
+            a.IntervalSeconds = v;
+            a.SaveSettings();
+        }
+    }
+
+    private void SetExoAccess(ChangeEventArgs e) { if (_selected is ExoSuitScript x) { x.AccessKey = e.Value?.ToString() ?? "I"; x.SaveSettings(); } }
+    private void SetExoSearch(ChangeEventArgs e) { if (_selected is ExoSuitScript x) { x.SearchTerm = e.Value?.ToString() ?? "exo"; x.SaveSettings(); } }
+    private void SetExoTransfer(ChangeEventArgs e) { if (_selected is ExoSuitScript x) { x.TransferKey = e.Value?.ToString() ?? "T"; x.SaveSettings(); } }
+    private void SetExoPresses(ChangeEventArgs e) { if (_selected is ExoSuitScript x && int.TryParse(e.Value?.ToString(), out var v)) { x.TransferPresses = v; x.SaveSettings(); } }
+    private void SetExoPerPress(ChangeEventArgs e) { if (_selected is ExoSuitScript x && int.TryParse(e.Value?.ToString(), out var v)) { x.PerPressDelayMs = v; x.SaveSettings(); } }
+    private void SetExoRepeat(ChangeEventArgs e) { if (_selected is ExoSuitScript x && int.TryParse(e.Value?.ToString(), out var v)) { x.RepeatDelayMs = v; x.SaveSettings(); } }
+
+    private void SetTurretThreshold(ChangeEventArgs e) { if (_selected is TurretManagerScript t && double.TryParse(e.Value?.ToString(), out var v)) { t.MatchThresholdPercent = v; t.SaveSettings(); } }
+    private void SetTurretKey(ChangeEventArgs e) { if (_selected is TurretManagerScript t) { t.TransferKey = e.Value?.ToString() ?? "T"; t.SaveSettings(); } }
+    private void SetTurretPresses(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.TransferPresses = v; t.SaveSettings(); } }
+    private void SetTurretScan(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.ScanIntervalMs = v; t.SaveSettings(); } }
+
+    private void SetFlakThreshold(ChangeEventArgs e) { if (_selected is FlakScript f && double.TryParse(e.Value?.ToString(), out var v)) { f.MatchThresholdPercent = v; f.SaveSettings(); } }
+    private void SetFlakKey(ChangeEventArgs e) { if (_selected is FlakScript f) { f.EquipKey = e.Value?.ToString() ?? "0"; f.SaveSettings(); } }
+    private void SetFlakScan(ChangeEventArgs e) { if (_selected is FlakScript f && int.TryParse(e.Value?.ToString(), out var v)) { f.ScanIntervalMs = v; f.SaveSettings(); } }
+
+    private void SetDinoPresses(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.Presses = v; d.SaveSettings(); } }
+    private void SetDinoDelay(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.ClickDelayMs = v; d.SaveSettings(); } }
+
+    private void SetCraftMode(ChangeEventArgs e) { if (_selected is CraftingScript c && Enum.TryParse<CraftingMode>(e.Value?.ToString(), out var m)) { c.Mode = m; c.SaveSettings(); } }
+    private void SetCraftKey(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.CraftKey = e.Value?.ToString() ?? "E"; c.SaveSettings(); } }
+    private void SetCraftAccess(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.AccessKey = e.Value?.ToString() ?? "F"; c.SaveSettings(); } }
+    private void SetCraftForward(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.ForwardKey = e.Value?.ToString() ?? "W"; c.SaveSettings(); } }
+    private void SetCraftPresses(ChangeEventArgs e) { if (_selected is CraftingScript c && int.TryParse(e.Value?.ToString(), out var v)) { c.CraftPresses = v; c.SaveSettings(); } }
+    private void SetCraftPing(ChangeEventArgs e) { if (_selected is CraftingScript c && int.TryParse(e.Value?.ToString(), out var v)) { c.PingCompensationMs = v; c.SaveSettings(); } }
+    private void SetCraftThreshold(ChangeEventArgs e) { if (_selected is CraftingScript c && double.TryParse(e.Value?.ToString(), out var v)) { c.MatchThresholdPercent = v; c.SaveSettings(); } }
+    private void SetCraftWalkMs(ChangeEventArgs e) { if (_selected is CraftingScript c && int.TryParse(e.Value?.ToString(), out var v)) { c.WalkMs = v; c.SaveSettings(); } }
+    private void SetCraftScan(ChangeEventArgs e) { if (_selected is CraftingScript c && int.TryParse(e.Value?.ToString(), out var v)) { c.ScanIntervalMs = v; c.SaveSettings(); } }
+
+    private bool _calibrating;
+    private string _calStatus = "";
+
+    private async Task CalibrateRegion()
+    {
+        if (_selected is not ICalibratableScript cal) return;
+        _calibrating = true;
+        var progress = new Progress<RegionCaptureProgress>(p =>
+        {
+            _calStatus = $"Hover corner {p.CornerIndex} of the button — capturing in {p.SecondsRemaining}s…";
+            InvokeAsync(StateHasChanged);
+        });
+        try { await cal.CalibrateRegionAsync(progress); }
+        finally
+        {
+            _calibrating = false;
+            _calStatus = "";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void CaptureReferenceSnapshot()
+    {
+        if (_selected is ICalibratableScript cal) cal.CaptureReference();
+    }
+
+    private void OnHotkeyChanged(string value)
+    {
+        if (_selected is null) return;
+        _selected.StartStopHotkey = value;
+        _selected.SaveHotkey();
+    }
+
+    private async void OnScriptChanged() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        foreach (var s in _scripts) s.Changed -= OnScriptChanged;
+    }
+}
