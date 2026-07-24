@@ -1,0 +1,368 @@
+@page "/file-modifier"
+@using RazorReaper.Services
+@using RazorReaper.Services.FileModifier
+@inject IFileModifierService FileMod
+@inject INotificationService Notifications
+@inject IProcessService ProcessService
+@implements IDisposable
+
+<div class="file-modifier-page">
+    <header class="page-header">
+        <h1 class="page-title">File Modifier</h1>
+        <p class="page-subtitle">Remove or replace individual ARK files, and clear redundant cooked data to reclaim disk.</p>
+    </header>
+
+    @if (_arkPath is null)
+    {
+        <div class="content-card">
+            <StatusHeader State="off" Label="ARK not found"
+                          Description="ARK wasn't found through Steam — install it, then rescan.">
+                <Actions>
+                    <button class="btn btn-secondary" @onclick="Rescan">Rescan</button>
+                </Actions>
+            </StatusHeader>
+        </div>
+    }
+    else
+    {
+        <ElevationPrompt Message="Some game folders can only be changed with administrator rights." />
+
+        @* ── SeekFree cleanup ─────────────────────────────────────────────── *@
+        <div class="content-card">
+            <StatusHeader State="@(_seekFree?.Exists == true ? "warning" : "off")"
+                          Label="@SeekFreeLabel"
+                          Description="Deletes redundant cooked map data. Frees disk and forces ARK to load loose (modified) files.">
+                <Actions>
+                    <button class="btn btn-secondary" @onclick="ScanSeekFreeAsync" disabled="@_busy">
+                        @(_scanning ? "Scanning…" : "Scan")
+                    </button>
+                    <button class="btn btn-secondary" @onclick="() => FileMod.OpenSteamVerify()" disabled="@_busy">
+                        Verify in Steam
+                    </button>
+                </Actions>
+            </StatusHeader>
+
+            <div class="fm-note">
+                This <strong>permanently deletes</strong> game files and is <strong>not</strong> backed up — to undo it,
+                use <em>Verify in Steam</em> (re-downloads the data). Only delete maps you don't play. Steam's
+                <em>Verify integrity</em> restores everything, and a game update may bring it back too.
+            </div>
+
+            @if (_seekFree is { Exists: true })
+            {
+                @if (_seekFree.Items.Count == 0)
+                {
+                    <p class="fm-empty">Nothing redundant found in SeekFreeContent.</p>
+                }
+                else
+                {
+                    <div class="fm-sfc-list">
+                        @foreach (var item in _seekFree.Items)
+                        {
+                            <label class="fm-sfc-row @(item.Id == "core" ? "advanced" : "")" @key="item.Id">
+                                <input type="checkbox" checked="@_selected.Contains(item.Id)"
+                                       @onchange="e => ToggleSelected(item.Id, e)" disabled="@_busy" />
+                                <span class="fm-sfc-main">
+                                    <span class="fm-sfc-name">@item.Label</span>
+                                    <span class="fm-sfc-cat">@item.Category</span>
+                                </span>
+                                <span class="fm-sfc-size">@FormatBytes(item.SizeBytes)</span>
+                            </label>
+                        }
+                    </div>
+
+                    <div class="fm-sfc-actions">
+                        @if (_confirmDelete)
+                        {
+                            <span class="fm-confirm-text">Delete @_selected.Count item(s), freeing @FormatBytes(SelectedBytes)? This cannot be undone here.</span>
+                            <button class="btn btn-danger" @onclick="DeleteSeekFreeAsync" disabled="@_busy">
+                                @(_deleting ? "Deleting…" : "Yes, delete")
+                            </button>
+                            <button class="btn btn-secondary" @onclick="() => _confirmDelete = false" disabled="@_busy">Cancel</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-danger" @onclick="() => _confirmDelete = true"
+                                    disabled="@(_busy || _selected.Count == 0)">
+                                Delete selected@(_selected.Count > 0 ? $" ({FormatBytes(SelectedBytes)})" : "")
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            else if (_seekFree is not null)
+            {
+                <p class="fm-empty">No SeekFreeContent folder found — nothing to clean up.</p>
+            }
+        </div>
+
+        @* ── Generic file modifier ────────────────────────────────────────── *@
+        <div class="content-card">
+            <StatusHeader State="@(_modified.Count > 0 ? "warning" : "online")"
+                          Label="@ModifiedLabel"
+                          Description="Remove or replace a single file inside the ARK install. Originals are backed up and fully restorable.">
+                <Actions>
+                    <button class="btn btn-secondary" @onclick="RemoveFileAsync" disabled="@_busy">Remove a file…</button>
+                    <button class="btn btn-secondary" @onclick="ReplaceFileAsync" disabled="@_busy">Replace a file…</button>
+                    @if (_modified.Count > 0)
+                    {
+                        <button class="btn btn-secondary" @onclick="RestoreAllAsync" disabled="@_busy">Restore all</button>
+                    }
+                </Actions>
+            </StatusHeader>
+
+            @if (_modified.Count == 0)
+            {
+                <p class="fm-empty">No files modified. Use “Remove” or “Replace” to change a game file — the original is always backed up first.</p>
+            }
+            else
+            {
+                <div class="fm-mod-list">
+                    @foreach (var entry in _modified)
+                    {
+                        <SettingRow @key="entry.Id" Title="@System.IO.Path.GetFileName(entry.RelativePath)"
+                                    Description="@ModEntryDescription(entry)">
+                            <span class="fm-badge @(entry.Action == FileModAction.Removed ? "removed" : "")">
+                                @(entry.Action == FileModAction.Removed ? "Removed" : "Replaced")
+                            </span>
+                            <button class="btn btn-secondary" @onclick="() => RestoreAsync(entry.Id)" disabled="@_busy">
+                                Restore
+                            </button>
+                        </SettingRow>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string? _arkPath;
+    private SeekFreeReport? _seekFree;
+    private IReadOnlyList<FileModEntry> _modified = Array.Empty<FileModEntry>();
+    private readonly HashSet<string> _selected = new();
+
+    private bool _busy;
+    private bool _scanning;
+    private bool _deleting;
+    private bool _confirmDelete;
+
+    protected override void OnInitialized()
+    {
+        FileMod.Changed += OnChanged;
+        Rescan();
+    }
+
+    private void Rescan()
+    {
+        _arkPath = FileMod.GetArkPath();
+        _modified = FileMod.GetModifiedFiles();
+    }
+
+    private long SelectedBytes =>
+        _seekFree?.Items.Where(i => _selected.Contains(i.Id)).Sum(i => i.SizeBytes) ?? 0;
+
+    private string SeekFreeLabel => _seekFree is { Exists: true }
+        ? $"SeekFreeContent — {FormatBytes(_seekFree.TotalBytes)}"
+        : "SeekFree cleanup";
+
+    private string ModifiedLabel => _modified.Count switch
+    {
+        0 => "No files modified",
+        1 => "1 file modified",
+        _ => $"{_modified.Count} files modified"
+    };
+
+    private void ToggleSelected(string id, ChangeEventArgs e)
+    {
+        var on = e.Value is bool b && b;
+        if (on) _selected.Add(id);
+        else _selected.Remove(id);
+        _confirmDelete = false;
+    }
+
+    private async Task ScanSeekFreeAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _scanning = true;
+        _confirmDelete = false;
+        try
+        {
+            _seekFree = await FileMod.ScanSeekFreeAsync();
+            _selected.Clear();
+        }
+        finally
+        {
+            _busy = false;
+            _scanning = false;
+        }
+    }
+
+    private async Task DeleteSeekFreeAsync()
+    {
+        if (_busy || _seekFree is null) return;
+        var items = _seekFree.Items.Where(i => _selected.Contains(i.Id)).ToList();
+        if (items.Count == 0) return;
+
+        WarnIfArkRunning();
+        _busy = true;
+        _deleting = true;
+        try
+        {
+            var result = await FileMod.DeleteSeekFreeAsync(items);
+            if (result.Success) Notifications.ShowSuccess(result.Message);
+            else Notifications.ShowWarning(result.Message);
+
+            _seekFree = await FileMod.ScanSeekFreeAsync();
+            _selected.Clear();
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError($"Cleanup failed: {ex.Message}");
+        }
+        finally
+        {
+            _busy = false;
+            _deleting = false;
+            _confirmDelete = false;
+        }
+    }
+
+    private async Task RemoveFileAsync()
+    {
+        if (_busy) return;
+        var picked = await PickFileAsync("Select the ARK file to remove");
+        if (picked is null) return;
+
+        WarnIfArkRunning();
+        _busy = true;
+        try
+        {
+            var result = await FileMod.RemoveAsync(picked);
+            Report(result);
+        }
+        finally
+        {
+            _busy = false;
+            Rescan();
+        }
+    }
+
+    private async Task ReplaceFileAsync()
+    {
+        if (_busy) return;
+        var target = await PickFileAsync("Select the ARK file to replace");
+        if (target is null) return;
+
+        var source = await PickFileAsync("Select the replacement file");
+        if (source is null) return;
+
+        WarnIfArkRunning();
+        _busy = true;
+        try
+        {
+            var result = await FileMod.ReplaceAsync(target, source);
+            Report(result);
+        }
+        finally
+        {
+            _busy = false;
+            Rescan();
+        }
+    }
+
+    private async Task RestoreAsync(string id)
+    {
+        if (_busy) return;
+        WarnIfArkRunning();
+        _busy = true;
+        try
+        {
+            var result = await FileMod.RestoreAsync(id);
+            Report(result);
+        }
+        finally
+        {
+            _busy = false;
+            Rescan();
+        }
+    }
+
+    private async Task RestoreAllAsync()
+    {
+        if (_busy) return;
+        WarnIfArkRunning();
+        _busy = true;
+        try
+        {
+            var (restored, failed) = await FileMod.RestoreAllAsync();
+            if (failed == 0 && restored > 0) Notifications.ShowSuccess($"Restored {restored} file(s).");
+            else if (failed > 0) Notifications.ShowWarning($"Restored {restored} file(s), {failed} failed.");
+            else Notifications.ShowInfo("Nothing to restore.");
+        }
+        finally
+        {
+            _busy = false;
+            Rescan();
+        }
+    }
+
+    private async Task<string?> PickFileAsync(string title)
+    {
+        try
+        {
+            var result = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = title });
+            return result?.FullPath;
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError("Could not open the file picker.");
+            System.Diagnostics.Debug.WriteLine(ex);
+            return null;
+        }
+    }
+
+    private void Report(FileModResult result)
+    {
+        if (result.Success) Notifications.ShowSuccess(result.Message);
+        else Notifications.ShowError(result.Message);
+    }
+
+    private void WarnIfArkRunning()
+    {
+        try
+        {
+            if (ProcessService.IsProcessRunning("ShooterGame"))
+                Notifications.ShowWarning("ARK is running — close the game so it doesn't lock these files.");
+        }
+        catch { /* best-effort */ }
+    }
+
+    private static string ModEntryDescription(FileModEntry entry)
+    {
+        var action = entry.Action == FileModAction.Removed ? "Removed" : "Replaced";
+        return $"{entry.RelativePath} · {action} {entry.TimestampUtc.ToLocalTime():g}";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double size = bytes;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return unit == 0 ? $"{size:0} {units[unit]}" : $"{size:0.0} {units[unit]}";
+    }
+
+    private async void OnChanged() => await InvokeAsync(() =>
+    {
+        _modified = FileMod.GetModifiedFiles();
+        StateHasChanged();
+    });
+
+    public void Dispose() => FileMod.Changed -= OnChanged;
+}
