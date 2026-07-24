@@ -1,0 +1,58 @@
+@page "/desync"
+@using RazorReaper.Services.Desync
+@inject IDesyncService DesyncService
+@implements IDisposable
+
+<div class="page-header">
+    <h1 class="page-title">Desync</h1>
+    <p class="page-subtitle">Freezes your character server-side by blocking ARK's outbound traffic. Always auto-reverts.</p>
+</div>
+
+<div class="content-card">
+    <StatusHeader State="@(DesyncService.IsActive ? "warning" : "off")"
+                  Label="@(DesyncService.IsActive ? $"Active — reverting in {DesyncService.RemainingSeconds}s" : "Inactive")"
+                  Description="Adds a temporary Windows Firewall rule blocking outbound traffic for ShooterGame.exe.">
+        <Actions>
+            @if (DesyncService.IsActive)
+            {
+                <button class="btn btn-danger" @onclick="StopAsync">Revert now</button>
+            }
+            else
+            {
+                <button class="btn btn-primary" @onclick="StartAsync" disabled="@(!DesyncService.IsAdministrator)">Activate</button>
+            }
+        </Actions>
+    </StatusHeader>
+
+    <ElevationPrompt Message="Desync needs administrator rights to add its temporary firewall rule." />
+
+
+    <SettingRow Title="Duration" Description="Seconds before it reverts automatically (max 600).">
+        <input class="script-input" type="number" min="5" max="600" value="@_seconds" @onchange="SetSeconds" />
+    </SettingRow>
+
+    <div class="dsy-note">
+        Your position freezes on the server while downloads keep working; the server usually disconnects
+        you after a while. The rule is always removed automatically — on revert, on timeout, and when
+        RazorReaper closes. Use at your own risk: this is detectable and against most servers' rules.
+    </div>
+</div>
+
+@code {
+    private int _seconds = 30;
+
+    protected override void OnInitialized() => DesyncService.Changed += OnChanged;
+
+    private async Task StartAsync() => await DesyncService.ActivateAsync(_seconds);
+
+    private async Task StopAsync() => await DesyncService.DeactivateAsync();
+
+    private void SetSeconds(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v)) _seconds = Math.Clamp(v, 5, 600);
+    }
+
+    private async void OnChanged() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose() => DesyncService.Changed -= OnChanged;
+}
