@@ -260,6 +260,7 @@ namespace RazorReaper
             services.AddSingleton<IProcessService, ProcessService>();
             services.AddSingleton<IGameConsoleService, RazorReaper.Services.Implementations.Game.GameConsoleService>();
             services.AddSingleton<IArkLauncher, ArkLauncher>();
+            services.AddSingleton<IArkLinkService, ArkLinkService>();
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
             services.AddSingleton<IGameIniService, GameIniService>();

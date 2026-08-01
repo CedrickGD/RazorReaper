@@ -20,7 +20,8 @@ namespace RazorReaper
             ITelemetryService telemetryService,
             IAutoUpdateManager autoUpdateManager,
             IDiscordPresenceService discordPresence,
-            IAccessGateService accessGate)
+            IAccessGateService accessGate,
+            IArkLinkService arkLink)
         {
             this.telemetryService = telemetryService;
             this.autoUpdateManager = autoUpdateManager;
@@ -34,6 +35,7 @@ namespace RazorReaper
             RunStartupTask("telemetry-start", () => this.telemetryService.StartAsync());
             RunStartupTask("access-gate", () => this.accessGate.StartAsync());
             RunStartupTask("discord-rpc", () => { discordPresence.Initialize(); return Task.CompletedTask; });
+            RunStartupTask("ark-link", () => { arkLink.Start(); return Task.CompletedTask; });
 
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;

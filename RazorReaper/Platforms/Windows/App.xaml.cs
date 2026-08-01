@@ -15,6 +15,14 @@ namespace RazorReaper.WinUI
         private static Mutex? _mutex;
         private AppWindow? _mainAppWindow;
         private bool _wiredCrosshairTray;
+        private EventWaitHandle? _showSignal;
+        private Action? _requestShowMainWindow;
+
+        // Named event a duplicate launch signals so the running instance shows its window.
+        // Needed because Process.MainWindowHandle is IntPtr.Zero for a HIDDEN window, so the
+        // ShowWindow/SetForegroundWindow fallback below can't reach a tray-hidden or
+        // --waitforark instance.
+        private const string ShowSignalName = "RazorReaper_ShowWindow_Event";
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -46,6 +54,7 @@ namespace RazorReaper.WinUI
                 }
                 else
                 {
+                    SignalExistingInstanceToShow();
                     BringExistingInstanceToFront();
                     Environment.Exit(0);
                     return;
@@ -98,11 +107,9 @@ namespace RazorReaper.WinUI
                 discordPresence?.SetMinimizedToTray(true);
             };
 
-            // Wire the tray callbacks.
-            var crosshair = services?.GetService<ICrosshairService>();
-            if (crosshair == null) return;
-
-            crosshair.ShowAppRequested += () =>
+            // Single shared show path: tray "Show", the ARK-link watcher, and the duplicate-
+            // launch signal all funnel through this.
+            _requestShowMainWindow = () =>
             {
                 uiDispatcher.TryEnqueue(() =>
                 {
@@ -120,6 +127,23 @@ namespace RazorReaper.WinUI
                 });
             };
 
+            StartShowSignalListener();
+
+            // ARK link: pop a tray-hidden window back up when the in-app watcher sees ARK
+            // start. (Fresh launches at login are handled by the headless --arkwatch mode in
+            // Program.cs/ArkWatch.cs — that path never reaches this class.)
+            var arkLink = services?.GetService<IArkLinkService>();
+            if (arkLink is not null)
+            {
+                arkLink.ShowAppRequested += () => _requestShowMainWindow?.Invoke();
+            }
+
+            // Wire the tray callbacks.
+            var crosshair = services?.GetService<ICrosshairService>();
+            if (crosshair == null) return;
+
+            crosshair.ShowAppRequested += () => _requestShowMainWindow?.Invoke();
+
             crosshair.QuitRequested += () =>
             {
                 // Hard exit — we want the overlay, tray icon, and everything else torn down.
@@ -129,6 +153,61 @@ namespace RazorReaper.WinUI
             };
 
             _wiredCrosshairTray = true;
+        }
+
+        private void StartShowSignalListener()
+        {
+            try
+            {
+                _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalName);
+                var listener = new Thread(() =>
+                {
+                    while (true)
+                    {
+                        try
+                        {
+                            _showSignal.WaitOne();
+                            _requestShowMainWindow?.Invoke();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            return;
+                        }
+                        catch
+                        {
+                            // Never let the listener die on a transient failure.
+                        }
+                    }
+                })
+                {
+                    IsBackground = true,
+                    Name = "rr-show-signal"
+                };
+                listener.Start();
+            }
+            catch
+            {
+                // Without the listener a duplicate launch just falls back to
+                // BringExistingInstanceToFront (visible windows only).
+            }
+        }
+
+        private static void SignalExistingInstanceToShow()
+        {
+            try
+            {
+                if (EventWaitHandle.TryOpenExisting(ShowSignalName, out var signal))
+                {
+                    using (signal)
+                    {
+                        signal.Set();
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to the window-handle path below.
+            }
         }
 
         private static void BringExistingInstanceToFront()
