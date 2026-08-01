@@ -25,6 +25,7 @@ public class LicenseService : ILicenseService
     public string? LicenseType { get; private set; }
     
     public event Action? OnLicenseStateChanged;
+    public event Action? OnLicenseActivated;
 
     public LicenseService(HttpClient httpClient, IHwidService hwidService)
     {
@@ -59,6 +60,9 @@ public class LicenseService : ILicenseService
                 ExpiresAt = result.ExpiresAt;
                 LicenseType = result.Type;
                 OnLicenseStateChanged?.Invoke();
+                // Raised after the state change so the UI has already re-rendered into its
+                // premium form by the time the celebration overlay covers it.
+                OnLicenseActivated?.Invoke();
                 _validationTimer?.Change(ValidationInterval, ValidationInterval);
                 return (true, result.Message ?? "Activated successfully.");
             }

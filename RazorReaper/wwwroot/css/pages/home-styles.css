@@ -2429,6 +2429,8 @@
 
 /* Premium License Widget Styles */
 .license-widget {
+    /* One height for the key field and both buttons in the activation row. */
+    --license-control-h: 44px;
     margin-bottom: 2rem;
     background: rgba(10, 10, 15, 0.4) !important;
     backdrop-filter: blur(16px) !important;
@@ -2463,59 +2465,123 @@
     color: var(--accent-purple);
 }
 
+/* The key field and both buttons are locked to one control height so the row lines up.
+   The buttons are the shared .btn primitives — the old bespoke .license-activate-btn
+   rendered a <button> and an <a> at two different heights. */
 .license-activation-area {
     display: flex;
-    gap: 12px;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
     align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.license-input-wrapper {
-    position: relative;
-    flex: 1;
+.license-activation-area .license-key-input {
+    flex: 1 1 260px;
+    min-width: 200px;
+    height: var(--license-control-h);
+    font-family: var(--font-mono) !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.04em;
 }
 
-.license-input-wrapper input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    border-radius: var(--radius-control);
+.license-activation-area .license-btn {
+    flex: 0 0 auto;
+    height: var(--license-control-h);
+    min-width: 140px;
+    padding: 0 var(--space-4);
+    /* The height is fixed, so a wrapped label would overflow its own button. */
+    white-space: nowrap;
+}
+
+.license-error {
+    margin-top: var(--space-3);
+    font-size: 0.82rem;
+    color: var(--accent-red);
+}
+
+/* ── Activated key panel ─────────────────────────────────────────────────── */
+
+.license-key-panel {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(var(--accent-green-rgb), 0.18);
+}
+
+.license-key-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.license-key-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+}
+
+.license-key-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+    /* Equal widths so the Show/Hide toggle never resizes next to Copy. */
+    .license-key-actions .rr-pill-btn {
+        min-width: 62px;
+    }
+
+.license-key-value {
     font-family: var(--font-mono);
-    transition: all 0.2s ease;
+    font-size: 1rem;
+    line-height: 1.45;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+    /* .content-card sets user-select: none — re-enable it so the key can be selected by hand. */
+    user-select: text;
+    -webkit-user-select: text;
 }
 
-.license-input-wrapper input:focus {
-    outline: none;
-    border-color: var(--accent-purple);
-    box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.2);
+.license-key-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.82rem;
+    color: var(--text-primary);
 }
 
-.license-activate-btn {
-    padding: 0.75rem 1.5rem;
-    background: transparent;
-    color: var(--accent-purple-light);
-    border: 1px solid var(--accent-purple);
-    border-radius: var(--radius-control);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 120px;
+.license-fact {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
 }
 
-.license-activate-btn:hover:not(:disabled) {
-    background: rgba(var(--accent-purple-rgb), 0.1);
-    border-color: var(--accent-purple-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.2);
+.license-fact-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
 }
 
-.license-activate-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+/* Too narrow to sit two 140px buttons side by side — give each control its own row
+   rather than compressing them below their labels. */
+@media (max-width: 640px) {
+    .license-activation-area .license-key-input,
+    .license-activation-area .license-btn {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
 }
 
 .premium-badge {

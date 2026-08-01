@@ -1,0 +1,455 @@
+@using RazorReaper.Services
+@inject ILicenseService LicenseService
+@implements IDisposable
+
+@* Full-window celebration that plays once, right after the user activates a key by hand.
+   It listens on ILicenseService.OnLicenseActivated (not OnLicenseStateChanged) so the
+   30-second background re-validation can never re-trigger it. Rendered from MainLayout so
+   it covers the whole app — nav included — no matter which page activation happened on.
+
+   Choreography runs ~3s (seal → check → shockwaves → copy → sheen → hint), then HOLDS
+   with a slow breathing glow until the user clicks anywhere. There is no auto-dismiss. *@
+
+@if (_visible)
+{
+    <div class="lic-celebrate @(_closing ? "is-closing" : "")" @onclick="DismissAsync">
+        <div class="lic-bloom"></div>
+
+        <div class="lic-stage">
+            <span class="lic-halo"></span>
+
+            <div class="lic-rays">
+                @for (var i = 0; i < RayCount; i++)
+                {
+                    <span class="lic-ray" style="--i:@i"><i></i></span>
+                }
+            </div>
+
+            <span class="lic-ring lic-ring-a"></span>
+            <span class="lic-ring lic-ring-b"></span>
+            <span class="lic-ring lic-ring-c"></span>
+
+            <div class="lic-seal">
+                <span class="lic-sheen"></span>
+                <svg class="lic-check" viewBox="0 0 52 52" fill="none" aria-hidden="true">
+                    <path class="lic-check-path" d="M14 27.5 L22.5 36 L38 18"
+                          stroke="currentColor" stroke-width="4.5"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="lic-copy">
+            <div class="lic-kicker">License activated</div>
+            <div class="lic-title">Premium unlocked</div>
+            <span class="lic-rule"></span>
+            <p class="lic-sub">Every RazorReaper feature is now available on this machine.</p>
+        </div>
+
+        <div class="lic-hint">Click anywhere to continue</div>
+    </div>
+}
+
+<style>
+    .lic-celebrate {
+        /* Follows the user's saved accent (applyThemeSettings() rewrites --accent-purple* at
+           runtime), so the celebration is tinted in whatever colour the app is set to. */
+        --cel-accent: var(--accent-purple);
+        --cel-accent-rgb: var(--accent-purple-rgb);
+        position: fixed;
+        inset: 0;
+        /* Below AccessBlocked (2147483000): a suspended machine must never see this on top. */
+        z-index: 2147482000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-6);
+        padding: var(--space-6);
+        cursor: pointer;
+        overflow: hidden;
+        background: radial-gradient(120% 120% at 50% 45%, rgba(0, 0, 0, 0.84), rgba(0, 0, 0, 0.95));
+        backdrop-filter: blur(18px);
+        opacity: 0;
+        animation: lic-overlay-in 420ms ease-out forwards;
+    }
+
+    @@keyframes lic-overlay-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* ── Exit: a slow, soft dissolve once the user clicks ────────────────── */
+
+    .lic-celebrate.is-closing {
+        animation: lic-overlay-out 860ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    }
+
+    @@keyframes lic-overlay-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+
+        /* The content settles inward slightly while the backdrop fades, so it reads as
+           "sinking away" rather than a hard cut. Overrides the hold-state loops. */
+        .lic-celebrate.is-closing .lic-stage,
+        .lic-celebrate.is-closing .lic-copy,
+        .lic-celebrate.is-closing .lic-hint {
+            animation: lic-content-out 700ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+    @@keyframes lic-content-out {
+        from { opacity: 1; transform: scale(1) translateY(0); }
+        to { opacity: 0; transform: scale(0.94) translateY(10px); }
+    }
+
+    /* ── Bloom ───────────────────────────────────────────────────────────── */
+
+    /* Kept tight on purpose — a wider/brighter bloom washes the whole window green
+       instead of reading as a glow behind the seal. */
+    .lic-bloom {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 520px;
+        height: 520px;
+        margin: -260px 0 0 -260px;
+        border-radius: 50%;
+        pointer-events: none;
+        background: radial-gradient(circle, rgba(var(--cel-accent-rgb), 0.26) 0%, rgba(var(--cel-accent-rgb), 0.07) 34%, transparent 60%);
+        opacity: 0;
+        transform: scale(0.5);
+        animation: lic-bloom 1900ms cubic-bezier(0.16, 1, 0.3, 1) 120ms forwards;
+    }
+
+    @@keyframes lic-bloom {
+        0% { opacity: 0; transform: scale(0.5); }
+        18% { opacity: 1; }
+        100% { opacity: 0; transform: scale(1.5); }
+    }
+
+    /* ── Seal stage ──────────────────────────────────────────────────────── */
+
+    .lic-stage {
+        position: relative;
+        width: 132px;
+        height: 132px;
+        flex-shrink: 0;
+    }
+
+    /* Slow dashed halo — the one element that keeps turning during the hold, so the
+       held frame never reads as a frozen screenshot. */
+    .lic-halo {
+        position: absolute;
+        inset: -20px;
+        border-radius: 50%;
+        border: 1px dashed rgba(var(--cel-accent-rgb), 0.30);
+        pointer-events: none;
+        opacity: 0;
+        animation: lic-halo-in 900ms ease-out 950ms forwards,
+                   lic-halo-spin 30s linear 950ms infinite;
+    }
+
+    @@keyframes lic-halo-in {
+        to { opacity: 1; }
+    }
+
+    @@keyframes lic-halo-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .lic-rays {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .lic-ray {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 0;
+        height: 0;
+        transform: rotate(calc(var(--i) * (360deg / 14)));
+    }
+
+        /* .lic-ray is a zero-size box pinned to the stage centre, so `bottom` here is the
+           distance the spark starts out from that centre — 76px clears the 66px seal radius. */
+        .lic-ray > i {
+            position: absolute;
+            left: -1.5px;
+            bottom: 76px;
+            width: 3px;
+            height: 26px;
+            border-radius: var(--radius-round);
+            transform-origin: 50% 100%;
+            background: linear-gradient(to top, rgba(var(--cel-accent-rgb), 0.9), rgba(var(--cel-accent-rgb), 0));
+            opacity: 0;
+            animation: lic-ray-out 1100ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: calc(340ms + var(--i) * 16ms);
+        }
+
+        .lic-ray:nth-child(2n) > i {
+            height: 16px;
+        }
+
+    @@keyframes lic-ray-out {
+        0% { opacity: 0; transform: translateY(0) scaleY(0.25); }
+        20% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(-46px) scaleY(1); }
+    }
+
+    /* Three shockwaves, staggered so the burst keeps unfolding rather than firing once. */
+    .lic-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid rgba(var(--cel-accent-rgb), 0.55);
+        pointer-events: none;
+        opacity: 0;
+        transform: scale(0.45);
+        animation: lic-ring-out 1700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .lic-ring-a {
+        animation-delay: 280ms;
+    }
+
+    .lic-ring-b {
+        animation-delay: 520ms;
+        border-color: rgba(var(--cel-accent-rgb), 0.35);
+    }
+
+    .lic-ring-c {
+        animation-delay: 800ms;
+        border-color: rgba(var(--cel-accent-rgb), 0.22);
+    }
+
+    @@keyframes lic-ring-out {
+        0% { opacity: 0; transform: scale(0.45); }
+        16% { opacity: 0.85; }
+        100% { opacity: 0; transform: scale(2.35); }
+    }
+
+    .lic-seal {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        overflow: hidden;
+        color: var(--cel-accent);
+        background: rgba(var(--cel-accent-rgb), 0.12);
+        border: 1px solid rgba(var(--cel-accent-rgb), 0.45);
+        box-shadow: 0 0 34px rgba(var(--cel-accent-rgb), 0.26), inset 0 0 24px rgba(var(--cel-accent-rgb), 0.12);
+        opacity: 0;
+        transform: scale(0.3);
+        /* Overshoot easing — the seal lands with a spring instead of a linear grow, then
+           hands off to a slow breathing glow that runs for the whole hold. */
+        animation: lic-seal-in 780ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms forwards,
+                   lic-seal-breathe 4s ease-in-out 1800ms infinite;
+    }
+
+    @@keyframes lic-seal-in {
+        0% { opacity: 0; transform: scale(0.3); }
+        55% { opacity: 1; }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    @@keyframes lic-seal-breathe {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 0 34px rgba(var(--cel-accent-rgb), 0.26), inset 0 0 24px rgba(var(--cel-accent-rgb), 0.12);
+        }
+        50% {
+            transform: scale(1.035);
+            box-shadow: 0 0 56px rgba(var(--cel-accent-rgb), 0.42), inset 0 0 30px rgba(var(--cel-accent-rgb), 0.20);
+        }
+    }
+
+    /* One slow sweep of light around the seal, after the check has drawn. */
+    .lic-sheen {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        background: conic-gradient(from 0deg, transparent 0deg, transparent 210deg, rgba(255, 255, 255, 0.16) 300deg, rgba(var(--cel-accent-rgb), 0.40) 342deg, transparent 360deg);
+        opacity: 0;
+        animation: lic-sheen 1800ms cubic-bezier(0.4, 0, 0.2, 1) 1150ms forwards;
+    }
+
+    @@keyframes lic-sheen {
+        0% { opacity: 0; transform: rotate(-40deg); }
+        22% { opacity: 1; }
+        100% { opacity: 0; transform: rotate(320deg); }
+    }
+
+    .lic-check {
+        position: relative;
+        width: 62px;
+        height: 62px;
+    }
+
+    .lic-check-path {
+        stroke-dasharray: 40;
+        stroke-dashoffset: 40;
+        animation: lic-check-draw 620ms cubic-bezier(0.65, 0, 0.35, 1) 520ms forwards;
+    }
+
+    @@keyframes lic-check-draw {
+        to { stroke-dashoffset: 0; }
+    }
+
+    /* ── Copy — each line lands on its own beat ──────────────────────────── */
+
+    .lic-copy {
+        position: relative;
+        text-align: center;
+        max-width: 440px;
+    }
+
+    .lic-kicker,
+    .lic-title,
+    .lic-sub {
+        opacity: 0;
+        transform: translateY(16px);
+        animation: lic-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @@keyframes lic-rise {
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .lic-kicker {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--cel-accent);
+        margin-bottom: var(--space-2);
+        animation-delay: 900ms;
+    }
+
+    .lic-title {
+        font-family: var(--font-primary);
+        font-size: 1.9rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--text-primary);
+        /* Settles from loose to tight tracking as it rises — reads as the word locking in. */
+        letter-spacing: 0.08em;
+        animation: lic-title-rise 860ms cubic-bezier(0.16, 1, 0.3, 1) 1060ms forwards;
+    }
+
+    @@keyframes lic-title-rise {
+        to { opacity: 1; transform: translateY(0); letter-spacing: -0.02em; }
+    }
+
+    .lic-rule {
+        display: block;
+        width: 140px;
+        height: 1px;
+        margin: var(--space-4) auto;
+        background: linear-gradient(90deg, transparent, rgba(var(--cel-accent-rgb), 0.65), transparent);
+        transform: scaleX(0);
+        animation: lic-rule-in 900ms cubic-bezier(0.16, 1, 0.3, 1) 1400ms forwards;
+    }
+
+    @@keyframes lic-rule-in {
+        to { transform: scaleX(1); }
+    }
+
+    .lic-sub {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.55;
+        color: var(--text-secondary);
+        animation-delay: 1620ms;
+    }
+
+    /* ── Hint — the only call to action, and it never stops asking ────────── */
+
+    .lic-hint {
+        position: absolute;
+        bottom: var(--space-6);
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 0.78rem;
+        letter-spacing: 0.04em;
+        color: var(--text-secondary);
+        opacity: 0;
+        animation: lic-hint-in 800ms ease-out 2600ms forwards,
+                   lic-hint-pulse 3s ease-in-out 3400ms infinite;
+    }
+
+    @@keyframes lic-hint-in {
+        to { opacity: 0.7; }
+    }
+
+    @@keyframes lic-hint-pulse {
+        0%, 100% { opacity: 0.7; }
+        50% { opacity: 0.34; }
+    }
+</style>
+
+@code {
+    private const int RayCount = 14;
+
+    // Matches the .is-closing exit animation. The overlay holds indefinitely before this —
+    // it only ever starts once the user clicks.
+    private const int FadeOutMs = 880;
+
+    private bool _visible;
+    private bool _closing;
+
+    // Bumped on every show/dismiss so a stale fade-out can't hide an overlay that a second
+    // activation has already re-opened.
+    private int _run;
+
+    protected override void OnInitialized()
+    {
+        LicenseService.OnLicenseActivated += HandleActivated;
+    }
+
+    private void HandleActivated() => _ = InvokeAsync(Show);
+
+    private void Show()
+    {
+        _run++;
+        _visible = true;
+        _closing = false;
+        StateHasChanged();
+    }
+
+    private async Task DismissAsync()
+    {
+        if (!_visible || _closing)
+        {
+            return;
+        }
+
+        var run = _run;
+
+        _closing = true;
+        StateHasChanged();
+
+        await Task.Delay(FadeOutMs);
+
+        // A fresh activation during the fade-out wins — leave its overlay up.
+        if (run != _run)
+        {
+            return;
+        }
+
+        _visible = false;
+        _closing = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        LicenseService.OnLicenseActivated -= HandleActivated;
+    }
+}

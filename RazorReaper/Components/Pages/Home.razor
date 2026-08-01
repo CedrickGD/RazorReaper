@@ -820,22 +820,54 @@
                 </div>
             </div>
             
-            @if (!LicenseService.IsPremium)
+            @if (LicenseService.IsPremium)
+            {
+                @* The activated key, kept visible so nobody has to hunt for it again. Masked on
+                   demand for anyone recording or screen-sharing. *@
+                <div class="license-key-panel">
+                    <div class="license-key-head">
+                        <span class="license-key-label">Your license key</span>
+                        <div class="license-key-actions">
+                            <button class="rr-pill-btn ghost sm" @onclick="ToggleLicenseKeyVisibility">
+                                @(licenseKeyHidden ? "Show" : "Hide")
+                            </button>
+                            <button class="rr-pill-btn ghost sm" @onclick="CopyLicenseKeyAsync">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="license-key-value">@DisplayedLicenseKey</div>
+
+                    @if (!string.IsNullOrWhiteSpace(LicenseService.LicenseType) || !string.IsNullOrWhiteSpace(LicenseService.ExpiresAt))
+                    {
+                        <div class="license-key-facts">
+                            @if (!string.IsNullOrWhiteSpace(LicenseService.LicenseType))
+                            {
+                                <span class="license-fact"><span class="license-fact-label">Plan</span>@LicenseService.LicenseType</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(LicenseService.ExpiresAt))
+                            {
+                                <span class="license-fact"><span class="license-fact-label">Expires</span>@FormatLicenseExpiry(LicenseService.ExpiresAt)</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
             {
                 <div class="license-activation-area">
-                    <div class="license-input-wrapper">
-                        <input type="text" @bind="licenseKeyInput" placeholder="Enter SellHub Key (XXXX-XXXX-XXXX-XXXX)" spellcheck="false" autocomplete="off" />
-                    </div>
-                    <button class="license-activate-btn" @onclick="ActivateLicense" disabled="@isActivating">
-                        @(isActivating ? "Verifying..." : "Activate Key")
+                    <input class="license-key-input" type="text" @bind="licenseKeyInput" @bind:event="oninput"
+                           @onkeydown="HandleLicenseKeyDown"
+                           placeholder="Enter your key (XXXX-XXXX-XXXX-XXXX)" spellcheck="false" autocomplete="off" />
+                    <button class="btn btn-primary license-btn" @onclick="ActivateLicense" disabled="@isActivating">
+                        @(isActivating ? "Verifying…" : "Activate")
                     </button>
-                    <a href="https://rr.sellhub.cx" target="_blank" class="license-activate-btn" style="text-align: center; text-decoration: none;">
+                    <a class="btn btn-secondary license-btn" href="https://rr.sellhub.cx" target="_blank" rel="noopener">
                         Buy Premium
                     </a>
                 </div>
                 @if (!string.IsNullOrEmpty(activationError))
                 {
-                    <div style="color: var(--accent-red); margin-top: 10px; font-size: 0.875rem;">@activationError</div>
+                    <div class="license-error">@activationError</div>
                 }
             }
         </div>
@@ -858,9 +890,17 @@
     private string licenseKeyInput = "";
     private bool isActivating = false;
     private string activationError = "";
+    // Shown in full by default — the whole point of the panel is that people can read their
+    // key back without digging it out of their order mail.
+    private bool licenseKeyHidden = false;
 
     private async Task ActivateLicense()
     {
+        if (isActivating)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(licenseKeyInput))
         {
             activationError = "Please enter a license key.";
@@ -872,20 +912,112 @@
         StateHasChanged();
 
         var result = await LicenseService.ActivateLicenseAsync(licenseKeyInput.Trim());
-        
+
         isActivating = false;
-        
+
         if (result.Success)
         {
             activationError = "";
-            NotificationService.ShowSuccess(result.Message);
+            licenseKeyInput = "";
+            // No success toast here: LicenseActivated (rendered by MainLayout) plays the
+            // full-window celebration off the service's OnLicenseActivated event.
         }
         else
         {
             activationError = result.Message;
         }
-        
+
         StateHasChanged();
+    }
+
+    private async Task HandleLicenseKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ActivateLicense();
+        }
+    }
+
+    private void ToggleLicenseKeyVisibility() => licenseKeyHidden = !licenseKeyHidden;
+
+    private string DisplayedLicenseKey
+    {
+        get
+        {
+            var key = LicenseService.CurrentLicenseKey;
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return "—";
+            }
+
+            return licenseKeyHidden ? MaskLicenseKey(key) : key;
+        }
+    }
+
+    /// <summary>
+    /// Masks everything but the last four alphanumerics and leaves separators alone, so the
+    /// hidden key keeps its shape and stays identifiable at a glance.
+    /// </summary>
+    private static string MaskLicenseKey(string key)
+    {
+        var chars = key.ToCharArray();
+        var kept = 0;
+
+        for (var i = chars.Length - 1; i >= 0; i--)
+        {
+            if (!char.IsLetterOrDigit(chars[i]))
+            {
+                continue;
+            }
+
+            if (kept < 4)
+            {
+                kept++;
+                continue;
+            }
+
+            chars[i] = '•';
+        }
+
+        return new string(chars);
+    }
+
+    private static string FormatLicenseExpiry(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return "—";
+        }
+
+        // The API hands back whatever the store recorded; show a readable local date when it
+        // parses and fall back to the raw string rather than inventing one.
+        if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+        {
+            return parsed.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        }
+
+        return raw;
+    }
+
+    private async Task CopyLicenseKeyAsync()
+    {
+        var key = LicenseService.CurrentLicenseKey;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        try
+        {
+            await Clipboard.Default.SetTextAsync(key);
+            NotificationService.ShowSuccess("License key copied to clipboard.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying license key to clipboard");
+            NotificationService.ShowError("Failed to copy license key.");
+        }
     }
 
     private void OnLicenseStateChangedHandler()
