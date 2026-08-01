@@ -125,7 +125,7 @@
     padding: 0.2rem 0.6rem;
     border-radius: var(--radius-round);
     font-size: 0.65rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     background: rgba(var(--accent-purple-rgb), 0.16);
@@ -218,15 +218,15 @@
 }
 
 .boss-tier-card.tier-alpha {
-    border-color: rgba(var(--accent-red-rgb), 0.4);
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
 }
 
 .boss-tier-card.tier-beta {
-    border-color: rgba(var(--accent-blue-rgb), 0.35);
+    border-color: rgba(var(--accent-purple-rgb), 0.28);
 }
 
 .boss-tier-card.tier-gamma {
-    border-color: rgba(var(--accent-green-rgb), 0.35);
+    border-color: rgba(var(--accent-purple-rgb), 0.18);
 }
 
 .boss-tier-card.tier-neutral {
@@ -245,7 +245,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-secondary);
 }
 

@@ -8,7 +8,7 @@
     <p class="page-subtitle">Tell us what's working, what's broken, or what you'd like to see next.</p>
 </header>
 
-<div class="feedback-card">
+<div class="content-card feedback-card">
     <div class="feedback-field">
         <label class="feedback-label" for="feedback-message">Your feedback</label>
         <textarea id="feedback-message"
@@ -40,7 +40,7 @@
     </p>
 
     <div class="feedback-actions">
-        <button class="feedback-submit" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
+        <button class="btn btn-primary" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
             @if (_submitting)
             {
                 <span class="feedback-spinner"></span>
@@ -91,10 +91,6 @@
 <style>
     .feedback-card {
         max-width: 640px;
-        background: var(--background-card);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 28px;
     }
 
     .feedback-field {
@@ -155,36 +151,12 @@
         justify-content: flex-end;
     }
 
-    .feedback-submit {
-        background: var(--accent-purple);
-        color: #fff;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: background 0.2s ease, opacity 0.2s ease;
-    }
-
-    .feedback-submit:hover:not(:disabled) {
-        background: var(--accent-purple-dark);
-    }
-
-    .feedback-submit:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
     .feedback-spinner {
         width: 15px;
         height: 15px;
         border: 2px solid rgba(255, 255, 255, 0.3);
         border-radius: 50%;
-        border-top-color: #fff;
+        border-top-color: var(--text-primary);
         animation: feedback-spin 1s ease-in-out infinite;
     }
 

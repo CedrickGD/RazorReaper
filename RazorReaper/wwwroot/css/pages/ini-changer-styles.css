@@ -80,7 +80,7 @@
     right: 0.35rem;
     padding: 0.12rem 0.45rem;
     background: rgba(0, 0, 0, 0.65);
-    color: #ffffff;
+    color: var(--text-primary);
     font-size: 0.55rem;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -102,7 +102,7 @@
     align-items: center;
     gap: 0.4rem;
     font-size: 0.62rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-secondary);
     letter-spacing: 0.13em;
     text-transform: uppercase;
@@ -111,8 +111,8 @@
 
 .ini-active-name {
     font-size: 1.1rem;
-    font-weight: 700;
-    color: #ffffff;
+    font-weight: 600;
+    color: var(--text-primary);
     letter-spacing: -0.005em;
     line-height: 1.25;
     white-space: nowrap;
@@ -144,8 +144,8 @@
 
 .ini-active-stat-value {
     font-size: 1.35rem;
-    font-weight: 700;
-    color: #ffffff;
+    font-weight: 600;
+    color: var(--text-primary);
     line-height: 1;
     letter-spacing: -0.02em;
 }
@@ -236,7 +236,7 @@
 .ini-btn.ini-btn-danger {
     background: rgba(var(--accent-red-rgb), 0.08);
     border-color: rgba(var(--accent-red-rgb), 0.22);
-    color: #fca5a5;
+    color: var(--accent-red-soft);
 }
 
     .ini-btn.ini-btn-danger:hover:not(:disabled) {
@@ -249,7 +249,7 @@
 .ini-btn.ini-btn-accent {
     background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.25), rgba(var(--accent-purple-rgb), 0.18));
     border-color: rgba(var(--accent-purple-rgb), 0.5);
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
     .ini-btn.ini-btn-accent:hover:not(:disabled) {
@@ -258,52 +258,13 @@
         box-shadow: 0 10px 22px rgba(var(--accent-purple-rgb), 0.22);
     }
 
-/* Toggle pill — Delete mode (checkbox + icon + label). */
-.ini-toolbar-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.42rem 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-chip);
-    color: var(--text-secondary);
-    font-size: 0.74rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-    user-select: none;
+/* Danger-switch variant — Delete mode is a destructive state, so the shared
+   Switch's checked track goes red instead of the default accent. */
+.rr-switch.rr-switch-danger input:checked + .rr-switch-track {
+    background: linear-gradient(135deg, var(--accent-red), var(--accent-red-dark));
+    border-color: var(--accent-red);
+    box-shadow: 0 0 10px rgba(var(--accent-red-rgb), 0.4);
 }
-
-    .ini-toolbar-toggle svg {
-        width: 13px;
-        height: 13px;
-        flex-shrink: 0;
-    }
-
-    .ini-toolbar-toggle input {
-        accent-color: var(--accent-purple, var(--accent-purple));
-        width: 13px;
-        height: 13px;
-        margin: 0;
-        cursor: pointer;
-    }
-
-    .ini-toolbar-toggle:hover {
-        background: rgba(var(--accent-purple-rgb), 0.1);
-        border-color: rgba(var(--accent-purple-rgb), 0.3);
-        color: var(--text-primary);
-    }
-
-    .ini-toolbar-toggle.is-active {
-        background: rgba(var(--accent-red-rgb), 0.15);
-        border-color: rgba(var(--accent-red-rgb), 0.45);
-        color: #fca5a5;
-    }
-
-        .ini-toolbar-toggle.is-active input {
-            accent-color: var(--accent-red);
-        }
 
 /* ============================================================================
    Presets — inline gallery card. Takes the main vertical area.
@@ -330,7 +291,7 @@
 .ini-presets-card .preset-gallery-grid::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
 .ini-presets-card.delete-mode {
-    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><line x1='4' y1='4' x2='20' y2='20' stroke='red' stroke-width='3' stroke-linecap='round'/><line x1='20' y1='4' x2='4' y2='20' stroke='red' stroke-width='3' stroke-linecap='round'/></svg>") 12 12, pointer;
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><line x1='4' y1='4' x2='20' y2='20' stroke='%23ef4444' stroke-width='3' stroke-linecap='round'/><line x1='20' y1='4' x2='4' y2='20' stroke='%23ef4444' stroke-width='3' stroke-linecap='round'/></svg>") 12 12, pointer;
 }
 
 /* Preset Gallery grid — shared between inline view and (formerly) the overlay. */
@@ -416,7 +377,7 @@
     gap: 0.25rem;
     padding: 0.2rem 0.55rem 0.2rem 0.4rem;
     background: rgba(var(--accent-purple-rgb), 0.88);
-    color: #ffffff;
+    color: var(--text-primary);
     font-size: 0.62rem;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -438,7 +399,7 @@
     padding: 0.18rem 0.5rem;
     background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(6px);
-    color: #ffffff;
+    color: var(--text-primary);
     font-size: 0.6rem;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -454,7 +415,7 @@
 
 .preset-gallery-name {
     font-weight: 600;
-    color: #ffffff;
+    color: var(--text-primary);
     font-size: 0.75rem;
     margin-bottom: 0.15rem;
     letter-spacing: 0.01em;
@@ -545,7 +506,7 @@
     min-height: 380px;
     resize: none;
     background: rgba(0, 0, 0, 0.42);
-    color: #ffffff;
+    color: var(--text-primary);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-control);
     padding: 0.85rem 0.95rem;
@@ -797,7 +758,7 @@
     margin: 0 0 0.15rem;
     font-size: 1.05rem;
     font-weight: 600;
-    color: #ffffff;
+    color: var(--text-primary);
     letter-spacing: 0.01em;
 }
 
@@ -826,7 +787,7 @@
     .ini-overlay-ghost-btn:hover:not(:disabled) {
         background: rgba(var(--accent-purple-rgb), 0.12);
         border-color: rgba(var(--accent-purple-rgb), 0.35);
-        color: #ffffff;
+        color: var(--text-primary);
         transform: translateY(-1px);
     }
 
@@ -839,7 +800,7 @@
 .ini-overlay-primary-btn {
     background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.25), rgba(var(--accent-purple-rgb), 0.18));
     border-color: rgba(var(--accent-purple-rgb), 0.5);
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
     .ini-overlay-primary-btn:hover:not(:disabled) {
@@ -870,7 +831,7 @@
     .ini-overlay-close:hover {
         background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.2);
-        color: #ffffff;
+        color: var(--text-primary);
     }
 
 .ini-overlay-body {
@@ -913,7 +874,7 @@
         left: 50%;
 
         padding: 0.35rem 0.65rem;
-        background: linear-gradient(180deg, rgba(28, 23, 42, 0.98) 0%, rgba(20, 16, 32, 0.98) 100%);
+        background: linear-gradient(180deg, rgba(var(--accent-purple-rgb), 0.1) 0%, rgba(var(--accent-purple-rgb), 0.05) 100%), rgba(16, 15, 18, 0.98);
         border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
         border-radius: var(--radius-chip);
         color: var(--text-primary);

@@ -156,13 +156,9 @@
                             </svg>
                             Add Preset
                         </button>
-                        <label class="ini-toolbar-toggle @(isDeleteMode ? "is-active" : "")" data-tooltip="Click a custom preset to remove it" data-tooltip-pos="bottom">
-                            <input type="checkbox" checked="@isDeleteMode" @onchange="ToggleDeleteMode" />
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                            Delete mode
-                        </label>
+                        <span data-tooltip="Click a custom preset to remove it" data-tooltip-pos="bottom">
+                            <Switch Value="@isDeleteMode" ValueChanged="@((bool v) => ToggleDeleteMode())" Label="Delete mode" Compact="true" CssClass="rr-switch-danger" />
+                        </span>
                     </div>
                 </div>
             </section>
@@ -928,7 +924,7 @@
                 File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
                 InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess("INI file saved successfully!");
+                    NotificationService.ShowSuccess("INI file saved successfully.");
                     ActivityService.AddActivity($"INI file saved{(string.IsNullOrEmpty(selectedPreset) ? "" : $" (Preset: {selectedPreset})")}", "success");
                 });
                 Logger.LogInformation("INI file saved to: {Path}", iniPath);
@@ -1050,7 +1046,7 @@
                     var fileSize = fileInfo.Length;
                     var lastModified = fileInfo.LastWriteTime;
 
-                    InvokeAsync(() => NotificationService.ShowSuccess($"INI file found!\nPath: {iniPath}\nSize: {fileSize} bytes\nModified: {lastModified:yyyy-MM-dd HH:mm}"));
+                    InvokeAsync(() => NotificationService.ShowSuccess($"INI file found.\nPath: {iniPath}\nSize: {fileSize} bytes\nModified: {lastModified:yyyy-MM-dd HH:mm}"));
                     Logger.LogInformation("INI file found at: {Path}, Size: {Size} bytes", iniPath, fileSize);
                 }
             });
@@ -1162,7 +1158,7 @@
             string? arkBasePath = ArkUtilities.FindArkPath();
             if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
             {
-                NotificationService.ShowError("ARK installation not found!");
+                NotificationService.ShowError("ARK installation not found.");
                 return;
             }
 

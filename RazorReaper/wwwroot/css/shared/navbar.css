@@ -184,7 +184,7 @@ html[data-sidebar-resizing] .sidebar {
     margin: 0.55rem 0.85rem 0.35rem !important;
     padding: 0.3rem 0.2rem !important;
     font-size: 0.66rem !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     letter-spacing: 0.09em !important;
     text-transform: uppercase !important;
     color: rgba(255, 255, 255, 0.55) !important;
@@ -439,7 +439,7 @@ html[data-sidebar-collapsed] .nav-link-label {
     position: fixed;
     z-index: 1200;
     padding: 0.4rem 0.7rem;
-    background: linear-gradient(180deg, rgba(28, 23, 42, 0.98) 0%, rgba(20, 16, 32, 0.98) 100%);
+    background: rgba(18, 18, 18, 0.98);
     border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
     border-radius: var(--radius-chip);
     color: var(--text-primary);

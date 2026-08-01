@@ -97,10 +97,9 @@
             </div>
         </div>
 
-        <label class="steam-mods-toggle">
-            <input type="checkbox" @bind="OnlyNamedMods" />
-            <span>Only show mods with Steam titles</span>
-        </label>
+        <div class="steam-mods-toggle-row">
+            <Switch Compact="true" Label="Only show mods with Steam titles" @bind-Value="OnlyNamedMods" />
+        </div>
     </section>
 
     @if (scanWarnings.Count > 0)

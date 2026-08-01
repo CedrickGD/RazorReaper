@@ -27,8 +27,8 @@
 }
 
     .hk-dot.on {
-        background: var(--accent-green);
-        box-shadow: 0 0 8px rgba(var(--accent-green-rgb), 0.7);
+        background: var(--accent-purple);
+        box-shadow: 0 0 8px rgba(var(--accent-purple-rgb), 0.7);
     }
 
 .hk-name {

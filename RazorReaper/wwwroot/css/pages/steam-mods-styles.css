@@ -45,7 +45,7 @@
 
 .steam-mods-meta-value {
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -95,22 +95,13 @@
     width: 100%;
 }
 
-.steam-mods-toggle {
+.steam-mods-toggle-row {
     margin-top: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--text-secondary);
-    font-size: 0.86rem;
-}
-
-.steam-mods-toggle input {
-    width: auto;
 }
 
 .steam-mods-warning-card h3 {
     margin: 0 0 0.7rem;
-    color: var(--accent-red-soft);
+    color: var(--accent-orange-soft);
 }
 
 .steam-mods-warning-list {

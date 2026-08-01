@@ -61,9 +61,9 @@
                             </p>
 
                             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="feature-tag">📄 Templates</div>
-                                <div class="feature-tag">📂 Sorted Categories</div>
-                                <div class="feature-tag">🔖 Label Ready</div>
+                                <div class="feature-tag">Templates</div>
+                                <div class="feature-tag">Sorted Categories</div>
+                                <div class="feature-tag">Label Ready</div>
                             </div>
                         </div>
 
@@ -97,15 +97,15 @@
                             </p>
 
                             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="feature-tag">⚒️ ARK Specific</div>
-                                <div class="feature-tag">🎮 Game Integration</div>
-                                <div class="feature-tag">📐 Format Conversion</div>
+                                <div class="feature-tag">ARK Specific</div>
+                                <div class="feature-tag">Game Integration</div>
+                                <div class="feature-tag">Format Conversion</div>
                             </div>
                         </div>
 
                         <div style="text-align: center;">
                             <div class="icon-circle dark">
-                                <svg style="width: 40px; height: 40px; color: white;" fill="currentColor" viewBox="0 0 20 20">
+                                <svg style="width: 40px; height: 40px; color: var(--text-primary);" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zM12 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4zM12 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3z" clip-rule="evenodd" />
                                 </svg>
                             </div>
@@ -179,7 +179,7 @@
         background: var(--background-hover);
         color: var(--text-primary);
         padding: 0.25rem 0.75rem;
-        border-radius: 20px;
+        border-radius: var(--radius-round);
         font-size: 0.8rem;
         font-weight: 600;
         border: 1px solid var(--border-color);
@@ -192,9 +192,9 @@
         }
 
         .feature-tag.orange {
-            background: rgba(245, 158, 11, 0.1);
+            background: rgba(var(--accent-orange-rgb), 0.1);
             color: var(--accent-orange);
-            border-color: rgba(245, 158, 11, 0.3);
+            border-color: rgba(var(--accent-orange-rgb), 0.3);
         }
 
     .icon-circle {
@@ -241,7 +241,7 @@
     .stats-icon {
         width: 36px;
         height: 36px;
-        border-radius: 10px;
+        border-radius: var(--radius-control);
         background: rgba(var(--accent-purple-rgb), 0.2);
         display: flex;
         align-items: center;
@@ -261,7 +261,7 @@
 
     .stats-value {
         font-size: 1.25rem;
-        font-weight: 700;
+        font-weight: 600;
         background: var(--gradient-purple);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -394,7 +394,7 @@
                 UseShellExecute = true
             });
 
-            NotificationService.ShowSuccess("Opened MyPaintings folder successfully!");
+            NotificationService.ShowSuccess("MyPaintings folder opened.");
             ActivityService.AddActivity("Opened MyPaintings folder", "success");
             StateHasChanged();
         }
@@ -433,14 +433,14 @@
 
             if (Directory.Exists(folderPath))
             {
-                NotificationService.ShowWarning("MyPaintings folder already exists!");
+                NotificationService.ShowWarning("MyPaintings folder already exists.");
                 folderExists = true;
                 CountFiles();
             }
             else
             {
                 Directory.CreateDirectory(folderPath);
-                NotificationService.ShowSuccess("MyPaintings folder created successfully!");
+                NotificationService.ShowSuccess("MyPaintings folder created.");
                 ActivityService.AddActivity("MyPaintings folder created", "success");
                 folderExists = true;
                 fileCount = 0;

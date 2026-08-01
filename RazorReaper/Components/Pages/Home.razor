@@ -21,6 +21,7 @@
 @inject IUpdateService UpdateService
 @inject IAutoUpdateManager AutoUpdateManager
 @inject IDiscordPresenceService DiscordPresence
+@inject IArkLinkService ArkLink
 @inject ILicenseService LicenseService
 @implements IAsyncDisposable
 
@@ -661,6 +662,37 @@
         </div>
 
         <div class="content-card">
+            <div class="update-card-header">
+                <div class="update-title">
+                    <div class="update-icon">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5z" />
+                            <path d="M7.414 15.414a2 2 0 01-2.828-2.828l3-3a2 2 0 012.828 0 1 1 0 001.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Start &amp; Close with ARK</h3>
+                        <p class="update-subtitle">Start: a lightweight background watcher launches RazorReaper as soon as ARK starts. Close: exits RazorReaper when ARK closes.</p>
+                    </div>
+                </div>
+                <div class="update-actions">
+                    <label class="sound-toggle sound-toggle-master">
+                        <input type="checkbox"
+                               checked="@ArkLink.StartWithArk"
+                               @onchange="ToggleArkLinkStart" />
+                        <span>Start with ARK</span>
+                    </label>
+                    <label class="sound-toggle sound-toggle-master">
+                        <input type="checkbox"
+                               checked="@ArkLink.CloseWithArk"
+                               @onchange="ToggleArkLinkClose" />
+                        <span>Close with ARK</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
             <div class="paths-header">
                 <h3>System Paths</h3>
                 @if (!isEditingArkPath)
@@ -678,7 +710,7 @@
             {
                 <div class="path-edit-section">
                     <div class="path-edit-info">
-                        <svg fill="currentColor" viewBox="0 0 20 20" style="width: 20px; height: 20px; color: var(--accent-orange);">
+                        <svg fill="currentColor" viewBox="0 0 20 20" style="width: 20px; height: 20px; color: var(--text-secondary);">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                         </svg>
                         <div>
@@ -1108,6 +1140,12 @@
 
     private void ToggleDiscordRpc(ChangeEventArgs e)
         => DiscordPresence.IsEnabled = e.Value is bool b && b;
+
+    private void ToggleArkLinkStart(ChangeEventArgs e)
+        => ArkLink.StartWithArk = e.Value is bool b && b;
+
+    private void ToggleArkLinkClose(ChangeEventArgs e)
+        => ArkLink.CloseWithArk = e.Value is bool b && b;
 
     private void ToggleThemeSettings()
     {

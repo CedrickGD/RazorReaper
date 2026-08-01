@@ -24,14 +24,6 @@
     }
 }
 
-@keyframes shimmer {
-    0% {
-        background-position: -1000px 0;
-    }
-    100% {
-        background-position: 1000px 0;
-    }
-}
 
 .dashboard-widgets {
     display: grid;
@@ -750,7 +742,7 @@
 
 .clock-time {
     font-size: 2.7rem;
-    font-weight: bold;
+    font-weight: 600;
     background: var(--gradient-purple);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -911,7 +903,7 @@
 
 .weather-temp {
     font-size: 2.6rem;
-    font-weight: bold;
+    font-weight: 600;
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -1145,7 +1137,7 @@
 .storage-value {
     font-size: 0.9rem;
     color: var(--text-primary);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .drive-list {
@@ -1172,7 +1164,7 @@
 
 .drive-name {
     font-size: 0.95rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -1315,7 +1307,7 @@
 
 .resource-value {
     font-size: 1.1rem;
-    font-weight: bold;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -1442,7 +1434,7 @@
 
 .stat-value {
     font-size: 1.5rem;
-    font-weight: bold;
+    font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 0.25rem;
 }
@@ -1746,7 +1738,7 @@
     height: 12px;
     border-radius: 50%;
     border: 3px solid var(--accent-purple);
-    background: #000;
+    background: var(--background-dark);
     position: relative;
     z-index: 2;
     transition: all 0.3s ease;
@@ -2451,23 +2443,12 @@
     box-shadow: 0 0 20px rgba(var(--accent-green-rgb), 0.1), inset 0 0 15px rgba(var(--accent-green-rgb), 0.05);
 }
 
-.license-widget.premium-active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
-    animation: shimmer 3s infinite linear;
-}
-
 .license-widget.free-tier {
     border-left: 4px solid var(--accent-purple);
 }
 
 .license-widget .update-title h3 {
-    font-family: var(--font-display);
+    font-family: var(--font-primary);
     letter-spacing: -0.02em;
 }
 
@@ -2544,7 +2525,7 @@
     background: rgba(var(--accent-green-rgb), 0.15);
     color: var(--accent-green);
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     margin-left: 12px;

@@ -25,7 +25,7 @@
             </div>
             <h3>ARK installation not found</h3>
             <p>RazorReaper couldn't locate ARK: Survival Evolved through Steam. Make sure the game is installed, then rescan.</p>
-            <button type="button" class="cm-btn primary" @onclick="Refresh">Rescan</button>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
         </div>
     }
     else if (!_folderFound)
@@ -39,16 +39,16 @@
             <h3>Presets folder missing</h3>
             <p>The ARK install was found, but SavedArksLocal doesn't exist yet. Start the game once, then rescan.</p>
             <p class="cm-empty-path">@_presetsFolder</p>
-            <button type="button" class="cm-btn primary" @onclick="Refresh">Rescan</button>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
         </div>
     }
     else
     {
         <StatusHeader State="online" Label="@HeaderLabel" Description="@_presetsFolder">
             <Actions>
-                <button type="button" class="cm-btn" @onclick="Refresh" disabled="@_busy">Rescan</button>
-                <button type="button" class="cm-btn" @onclick="OpenPresetsFolder" disabled="@_busy">Open folder</button>
-                <button type="button" class="cm-btn primary" @onclick="ImportPresetAsync" disabled="@_busy">Import…</button>
+                <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">Rescan</button>
+                <button type="button" class="btn btn-secondary" @onclick="OpenPresetsFolder" disabled="@_busy">Open folder</button>
+                <button type="button" class="btn btn-primary" @onclick="ImportPresetAsync" disabled="@_busy">Import…</button>
             </Actions>
         </StatusHeader>
 
@@ -79,24 +79,24 @@
                                            @bind:event="oninput"
                                            @onkeydown="e => OnRenameKeyDown(e)"
                                            placeholder="New name" />
-                                    <button type="button" class="cm-btn primary" @onclick="ConfirmRenameAsync" disabled="@_busy">Save</button>
-                                    <button type="button" class="cm-btn" @onclick="CancelRename" disabled="@_busy">Cancel</button>
+                                    <button type="button" class="btn btn-primary" @onclick="ConfirmRenameAsync" disabled="@_busy">Save</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="CancelRename" disabled="@_busy">Cancel</button>
                                 }
                                 else if (_confirmDeleteFile == preset.FileName)
                                 {
                                     <span class="cm-confirm-text">Delete this preset?</span>
-                                    <button type="button" class="cm-btn danger" @onclick="() => ConfirmDeleteAsync(preset)" disabled="@_busy">Delete</button>
-                                    <button type="button" class="cm-btn" @onclick="CancelDelete" disabled="@_busy">Cancel</button>
+                                    <button type="button" class="btn btn-danger" @onclick="() => ConfirmDeleteAsync(preset)" disabled="@_busy">Delete</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete" disabled="@_busy">Cancel</button>
                                 }
                                 else
                                 {
-                                    <button type="button" class="cm-btn" @onclick="() => ToggleEditorAsync(preset)" disabled="@_busy">
+                                    <button type="button" class="btn btn-secondary" @onclick="() => ToggleEditorAsync(preset)" disabled="@_busy">
                                         @(_editorFile == preset.FileName ? "Close" : "Edit")
                                     </button>
-                                    <button type="button" class="cm-btn" @onclick="() => StartRename(preset)" disabled="@_busy">Rename</button>
-                                    <button type="button" class="cm-btn" @onclick="() => DuplicateAsync(preset)" disabled="@_busy">Duplicate</button>
-                                    <button type="button" class="cm-btn" @onclick="() => ExportAsync(preset)" disabled="@_busy">Export</button>
-                                    <button type="button" class="cm-btn danger" @onclick="() => StartDelete(preset)" disabled="@_busy">Delete</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="() => StartRename(preset)" disabled="@_busy">Rename</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="() => DuplicateAsync(preset)" disabled="@_busy">Duplicate</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="() => ExportAsync(preset)" disabled="@_busy">Export</button>
+                                    <button type="button" class="btn btn-danger" @onclick="() => StartDelete(preset)" disabled="@_busy">Delete</button>
                                 }
                             </SettingRow>
 
@@ -148,8 +148,8 @@
                                         <div class="cm-editor-footer">
                                             <span class="cm-editor-note">A backup copy is saved before changes are written.</span>
                                             <div class="cm-editor-actions">
-                                                <button type="button" class="cm-btn" @onclick="ResetEditor" disabled="@(_busy || !_editorDirty)">Reset</button>
-                                                <button type="button" class="cm-btn primary" @onclick="SaveEditorAsync" disabled="@(_busy || !_editorDirty)">
+                                                <button type="button" class="btn btn-secondary" @onclick="ResetEditor" disabled="@(_busy || !_editorDirty)">Reset</button>
+                                                <button type="button" class="btn btn-primary" @onclick="SaveEditorAsync" disabled="@(_busy || !_editorDirty)">
                                                     @(_saving ? "Saving…" : "Save changes")
                                                 </button>
                                             </div>

@@ -209,67 +209,7 @@
         100% { opacity: 0; transform: scale(1.6); }
     }
 
-    /* ── Pill button (replaces .btn in this page for tighter look) ───────── */
-
-    .crosshair-layout .rr-pill-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-        padding: 0.55rem 1rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        border-radius: var(--radius-round);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-        white-space: nowrap;
-    }
-
-        .crosshair-layout .rr-pill-btn:hover:not(:disabled) {
-            transform: translateY(-1px);
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.25);
-        }
-
-        .crosshair-layout .rr-pill-btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .crosshair-layout .rr-pill-btn.sm {
-            padding: 0.4rem 0.75rem;
-            font-size: 0.78rem;
-        }
-
-        .crosshair-layout .rr-pill-btn.primary {
-            background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.12));
-            border-color: rgba(var(--accent-purple-rgb), 0.55);
-            color: #fff;
-        }
-
-            .crosshair-layout .rr-pill-btn.primary:hover:not(:disabled) {
-                box-shadow: 0 8px 24px rgba(var(--accent-purple-rgb), 0.35);
-                border-color: var(--accent-purple-light);
-            }
-
-        .crosshair-layout .rr-pill-btn.danger {
-            background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.22), rgba(var(--accent-red-rgb), 0.08));
-            border-color: rgba(var(--accent-red-rgb), 0.5);
-            color: var(--accent-red-soft);
-        }
-
-            .crosshair-layout .rr-pill-btn.danger:hover:not(:disabled) {
-                box-shadow: 0 8px 24px rgba(var(--accent-red-rgb), 0.3);
-                border-color: var(--accent-red);
-            }
-
-        .crosshair-layout .rr-pill-btn.ghost {
-            background: rgba(0, 0, 0, 0.25);
-            font-weight: 500;
-        }
+    /* Pill buttons (.rr-pill-btn) moved to shared/primitives.css — global now. */
 
     /* ── Segmented control (shape & motion pickers) ──────────────────────── */
 
@@ -313,7 +253,7 @@
         .crosshair-layout .seg-btn.active {
             background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.1));
             border-color: var(--accent-purple);
-            color: #fff;
+            color: var(--text-primary);
             box-shadow: inset 0 0 12px rgba(var(--accent-purple-rgb), 0.15);
         }
 
@@ -385,56 +325,7 @@
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
         }
 
-    /* ── Custom slider (track + fill + thumb) ────────────────────────────── */
-
-    .crosshair-layout input[type="range"].rr-slider {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 18px;
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        cursor: pointer;
-        outline: none !important;
-        box-shadow: none !important;
-    }
-
-    .crosshair-layout input[type="range"].rr-slider:focus {
-        background: transparent !important;
-        box-shadow: none !important;
-    }
-
-    .crosshair-layout input[type="range"].rr-slider::-webkit-slider-runnable-track {
-        height: 4px;
-        background: linear-gradient(90deg, rgba(var(--accent-purple-rgb), 0.85), rgba(var(--accent-purple-rgb), 0.45));
-        border-radius: var(--radius-round);
-        border: none;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-    }
-
-    .crosshair-layout input[type="range"].rr-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 16px;
-        height: 16px;
-        margin-top: -6px;
-        border-radius: 50%;
-        background: #fff;
-        border: 2px solid var(--accent-purple);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 10px rgba(var(--accent-purple-rgb), 0.45);
-        cursor: grab;
-        transition: transform 0.12s ease;
-    }
-
-    .crosshair-layout input[type="range"].rr-slider:hover::-webkit-slider-thumb {
-        transform: scale(1.12);
-    }
-
-    .crosshair-layout input[type="range"].rr-slider:active::-webkit-slider-thumb {
-        cursor: grabbing;
-        transform: scale(1.18);
-    }
+    /* Sliders (.rr-slider) moved to shared/primitives.css — global now. */
 
     /* ── Number stepper ──────────────────────────────────────────────────── */
 
@@ -553,7 +444,7 @@
 
             .rr-switch input:checked + .rr-switch-track .rr-switch-thumb {
                 transform: translateX(16px);
-                background: #fff;
+                background: var(--text-primary);
             }
 
         .rr-switch:hover .rr-switch-track {
@@ -773,7 +664,7 @@
         .crosshair-layout .nudge-btn:hover {
             background: rgba(var(--accent-purple-rgb), 0.18);
             border-color: var(--accent-purple);
-            color: #fff;
+            color: var(--text-primary);
         }
 
         .crosshair-layout .nudge-btn.corner {
@@ -1069,7 +960,7 @@
 
     .crosshair-layout .library-delete:hover {
         background: var(--accent-red);
-        color: #fff;
+        color: var(--text-primary);
         border-color: var(--accent-red);
     }
 

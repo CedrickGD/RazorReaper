@@ -44,7 +44,7 @@
         if (previousVersion != null)
         {
             var current = UpdateService.CurrentVersionLabel;
-            NotificationService.ShowSuccess($"Successfully updated to v{current}!");
+            NotificationService.ShowSuccess($"Successfully updated to v{current}.");
         }
 
         var result = await LicenseService.ValidateLicenseAsync();

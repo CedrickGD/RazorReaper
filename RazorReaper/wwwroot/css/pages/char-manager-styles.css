@@ -9,55 +9,14 @@
 }
 
 /* ── Buttons ────────────────────────────────────────────────────────────── */
+/* Shared .btn / .btn-primary / .btn-secondary / .btn-danger (theme.css),
+   scaled down to keep the page's compact row density. */
 
-.char-manager-page .cm-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
+.char-manager-page .btn {
     padding: var(--space-2) var(--space-3);
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: var(--radius-chip);
-    color: var(--text-primary);
     font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-
-    .char-manager-page .cm-btn:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.12);
-        border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .char-manager-page .cm-btn:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-
-    .char-manager-page .cm-btn.primary {
-        background: rgba(var(--accent-purple-rgb), 0.12);
-        border-color: rgba(var(--accent-purple-rgb), 0.4);
-        color: var(--accent-purple-light);
-    }
-
-        .char-manager-page .cm-btn.primary:hover:not(:disabled) {
-            background: rgba(var(--accent-purple-rgb), 0.22);
-            border-color: var(--accent-purple);
-        }
-
-    .char-manager-page .cm-btn.danger {
-        background: rgba(var(--accent-red-rgb), 0.1);
-        border-color: rgba(var(--accent-red-rgb), 0.35);
-        color: var(--accent-red-soft);
-    }
-
-        .char-manager-page .cm-btn.danger:hover:not(:disabled) {
-            background: rgba(var(--accent-red-rgb), 0.18);
-            border-color: var(--accent-red);
-        }
 
 /* ── Info card: neutral surface, thin colored left border only ──────────── */
 

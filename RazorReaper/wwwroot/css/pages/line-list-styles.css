@@ -284,9 +284,9 @@
     flex-shrink: 0;
     padding: 0.1rem 0.45rem;
     border-radius: var(--radius-round);
-    background: rgba(var(--accent-green-rgb), 0.1);
-    border: 1px solid rgba(var(--accent-green-rgb), 0.25);
-    color: var(--accent-green-soft);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
+    color: var(--accent-purple-soft);
     font-size: 0.68rem;
     font-weight: 500;
     white-space: nowrap;

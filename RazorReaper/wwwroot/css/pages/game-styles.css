@@ -76,9 +76,9 @@
 }
 
 .game-page-container .status-dot.online {
-    background: var(--accent-green);
-    color: var(--accent-green);
-    box-shadow: 0 0 18px rgba(var(--accent-green-rgb), 0.45);
+    background: var(--accent-purple);
+    color: var(--accent-purple);
+    box-shadow: 0 0 18px rgba(var(--accent-purple-rgb), 0.45);
 }
 
 .game-page-container .status-dot.offline {
@@ -108,7 +108,7 @@
 
 .status-title {
     font-size: 1.2rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -127,9 +127,9 @@
 }
 
 .game-status-pill.online {
-    background: rgba(var(--accent-green-rgb), 0.18);
-    color: var(--accent-green);
-    border-color: rgba(var(--accent-green-rgb), 0.45);
+    background: rgba(var(--accent-purple-rgb), 0.18);
+    color: var(--accent-purple);
+    border-color: rgba(var(--accent-purple-rgb), 0.45);
 }
 
 .game-status-pill.offline {
@@ -179,7 +179,7 @@
     align-items: center;
     gap: 0.65rem;
     padding: 0.9rem 1rem;
-    border-radius: var(--radius-card);
+    border-radius: var(--radius-control);
     border: 1px solid rgba(var(--game-tone-rgb), 0.4);
     background: linear-gradient(135deg, rgba(var(--game-tone-rgb), 0.18), rgba(0, 0, 0, 0.12));
     color: var(--text-primary);

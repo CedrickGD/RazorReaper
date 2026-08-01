@@ -131,7 +131,7 @@
     padding: 0.25rem 0.7rem;
     border-radius: var(--radius-round);
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     border: 1px solid transparent;
@@ -144,22 +144,12 @@
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
 }
 
-.ocbps-tag.alpha {
-    background: rgba(var(--accent-red-rgb), 0.18);
-    color: var(--accent-red);
-    border-color: rgba(var(--accent-red-rgb), 0.45);
-}
-
-.ocbps-tag.beta {
-    background: rgba(var(--accent-blue-rgb), 0.18);
-    color: var(--accent-blue);
-    border-color: rgba(var(--accent-blue-rgb), 0.4);
-}
-
+.ocbps-tag.alpha,
+.ocbps-tag.beta,
 .ocbps-tag.gamma {
-    background: rgba(var(--accent-green-rgb), 0.18);
-    color: var(--accent-green);
-    border-color: rgba(var(--accent-green-rgb), 0.4);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    color: var(--accent-purple-soft);
+    border-color: rgba(var(--accent-purple-rgb), 0.3);
 }
 
 @media (max-width: 768px) {

@@ -150,62 +150,6 @@
     color: var(--text-secondary);
 }
 
-/* Tier Buttons */
-.tier-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.tier-btn {
-    padding: 0.7rem 1rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-control);
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-}
-
-.tier-btn:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
-    color: var(--text-primary);
-}
-
-.tier-btn.active {
-    background: rgba(var(--accent-purple-rgb), 0.15);
-    border-color: rgba(var(--accent-purple-rgb), 0.3);
-    color: rgba(var(--accent-purple-rgb), 1);
-}
-
-.tier-btn.elite.active {
-    background: rgba(255, 215, 0, 0.15);
-    border-color: rgba(255, 215, 0, 0.3);
-    color: #ffd700;
-}
-
-.tier-btn.high.active {
-    background: rgba(var(--accent-purple-rgb), 0.15);
-    border-color: rgba(var(--accent-purple-rgb), 0.3);
-    color: rgba(var(--accent-purple-rgb), 1);
-}
-
-.tier-btn.medium.active {
-    background: rgba(var(--accent-blue-rgb), 0.15);
-    border-color: rgba(var(--accent-blue-rgb), 0.3);
-    color: var(--accent-blue);
-}
-
-.tier-btn.low.active {
-    background: rgba(107, 114, 128, 0.15);
-    border-color: rgba(107, 114, 128, 0.3);
-    color: #9ca3af;
-}
-
 /* Filter Stats */
 .filter-stats {
     padding: 1rem;

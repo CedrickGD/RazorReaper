@@ -141,7 +141,7 @@
                         </p>
 
                         <div class="setup-section">
-                            <h4>✨ How to Enable</h4>
+                            <h4>How to Enable</h4>
                             <ol class="instruction-list" style="margin: 0;">
                                 <li>Open Steam → Right-click ARK → Properties</li>
                                 <li>Under <strong>General</strong> tab, find <strong>Launch Options</strong></li>
@@ -150,20 +150,20 @@
 
                             <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
                                 <div class="code-display">
-                                    <code style="color: var(--accent-orange);">-culture=Global</code>
+                                    <code>-culture=Global</code>
                                 </div>
                                 <div class="code-display">
-                                    <code style="color: var(--accent-orange);">-culture=zh-Hans-CN</code>
+                                    <code>-culture=zh-Hans-CN</code>
                                 </div>
                             </div>
 
                             <ol class="instruction-list" style="margin-top: 0.75rem;" start="4">
-                                <li>Restart ARK - Done!</li>
+                                <li>Restart ARK.</li>
                             </ol>
                         </div>
 
                         <div class="info-box" style="margin-top: 1rem;">
-                            <strong style="color: var(--accent-purple);">💡 Tip:</strong> You can keep other launch options (like -lowmemory, -nomansky, etc). Just remove culture commands.
+                            <strong>Tip:</strong> You can keep other launch options (like -lowmemory, -nomansky, etc). Just remove culture commands.
                         </div>
                     </div>
                 }
@@ -176,7 +176,7 @@
                         </p>
 
                         <div class="setup-section">
-                            <h4>🚀 Easy Installation</h4>
+                            <h4>Easy Installation</h4>
                             <ol class="instruction-list" style="margin: 0;">
                                 <li>Click <strong>"Auto Install"</strong> button</li>
                                 <li>Open Steam → Right-click ARK → Properties</li>
@@ -187,7 +187,7 @@
                                         <code>-culture=zh-Hans-CN</code>
                                     </div>
                                 </li>
-                                <li>Restart ARK - Done!</li>
+                                <li>Restart ARK.</li>
                             </ol>
                         </div>
 
@@ -205,7 +205,7 @@
                         </p>
 
                         <div class="setup-section">
-                            <h4>🚀 Easy Installation</h4>
+                            <h4>Easy Installation</h4>
                             <ol class="instruction-list" style="margin: 0;">
                                 <li>Click <strong>"Auto Install"</strong> button</li>
                                 <li>Open Steam → Right-click ARK → Properties</li>
@@ -216,12 +216,12 @@
                                         <code>culture=Global</code>
                                     </div>
                                 </li>
-                                <li>Restart ARK - Done!</li>
+                                <li>Restart ARK.</li>
                             </ol>
                         </div>
 
                         <div class="setup-section">
-                            <h4>📝 Manual Installation</h4>
+                            <h4>Manual Installation</h4>
                             <ol class="instruction-list">
                                 <li>Click "Download Only" button</li>
                                 <li>
@@ -297,7 +297,7 @@
             {
                 if (string.IsNullOrEmpty(arkPath))
                 {
-                    await InvokeAsync(() => NotificationService.ShowError("ARK installation not found!"));
+                    await InvokeAsync(() => NotificationService.ShowError("ARK installation not found."));
                     return;
                 }
 
@@ -359,7 +359,7 @@
                     // Show simple success notification
                     await InvokeAsync(() =>
                     {
-                        NotificationService.ShowSuccess("✅ Font files installed!\n\nNow set Steam launch option (see instructions).");
+                        NotificationService.ShowSuccess("Font files installed. Set the Steam launch option next (see instructions).");
                         ActivityService.AddActivity("Global font installed", "success");
                         StateHasChanged();
                     });
@@ -456,7 +456,7 @@
             {
                 if (string.IsNullOrEmpty(arkPath))
                 {
-                    await InvokeAsync(() => NotificationService.ShowError("ARK installation not found!"));
+                    await InvokeAsync(() => NotificationService.ShowError("ARK installation not found."));
                     return;
                 }
 
@@ -496,7 +496,7 @@
 
                 await InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess("✅ Font files installed!\n\nNow set Steam launch option to: -culture=zh-Hans-CN");
+                    NotificationService.ShowSuccess("Font files installed. Set the Steam launch option to -culture=zh-Hans-CN.");
                     ActivityService.AddActivity("Asian font installed", "success");
                     StateHasChanged();
                 });
@@ -542,7 +542,7 @@
                 UseShellExecute = true
             });
 
-            NotificationService.ShowSuccess("Opened font folder in Explorer!");
+            NotificationService.ShowSuccess("Opened font folder in Explorer.");
             ActivityService.AddActivity("Opened font folder", "info");
             Logger.LogInformation("Opened font folder: {Path}", fontFolderPath);
         }
@@ -559,7 +559,7 @@
         {
             await Clipboard.Default.SetTextAsync("culture=Global");
 
-            NotificationService.ShowSuccess("Copied to clipboard!");
+            NotificationService.ShowSuccess("Copied to clipboard.");
             ActivityService.AddActivity("Launch option copied", "success");
             Logger.LogInformation("Launch option copied to clipboard");
         }
@@ -576,7 +576,7 @@
         {
             await Clipboard.Default.SetTextAsync("-culture=zh-Hans-CN");
 
-            NotificationService.ShowSuccess("Copied to clipboard!");
+            NotificationService.ShowSuccess("Copied to clipboard.");
             ActivityService.AddActivity("Asian font launch option copied", "success");
             Logger.LogInformation("Asian font launch option copied to clipboard");
         }
@@ -597,7 +597,7 @@
 
             await Clipboard.Default.SetTextAsync(pathToCopy);
 
-            NotificationService.ShowSuccess("Path copied to clipboard!");
+            NotificationService.ShowSuccess("Path copied to clipboard.");
             ActivityService.AddActivity("Font path copied", "success");
             Logger.LogInformation("Font path copied to clipboard: {Path}", pathToCopy);
         }

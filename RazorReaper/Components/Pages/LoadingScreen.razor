@@ -25,7 +25,7 @@
             </div>
             <h3>ARK installation not found</h3>
             <p>ARK wasn't found through Steam — make sure it's installed, then rescan.</p>
-            <button type="button" class="ls-btn primary" @onclick="Refresh">Rescan</button>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
         </div>
     }
     else if (!_moviesFolderFound)
@@ -39,16 +39,16 @@
             <h3>Movies folder missing</h3>
             <p>The Movies folder doesn't exist — verify the game files in Steam, then rescan.</p>
             <p class="ls-empty-path">@_moviesPath</p>
-            <button type="button" class="ls-btn primary" @onclick="Refresh">Rescan</button>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
         </div>
     }
     else
     {
         <StatusHeader State="@HeaderState" Label="@HeaderLabel" Description="@HeaderDescription">
             <Actions>
-                <button type="button" class="ls-btn" @onclick="Refresh" disabled="@_busy">Rescan</button>
+                <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">Rescan</button>
                 <button type="button"
-                        class="ls-btn warn"
+                        class="btn btn-warning"
                         @onclick="RestoreAllMoviesAsync"
                         disabled="@(_busy || _replacedCount == 0)">
                     @(_restoringAll ? "Restoring…" : "Restore all")
@@ -130,7 +130,7 @@
                                         <span class="ls-badge">Replaced</span>
                                     }
                                     <button type="button"
-                                            class="ls-btn primary"
+                                            class="btn btn-primary"
                                             @onclick="() => ReplaceMovieAsync(movie)"
                                             disabled="@_busy">
                                         Replace…
@@ -138,7 +138,7 @@
                                     @if (movie.IsReplaced)
                                     {
                                         <button type="button"
-                                                class="ls-btn"
+                                                class="btn btn-secondary"
                                                 @onclick="() => RestoreMovieAsync(movie)"
                                                 disabled="@_busy">
                                             Restore

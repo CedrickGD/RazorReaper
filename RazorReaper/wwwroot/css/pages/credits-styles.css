@@ -67,7 +67,7 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     font-size: 1.75rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.02em;
     margin: 0;
     margin-top: 0.55rem;
@@ -110,47 +110,16 @@
     flex-shrink: 0;
 }
 
-/* Discord button — blurple */
-.cr-link-btn.discord {
-    border-color: rgba(88, 101, 242, 0.3);
-    color: #8b9bf7;
+.cr-link-btn svg {
+    color: var(--accent-purple);
 }
 
-.cr-link-btn.discord svg {
-    color: #5865f2;
-}
-
-.cr-link-btn.discord:hover {
-    background: rgba(88, 101, 242, 0.14);
-    border-color: rgba(88, 101, 242, 0.55);
-    color: #a8b4fa;
+.cr-link-btn:hover {
+    background: rgba(var(--accent-purple-rgb), 0.14);
+    border-color: rgba(var(--accent-purple-rgb), 0.55);
+    color: var(--text-primary);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(88, 101, 242, 0.25);
-}
-
-/* YouTube button — red */
-.cr-link-btn.youtube {
-    border-color: rgba(255, 0, 0, 0.25);
-    color: #ff6b6b;
-}
-
-.cr-link-btn.youtube svg {
-    color: #ff0000;
-}
-
-.cr-link-btn.youtube:hover {
-    background: rgba(255, 0, 0, 0.12);
-    border-color: rgba(255, 0, 0, 0.5);
-    color: #ff8a8a;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 0, 0, 0.2);
-}
-
-
-/* ── Community & Support card ── */
-.cr-community-card {
-    border-color: rgba(88, 101, 242, 0.3) !important;
-    background: rgba(88, 101, 242, 0.06) !important;
+    box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb), 0.25);
 }
 
 .cr-community-inner {
@@ -166,7 +135,7 @@
 .cr-community-text h3 {
     color: var(--text-primary);
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.04em;
     margin-bottom: 0.4rem;
 }
@@ -183,18 +152,18 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.7rem 1.25rem;
-    background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
-    border: 1px solid rgba(88, 101, 242, 0.6);
+    background: var(--gradient-primary);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.6);
     border-radius: var(--radius-control);
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.82rem;
-    font-weight: 700;
+    font-weight: 600;
     font-family: var(--font-primary);
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 14px rgba(88, 101, 242, 0.3);
+    box-shadow: 0 4px 14px rgba(var(--accent-purple-rgb), 0.3);
 }
 
 .cr-discord-join svg {
@@ -204,16 +173,16 @@
 }
 
 .cr-discord-join:hover {
-    background: linear-gradient(135deg, #6974f5 0%, #5865f2 100%);
+    background: linear-gradient(135deg, var(--accent-purple-light) 0%, var(--accent-purple) 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(88, 101, 242, 0.45);
+    box-shadow: 0 8px 24px rgba(var(--accent-purple-rgb), 0.45);
 }
 
 /* ── Section label ── */
 .cr-section-label {
     color: var(--text-primary);
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     margin-bottom: 0.9rem;
@@ -247,16 +216,6 @@
     color: var(--text-primary);
 }
 
-/* ── Help card ── */
-.cr-help-card {
-    border-color: rgba(var(--accent-red-rgb), 0.3) !important;
-    background: rgba(var(--accent-red-rgb), 0.05) !important;
-}
-
-.cr-help-card .cr-section-label {
-    color: var(--accent-red);
-}
-
 .cr-help-text {
     color: var(--text-secondary);
     font-size: 0.82rem;
@@ -271,13 +230,13 @@
 }
 
 .cr-tag {
-    background: rgba(var(--accent-red-rgb), 0.12);
-    color: var(--accent-red);
+    background: var(--surface-inset);
+    color: var(--text-secondary);
     padding: 0.35rem 0.75rem;
     border-radius: var(--radius-control);
     font-size: 0.78rem;
     font-weight: 600;
-    border: 1px solid rgba(var(--accent-red-rgb), 0.3);
+    border: 1px solid var(--border-color);
 }
 
 /* ── Responsive ── */

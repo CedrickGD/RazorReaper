@@ -801,7 +801,7 @@
 .vision-tek-state-badge {
     align-self: flex-start;
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     padding: 0.25rem 0.6rem;
@@ -1089,7 +1089,7 @@
     margin-top: -6px;
     border-radius: 50%;
     background: var(--accent-purple);
-    border: 2px solid #fff;
+    border: 2px solid var(--text-primary);
     box-shadow: 0 0 8px rgba(var(--accent-purple-rgb), 0.6);
     cursor: pointer;
 }

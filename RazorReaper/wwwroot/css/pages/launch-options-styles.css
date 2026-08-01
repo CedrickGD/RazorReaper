@@ -80,7 +80,7 @@
     color: var(--accent-purple);
     font-family: var(--font-mono);
     font-size: 0.78rem;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .launch-option-flag-btn {
@@ -102,19 +102,15 @@
 
 .launch-option-list-block {
     background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(var(--accent-green-rgb), 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-control);
     padding: 0.7rem 0.75rem;
-}
-
-.launch-option-list-block-warning {
-    border-color: rgba(var(--accent-red-rgb), 0.22);
 }
 
 .launch-option-list-title {
     margin: 0 0 0.4rem;
     font-size: 0.78rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
     letter-spacing: 0.02em;
 }

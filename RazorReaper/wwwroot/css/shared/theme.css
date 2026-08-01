@@ -369,7 +369,7 @@ h2, h3 {
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
 }
 
 h2 {
@@ -400,6 +400,10 @@ h3 {
 
 .text-orange {
     color: var(--accent-orange);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
 }
 
 .mb-0 {
@@ -451,7 +455,7 @@ h3 {
 }
 
     .main-content::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, #cccccc, var(--text-primary));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), var(--text-primary));
     }
 
 ::-webkit-scrollbar {
@@ -521,7 +525,7 @@ h3 {
 
 .startup-error-title {
     font-size: 1.4rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 0.5rem;
 }
@@ -934,7 +938,7 @@ h3 {
 .premium-upgrade-btn {
     margin-top: 1rem;
     background: linear-gradient(135deg, var(--accent-purple), var(--accent-purple-light));
-    color: white;
+    color: var(--text-primary);
     border: none;
     box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.4);
     transition: all 0.3s ease;

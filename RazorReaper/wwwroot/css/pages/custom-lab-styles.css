@@ -1,5 +1,5 @@
 /* Sky Changer styles. The Sky Changer page (CustomLab.razor) keeps its page-fade rule
-   colocated; the shared card / button / switch / settings-row chrome used by the
+   colocated; the shared card / button / settings-row chrome used by the
    Sky Injector component lives here. */
 
 /* ── card chrome ──────────────────────────────────────────────────────── */
@@ -32,7 +32,7 @@
 .lab-card-header p {
     margin: 0;
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--text-secondary);
 }
 
 .lab-card-content {
@@ -42,7 +42,7 @@
 .lab-card-content h4 {
     margin: 1.25rem 0 0.6rem 0;
     font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--text-primary);
 }
 
 .lab-card-content h4:first-of-type {
@@ -57,7 +57,7 @@
     height: 38px;
     border-radius: var(--radius-control);
     background: var(--glass-bg);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -146,56 +146,6 @@
 .lab-settings-desc {
     margin: 0;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--text-secondary);
     line-height: 1.5;
-}
-
-/* ── toggle switch ────────────────────────────────────────────────────── */
-
-.lab-switch {
-    position: relative;
-    display: inline-block;
-    width: 42px;
-    height: 24px;
-    flex-shrink: 0;
-}
-
-.lab-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.lab-switch-slider {
-    position: absolute;
-    inset: 0;
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    transition: background 0.2s ease;
-}
-
-.lab-switch-slider::before {
-    content: "";
-    position: absolute;
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    top: 3px;
-    background: #fff;
-    border-radius: 50%;
-    transition: transform 0.2s ease;
-}
-
-.lab-switch input:checked + .lab-switch-slider {
-    background: var(--accent-purple);
-}
-
-.lab-switch input:checked + .lab-switch-slider::before {
-    transform: translateX(18px);
-}
-
-.lab-switch input:disabled + .lab-switch-slider {
-    opacity: 0.4;
-    cursor: not-allowed;
 }

@@ -42,7 +42,7 @@
                             <label class="input-label">Steam Connect URL</label>
                             <div class="url-input-group">
                                 <input value="@GetSteamUrl()" readonly class="server-input readonly" />
-                                <button class="server-btn copy-btn" @onclick="CopySteamUrl">📋</button>
+                                <button class="server-btn copy-btn" @onclick="CopySteamUrl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button>
                             </div>
                         </div>
                     }
@@ -90,7 +90,7 @@
                             <div class="detail-column">
                                 <div class="detail-row">
                                     <span class="detail-label">Status:</span>
-                                    <span class="text-green detail-value">Online</span>
+                                    <span class="text-purple detail-value">Online</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Address:</span>
@@ -98,7 +98,7 @@
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Players:</span>
-                                    <span class="text-green detail-value">@currentServer.CurrentPlayers/@currentServer.MaxPlayers</span>
+                                    <span class="text-purple detail-value">@currentServer.CurrentPlayers/@currentServer.MaxPlayers</span>
                                 </div>
                             </div>
                             <div class="detail-column">
@@ -124,14 +124,14 @@
                     <div class="content-card">
                         <div class="server-info-header">
                             <h3>@selectedServer.Name</h3>
-                            <button class="server-btn close-btn" @onclick="HideServerInfo">✕</button>
+                            <button class="server-btn close-btn" @onclick="HideServerInfo"><svg width="15" height="15" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button>
                         </div>
 
                         <div class="server-details-grid">
                             <div class="detail-column">
                                 <div class="detail-row">
                                     <span class="text-secondary">Status:</span>
-                                    <span class="@(selectedServer.IsOnline ? "text-green" : "text-red")">
+                                    <span class="@(selectedServer.IsOnline ? "text-purple" : "text-red")">
                                         @(selectedServer.IsOnline ? "Online" : "Offline")
                                     </span>
                                 </div>
@@ -141,7 +141,7 @@
                                 </div>
                                 <div class="detail-row">
                                     <span class="text-secondary">Players:</span>
-                                    <span class="text-green">@selectedServer.CurrentPlayers/@selectedServer.MaxPlayers</span>
+                                    <span class="text-purple">@selectedServer.CurrentPlayers/@selectedServer.MaxPlayers</span>
                                 </div>
                             </div>
                             <div class="detail-column">
@@ -181,7 +181,7 @@
                                             <div class="text-secondary server-address">@server.IpAddress:@server.Port</div>
                                             @if (server.IsOnline)
                                             {
-                                                <div class="text-green server-players">@server.CurrentPlayers/@server.MaxPlayers players</div>
+                                                <div class="server-players">@server.CurrentPlayers/@server.MaxPlayers players</div>
                                             }
                                         </div>
                                         <div class="server-actions">
@@ -195,7 +195,7 @@
                         else
                         {
                             <div class="empty-servers-state">
-                                <div class="empty-icon">📂</div>
+                                <div class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-secondary);"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
                                 <div>No servers saved yet</div>
                                 <div class="empty-subtitle">Query and save servers to see them here</div>
                             </div>
@@ -291,7 +291,7 @@
                     <div class="section-header">
                         <h3>Troubleshooting</h3>
                         <button class="toggle-btn" @onclick="ToggleTroubleshooting">
-                            @(showTroubleshooting ? "▼ Hide" : "▶ Show")
+                            @(showTroubleshooting ? "Hide" : "Show")
                         </button>
                     </div>
 
@@ -299,7 +299,7 @@
                     {
                         <div class="troubleshooting-grid">
                             <div class="troubleshooting-item">
-                                <h4>🔧 Connection</h4>
+                                <h4>Connection</h4>
                                 <ul>
                                     <li>Check IP and port</li>
                                     <li>Verify Steam is running</li>
@@ -309,7 +309,7 @@
                             </div>
 
                             <div class="troubleshooting-item">
-                                <h4>🎮 Game Launch</h4>
+                                <h4>Game Launch</h4>
                                 <ul>
                                     <li>Restart Steam</li>
                                     <li>Verify game files</li>
@@ -319,7 +319,7 @@
                             </div>
 
                             <div class="troubleshooting-item">
-                                <h4>⚠️ Query Issues</h4>
+                                <h4>Query Issues</h4>
                                 <ul>
                                     <li>Server offline</li>
                                     <li>Port blocked</li>
@@ -329,7 +329,7 @@
                             </div>
 
                             <div class="troubleshooting-item">
-                                <h4>🔍 Ports</h4>
+                                <h4>Ports</h4>
                                 <ul>
                                     <li>Game: 7777-7784</li>
                                     <li>Query: Game+12288</li>
@@ -589,7 +589,7 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
-            NotificationService.ShowSuccess("Steam URL copied to clipboard!");
+            NotificationService.ShowSuccess("Steam URL copied to clipboard.");
         }
         catch
         {
@@ -638,7 +638,7 @@
             if (serverInfo != null)
             {
                 ApplyServerInfo(currentServer, serverInfo);
-                NotificationService.ShowSuccess($"Server online! Players: {serverInfo.Players}/{serverInfo.MaxPlayers} | Map: {serverInfo.Map}");
+                NotificationService.ShowSuccess($"Server online — Players: {serverInfo.Players}/{serverInfo.MaxPlayers} | Map: {serverInfo.Map}");
             }
             else
             {
@@ -652,7 +652,7 @@
                 if (pingReply.Status == IPStatus.Success)
                 {
                     currentServer.IsOnline = true;
-                    NotificationService.ShowWarning($"Server reachable! Ping: {pingReply.RoundtripTime}ms (Query failed)");
+                    NotificationService.ShowWarning($"Server reachable — Ping: {pingReply.RoundtripTime}ms (Query failed)");
                 }
                 else
                 {
@@ -802,13 +802,13 @@
                 existing.MaxPlayers = currentServer.MaxPlayers;
                 existing.CurrentMap = currentServer.CurrentMap;
                 existing.Version = currentServer.Version;
-                NotificationService.ShowSuccess($"Server '{currentServer.Name}' updated in local list!");
+                NotificationService.ShowSuccess($"Server '{currentServer.Name}' updated in local list.");
                 ActivityService.AddActivity($"Server updated: {currentServer.Name}", "info");
             }
             else
             {
                 servers.Add(currentServer);
-                NotificationService.ShowSuccess($"Server '{currentServer.Name}' saved to local list! Total servers: {servers.Count}");
+                NotificationService.ShowSuccess($"Server '{currentServer.Name}' saved to local list. Total servers: {servers.Count}");
                 ActivityService.AddActivity($"Server saved: {currentServer.Name}", "success");
             }
 
@@ -866,7 +866,7 @@
             string steamFavoriteUrl = $"steam://friends/joingame/{currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
 
-            NotificationService.ShowSuccess($"Server '{currentServer.Name}' added to Steam favorites!\nCheck Steam → View → Servers → Favorites tab");
+            NotificationService.ShowSuccess($"Server '{currentServer.Name}' added to Steam favorites.\nCheck Steam → View → Servers → Favorites tab");
         }
         catch (Exception ex)
         {

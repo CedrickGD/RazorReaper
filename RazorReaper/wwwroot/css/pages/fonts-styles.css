@@ -73,13 +73,13 @@
     top: 0.6rem;
     right: 0.6rem;
     color: var(--accent-purple);
-    font-weight: bold;
+    font-weight: 600;
     font-size: 1rem;
 }
 
 .fonts-layout .font-option-name {
     font-weight: 600;
-    color: #ffffff;
+    color: var(--text-primary);
     font-size: 0.85rem;
 }
 
@@ -184,9 +184,7 @@
     margin-bottom: 0;
 }
 
-/* Ensure consistent bottom spacing in all font cards */
 .fonts-layout .content-card {
-    padding-bottom: 4rem !important;
     overflow: visible !important;
     height: auto !important;
 }
@@ -204,10 +202,6 @@
     color: var(--text-primary);
     margin-bottom: 0.75rem;
     font-weight: 600;
-    background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .fonts-layout .instruction-list {
@@ -263,13 +257,13 @@
     margin-top: 0.5rem;
     font-family: var(--font-mono);
     font-size: 0.8rem;
-    color: #60a5fa;
+    color: var(--text-primary);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
 }
 
 .fonts-layout .code-display code {
-    color: #60a5fa;
+    color: var(--text-primary);
 }
 
 .fonts-layout .code-display.clickable {
@@ -287,50 +281,6 @@
     transform: translateY(0);
 }
 
-.fonts-layout .code-display-grey {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: var(--radius-chip);
-    padding: 0.75rem;
-    margin-top: 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-}
-
-.fonts-layout .code-display-grey code {
-    color: #d1d5db;
-}
-
-.fonts-layout .code-display-grey.clickable {
-    cursor: pointer;
-}
-
-.fonts-layout .code-display-grey.clickable:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(var(--accent-purple-rgb), 0.4);
-    box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.2);
-    transform: translateY(-1px);
-}
-
-.fonts-layout .code-display-grey.clickable:active {
-    transform: translateY(0);
-}
-
-.fonts-layout .success-banner {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.12), rgba(var(--accent-blue-rgb), 0.12));
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.3);
-    border-radius: var(--radius-control);
-    padding: 1rem;
-    margin-top: 1.5rem;
-    text-align: center;
-    font-weight: 600;
-    color: var(--accent-purple-light);
-    box-shadow: 0 4px 15px rgba(var(--accent-purple-rgb), 0.2);
-    backdrop-filter: blur(10px);
-    font-size: 0.85rem;
-}
 
 .fonts-layout .icon-circle {
     width: 50px;

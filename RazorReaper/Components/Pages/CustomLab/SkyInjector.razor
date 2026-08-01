@@ -141,13 +141,9 @@
                             system flips it otherwise.
                         </p>
                     </div>
-                    <label class="lab-switch">
-                        <input type="checkbox"
-                               checked="@_opts.FlipVertically"
-                               disabled="@(_opts.Mode != SkyInjectionMode.Image || _busy)"
-                               @onchange="e => _opts.FlipVertically = e.Value is bool b && b" />
-                        <span class="lab-switch-slider"></span>
-                    </label>
+                    <Switch Value="@_opts.FlipVertically"
+                            ValueChanged="@((bool v) => _opts.FlipVertically = v)"
+                            Disabled="@(_opts.Mode != SkyInjectionMode.Image || _busy)" />
                 </div>
 
                 <div class="lab-settings-row">
@@ -257,7 +253,7 @@
             <strong>Maps covered</strong>
         </div>
         <p class="injector-coverage-list">
-            The Island · Scorched Earth · Aberration · Extinction · Genesis · Genesis 2 (NEW)
+            The Island · Scorched Earth · Aberration · Extinction · Genesis · Genesis 2
             · The Center · Ragnarok · Valguero · Crystal Isles · Lost Island · Fjördur
         </p>
         <p class="injector-coverage-caveat">
@@ -273,7 +269,7 @@
 </div>
 
 <style>
-    /* Page-specific styles live here; shared chrome (.lab-card / .lab-btn / .lab-switch / ...) is in custom-lab-styles.css */
+    /* Page-specific styles live here; shared chrome (.lab-card / .lab-btn / ...) is in custom-lab-styles.css */
 
     .lab-injector { display: grid; gap: 1.25rem; }
 
@@ -321,7 +317,7 @@
 
     .injector-status-sub {
         font-size: 0.86rem;
-        color: rgba(255, 255, 255, 0.65);
+        color: var(--text-secondary);
     }
 
     .injector-grid {
@@ -349,7 +345,7 @@
         background: transparent;
         border: none;
         border-radius: var(--radius-chip);
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--text-secondary);
         font-size: 0.9rem;
         cursor: pointer;
         transition: background 0.15s ease, color 0.15s ease;
@@ -394,7 +390,7 @@
 
     .injector-color-label {
         font-size: 0.88rem;
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--text-secondary);
     }
 
     .injector-select {
@@ -469,7 +465,7 @@
     @@keyframes injectorSpin { to { transform: rotate(360deg); } }
 
     .injector-log {
-        background: #0a0a14;
+        background: var(--background-dark);
         border: 1px solid var(--glass-hover);
         border-radius: var(--radius-control);
         overflow: hidden;
@@ -483,7 +479,7 @@
         background: rgba(255, 255, 255, 0.03);
         border-bottom: 1px solid var(--glass-hover);
         font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.75);
+        color: var(--text-secondary);
     }
 
     .injector-log-header svg { width: 14px; height: 14px; }
@@ -492,7 +488,7 @@
         margin-left: auto;
         background: transparent;
         border: none;
-        color: rgba(255, 255, 255, 0.55);
+        color: var(--text-secondary);
         font-size: 0.8rem;
         cursor: pointer;
         padding: 0.15rem 0.45rem;
@@ -511,14 +507,14 @@
     }
 
     .injector-log-empty {
-        color: rgba(255, 255, 255, 0.4);
+        color: var(--text-secondary);
         font-family: var(--font-primary);
         font-style: italic;
     }
 
     .injector-log-line {
         white-space: pre-wrap;
-        color: rgba(255, 255, 255, 0.75);
+        color: var(--text-secondary);
     }
 
     .injector-log-line.success { color: var(--accent-green-soft); }
@@ -532,7 +528,7 @@
         border: 1px solid var(--glass-hover);
         border-radius: var(--radius-control);
         font-size: 0.86rem;
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--text-secondary);
     }
 
     .injector-coverage-header {
@@ -547,14 +543,14 @@
 
     .injector-coverage-list { margin: 0 0 0.5rem 0; line-height: 1.5; }
     .injector-coverage-caveat { margin: 0 0 0.5rem 0; line-height: 1.5; }
-    .injector-coverage-caveat strong { color: var(--accent-orange-soft); }
+    .injector-coverage-caveat strong { color: var(--text-primary); }
 
     .injector-coverage-jump {
         margin: 0.6rem 0 0 0;
         padding-top: 0.5rem;
         border-top: 1px solid rgba(255, 255, 255, 0.05);
         font-size: 0.83rem;
-        color: rgba(255, 255, 255, 0.55);
+        color: var(--text-secondary);
     }
 
     .injector-link {
