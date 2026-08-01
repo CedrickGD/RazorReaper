@@ -596,6 +596,15 @@ internal sealed class HudOverlayWindow : IDisposable
                         Array.Empty<(string, Color)>()));
                     break;
                 }
+                case HudModuleKind.Desync:
+                {
+                    var active = snap.DesyncSeconds.HasValue;
+                    rows.Add((m.Title.ToUpperInvariant(),
+                        active ? $"Frozen — {snap.DesyncSeconds}s" : "Off",
+                        active ? Color.FromArgb(235, StatusOrange) : TextMuted,
+                        Array.Empty<(string, Color)>()));
+                    break;
+                }
                 case HudModuleKind.ActiveScripts:
                 {
                     var count = snap.ActiveScripts.Count;
@@ -764,6 +773,9 @@ internal sealed class HudOverlayWindow : IDisposable
                 case HudModuleKind.ActiveScripts:
                     if (snap.ActiveScripts.Count == 1) parts.Add(snap.ActiveScripts[0]);
                     else if (snap.ActiveScripts.Count > 1) parts.Add($"{snap.ActiveScripts.Count} scripts");
+                    break;
+                case HudModuleKind.Desync:
+                    if (snap.DesyncSeconds.HasValue) parts.Add($"Desync {snap.DesyncSeconds}s");
                     break;
             }
         }

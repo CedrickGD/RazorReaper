@@ -22,6 +22,19 @@ public interface IProcessService
     bool IsProcessRunning(string processName);
 
     /// <summary>
+    /// Gets the full image path of a running process.
+    /// </summary>
+    /// <param name="process">The process to resolve.</param>
+    /// <returns>The full path to the executable, or <c>null</c> when it cannot be determined.</returns>
+    /// <remarks>
+    /// Anti-cheat drivers (BattlEye, once ARK joins a protected server) strip module-read rights from
+    /// every handle opened to the game, which makes <see cref="Process.MainModule"/> come back null and
+    /// <see cref="Process.Modules"/> come back empty. Resolving through QueryFullProcessImageName only
+    /// needs PROCESS_QUERY_LIMITED_INFORMATION, which stays granted, so this keeps working in-game.
+    /// </remarks>
+    string? GetExecutablePath(Process process);
+
+    /// <summary>
     /// Starts a new process with the specified file path.
     /// </summary>
     /// <param name="filePath">The path to the executable file or URI (e.g. steam://...).</param>

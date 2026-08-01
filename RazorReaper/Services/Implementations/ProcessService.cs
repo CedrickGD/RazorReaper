@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -61,6 +63,65 @@ public class ProcessService : IProcessService
             }
         }
     }
+
+    /// <inheritdoc/>
+    public string? GetExecutablePath(Process process)
+    {
+        // QueryFullProcessImageName first: it is the only one of the three that survives an
+        // anti-cheat-protected game (BattlEye strips module-read rights, so MainModule goes null).
+        try
+        {
+            var path = QueryImagePath(process.Id);
+            if (!string.IsNullOrWhiteSpace(path)) return path;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "QueryFullProcessImageName failed for PID {ProcessId}", process.Id);
+        }
+
+        try
+        {
+            var path = process.MainModule?.FileName;
+            if (!string.IsNullOrWhiteSpace(path)) return path;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "MainModule lookup failed for PID {ProcessId}", process.Id);
+        }
+
+        _logger.LogWarning("Could not resolve the image path of PID {ProcessId}", process.Id);
+        return null;
+    }
+
+    private static string? QueryImagePath(int processId)
+    {
+        var handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+        if (handle == IntPtr.Zero) return null;
+
+        try
+        {
+            var buffer = new StringBuilder(1024);
+            var size = buffer.Capacity;
+            return QueryFullProcessImageName(handle, 0, buffer, ref size) ? buffer.ToString() : null;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    private const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(int dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
 
     /// <inheritdoc/>
     public Process? Start(string filePath)

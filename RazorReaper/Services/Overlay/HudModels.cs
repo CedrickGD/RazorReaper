@@ -9,7 +9,8 @@ public enum HudModuleKind
     Notifier,
     ToolStatus,
     // Appended last: settings JSON persists these as numbers, so existing values must not shift.
-    ActiveScripts
+    ActiveScripts,
+    Desync
 }
 
 /// <summary>Screen placement for the HUD panel and the alert stack.</summary>
@@ -54,7 +55,8 @@ public sealed record HudSnapshot(
     IReadOnlyList<HudAlert> Alerts,
     IReadOnlyList<HudModule> Modules,
     bool Compact,
-    HudAnchor AlertCorner);
+    HudAnchor AlertCorner,
+    int? DesyncSeconds);
 
 /// <summary>
 /// Persisted HUD configuration (JSON at %LOCALAPPDATA%\RazorReaper\hud-overlay.json).
@@ -105,6 +107,7 @@ public sealed class HudSettings
         new HudModule(HudModuleKind.ToolStatus, "Tool", true, 3),
         new HudModule(HudModuleKind.ActiveScripts, "Scripts", true, 4),
         new HudModule(HudModuleKind.Notifier, "Alerts", true, 5),
+        new HudModule(HudModuleKind.Desync, "Desync", true, 6),
     };
 
     /// <summary>Clamp ranges and make sure every module kind exists exactly once (survives old JSON).</summary>

@@ -3,6 +3,7 @@ using System.Security.Principal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Services.Overlay;
 
 namespace RazorReaper.Services.Desync;
 
@@ -24,6 +25,9 @@ public interface IDesyncService : IDisposable
     /// <summary>Seconds left before the automatic revert, or 0 when inactive.</summary>
     int RemainingSeconds { get; }
 
+    /// <summary>Total seconds of the current activation, or 0 when inactive (drives the progress bar).</summary>
+    int TotalSeconds { get; }
+
     /// <summary>Raised when active state / countdown changes.</summary>
     event Action? Changed;
 
@@ -41,32 +45,42 @@ public sealed class DesyncService : IDesyncService
     private const int MaxSeconds = 600;
 
     private readonly IProcessService _process;
+    private readonly IArkPathProvider _arkPaths;
+    private readonly IHudOverlayService _hud;
     private readonly IOptions<AppConfiguration> _config;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
     private readonly ILogger<DesyncService> _logger;
 
     private readonly object _gate = new();
+    private readonly Task _startupCleanup;
     private CancellationTokenSource? _cts;
     private DateTime _revertAtUtc;
+    private int _totalSeconds;
     private volatile bool _active;
     private bool _disposed;
 
     public DesyncService(
         IProcessService process,
+        IArkPathProvider arkPaths,
+        IHudOverlayService hud,
         IOptions<AppConfiguration> config,
         INotificationService notifications,
         IActivityService activity,
         ILogger<DesyncService> logger)
     {
         _process = process;
+        _arkPaths = arkPaths;
+        _hud = hud;
         _config = config;
         _notifications = notifications;
         _activity = activity;
         _logger = logger;
 
-        // A rule could survive a crash from a previous run — clear it at startup.
-        _ = Task.Run(() => RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\""));
+        // A rule could survive a crash from a previous run — clear it at startup. Kept as a task so an
+        // activation that lands first can await it: otherwise this delete would race in behind the add
+        // and silently remove the rule the user just asked for.
+        _startupCleanup = Task.Run(() => RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\""));
     }
 
     public bool IsAdministrator
@@ -85,7 +99,9 @@ public sealed class DesyncService : IDesyncService
     public bool IsActive => _active;
 
     public int RemainingSeconds
-        => _active ? Math.Max(0, (int)(_revertAtUtc - DateTime.UtcNow).TotalSeconds) : 0;
+        => _active ? Math.Max(0, (int)Math.Ceiling((_revertAtUtc - DateTime.UtcNow).TotalSeconds)) : 0;
+
+    public int TotalSeconds => _active ? _totalSeconds : 0;
 
     public event Action? Changed;
 
@@ -100,31 +116,46 @@ public sealed class DesyncService : IDesyncService
             return false;
         }
 
-        var exePath = ResolveArkExecutablePath();
-        if (string.IsNullOrWhiteSpace(exePath))
+        if (!_process.IsProcessRunning(_config.Value.Ark.GameProcessName))
         {
             _notifications.ShowWarning("ARK isn't running — start the game first.");
             return false;
         }
 
-        seconds = Math.Clamp(seconds, 5, MaxSeconds);
-        var ok = await RunNetshAsync(
-            $"advfirewall firewall add rule name=\"{RuleName}\" dir=out action=block program=\"{exePath}\" enable=yes");
-        if (!ok)
+        var exePath = ResolveArkExecutablePath();
+        if (string.IsNullOrWhiteSpace(exePath))
         {
-            _notifications.ShowError("Could not create the firewall rule (needs Administrator).");
+            _notifications.ShowError("Could not locate ShooterGame.exe — check that ARK is installed where Steam reports it.");
             return false;
         }
 
+        // Let the one-shot startup cleanup finish first, so it can't delete the rule we're about to add.
+        try { await _startupCleanup; } catch { /* best-effort */ }
+
+        seconds = Math.Clamp(seconds, 5, MaxSeconds);
+        var add = await RunNetshAsync(
+            $"advfirewall firewall add rule name=\"{RuleName}\" dir=out action=block program=\"{exePath}\" profile=any enable=yes");
+        if (!add.Success)
+        {
+            _logger.LogError("Desync could not add the firewall rule for {ExePath}: {Output}", exePath, add.Output);
+            _notifications.ShowError(add.Output.Length > 0
+                ? $"Could not create the firewall rule: {add.Output}"
+                : "Could not create the firewall rule (needs Administrator).");
+            return false;
+        }
+
+        DateTime revertAt;
         lock (_gate)
         {
             _active = true;
-            _revertAtUtc = DateTime.UtcNow.AddSeconds(seconds);
+            _totalSeconds = seconds;
+            revertAt = _revertAtUtc = DateTime.UtcNow.AddSeconds(seconds);
             _cts = new CancellationTokenSource();
         }
 
         _notifications.ShowSuccess($"Desync active — auto-reverts in {seconds}s.");
         TryActivity($"Desync activated ({seconds}s)", "warning");
+        TryHud(revertAt);
         RaiseChanged();
 
         _ = Task.Run(() => AutoRevertAsync(_cts!.Token, seconds));
@@ -142,8 +173,12 @@ public sealed class DesyncService : IDesyncService
             _cts = null;
         }
         try { cts?.Cancel(); } catch (ObjectDisposedException) { }
+        cts?.Dispose();
+        TryHud(null);
 
-        await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
+        var del = await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
+        if (!del.Success)
+            _logger.LogWarning("Desync revert: netsh delete rule reported failure: {Output}", del.Output);
         _notifications.ShowInfo("Desync reverted — traffic restored.");
         TryActivity("Desync reverted", "info");
         RaiseChanged();
@@ -167,9 +202,15 @@ public sealed class DesyncService : IDesyncService
         {
             _logger.LogError(ex, "Desync auto-revert failed — forcing rule removal");
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
+            TryHud(null);
         }
     }
 
+    /// <summary>
+    /// Full path of ARK's executable, preferring the running process so the rule always matches the
+    /// image actually on screen, and falling back to the detected install when the process can't be
+    /// read at all.
+    /// </summary>
     private string? ResolveArkExecutablePath()
     {
         var processes = _process.GetProcessesByName(_config.Value.Ark.GameProcessName);
@@ -177,22 +218,42 @@ public sealed class DesyncService : IDesyncService
         {
             foreach (var p in processes)
             {
-                try
-                {
-                    var path = p.MainModule?.FileName;
-                    if (!string.IsNullOrWhiteSpace(path)) return path;
-                }
-                catch { /* access denied on some processes — try the next */ }
+                var path = _process.GetExecutablePath(p);
+                if (!string.IsNullOrWhiteSpace(path)) return path;
             }
-            return null;
         }
         finally
         {
             foreach (var p in processes) p?.Dispose();
         }
+
+        return ResolveInstalledExecutablePath();
     }
 
-    private async Task<bool> RunNetshAsync(string arguments)
+    private string? ResolveInstalledExecutablePath()
+    {
+        try
+        {
+            var arkPath = _arkPaths.FindArkPath();
+            if (string.IsNullOrWhiteSpace(arkPath)) return null;
+
+            var exePath = Path.Combine(arkPath, _config.Value.Ark.ExecutableRelativePath);
+            if (!File.Exists(exePath)) return null;
+
+            _logger.LogInformation("Desync fell back to the installed ARK executable at {ExePath}", exePath);
+            return exePath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Desync could not resolve the installed ARK executable");
+            return null;
+        }
+    }
+
+    /// <summary>Outcome of a netsh call; <paramref name="Output"/> carries the reason a call failed.</summary>
+    private readonly record struct NetshResult(bool Success, string Output);
+
+    private async Task<NetshResult> RunNetshAsync(string arguments)
     {
         try
         {
@@ -204,14 +265,20 @@ public sealed class DesyncService : IDesyncService
                 RedirectStandardError = true
             };
             using var proc = Process.Start(psi);
-            if (proc is null) return false;
+            if (proc is null) return new NetshResult(false, "netsh could not be started.");
+
+            // Read both streams before waiting, or a full pipe buffer would deadlock the wait.
+            var stdout = proc.StandardOutput.ReadToEndAsync();
+            var stderr = proc.StandardError.ReadToEndAsync();
             await proc.WaitForExitAsync();
-            return proc.ExitCode == 0;
+
+            var output = string.Concat(await stdout, await stderr).Trim();
+            return new NetshResult(proc.ExitCode == 0, output);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "netsh call failed: {Args}", arguments);
-            return false;
+            return new NetshResult(false, ex.Message);
         }
     }
 
@@ -227,6 +294,12 @@ public sealed class DesyncService : IDesyncService
         catch { /* best-effort */ }
     }
 
+    private void TryHud(DateTime? revertAtUtc)
+    {
+        try { _hud.SetDesync(revertAtUtc); }
+        catch { /* best-effort */ }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -236,6 +309,7 @@ public sealed class DesyncService : IDesyncService
         try
         {
             lock (_gate) { _cts?.Cancel(); _active = false; }
+            TryHud(null);
             RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"").GetAwaiter().GetResult();
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Desync cleanup on dispose failed"); }

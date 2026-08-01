@@ -16,3 +16,110 @@
     color: var(--text-secondary);
     line-height: 1.5;
 }
+
+/* Live countdown while the block rule is in place. */
+.dsy-countdown {
+    margin-top: 1rem;
+    padding: 1.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-control);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.dsy-count-num {
+    font-size: 3rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.dsy-count-unit {
+    font-size: 1.4rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 0.15rem;
+}
+
+.dsy-count-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.dsy-count-bar {
+    width: 100%;
+    max-width: 420px;
+    height: 6px;
+    margin-top: 0.75rem;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.dsy-count-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: rgba(var(--accent-orange-rgb), 0.85);
+    transition: width 1s linear;
+}
+
+.dsy-stop {
+    margin-top: 1rem;
+}
+
+/* Duration presets next to the numeric input. */
+.dsy-duration {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dsy-preset {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.dsy-preset:hover {
+    color: var(--text-primary);
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
+}
+
+.dsy-preset.active {
+    color: var(--text-primary);
+    border-color: rgba(var(--accent-purple-rgb), 0.5);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+}
+
+input.dsy-num {
+    width: 110px;
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    text-align: center;
+}
+
+.dsy-section-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+}
+
+.dsy-steps {
+    margin: 0 0 0.5rem;
+    padding-left: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.dsy-steps li + li {
+    margin-top: 0.25rem;
+}

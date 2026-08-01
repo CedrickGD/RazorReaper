@@ -3,21 +3,17 @@
 @inject IDesyncService DesyncService
 @implements IDisposable
 
-<div class="page-header">
+<header class="page-header">
     <h1 class="page-title">Desync</h1>
     <p class="page-subtitle">Freezes your character server-side by blocking ARK's outbound traffic. Always auto-reverts.</p>
-</div>
+</header>
 
 <div class="content-card">
     <StatusHeader State="@(DesyncService.IsActive ? "warning" : "off")"
-                  Label="@(DesyncService.IsActive ? $"Active — reverting in {DesyncService.RemainingSeconds}s" : "Inactive")"
+                  Label="@(DesyncService.IsActive ? "Active" : "Inactive")"
                   Description="Adds a temporary Windows Firewall rule blocking outbound traffic for ShooterGame.exe.">
         <Actions>
-            @if (DesyncService.IsActive)
-            {
-                <button class="btn btn-danger" @onclick="StopAsync">Revert now</button>
-            }
-            else
+            @if (!DesyncService.IsActive)
             {
                 <button class="btn btn-primary" @onclick="StartAsync" disabled="@(!DesyncService.IsAdministrator)">Activate</button>
             }
@@ -26,10 +22,42 @@
 
     <ElevationPrompt Message="Desync needs administrator rights to add its temporary firewall rule." />
 
+    @if (DesyncService.IsActive)
+    {
+        <div class="dsy-countdown">
+            <div class="dsy-count-num">@DesyncService.RemainingSeconds<span class="dsy-count-unit">s</span></div>
+            <div class="dsy-count-label">until traffic is restored</div>
+            <div class="dsy-count-bar">
+                <div class="dsy-count-fill" style="width: @(ProgressPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+            </div>
+            <button class="btn btn-danger dsy-stop" @onclick="StopAsync">Stop now</button>
+        </div>
+    }
+    else
+    {
+        <SettingRow Title="Duration" Description="Seconds before it reverts automatically (max 600).">
+            <div class="dsy-duration">
+                @foreach (var preset in Presets)
+                {
+                    <button class="dsy-preset @(_seconds == preset ? "active" : "")"
+                            @onclick="() => _seconds = preset">@(preset)s</button>
+                }
+                <input class="dsy-num" type="number" min="5" max="600" value="@_seconds" @onchange="SetSeconds" />
+            </div>
+        </SettingRow>
+    }
+</div>
 
-    <SettingRow Title="Duration" Description="Seconds before it reverts automatically (max 600).">
-        <input class="script-input" type="number" min="5" max="600" value="@_seconds" @onchange="SetSeconds" />
-    </SettingRow>
+<div class="content-card">
+    <div class="dsy-section-title">How it works</div>
+    <ol class="dsy-steps">
+        <li>Activate adds an outbound block rule for ShooterGame.exe — the server stops receiving your position.</li>
+        <li>Your character freezes in place server-side while the game keeps running for you.</li>
+        <li>The rule is removed when the timer ends, when you stop it, or when RazorReaper closes.</li>
+    </ol>
+
+    <SettingRow Title="In-game countdown" Description="While active, the HUD overlay's Desync module shows the remaining seconds on top of the game." />
+    <SettingRow Title="Instant stop" Description="Stop now removes the rule immediately — traffic resumes within a second." />
 
     <div class="dsy-note">
         Your position freezes on the server while downloads keep working; the server usually disconnects
@@ -39,7 +67,14 @@
 </div>
 
 @code {
+    private static readonly int[] Presets = { 10, 30, 60, 120 };
+
     private int _seconds = 30;
+
+    private double ProgressPercent
+        => DesyncService.TotalSeconds > 0
+            ? Math.Clamp(DesyncService.RemainingSeconds * 100.0 / DesyncService.TotalSeconds, 0, 100)
+            : 0;
 
     protected override void OnInitialized() => DesyncService.Changed += OnChanged;
 
@@ -52,7 +87,11 @@
         if (int.TryParse(e.Value?.ToString(), out var v)) _seconds = Math.Clamp(v, 5, 600);
     }
 
-    private async void OnChanged() => await InvokeAsync(StateHasChanged);
+    private void OnChanged()
+    {
+        // Marshal to the UI thread; swallowing here keeps a render race from becoming an unhandled crash.
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose() => DesyncService.Changed -= OnChanged;
 }

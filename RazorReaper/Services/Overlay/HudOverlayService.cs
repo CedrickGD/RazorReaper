@@ -42,6 +42,12 @@ public interface IHudOverlayService : IDisposable
     /// <summary>Set the server info shown by the ServerInfo module (nulls clear individual parts).</summary>
     void SetServerInfo(string? name, int? players, int? maxPlayers, int? pingMs);
 
+    /// <summary>
+    /// Show a live countdown in the Desync module until the given UTC deadline (null = inactive).
+    /// The overlay computes the remaining seconds itself each frame, so one call per activation is enough.
+    /// </summary>
+    void SetDesync(DateTime? revertAtUtc);
+
     /// <summary>Queue an alert for the Notifier module. This is the API the Notifier client calls.</summary>
     void PushAlert(HudAlert alert);
     void PushAlert(string text, HudAlertSeverity severity = HudAlertSeverity.Info);
@@ -86,6 +92,7 @@ public sealed class HudOverlayService : IHudOverlayService
     private bool _moveMode;
     private string? _activeTool;
     private HudServerInfo _server = new(null, null, null, null);
+    private DateTime? _desyncUntilUtc;
     private DateTime _sessionStartUtc;
     private int _testAlertCounter;
     private CancellationTokenSource? _saveCts;
@@ -124,12 +131,10 @@ public sealed class HudOverlayService : IHudOverlayService
         // (Also instantiates every script at boot, which registers their global hotkeys.)
         foreach (var script in _scripts) script.Changed += OnScriptChanged;
 
-        // Restore last session's on/off state so the HUD comes back after an app restart.
-        if (_settings.Enabled)
-        {
-            try { Start(); }
-            catch (Exception ex) { _logger.LogWarning(ex, "HUD overlay auto-start failed"); }
-        }
+        // Deliberately NO auto-restore of a previously-running HUD: the overlay starts every
+        // session off and only appears when the user turns it on (page toggle or hotkey).
+        // Restoring it made the HUD look "on by default" after any session that ended with
+        // the HUD running — e.g. a close-with-ARK exit.
     }
 
     private void OnScriptChanged() => TickNow();
@@ -246,6 +251,12 @@ public sealed class HudOverlayService : IHudOverlayService
         TickNow();
     }
 
+    public void SetDesync(DateTime? revertAtUtc)
+    {
+        lock (_lock) _desyncUntilUtc = revertAtUtc;
+        TickNow();
+    }
+
     public void PushAlert(HudAlert alert)
     {
         if (alert == null || string.IsNullOrWhiteSpace(alert.Text)) return;
@@ -359,6 +370,14 @@ public sealed class HudOverlayService : IHudOverlayService
             if (running != null) activeScripts = running;
         }
 
+        // Remaining desync seconds straight from the deadline, so the 2 Hz loop ticks it without pushes.
+        int? desyncSeconds = null;
+        if (_desyncUntilUtc is DateTime until)
+        {
+            var remaining = (int)Math.Ceiling((until - DateTime.UtcNow).TotalSeconds);
+            if (remaining > 0) desyncSeconds = remaining;
+        }
+
         return new HudSnapshot(
             TimeText: DateTime.Now.ToString("HH:mm:ss"),
             SessionText: sessionText,
@@ -368,7 +387,8 @@ public sealed class HudOverlayService : IHudOverlayService
             Alerts: visibleAlerts,
             Modules: _settings.Modules.ToList(),
             Compact: _settings.Compact,
-            AlertCorner: _settings.AlertCorner);
+            AlertCorner: _settings.AlertCorner,
+            DesyncSeconds: desyncSeconds);
     }
 
     // ─── Window plumbing ───────────────────────────────────────────────────────────────────
