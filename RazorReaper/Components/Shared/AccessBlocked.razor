@@ -4,18 +4,12 @@
 
 @{
     var isBan = string.Equals(AccessGate.Mode, "ban", StringComparison.OrdinalIgnoreCase);
-    var accent = isBan ? "#ef4444" : "#f59e0b";
     var heading = isBan ? "Access permanently revoked" : "Access suspended";
 }
 
-<div style="position:fixed; inset:0; z-index:2147483000; display:flex; align-items:center; justify-content:center;
-            background:radial-gradient(120% 120% at 50% 0%, rgba(20,10,14,0.86), rgba(6,7,11,0.96));
-            backdrop-filter:blur(14px); -webkit-app-region:drag; padding:24px;">
-    <div style="max-width:460px; width:100%; text-align:center; -webkit-app-region:no-drag;
-                background:#12141c; border:1px solid #23202b; border-radius:20px; padding:40px 36px;
-                box-shadow:0 30px 90px rgba(0,0,0,0.6);">
-        <div style="width:66px; height:66px; margin:0 auto 22px; border-radius:18px; display:flex; align-items:center;
-                    justify-content:center; background:@(accent)1a; color:@accent;">
+<div class="access-blocked-overlay @(isBan ? "is-ban" : "is-suspend")">
+    <div class="ab-card">
+        <div class="ab-icon">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                  stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -23,41 +17,146 @@
             </svg>
         </div>
 
-        <h1 style="font-size:1.4rem; font-weight:600; color:#f2f3f7; margin:0 0 10px;">@heading</h1>
+        <h1 class="ab-heading">@heading</h1>
 
-        <p style="font-size:0.9rem; color:#a7adbd; line-height:1.6; margin:0 0 4px;">
+        <p class="ab-text">
             Your access to RazorReaper on this machine has been @(isBan ? "revoked" : "temporarily suspended") by an administrator.
         </p>
 
         @if (!string.IsNullOrWhiteSpace(AccessGate.Reason))
         {
-            <div style="margin:18px 0 4px; padding:12px 16px; border-radius:10px; background:#1a1620;
-                        border:1px solid @(accent)33; text-align:left;">
-                <div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:@accent; margin-bottom:4px;">Reason</div>
-                <div style="font-size:0.85rem; color:#dfe2ea; line-height:1.5;">@AccessGate.Reason</div>
+            <div class="ab-reason">
+                <div class="ab-reason-label">Reason</div>
+                <div class="ab-reason-text">@AccessGate.Reason</div>
             </div>
         }
 
         @if (!isBan && AccessGate.BannedUntil is not null)
         {
-            <p style="font-size:0.82rem; color:#c9ccd6; margin:16px 0 0;">
-                Access returns automatically on <strong style="color:#f2f3f7;">@AccessGate.BannedUntil.Value.ToString("f")</strong>.
+            <p class="ab-until">
+                Access returns automatically on <strong>@AccessGate.BannedUntil.Value.ToString("f")</strong>.
             </p>
         }
 
-        <div style="margin-top:26px; display:flex; gap:10px; justify-content:center;">
-            <button @onclick="ReCheck" disabled="@_checking"
-                    style="padding:10px 18px; border-radius:10px; border:1px solid #2c2935; background:#1b1922;
-                           color:#e6e8ee; font-size:0.82rem; font-weight:600; cursor:pointer;">
+        <div class="ab-actions">
+            <button class="btn btn-secondary" @onclick="ReCheck" disabled="@_checking">
                 @(_checking ? "Checking…" : "Re-check access")
             </button>
         </div>
 
-        <p style="font-size:0.72rem; color:#6b7080; margin:20px 0 0; line-height:1.5;">
+        <p class="ab-footnote">
             Believe this is a mistake? Reach out in the RazorReaper Discord.
         </p>
     </div>
 </div>
+
+<style>
+    .access-blocked-overlay {
+        --gate-accent: var(--accent-orange);
+        --gate-accent-rgb: var(--accent-orange-rgb);
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(120% 120% at 50% 0%, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95));
+        backdrop-filter: blur(14px);
+        -webkit-app-region: drag;
+        padding: var(--space-5);
+    }
+
+        .access-blocked-overlay.is-ban {
+            --gate-accent: var(--accent-red);
+            --gate-accent-rgb: var(--accent-red-rgb);
+        }
+
+    .ab-card {
+        max-width: 460px;
+        width: 100%;
+        text-align: center;
+        -webkit-app-region: no-drag;
+        background: var(--background-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-card);
+        padding: 40px 36px;
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+    }
+
+    .ab-icon {
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 22px;
+        border-radius: var(--radius-panel);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--gate-accent-rgb), 0.10);
+        color: var(--gate-accent);
+    }
+
+    .ab-heading {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 10px;
+    }
+
+    .ab-text {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin: 0 0 4px;
+    }
+
+    .ab-reason {
+        margin: 18px 0 4px;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-control);
+        background: var(--surface-inset);
+        border: 1px solid rgba(var(--gate-accent-rgb), 0.20);
+        text-align: left;
+    }
+
+    .ab-reason-label {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--gate-accent);
+        margin-bottom: 4px;
+    }
+
+    .ab-reason-text {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        line-height: 1.5;
+    }
+
+    .ab-until {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        margin: 16px 0 0;
+    }
+
+        .ab-until strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+    .ab-actions {
+        margin-top: 26px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .ab-footnote {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        margin: 20px 0 0;
+        line-height: 1.5;
+    }
+</style>
 
 @code {
     private bool _checking;
