@@ -6,7 +6,6 @@ namespace RazorReaper.Services.Implementations;
 
 public sealed class AutoUpdateManager : IAutoUpdateManager
 {
-    private const string PrefKeyEnabled = "rr.autoupdate.enabled";
     private const string PrefKeyLastKnownVersion = "rr.autoupdate.lastknownversion";
     private const string PrefKeyInstallerPath = "rr.autoupdate.installerpath";
     private const string PrefKeyInstallerArgs = "rr.autoupdate.installerargs";
@@ -15,10 +14,22 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     private static readonly string TempDir = Path.Combine(Path.GetTempPath(), "RazorReaperUpdate");
     private static readonly string InstallerFileName = "RazorReaper_Update.exe";
 
+    /// <summary>How often to re-check while the app stays open, so a release published
+    /// mid-session is picked up without waiting for the next launch.</summary>
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(30);
+
+    /// <summary>Breathing room between the "installing" toast and the app vanishing.</summary>
+    private static readonly TimeSpan HandoffGrace = TimeSpan.FromSeconds(4);
+
     private readonly IUpdateService updateService;
     private readonly HttpClient httpClient;
+    private readonly INotificationService notifications;
     private readonly ILogger<AutoUpdateManager> logger;
 
+    private int recurringStarted;
+    private int orchestratorLaunched;
+
+    private volatile bool isChecking;
     private volatile bool isDownloading;
     private volatile bool isInstallerReady;
     private int _downloadProgressPercent = -1; // -1 means null
@@ -31,25 +42,19 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     public AutoUpdateManager(
         IUpdateService updateService,
         HttpClient httpClient,
+        INotificationService notifications,
         ILogger<AutoUpdateManager> logger)
     {
         this.updateService = updateService;
         this.httpClient = httpClient;
+        this.notifications = notifications;
         this.logger = logger;
     }
 
     public event Action? StateChanged;
+    public event Action? InstallRequested;
 
-    public bool IsAutoUpdateEnabled
-    {
-        get => Preferences.Get(PrefKeyEnabled, true);
-        set
-        {
-            Preferences.Set(PrefKeyEnabled, value);
-            OnStateChanged();
-        }
-    }
-
+    public bool IsChecking => isChecking;
     public bool IsInstallerReady => isInstallerReady;
     public bool IsDownloading => isDownloading;
     public int? DownloadProgressPercent => _downloadProgressPercent >= 0 ? _downloadProgressPercent : null;
@@ -60,7 +65,42 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     public async Task RunStartupCheckAsync(CancellationToken cancellationToken = default)
     {
         CleanupStaleInstaller();
+        await CheckAndInstallAsync(cancellationToken);
+        StartRecurringChecks();
+    }
 
+    /// <summary>
+    /// Re-checks on <see cref="CheckInterval"/> for as long as the app is open. Started
+    /// once; the interlock keeps a second call from spawning a second loop.
+    /// </summary>
+    private void StartRecurringChecks()
+    {
+        if (Interlocked.Exchange(ref recurringStarted, 1) != 0) return;
+
+        _ = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(CheckInterval);
+            while (await timer.WaitForNextTickAsync())
+            {
+                // Once an installer is staged the handoff is already in flight; checking
+                // again would only download the same build twice.
+                if (isInstallerReady || isDownloading) continue;
+
+                try
+                {
+                    await CheckAndInstallAsync(CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Recurring update check failed");
+                }
+            }
+        });
+    }
+
+    private async Task CheckAndInstallAsync(CancellationToken cancellationToken)
+    {
+        isChecking = true;
         statusMessage = "Checking for updates...";
         OnStateChanged();
 
@@ -71,13 +111,17 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Startup update check failed");
+            logger.LogError(ex, "Update check failed");
             result = new UpdateCheckResult
             {
                 CurrentVersion = updateService.CurrentVersion,
                 ErrorMessage = "Update check failed.",
                 CheckedAt = DateTimeOffset.UtcNow
             };
+        }
+        finally
+        {
+            isChecking = false;
         }
 
         lastCheckResult = result;
@@ -96,60 +140,67 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
             return;
         }
 
-        if (!IsAutoUpdateEnabled)
-        {
-            statusMessage = $"Version {result.LatestVersion} available — auto-update is off.";
-            OnStateChanged();
-            return;
-        }
-
+        // No opt-out: a new build is downloaded and installed as soon as it's seen.
         await DownloadInstallerAsync(result, cancellationToken);
     }
 
-    public async Task PrepareInstallerOnDemandAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Tells the app to hand off. Warns first and waits <see cref="HandoffGrace"/> so the
+    /// window doesn't just disappear out from under whatever the user was doing.
+    /// </summary>
+    private void RequestInstall(Version? version)
     {
-        // Idempotent: if the installer is already on disk, the caller can immediately close
-        // the app to hand off to it. Likewise short-circuit if a download is already running.
-        if (isInstallerReady || isDownloading) return;
-
-        // Re-run the manifest check if we have nothing cached (e.g. the user launched offline,
-        // then connected, then clicked Update Now without ever hitting Check).
-        var pending = lastCheckResult;
-        if (pending is null || !pending.IsSuccess)
+        _ = Task.Run(async () =>
         {
             try
             {
-                pending = await updateService.CheckForUpdatesAsync(cancellationToken);
-                lastCheckResult = pending;
-                OnStateChanged();
+                var label = version?.ToString() ?? "a new version";
+                // Countdown variant, because this toast's lifetime *is* the grace period:
+                // when it runs out the window is gone. A static warning gave no hint how
+                // much time was left to finish what you were doing.
+                notifications.ShowWarningWithCountdown(
+                    $"Installing update v{label} — Razor Reaper will restart.",
+                    durationMs: (int)HandoffGrace.TotalMilliseconds);
+
+                await Task.Delay(HandoffGrace);
+
+                logger.LogInformation("Requesting install handoff for v{Version}", label);
+                InstallRequested?.Invoke();
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Update Now: manifest check failed");
-                statusMessage = "Update check failed.";
-                OnStateChanged();
-                return;
+                logger.LogError(ex, "Install handoff request failed");
             }
-        }
-
-        if (pending is null || !pending.HasUpdate || string.IsNullOrWhiteSpace(pending.DownloadUrl))
-        {
-            return;
-        }
-
-        // Bypass the IsAutoUpdateEnabled gate — Update Now is an explicit user intent and
-        // must work even when the auto-update toggle is off.
-        await DownloadInstallerAsync(pending, cancellationToken);
+        });
     }
 
     public bool LaunchPendingInstaller()
     {
+        // The forced path calls this twice on its own: App.HandleInstallRequested launches
+        // the orchestrator and then calls Environment.Exit(0), which fires ProcessExit —
+        // and that handler calls in here again. Nothing about the staged state stops the
+        // second call, because the installer .exe is still on disk while orchestrator #1
+        // sits in its tasklist wait loop. Two orchestrators would mean two silent installs
+        // racing over the same files and two relaunches, so one is allowed to win, and a
+        // later caller is told the handoff is already underway rather than "it failed".
+        if (Volatile.Read(ref orchestratorLaunched) != 0)
+        {
+            return true;
+        }
+
         var path = installerPath ?? Preferences.Get(PrefKeyInstallerPath, "");
         var args = installerArgs ?? Preferences.Get(PrefKeyInstallerArgs, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART");
 
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             return false;
+        }
+
+        // Claim the launch before touching the disk — the read above is only a cheap
+        // shortcut, this is the one that actually decides between concurrent callers.
+        if (Interlocked.Exchange(ref orchestratorLaunched, 1) != 0)
+        {
+            return true;
         }
 
         try
@@ -191,6 +242,11 @@ del ""%~f0"" >nul 2>&1
                 WindowStyle = ProcessWindowStyle.Hidden
             });
 
+            // Drop the in-memory copies as well, not just the prefs: they were the reason a
+            // re-entrant call sailed past every guard above.
+            installerPath = null;
+            installerArgs = null;
+
             Preferences.Remove(PrefKeyInstallerPath);
             Preferences.Remove(PrefKeyInstallerArgs);
             Preferences.Remove(PrefKeyPendingVersion);
@@ -200,9 +256,35 @@ del ""%~f0"" >nul 2>&1
         }
         catch (Exception ex)
         {
+            // Nothing was spawned, so hand the claim back — otherwise a retry after
+            // ResetPendingInstaller would be answered with a phantom "already launched".
+            Interlocked.Exchange(ref orchestratorLaunched, 0);
             logger.LogError(ex, "Failed to launch auto-update orchestrator: {Path}", path);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Called when the app tried to hand off and stayed open anyway. The recurring loop
+    /// skips every tick while an installer is staged, and <c>isInstallerReady</c> is only
+    /// ever set — so without this the session would never check again and the Home widget
+    /// would sit on "Installing v… — restarting..." forever while nothing restarts.
+    /// </summary>
+    public void ResetPendingInstaller()
+    {
+        isInstallerReady = false;
+        installerPath = null;
+        installerArgs = null;
+        pendingVersion = null;
+        _downloadProgressPercent = -1;
+        statusMessage = "Update couldn't start — will retry at the next check.";
+
+        Preferences.Remove(PrefKeyInstallerPath);
+        Preferences.Remove(PrefKeyInstallerArgs);
+        Preferences.Remove(PrefKeyPendingVersion);
+
+        logger.LogWarning("Auto-update handoff failed; cleared the staged installer so checks resume");
+        OnStateChanged();
     }
 
     public Version? DetectVersionUpgrade()
@@ -281,7 +363,7 @@ del ""%~f0"" >nul 2>&1
             isInstallerReady = true;
             isDownloading = false;
             _downloadProgressPercent = 100;
-            statusMessage = $"Update v{result.LatestVersion} ready — will install when you close the app.";
+            statusMessage = $"Installing v{result.LatestVersion} — restarting...";
 
             Preferences.Set(PrefKeyInstallerPath, targetPath);
             Preferences.Set(PrefKeyInstallerArgs, args);
@@ -290,6 +372,9 @@ del ""%~f0"" >nul 2>&1
 
             logger.LogInformation("Auto-update installer downloaded: {Path} for v{Version}", targetPath, result.LatestVersion);
             OnStateChanged();
+
+            // Straight to install — no waiting for the user to close the app.
+            RequestInstall(result.LatestVersion);
         }
         catch (OperationCanceledException)
         {

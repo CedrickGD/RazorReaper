@@ -414,7 +414,7 @@
 }
 
 .autoclicker-layout .ac-cta-row .ini-widget-cta:hover:not(:disabled) {
-    transform: translateY(-1px);
+
     filter: brightness(1.07);
     box-shadow: 0 10px 26px rgba(var(--accent-purple-rgb), 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
@@ -489,7 +489,7 @@
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.22);
     color: var(--text-primary);
-    transform: translateY(-1px);
+
 }
 
 /* ── Compact segmented sizing already handled above; numeric overrides ── */

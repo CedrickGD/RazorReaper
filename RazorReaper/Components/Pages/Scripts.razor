@@ -4,13 +4,23 @@
 @inject IEnumerable<AutomationScriptBase> AllScripts
 @implements IDisposable
 
+@* The page claims the window height and scrolls inside its own panes, so nothing here
+   has to be shrunk to fit and .main-content never grows past the bottom edge. *@
+<div class="scripts-page">
 <header class="page-header">
     <h1 class="page-title">Scripts</h1>
-    <p class="page-subtitle">ARK automation scripts — start, stop, and configure. External input only, BattlEye-safe.</p>
+    <p class="page-subtitle">Premade automation that runs natively — no AutoHotkey or other external tools. External input only, BattlEye-safe.</p>
 </header>
 
 <div class="scripts-layout">
-    <aside class="scripts-list">
+    @* One column, not two. Paired up, the names had to be ellipsised and the card was a
+       short block with a dead half-page under it; a single 16-row column is the height
+       of the content area, so the page reads as two full-height panes. *@
+    <aside class="scripts-list rr-scroll">
+        <div class="scripts-list-head">
+            <span>All scripts</span>
+            <span class="scripts-list-count">@_scripts.Count(s => s.IsRunning) running</span>
+        </div>
         @foreach (var script in _scripts)
         {
             <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
@@ -23,7 +33,17 @@
     <section class="scripts-detail">
         @if (_selected is not null)
         {
-            <div class="content-card">
+            @* @key on the selected script remounts the pane, which restarts the entry
+               animation — otherwise picking a different script hard-cuts the whole
+               detail. Same trick the sidebar panel uses.
+
+               One key on one wrapper, not one per child: Blazor rejects two siblings
+               carrying the same key, and when it does the whole subtree silently stops
+               re-rendering — clicking a script did nothing at all. *@
+            <div class="scripts-detail-body" @key="_selected">
+            @* No .content-card here: StatusHeader already draws its own inset panel, so
+               a card around it was a border inside a border and 28px of dead padding. *@
+            <div class="script-hero">
                 <StatusHeader State="@(_selected.IsRunning ? "online" : "off")"
                               Label="@_selected.DisplayName"
                               Description="@Describe(_selected)">
@@ -38,6 +58,11 @@
                         }
                     </Actions>
                 </StatusHeader>
+            </div>
+
+            <div class="script-panels">
+            <div class="content-card script-settings">
+                <h3>Settings</h3>
 
                 @if (_selected is YutyScript yuty)
                 {
@@ -220,14 +245,16 @@
                     }
                 }
 
-                <SettingRow Title="Start / Stop hotkey" Description="System-wide toggle — works even while ARK is focused.">
-                    <HotkeyField Value="@_selected.StartStopHotkey" ValueChanged="OnHotkeyChanged" />
+                @* Full width (see scripts-styles.css): squeezed into half, the combo and its
+                   link wrapped onto a second line and dragged the whole grid row taller. *@
+                <SettingRow Class="script-hotkey-row" Title="Start / Stop hotkey" Description="System-wide toggle — works even while ARK is focused.">
+                    <HotkeyLink Value="@_selected.StartStopHotkey" />
                 </SettingRow>
             </div>
 
             @if (_selected is ICalibratableScript cal)
             {
-                <div class="content-card">
+                <div class="content-card scripts-calibration">
                     <h3>Calibration</h3>
                     <SettingRow Title="Button region" Description='@(cal.HasRegion ? cal.RegionSummary : "Not set for this resolution.")'>
                         <button class="btn btn-secondary" @onclick="CalibrateRegion" disabled="@_calibrating">Calibrate region</button>
@@ -241,8 +268,11 @@
                     }
                 </div>
             }
+            </div>
+            </div>
         }
     </section>
+</div>
 </div>
 
 @code {
@@ -492,13 +522,6 @@
     private void CaptureReferenceSnapshot()
     {
         if (_selected is ICalibratableScript cal) cal.CaptureReference();
-    }
-
-    private void OnHotkeyChanged(string value)
-    {
-        if (_selected is null) return;
-        _selected.StartStopHotkey = value;
-        _selected.SaveHotkey();
     }
 
     private async void OnScriptChanged() => await InvokeAsync(StateHasChanged);

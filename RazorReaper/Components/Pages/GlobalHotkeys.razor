@@ -1,56 +1,85 @@
 @page "/hotkeys"
 @using RazorReaper.Services.Automation
+@inject IHotkeyRegistry Registry
 @inject IEnumerable<AutomationScriptBase> AllScripts
 @implements IDisposable
 
+@*
+    The single place system-wide hotkeys are set. Feature pages show their binding
+    read-only and link here, so a hotkey is never configurable in two places.
+
+    Keys a macro sends *into ARK* are not hotkeys and stay on their own page — see
+    HotkeyRegistry for where that line is drawn.
+*@
+
 <header class="page-header">
     <h1 class="page-title">Global Hotkeys</h1>
-    <p class="page-subtitle">Every automation script's start/stop hotkey at a glance — toggle any of them on or off right here.</p>
+    <p class="page-subtitle">Every system-wide hotkey, set in one place. They work even while ARK has focus.</p>
 </header>
 
-<div class="content-card">
-    <div class="hk-list">
-        @foreach (var script in _scripts)
-        {
-            <div class="hk-row">
-                <span class="hk-dot @(script.IsRunning ? "on" : "")"></span>
-                <span class="hk-name">@script.DisplayName</span>
-                <span class="hk-key">
-                    @if (string.IsNullOrWhiteSpace(script.StartStopHotkey))
+@foreach (var group in Bindings.GroupBy(b => b.Group))
+{
+    <div class="content-card hk-card" @key="group.Key">
+        <h3 class="hk-group-title">@group.Key</h3>
+
+        <div class="hk-list">
+            @foreach (var binding in group)
+            {
+                <div class="hk-row" @key="binding.Id">
+                    <span class="hk-dot @(binding.IsActive?.Invoke() == true ? "on" : "")"></span>
+
+                    <span class="hk-text">
+                        <span class="hk-name">@binding.Name</span>
+                        <span class="hk-desc">@binding.Description</span>
+                    </span>
+
+                    @if (binding.ReadOnlyHere)
                     {
-                        <span class="hk-unset">no hotkey</span>
+                        @* Registration for these still lives in page-local state, so the
+                           only honest thing is to point at where it can actually be set. *@
+                        <a class="hk-link" href="@binding.OwnerRoute">Set on its page</a>
                     }
                     else
                     {
-                        <kbd class="hk-combo">@script.StartStopHotkey</kbd>
+                        <span class="hk-field">
+                            <HotkeyField Value="@binding.Get()"
+                                         ValueChanged="@(v => Apply(binding, v))"
+                                         Placeholder="Press a combination" />
+                        </span>
                     }
-                </span>
-                <Switch Value="script.IsRunning" ValueChanged="@(v => Toggle(script, v))" />
-            </div>
-        }
+                </div>
+            }
+        </div>
     </div>
-    <p class="hk-note">Bind a script's hotkey on the <a href="/scripts">Scripts</a> page. Hotkeys work system-wide, even while ARK is focused.</p>
-</div>
+}
 
 @code {
+    private IReadOnlyList<HotkeyBinding> Bindings = Array.Empty<HotkeyBinding>();
     private List<AutomationScriptBase> _scripts = new();
 
     protected override void OnInitialized()
     {
+        Bindings = Registry.GetBindings();
+
+        // Scripts flip their own running state from the hotkeys themselves, so the
+        // status dots need to follow along without a navigation.
         _scripts = AllScripts.ToList();
-        foreach (var s in _scripts) s.Changed += OnChanged;
+        foreach (var script in _scripts) script.Changed += OnOwnerChanged;
     }
 
-    private void Toggle(AutomationScriptBase script, bool on)
+    private void OnOwnerChanged() => InvokeAsync(StateHasChanged);
+
+    private void Apply(HotkeyBinding binding, string value)
     {
-        if (on) script.Start();
-        else script.Stop();
+        binding.Set(value);
+        // Owners reject combos they can't register, so re-read rather than trusting the
+        // input — the field then snaps back to whatever actually took effect.
+        Bindings = Registry.GetBindings();
+        StateHasChanged();
     }
-
-    private async void OnChanged() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        foreach (var s in _scripts) s.Changed -= OnChanged;
+        foreach (var script in _scripts) script.Changed -= OnOwnerChanged;
     }
 }

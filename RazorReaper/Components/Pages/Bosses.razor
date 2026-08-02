@@ -20,7 +20,15 @@
         </div>
     </section>
 
-    @foreach (var map in maps)
+    @if (IsFiltered)
+    {
+        <div class="deeplink-filter-bar">
+            <span>Showing <strong>@MapFilter</strong></span>
+            <a href="/bosses">Show all maps</a>
+        </div>
+    }
+
+    @foreach (var map in VisibleMaps)
     {
         <section class="content-card bosses-map-card">
             <div class="bosses-map-header">
@@ -37,7 +45,7 @@
             <div class="bosses-grid">
                 @foreach (var boss in map.Bosses)
                 {
-                    <article class="boss-card">
+                    <article class="boss-card @(IsDeepLinked(boss) ? "deeplink-target" : "")">
                         <div class="boss-card-header">
                             <div>
                                 <div class="boss-title-row">
@@ -110,7 +118,38 @@
 </div>
 
 @code {
-    private readonly List<BossMap> maps = new()
+    /// <summary>Set by a palette deep link (/bosses?map=Ragnarok) to show just that map.</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "map")]
+    public string? MapFilter { get; set; }
+
+    /// <summary>Set alongside <see cref="MapFilter"/> to highlight one boss card.</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "boss")]
+    public string? BossFilter { get; set; }
+
+    // Falls back to the full list when the query names a map we don't have, so a stale
+    // link degrades to the normal page instead of rendering nothing.
+    private IReadOnlyList<BossMap> VisibleMaps
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(MapFilter)) return BossMaps;
+            var match = BossMaps
+                .Where(m => string.Equals(m.Name, MapFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return match.Count > 0 ? match : BossMaps;
+        }
+    }
+
+    private bool IsFiltered =>
+        !string.IsNullOrWhiteSpace(MapFilter) && VisibleMaps.Count < BossMaps.Count;
+
+    private bool IsDeepLinked(BossEntry boss) =>
+        !string.IsNullOrWhiteSpace(BossFilter)
+        && string.Equals(boss.Name, BossFilter, StringComparison.OrdinalIgnoreCase);
+
+    // Static + internal so the command palette can index every map and boss by name
+    // (see Navigation/DeepLinkIndex.cs) without this data being duplicated there.
+    internal static readonly List<BossMap> BossMaps = new()
     {
         new BossMap
         {
@@ -1196,14 +1235,14 @@
         },
     };
 
-    private sealed class BossMap
+    internal sealed class BossMap
     {
         public string Name { get; init; } = "";
         public string Note { get; init; } = "";
         public List<BossEntry> Bosses { get; init; } = new();
     }
 
-    private sealed class BossEntry
+    internal sealed class BossEntry
     {
         public string Name { get; init; } = "";
         public string Type { get; init; } = "";
@@ -1213,7 +1252,7 @@
         public List<BossTier> Tiers { get; init; } = new();
     }
 
-    private sealed class BossTier
+    internal sealed class BossTier
     {
         public string Name { get; init; } = "";
         public string Level { get; init; } = "";

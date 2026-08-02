@@ -24,19 +24,38 @@
     }
 }
 
-
 .dashboard-widgets {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
 }
 
+/* Full width: four short stats read far better on one line than stacked in a third of
+   the row, which is what left the old three cards mostly empty. */
+.status-widget {
+    grid-column: 1 / -1;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.5rem;
+}
+
+/* Purely informational since updates went mandatory — no toggle, no buttons, no
+   release notes. Tightened to match what's left: a header line and one status row. */
 .update-card {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1.1rem 1.35rem !important;
     border: 1px solid rgba(var(--accent-purple-rgb), 0.25);
     border-left: 4px solid var(--accent-purple);
     background: rgba(0, 0, 0, 0.18) !important;
+}
+
+.update-card .update-status {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
 }
 
 .update-card-header {
@@ -55,7 +74,7 @@
 
 .update-title h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: var(--card-title-size);
     color: var(--text-primary);
 }
 
@@ -140,37 +159,6 @@
     border-color: rgba(var(--accent-orange-rgb), 0.4);
 }
 
-.update-meta {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.update-meta-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.45rem 0.75rem;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: var(--radius-control);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    min-width: 120px;
-}
-
-.update-meta-label {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.update-meta-value {
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    font-weight: 600;
-    font-family: var(--font-mono);
-}
-
 .update-message {
     flex-basis: 100%;
     color: var(--text-secondary);
@@ -214,53 +202,6 @@
     color: var(--accent-purple-light);
     font-size: 0.85rem;
     font-weight: 500;
-}
-
-.update-notes {
-    flex-basis: 100%;
-    padding: 0.55rem 0.85rem;
-    border-radius: var(--radius-control);
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.18);
-}
-
-.update-notes > summary {
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--accent-purple-light);
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.update-notes > summary::-webkit-details-marker {
-    display: none;
-}
-
-.update-notes > summary::before {
-    content: '▸';
-    display: inline-block;
-    transition: transform 0.15s ease;
-    color: var(--accent-purple);
-    font-size: 0.75rem;
-}
-
-.update-notes[open] > summary::before {
-    transform: rotate(90deg);
-}
-
-.update-notes-list {
-    margin: 0.5rem 0 0;
-    padding-left: 1.25rem;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    line-height: 1.5;
-}
-
-.update-notes-list li {
-    margin: 0.15rem 0;
 }
 
 .update-card-footer {
@@ -553,7 +494,7 @@
 .font-preset-card:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
+
 }
 
 .font-preset-card.active {
@@ -664,7 +605,7 @@
 .font-manual-link:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
+
 }
 
 .font-manual-link-name {
@@ -708,7 +649,7 @@
 }
 
 .widget-card:hover {
-    transform: translateY(-2px);
+
     box-shadow: none;
     border-color: var(--widget-highlight-border);
 }
@@ -732,7 +673,7 @@
 .widget-header h3 {
     margin: 0;
     color: var(--text-primary);
-    font-size: 1.1rem;
+    font-size: var(--card-title-size);
     line-height: 1;
 }
 
@@ -740,23 +681,25 @@
     text-align: center;
 }
 
+/* Was 2.7rem, set when every page ran a 2.5rem title and 2rem card padding. Against
+   the current scale it read as the largest thing in the app by a wide margin. */
 .clock-time {
-    font-size: 2.7rem;
+    font-size: 1.9rem;
     font-weight: 600;
     background: var(--gradient-purple);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     font-family: var(--font-mono);
-    letter-spacing: 2px;
-    text-shadow: 0 0 30px var(--glow-purple);
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 22px var(--glow-purple);
 }
 
 .clock-date {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
-    margin-top: 0.5rem;
-    margin-bottom: 1.25rem;
+    margin-top: 0.35rem;
+    margin-bottom: 0.85rem;
 }
 
 .clock-details {
@@ -782,7 +725,7 @@
 .clock-detail-item:hover {
     background: rgba(0, 0, 0, 0.3);
     border-color: rgba(var(--accent-purple-rgb), 0.3);
-    transform: translateX(2px);
+
 }
 
 .detail-label {
@@ -1034,7 +977,7 @@
 .btn-small:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
+
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
@@ -1076,7 +1019,7 @@
 }
 
 .btn-retry:hover {
-    transform: translateY(-2px);
+
     box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35);
     background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15));
     border-color: var(--accent-purple);
@@ -1394,7 +1337,7 @@
     .stat-card:hover {
         background: var(--glass-hover);
         border-color: var(--border-hover);
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px var(--shadow-dark);
     }
 
@@ -1483,7 +1426,7 @@
     .action-card:hover {
         background: var(--glass-hover);
         border-color: var(--border-hover);
-        transform: translateY(-4px);
+
         box-shadow: 0 12px 40px var(--shadow-dark);
         text-decoration: none;
         color: inherit;
@@ -1531,7 +1474,7 @@
     .action-content h3 {
         margin-bottom: 0.5rem;
         color: var(--text-primary);
-        font-size: 1.25rem;
+        font-size: var(--card-title-size);
     }
 
     .action-content p {
@@ -1577,7 +1520,7 @@
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
@@ -1600,7 +1543,7 @@
     .preset-card:hover {
         background: var(--glass-hover);
         border-color: var(--border-hover);
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px var(--shadow-dark);
     }
 
@@ -1819,7 +1762,7 @@
 .timeline-content:hover {
     background: rgba(0, 0, 0, 0.25);
     border-color: rgba(var(--accent-purple-rgb), 0.3);
-    transform: translateX(4px);
+
 }
 
 .timeline-content:hover::before {
@@ -1912,7 +1855,7 @@
 .btn-small:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
+
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
@@ -2004,7 +1947,7 @@
 .path-item.clickable:hover {
     background: rgba(0, 0, 0, 0.15) !important;
     border-color: rgba(var(--accent-purple-rgb), 0.3);
-    transform: translateX(4px);
+
 }
 
 .path-info-left {
@@ -2185,6 +2128,8 @@
     gap: 0.85rem;
 }
 
+
+
 .theme-sv-box {
     position: relative;
     width: 100%;
@@ -2209,55 +2154,12 @@
     pointer-events: none;
 }
 
-.theme-hue-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 16px;
-    background: transparent !important;
-    border: none !important;
-    border-radius: var(--radius-round) !important;
-    padding: 0 !important;
-    cursor: pointer;
-    outline: none;
-}
-
-/* The rainbow lives on the track (not the element) so the global input:focus rule can't
-   flatten it, and the thumb centers against a known track height. */
-.theme-hue-slider::-webkit-slider-runnable-track {
-    height: 14px;
-    border-radius: var(--radius-round);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: linear-gradient(to right,
-        #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%,
-        #0000ff 67%, #ff00ff 83%, #ff0000 100%);
-}
-
-.theme-hue-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    margin-top: -2px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 2px solid rgba(0, 0, 0, 0.4);
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
-    cursor: pointer;
-}
-
-.theme-hue-slider:focus,
-.theme-hue-slider:focus-visible {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
 .theme-picker-controls {
     display: flex;
     align-items: center;
     gap: 0.6rem;
 }
+
 
 .theme-live-swatch {
     width: 38px;
@@ -2573,6 +2475,30 @@
     letter-spacing: 0.06em;
     color: var(--text-secondary);
 }
+
+/* Only the countdown changes colour, and only once it actually matters. */
+.license-fact.is-soon {
+    color: #e6b450;
+}
+
+.license-fact.is-expired {
+    color: #e07d7a;
+}
+
+.license-expiry-warning {
+    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid rgba(230, 180, 80, 0.28);
+    border-radius: var(--radius-control);
+    background: rgba(230, 180, 80, 0.08);
+    font-size: 0.82rem;
+    color: var(--text-primary);
+}
+
+    .license-expiry-warning a {
+        color: #e6b450;
+        margin-left: var(--space-2);
+    }
 
 /* Too narrow to sit two 140px buttons side by side — give each control its own row
    rather than compressing them below their labels. */

@@ -146,8 +146,29 @@
     private List<MapGroup> filteredGroups = new();
     private int filteredCount;
 
-    protected override void OnInitialized()
+    // ---- Palette deep links (/underwater-drops?map=Ragnarok&q=Deep%20ocean) ----
+    // Set in OnParametersSet, not OnInitialized: Blazor reuses this instance when only
+    // the query string changes, so jumping between two palette results must re-apply.
+
+    [Parameter, SupplyParameterFromQuery(Name = "map")]
+    public string? MapParam { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "q")]
+    public string? QueryParam { get; set; }
+
+    protected override void OnParametersSet()
     {
+        // A map we don't know is ignored, so a stale link still renders the full list.
+        if (!string.IsNullOrWhiteSpace(MapParam) && UnderwaterDropsData.Maps.Contains(MapParam))
+        {
+            selectedMap = MapParam;
+        }
+
+        if (!string.IsNullOrWhiteSpace(QueryParam))
+        {
+            _searchQuery = QueryParam;
+        }
+
         UpdateFiltered();
     }
 

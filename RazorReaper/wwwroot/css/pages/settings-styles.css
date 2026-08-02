@@ -1,0 +1,72 @@
+/* ============================================================================
+ *  Settings page
+ *  Sections are plain content-cards; the only page-specific pieces are the
+ *  accent picker, the font select and the scale slider.
+ * ========================================================================== */
+
+.settings-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.settings-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.35rem;
+}
+
+    .settings-section-head h3 {
+        margin: 0 0 0.15rem !important;
+    }
+
+.settings-section-desc {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+/* --- Font + scale ------------------------------------------------------ */
+
+.settings-select {
+    min-width: 190px;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-control);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.84rem;
+}
+
+    .settings-select:focus {
+        outline: none;
+        border-color: rgba(var(--accent-purple-rgb), 0.55);
+    }
+
+.settings-scale {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+    /* No accent-color: this is the shared custom slider now, not the native control. */
+    .settings-scale input[type="range"] {
+        width: 200px;
+    }
+
+.settings-scale-value {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    min-width: 3.2rem;
+    text-align: right;
+}
+
+.settings-static {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}

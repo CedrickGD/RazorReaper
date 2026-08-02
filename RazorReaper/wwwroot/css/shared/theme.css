@@ -1,4 +1,12 @@
 :root {
+    /* One size for every card heading. Pages had drifted between 1.0rem and 1.3rem, so
+       the same kind of title was a different size depending on which page you were on.
+       Use this token in page stylesheets instead of a literal rem value. */
+    --card-title-size: 1.05rem;
+
+    /* Likewise for card padding — pages ran anywhere from 16px to 32px. */
+    --card-pad: 1.25rem 1.35rem;
+
     --primary-color: #ffffff;
     --secondary-color: #000000;
     --background-dark: #0a0a0a;
@@ -146,7 +154,7 @@ html {
 .main-content {
     margin-left: var(--sidebar-width) !important;
     flex: 1 !important;
-    padding: 2rem !important;
+    padding: 1.5rem 1.75rem !important;
     min-height: 100vh !important;
     max-height: 100vh !important;
     position: relative !important;
@@ -176,14 +184,18 @@ html[data-sidebar-resizing] .main-content::before {
         transition: left 0.18s ease;
     }
 
+/* Density: the header used to burn ~205px before a single control appeared, which is
+   why short pages (Feedback, Scripts) scrolled and looked half-empty on a 713px view.
+   ~120px now. Everything below is scaled to match — this is the app's base size, so
+   pages should inherit it rather than override it upward. */
 .page-header {
-    margin-bottom: 3rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.9rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .page-title {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     background: var(--gradient-purple);
     -webkit-background-clip: text;
@@ -203,7 +215,7 @@ html[data-sidebar-resizing] .main-content::before {
 
 .page-subtitle {
     color: var(--text-secondary);
-    font-size: 1.1rem;
+    font-size: 0.92rem;
     font-weight: 400;
 }
 
@@ -211,8 +223,8 @@ html[data-sidebar-resizing] .main-content::before {
     background: rgba(0, 0, 0, 0.15) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: var(--radius-card) !important;
-    padding: 2rem !important;
-    margin-bottom: 2rem !important;
+    padding: var(--card-pad) !important;
+    margin-bottom: 1rem !important;
     animation: fadeInUp 0.6s ease-out !important;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
@@ -258,10 +270,19 @@ html[data-sidebar-resizing] .main-content::before {
     }
 
     .btn:hover {
-        transform: translateY(-2px);
+
         border-color: rgba(255, 255, 255, 0.3) !important;
         background: rgba(255, 255, 255, 0.1) !important;
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    /* Press feedback. The base .btn transition is 0.3s, which is far too slow to read
+       as a press, so the duration is overridden here only. Cancels the hover lift so
+       the button reads as going down, not sideways. */
+    .btn:active:not(:disabled) {
+        transform: translateY(0) scale(0.97);
+        transition-duration: 0.14s;
+        box-shadow: none !important;
     }
 
     .btn:disabled {
@@ -278,7 +299,7 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
     .btn-primary:hover {
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
         background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
         border-color: var(--accent-purple) !important;
@@ -293,7 +314,7 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
     .btn-secondary:hover {
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
         background: rgba(255, 255, 255, 0.12) !important;
         border-color: rgba(255, 255, 255, 0.3) !important;
@@ -306,7 +327,7 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
     .btn-success:hover {
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
         background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
         border-color: var(--accent-purple) !important;
@@ -320,7 +341,7 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
     .btn-warning:hover {
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px rgba(var(--accent-orange-rgb), 0.35) !important;
         background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.28), rgba(var(--accent-orange-rgb), 0.15)) !important;
         border-color: var(--accent-orange) !important;
@@ -334,7 +355,7 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
     .btn-danger:hover {
-        transform: translateY(-2px);
+
         box-shadow: 0 8px 25px rgba(var(--accent-red-rgb), 0.35) !important;
         background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.28), rgba(var(--accent-red-rgb), 0.15)) !important;
         border-color: var(--accent-red) !important;
@@ -377,9 +398,12 @@ h2 {
     margin-bottom: 1.5rem !important;
 }
 
+/* The base every card heading falls back to. Pages that don't set a size were sitting
+   at 1.25rem while the ones that did clustered around 1.05, so a card title changed
+   size as you moved between pages. Both ends meet on --card-title-size now. */
 h3 {
-    font-size: 1.25rem !important;
-    margin-bottom: 1rem !important;
+    font-size: var(--card-title-size) !important;
+    margin-bottom: 0.75rem !important;
 }
 
 .text-center {
@@ -441,21 +465,30 @@ h3 {
 }
 
 
+/* Same slim pill as .rr-scroll in primitives.css. This used to be a solid white-to-grey
+   gradient in an opaque gutter — a bright bar down the right edge of a dark app, which
+   is the "|" that showed up next to anything near the edge. */
 .main-content::-webkit-scrollbar {
     width: 8px;
+    background: transparent;
 }
 
 .main-content::-webkit-scrollbar-track {
-    background: var(--background-dark);
+    background: transparent;
+    margin: 4px 0;
 }
 
 .main-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--text-primary), var(--text-secondary));
-    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.14);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: var(--radius-round);
+    transition: background-color 0.16s ease;
 }
 
     .main-content::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), var(--text-primary));
+        background: rgba(var(--accent-purple-rgb), 0.55);
+        background-clip: padding-box;
     }
 
 ::-webkit-scrollbar {
@@ -601,7 +634,7 @@ h3 {
     }
 
 .status-info h3 {
-    font-size: 1.25rem;
+    font-size: var(--card-title-size);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 0.25rem 0;
@@ -655,7 +688,7 @@ h3 {
     }
 
     .game-btn:hover:not(:disabled) {
-        transform: translateY(-1px);
+
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
@@ -729,68 +762,43 @@ h3 {
     }
 }
 
-.game-page-container .page-header {
-    margin-bottom: 2rem !important;
-    padding-bottom: 1rem !important;
-}
-
-.game-page-container .page-title {
-    font-size: 2rem !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.game-page-container .page-subtitle {
-    font-size: 1rem !important;
-    color: var(--text-secondary) !important;
-}
-
-.game-page-container .content-card {
-    margin-bottom: 1.5rem !important;
-    padding: 1.5rem !important;
+/* This block used to scale the page UP — 2rem title, 48px buttons, 1.5rem card padding,
+   a 1.5rem-tall status block — on top of an already-large base. It read as a blown-up
+   mockup next to every other page. It now only says what genuinely differs here (the
+   two-up card row and the button grid); size comes from the shared scale above. */
+.game-page-container .status-indicator {
+    gap: 0.9rem !important;
 }
 
 .game-page-container .game-status {
-    padding: 1.5rem 0 !important;
-}
-
-.game-page-container .status-indicator {
-    gap: 1.25rem !important;
+    padding: 0.6rem 0 !important;
 }
 
 .game-page-container .status-info h3 {
-    font-size: 1.25rem !important;
-    margin-bottom: 0.5rem !important;
+    font-size: 1.05rem !important;
+    margin-bottom: 0.2rem !important;
 }
 
 .game-page-container .status-text {
-    font-size: 0.95rem !important;
+    font-size: 0.85rem !important;
 }
 
 .game-page-container .game-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem !important;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.5rem !important;
 }
 
 .game-page-container .game-btn {
-    padding: 1rem 1.25rem !important;
-    min-height: 48px !important;
-    font-size: 0.9rem !important;
+    padding: 0.6rem 0.8rem !important;
+    min-height: 38px !important;
+    font-size: 0.83rem !important;
 }
 
-    .game-page-container .game-btn svg {
-        width: 18px !important;
-        height: 18px !important;
-    }
-
 @media (max-width: 768px) {
-    .game-page-container .page-title {
-        font-size: 1.75rem !important;
-    }
-
     .game-page-container .game-actions {
         grid-template-columns: 1fr !important;
-        gap: 0.75rem !important;
+        gap: 0.5rem !important;
     }
 }
 
@@ -947,7 +955,7 @@ h3 {
 }
 
 .premium-upgrade-btn:hover {
-    transform: translateY(-2px);
+
     box-shadow: 0 6px 16px rgba(var(--accent-purple-rgb), 0.6);
 }
 

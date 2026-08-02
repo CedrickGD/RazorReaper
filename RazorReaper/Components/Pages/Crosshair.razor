@@ -443,14 +443,7 @@
             <h3>Hotkey</h3>
             <div class="row-flex gap-sm align-center">
                 <span class="field-label flex-1 m-0">Toggle overlay</span>
-                <button class="hotkey-btn @(recordingHotkey ? "recording" : "")"
-                        @onclick="StartRecordHotkey"
-                        @onkeydown="CaptureHotkey"
-                        @onkeydown:preventDefault="true"
-                        tabindex="0">
-                    @(recordingHotkey ? "Press a key…" : (string.IsNullOrEmpty(hotkeyLabel) ? "(none)" : hotkeyLabel))
-                </button>
-                <button class="rr-pill-btn ghost sm" @onclick="ClearHotkey" disabled="@string.IsNullOrEmpty(hotkeyLabel)">Clear</button>
+                <HotkeyLink Value="@hotkeyLabel" />
             </div>
             <p class="muted-line">Works globally — even while a game has focus. Default F8.</p>
         </div>
@@ -464,7 +457,6 @@
     private IReadOnlyList<MonitorInfo> monitors = Array.Empty<MonitorInfo>();
     private string previewSrc = "";
     private string newProfileName = "";
-    private bool recordingHotkey;
     private string hotkeyLabel = "F8";
     private string codeInput = "";
     private bool guideOpen;
@@ -1054,29 +1046,6 @@
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
-    }
-
-    private void StartRecordHotkey() => recordingHotkey = true;
-
-    private void ClearHotkey()
-    {
-        CrosshairSvc.SetHotkey("", 0, false, false, false);
-        hotkeyLabel = "";
-    }
-
-    private void CaptureHotkey(KeyboardEventArgs e)
-    {
-        if (!recordingHotkey) return;
-        if (string.IsNullOrEmpty(e.Key) || e.Key is "Control" or "Shift" or "Alt" or "Meta") return;
-
-        var vk = TranslateKeyToVk(e.Key, e.Code);
-        if (vk == 0) return;
-
-        var label = BuildHotkeyLabel(e.Key, e.CtrlKey, e.AltKey, e.ShiftKey);
-        CrosshairSvc.SetHotkey(label, vk, e.CtrlKey, e.AltKey, e.ShiftKey);
-        hotkeyLabel = label;
-        recordingHotkey = false;
-        StateHasChanged();
     }
 
     private static string BuildHotkeyLabel(string key, bool ctrl, bool alt, bool shift)

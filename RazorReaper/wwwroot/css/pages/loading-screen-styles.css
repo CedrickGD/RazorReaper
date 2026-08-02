@@ -45,7 +45,7 @@
 
 .loading-screen-page .ls-info-title h3 {
     margin: 0 !important;
-    font-size: 1.15rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .loading-screen-page .ls-info-text {

@@ -99,7 +99,7 @@
 
 .line-list-page .ll-editor-header h3 {
     margin: 0 !important;
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .line-list-page .ll-editor-header p {
@@ -416,7 +416,7 @@
 
 .line-list-page .ll-empty h3 {
     margin: 0 !important;
-    font-size: 1rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .line-list-page .ll-empty p {
@@ -460,7 +460,7 @@
 
 .line-list-page .ll-modal-header h3 {
     margin: 0 !important;
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .line-list-page .ll-modal-body {

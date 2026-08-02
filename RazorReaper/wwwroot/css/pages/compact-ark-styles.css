@@ -15,7 +15,7 @@
 /* Design restraint: 600 only for titles (the global h3 rule forces 700). */
 .compact-ark-page h3 {
     font-weight: 600 !important;
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .compact-ark-btn-icon {

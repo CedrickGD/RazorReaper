@@ -902,6 +902,29 @@
         selectedMap = AllMaps().FirstOrDefault() ?? "";
     }
 
+    // ---- Palette deep links (/map-mods?map=Ragnarok&spot=Lava%20Cave) ----
+    // Runs after OnInitializedAsync has loaded customStore, so AllMaps() already
+    // includes the user's own maps and not just the built-in cave database.
+
+    [Parameter, SupplyParameterFromQuery(Name = "map")]
+    public string? MapParam { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "spot")]
+    public string? SpotParam { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(MapParam)) return;
+
+        var match = AllMaps().FirstOrDefault(m => string.Equals(m, MapParam, StringComparison.OrdinalIgnoreCase));
+        if (match is null) return;
+
+        selectedMap = match;
+        // Key() is "{Map}|{Name}" — matching that shape here preselects the row and its
+        // detail pane; an unknown spot just falls back to the first one in the list.
+        selectedKey = string.IsNullOrWhiteSpace(SpotParam) ? null : $"{match}|{SpotParam}";
+    }
+
     // ── Mesa extra spots ──
 
     private List<CustomSpot> GetMesaExtraSpots(string mapName)

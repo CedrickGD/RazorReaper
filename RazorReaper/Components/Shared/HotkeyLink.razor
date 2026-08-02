@@ -1,0 +1,23 @@
+@* Read-only view of a system-wide hotkey, plus an accent link to where it's set.
+   Feature pages use this instead of their own HotkeyField so a binding is only ever
+   editable in one place (see Components/Pages/GlobalHotkeys.razor).
+   Styled in wwwroot/css/shared/primitives.css. *@
+
+<span class="hk-inline">
+    @if (string.IsNullOrWhiteSpace(Value))
+    {
+        <span class="hk-inline-unset">Not set</span>
+    }
+    else
+    {
+        <kbd class="hk-inline-combo">@Value</kbd>
+    }
+    <a class="hk-inline-link" href="/hotkeys">@LinkText</a>
+</span>
+
+@code {
+    /// <summary>The current binding, as the HotkeyField combo string.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public string LinkText { get; set; } = "Change in Global Hotkeys";
+}

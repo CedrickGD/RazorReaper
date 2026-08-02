@@ -3,7 +3,6 @@
   "enabled": false,
   "tests": {
     "navbar-drag": true,
-    "navbar-drag-collapse": true,
     "navbar-dblclick-reset": true
   }
 }

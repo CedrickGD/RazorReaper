@@ -162,7 +162,7 @@
 .stretched-preset:hover:not(:disabled) {
     background: var(--surface-inset-hover);
     border-color: rgba(var(--accent-purple-rgb), 0.4);
-    transform: translateY(-1px);
+
 }
 
 .stretched-preset:disabled {

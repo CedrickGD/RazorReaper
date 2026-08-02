@@ -125,7 +125,7 @@
 
                 <SettingRow Title="Opacity" Description="Overall transparency of the overlay.">
                     <div class="hud-slider-wrap">
-                        <input type="range" class="hud-slider" min="20" max="100" step="5"
+                        <input type="range" class="hud-slider" min="20" max="100" step="1"
                                @bind="OpacityPercent" @bind:after="Apply" />
                         <span class="hud-unit">@OpacityPercent%</span>
                     </div>
@@ -133,7 +133,7 @@
 
                 <SettingRow Title="Scale" Description="Size of the panel and alert text.">
                     <div class="hud-slider-wrap">
-                        <input type="range" class="hud-slider" min="50" max="200" step="5"
+                        <input type="range" class="hud-slider" min="50" max="200" step="1"
                                @bind="ScalePercent" @bind:after="Apply" />
                         <span class="hud-unit">@ScalePercent%</span>
                     </div>

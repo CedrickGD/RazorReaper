@@ -255,6 +255,7 @@ namespace RazorReaper
         private static void ConfigureServices(IServiceCollection services)
         {
             // Register application services
+            services.AddSingleton<IAppearanceService, AppearanceService>();
             services.AddSingleton<IArkPathProvider, ArkPathProvider>();
             services.AddSingleton<IFileSystemService, FileSystemService>();
             services.AddSingleton<IProcessService, ProcessService>();
@@ -307,6 +308,8 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.IFastTransferMacro, RazorReaper.Services.Automation.FastTransferMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IFedSuitMacro, RazorReaper.Services.Automation.FedSuitMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IAutoAntidoteService, RazorReaper.Services.Automation.AutoAntidoteService>();
+            // Registered after the scripts below are enumerable as AutomationScriptBase.
+            services.AddSingleton<RazorReaper.Services.Automation.IHotkeyRegistry, RazorReaper.Services.Automation.HotkeyRegistry>();
 
             // ATS3-parity automation scripts (each derives from AutomationScriptBase)
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.YutyScript>();
@@ -354,6 +357,10 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Overlay.ISessionHudService, RazorReaper.Services.Overlay.SessionHudService>();
             
             services.AddSingleton<RazorReaper.Services.Elevation.IElevationService, RazorReaper.Services.Elevation.ElevationService>();
+
+            // Command palette: turns the services above into runnable rows in Ctrl+K.
+            // Registered after them so every dependency is already known to the container.
+            services.AddSingleton<RazorReaper.Navigation.IPaletteCommandProvider, RazorReaper.Navigation.PaletteCommandProvider>();
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();
             services.AddSingleton<IAccessGateService, AccessGateService>();

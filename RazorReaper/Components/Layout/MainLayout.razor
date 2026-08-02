@@ -15,6 +15,8 @@
 @inject RazorReaper.Services.Elevation.IElevationService Elevation
 @inject ILicenseService LicenseService
 @inject IAccessGateService AccessGate
+@inject IAppearanceService Appearance
+@inject IJSRuntime JS
 
 <NotificationContainer />
 <GlobalSearch />
@@ -70,6 +72,34 @@
         Navigation.LocationChanged += OnLocationChanged;
     }
 
+    private System.Threading.Timer? _titleClock;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        StartTitleClock();
+
+        // Applied at the layout level so the scale covers every page, not just the
+        // settings page that set it. Re-applied whenever it changes.
+        Appearance.Changed += HandleAppearanceChanged;
+        await ApplyAppearanceAsync();
+    }
+
+    private void HandleAppearanceChanged() => _ = InvokeAsync(ApplyAppearanceAsync);
+
+    private async Task ApplyAppearanceAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("razorReaperTheme.apply", Appearance.UiScalePercent);
+        }
+        catch
+        {
+            // Cosmetic only — never block the layout on theming.
+        }
+    }
+
     private void HandleAccessChanged() => InvokeAsync(StateHasChanged);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -77,15 +107,52 @@
 
     private void ReflectPage(string relativePath)
     {
+        var label = DiscordPresence.ResolveToolLabel(relativePath);
+
         DiscordPresence.SetActivityForPath(relativePath);
         // The HUD tool module shows the current page (like Rich Presence) — far more useful
         // than "Idle" since the app is minimized while you're in the game.
-        HudOverlay.SetActiveTool(DiscordPresence.ResolveToolLabel(relativePath));
+        HudOverlay.SetActiveTool(label);
+    }
+
+    /// <summary>
+    /// The title bar shows the clock, not the current page. The sidebar already says which
+    /// page you're on and it's visible the whole time; the title bar is the one strip that
+    /// stays readable when the app is behind ARK, so the time is worth more there.
+    /// </summary>
+    private void StartTitleClock()
+    {
+        SetWindowTitle();
+
+        // Ticks on the minute boundary rather than every second: the title only shows
+        // HH:mm, so a per-second timer would rewrite the same string 59 times out of 60.
+        _titleClock = new System.Threading.Timer(
+            _ => InvokeAsync(SetWindowTitle),
+            null,
+            TimeSpan.FromSeconds(60 - DateTime.Now.Second),
+            TimeSpan.FromMinutes(1));
+    }
+
+    private static void SetWindowTitle()
+    {
+        try
+        {
+            var window = Microsoft.Maui.Controls.Application.Current?.Windows?.FirstOrDefault();
+            if (window is null) return;
+
+            window.Title = $"Razor Reaper — {DateTime.Now:HH:mm}";
+        }
+        catch
+        {
+            // Purely cosmetic; never let a title update take the layout down.
+        }
     }
 
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
         AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+        Appearance.Changed -= HandleAppearanceChanged;
+        _titleClock?.Dispose();
     }
 }

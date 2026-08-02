@@ -110,7 +110,25 @@
     margin: 0;
     padding: 0.5rem;
     overflow-y: auto;
-    max-height: calc(70vh - 60px);
+    /* Room for the input row above and the shortcut footer below. */
+    max-height: calc(70vh - 110px);
+}
+
+/* Section header — "Pages" / "Locations" / "Commands" while searching,
+   "Recent" / "Pinned" when the query is empty. Not selectable. */
+.search-section-label {
+    padding: 0.6rem 0.9rem 0.3rem;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.35);
+    user-select: none;
+    pointer-events: none;
+}
+
+.search-section-label:first-child {
+    padding-top: 0.3rem;
 }
 
     .search-results::-webkit-scrollbar {
@@ -212,6 +230,63 @@
     padding: 0.2rem 0.55rem;
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+/* Live state for command rows — "Running", "On", "3 running". The one place in the
+   palette that uses colour, because it's the one thing that changes by itself. */
+.search-result-status {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--accent-purple-light);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.28);
+    border-radius: var(--radius-chip);
+    padding: 0.2rem 0.55rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Footer */
+.search-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.search-footer-hints {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+    .search-footer-hints kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.1rem;
+        padding: 0.05rem 0.3rem;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+/* Says "12 of 137" when the list is capped, so a truncated result set never
+   reads as "that's everything". */
+.search-footer-count {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    opacity: 0.75;
 }
 
 /* Empty state */

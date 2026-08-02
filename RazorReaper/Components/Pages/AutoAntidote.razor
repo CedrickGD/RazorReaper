@@ -151,7 +151,7 @@
                 </SettingRow>
 
                 <SettingRow Title="Toggle hotkey" Description="Starts or stops watching system-wide, even while ARK has focus.">
-                    <HotkeyField Value="@Antidote.Settings.ToggleHotkey" ValueChanged="OnToggleHotkeyChanged" Placeholder="Press a combination" />
+                    <HotkeyLink Value="@Antidote.Settings.ToggleHotkey" />
                 </SettingRow>
             </div>
         </div>
@@ -259,12 +259,6 @@
     private void OnBurstKeyChanged(string value)
     {
         Antidote.Settings.BurstKey = value;
-        Antidote.SaveSettings();
-    }
-
-    private void OnToggleHotkeyChanged(string value)
-    {
-        Antidote.Settings.ToggleHotkey = value;
         Antidote.SaveSettings();
     }
 

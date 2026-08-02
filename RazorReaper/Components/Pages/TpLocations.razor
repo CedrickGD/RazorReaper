@@ -124,8 +124,38 @@
         set { _searchQuery = value; UpdateFiltered(); }
     }
 
-    protected override void OnInitialized()
+    // ---- Palette deep links (/tp-locations?map=Ragnarok&q=Red%20Obelisk) ----
+    // Applied in OnParametersSet rather than OnInitialized because Blazor reuses this
+    // component instance when only the query string changes — jumping from one palette
+    // result to another would otherwise leave the old filters in place.
+
+    [Parameter, SupplyParameterFromQuery(Name = "map")]
+    public string? MapParam { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "cat")]
+    public string? CategoryParam { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "q")]
+    public string? QueryParam { get; set; }
+
+    protected override void OnParametersSet()
     {
+        // Unknown values are ignored so a stale link falls back to the unfiltered page.
+        if (!string.IsNullOrWhiteSpace(MapParam) && TpLocationData.Maps.Contains(MapParam))
+        {
+            selectedMap = MapParam;
+        }
+
+        if (!string.IsNullOrWhiteSpace(CategoryParam) && TpLocationData.Categories.Contains(CategoryParam))
+        {
+            selectedCategory = CategoryParam;
+        }
+
+        if (!string.IsNullOrWhiteSpace(QueryParam))
+        {
+            _searchQuery = QueryParam;
+        }
+
         UpdateFiltered();
     }
 

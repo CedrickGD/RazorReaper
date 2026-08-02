@@ -8,8 +8,9 @@
     <p class="page-subtitle">Tell us what's working, what's broken, or what you'd like to see next.</p>
 </header>
 
+<div class="feedback-layout">
 <div class="content-card feedback-card">
-    <div class="feedback-field">
+    <div class="feedback-field feedback-field-grow">
         <label class="feedback-label" for="feedback-message">Your feedback</label>
         <textarea id="feedback-message"
                   class="feedback-textarea"
@@ -34,11 +35,6 @@
                disabled="@_submitting" />
     </div>
 
-    <p class="feedback-note">
-        Your machine name, hardware ID, license and app version are attached automatically so we can
-        follow up on issues.
-    </p>
-
     <div class="feedback-actions">
         <button class="btn btn-primary" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
             @if (_submitting)
@@ -52,6 +48,28 @@
             }
         </button>
     </div>
+</div>
+
+@* The note used to sit under the form as a grey paragraph; as a panel it fills the
+   right-hand half the form was leaving empty and reads as an answer to "what are you
+   sending about me?" rather than fine print. *@
+<aside class="content-card feedback-side">
+    <h3 class="feedback-side-title">Attached automatically</h3>
+    <ul class="feedback-side-list">
+        <li>Machine name</li>
+        <li>Hardware ID</li>
+        <li>License status</li>
+        <li>App version</li>
+    </ul>
+    <p class="feedback-note">
+        Sent with your message so we can reproduce the issue and reply on the right account.
+        Nothing else leaves the app.
+    </p>
+    <p class="feedback-note">
+        Leave a contact if you want an answer — reports without one are still read, we just
+        can't follow up.
+    </p>
+</aside>
 </div>
 
 @code {
@@ -89,12 +107,28 @@
 }
 
 <style>
-    .feedback-card {
-        max-width: 640px;
+    /* Was a 640px card in a 1126px column — a bit over half the page, with the rest
+       dead space. Two columns fill it, and the form still keeps a comfortable measure. */
+    .feedback-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.9fr) minmax(220px, 1fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    @@media (max-width: 940px) {
+        .feedback-layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .feedback-card,
+    .feedback-side {
+        margin-bottom: 0 !important;
     }
 
     .feedback-field {
-        margin-bottom: 20px;
+        margin-bottom: 14px;
     }
 
     .feedback-label {
@@ -121,7 +155,8 @@
 
     .feedback-textarea {
         resize: vertical;
-        min-height: 140px;
+        /* Grows into the space the page now has instead of leaving it blank below. */
+        min-height: min(320px, calc(100vh - 420px));
         line-height: 1.55;
     }
 
@@ -139,11 +174,37 @@
         color: var(--text-secondary);
     }
 
+    .feedback-side-title {
+        margin: 0 0 0.7rem !important;
+        font-size: 0.95rem !important;
+    }
+
+    .feedback-side-list {
+        list-style: none;
+        margin: 0 0 0.9rem;
+        padding: 0;
+        display: grid;
+        gap: 0.3rem;
+    }
+
+    .feedback-side-list li {
+        font-size: 0.82rem;
+        color: var(--text-primary);
+        padding: 0.35rem 0.6rem;
+        border-radius: var(--radius-control);
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
     .feedback-note {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         color: var(--text-secondary);
         line-height: 1.5;
-        margin: 0 0 20px;
+        margin: 0 0 0.7rem;
+    }
+
+    .feedback-note:last-child {
+        margin-bottom: 0;
     }
 
     .feedback-actions {

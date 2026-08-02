@@ -33,7 +33,11 @@
         Each cycle focuses ARK, opens the transmitter, waits, presses the transfer key the configured number of times, exits, then repeats until stopped.
     </div>
 
-    <section class="content-card fs-card">
+    @* Settings and Calibration side by side — stacked they pushed this page 731px past
+       the fold on a normal window. *@
+    <div class="fs-card-grid">
+
+    <section class="content-card fs-card fs-card-settings">
         <div class="fs-card-header">
             <h3>Settings</h3>
             <button class="btn btn-secondary fs-sm-btn" @onclick="ResetDefaults" disabled="@Macro.IsRunning">Reset defaults</button>
@@ -61,10 +65,10 @@
                 <input type="number" class="fs-num" min="0" max="60000" @bind="repeatDelayMs" @bind:after="PushSettings" />
             </SettingRow>
             <SettingRow Title="Start hotkey" Description="System-wide hotkey that starts the loop, even while ARK has focus.">
-                <HotkeyField @bind-Value="startHotkey" @bind-Value:after="PushSettings" />
+                <HotkeyLink Value="@startHotkey" />
             </SettingRow>
             <SettingRow Title="Stop hotkey" Description="System-wide hotkey that hard-stops the loop, even while ARK has focus.">
-                <HotkeyField @bind-Value="stopHotkey" @bind-Value:after="PushSettings" />
+                <HotkeyLink Value="@stopHotkey" />
             </SettingRow>
         </div>
     </section>
@@ -90,6 +94,8 @@
             </SettingRow>
         </div>
     </section>
+
+    </div>
 
 </div>
 

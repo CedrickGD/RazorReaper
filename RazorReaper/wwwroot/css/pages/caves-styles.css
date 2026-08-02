@@ -64,7 +64,7 @@
 
 .caves-page .caves-list-card,
 .caves-page .caves-detail-card {
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
     margin-bottom: 0 !important;
 }
 
@@ -80,7 +80,7 @@
 
 .caves-page .caves-list-header h3 {
     margin: 0 !important;
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
 }
 

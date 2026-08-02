@@ -24,7 +24,7 @@
         -webkit-text-fill-color: transparent !important;
         background-clip: text !important;
         margin-bottom: 1.5rem !important;
-        font-size: 1.25rem !important;
+        font-size: var(--card-title-size) !important;
         font-weight: 600 !important;
     }
 
@@ -146,7 +146,7 @@
     .server-btn:not(:disabled):hover {
         background: rgba(255, 255, 255, 0.1) !important;
         border-color: rgba(255, 255, 255, 0.3) !important;
-        transform: translateY(-2px) !important;
+
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
     }
 
@@ -235,7 +235,7 @@
     .toggle-btn:hover {
         background: rgba(255, 255, 255, 0.1) !important;
         border-color: rgba(255, 255, 255, 0.3) !important;
-        transform: translateY(-2px) !important;
+
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
     }
 
@@ -302,7 +302,7 @@
 
     .server-info-header h3 {
         color: var(--text-primary);
-        font-size: 1.25rem;
+        font-size: var(--card-title-size);
         font-weight: 600;
         margin: 0;
     }
@@ -347,7 +347,7 @@
         -webkit-text-fill-color: transparent;
         background-clip: text;
         font-weight: 600;
-        font-size: 1.25rem;
+        font-size: var(--card-title-size);
         margin: 0;
     }
 
@@ -472,7 +472,7 @@
     .server-action-btn:hover {
         background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
+
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
 
@@ -516,13 +516,13 @@
 .troubleshooting-item:hover {
     background: var(--background-hover) !important;
     border-color: var(--text-primary) !important;
-    transform: translateY(-2px);
+
 }
 
     .troubleshooting-item h4 {
         color: var(--text-primary) !important;
         margin: 0 0 1rem 0 !important;
-        font-size: 1rem !important;
+        font-size: var(--card-title-size) !important;
         font-weight: 600 !important;
     }
 

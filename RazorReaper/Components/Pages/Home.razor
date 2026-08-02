@@ -20,8 +20,6 @@
 @inject IFontInstaller FontInstaller
 @inject IUpdateService UpdateService
 @inject IAutoUpdateManager AutoUpdateManager
-@inject IDiscordPresenceService DiscordPresence
-@inject IArkLinkService ArkLink
 @inject ILicenseService LicenseService
 @implements IAsyncDisposable
 
@@ -43,49 +41,21 @@
                     </div>
                     <div>
                         <h3>Update</h3>
-                        <p class="update-subtitle">Keep Razor Reaper current with the latest release.</p>
+                        <p class="update-subtitle">Updates install themselves and restart the app.</p>
                     </div>
                 </div>
-                <div class="update-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@AutoUpdateManager.IsAutoUpdateEnabled"
-                               @onchange="ToggleAutoUpdate" />
-                        <span>Auto-update</span>
-                    </label>
-                    <button class="btn-small" @onclick="() => CheckForUpdatesAsync(true)" disabled="@isCheckingForUpdates">
-                        @(isCheckingForUpdates ? "Checking..." : "Check")
-                    </button>
-                    @if (updateResult?.HasUpdate == true)
-                    {
-                        <button class="btn-small btn-small-primary"
-                                @onclick="OnUpdateNowAsync"
-                                disabled="@IsUpdateNowDisabled">
-                            @UpdateNowButtonLabel
-                        </button>
-                    }
-                </div>
+                @* No controls. Updates are mandatory and unattended — there is nothing here
+                   to switch off, and no check to run by hand. *@
             </div>
             <div class="update-status">
                 @if (ShowUpdateBadge)
                 {
                     <div class="@UpdateBadgeClass">@UpdateBadgeText</div>
                 }
-                <div class="update-meta">
-                    <div class="update-meta-item">
-                        <span class="update-meta-label">Current</span>
-                        <span class="update-meta-value">@UpdateService.CurrentVersionLabel</span>
-                    </div>
-                    <div class="update-meta-item">
-                        <span class="update-meta-label">Latest</span>
-                        <span class="update-meta-value">@LatestVersionLabel</span>
-                    </div>
-                    <div class="update-meta-item">
-                        <span class="update-meta-label">Checked</span>
-                        <span class="update-meta-value">@LastCheckedLabel</span>
-                    </div>
-                </div>
-
+                @* No version readout. Updates install themselves, so the numbers were
+                   nothing anyone acts on — and the sidebar foot already carries the running
+                   version. What's left is the one line that does change: what's happening
+                   right now. *@
                 @if (AutoUpdateManager.IsDownloading)
                 {
                     <div class="update-progress">
@@ -98,7 +68,7 @@
                 else if (AutoUpdateManager.IsInstallerReady)
                 {
                     <div class="update-ready-message">
-                        v@(AutoUpdateManager.PendingVersion) ready — will install silently when you close the app.
+                        Installing v@(AutoUpdateManager.PendingVersion) — the app will restart on its own.
                     </div>
                 }
                 else
@@ -109,90 +79,36 @@
                        looked like a double progress bar. *@
                     <div class="update-message">@UpdateStatusMessage</div>
                 }
-
-                @* Notes show whenever the manifest carries them, even when the user is already
-                   on the latest. Pre-update: they're the "what's new" preview the user asked
-                   for. Post-update: they double as a recap of what just got installed. The
-                   summary reads "What's new in v{LatestVersion}" either way. *@
-                @if (updateResult?.LatestVersion != null && updateResult.Notes.Count > 0)
-                {
-                    <details class="update-notes" open="@(updateResult.HasUpdate)">
-                        <summary>What's new in v@(updateResult.LatestVersion)</summary>
-                        <ul class="update-notes-list">
-                            @foreach (var note in updateResult.Notes)
-                            {
-                                <li>@note</li>
-                            }
-                        </ul>
-                    </details>
-                }
             </div>
         </div>
 
         <div class="dashboard-widgets">
-            <div class="content-card widget-card clock-widget">
-                <div class="widget-header">
-                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-                    </svg>
-                    <h3>Local Time</h3>
-                </div>
-                <div class="clock-display">
-                    <div class="clock-time">@currentTime.ToString("HH:mm:ss")</div>
-                    <div class="clock-date">@currentTime.ToString("dddd, MMMM dd, yyyy")</div>
-                    <div class="clock-details">
-                        <div class="clock-detail-item">
-                            <span class="detail-label">Timezone:</span>
-                            <span class="detail-value">@timeZoneInfo</span>
-                        </div>
-                        <div class="clock-detail-item">
-                            <span class="detail-label">UTC Offset:</span>
-                            <span class="detail-value">@utcOffset</span>
-                        </div>
-                        <div class="clock-detail-item">
-                            <span class="detail-label">Week:</span>
-                            <span class="detail-value">Week @weekNumber of @currentTime.Year</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="content-card widget-card uptime-widget">
+            @* Clock, Uptime and Network were three cards for four numbers, each padded out
+               with empty space while the clock card overflowed. One card, four stats on a
+               row that reflows — and the time moved to the title bar, where it stays
+               readable with the app behind ARK. *@
+            <div class="content-card widget-card status-widget">
                 <div class="widget-header">
                     <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
                         <path fill-rule="evenodd" d="M4 4a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V5a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                     </svg>
-                    <h3>Uptime</h3>
+                    <h3>Status</h3>
                 </div>
-                <div class="uptime-details">
+                <div class="status-grid">
                     <div class="system-item">
-                        <div class="system-label">System</div>
+                        <div class="system-label">System uptime</div>
                         <div class="system-value">@systemUptime</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">App Session</div>
+                        <div class="system-label">App session</div>
                         <div class="system-value">@appSessionDuration</div>
                     </div>
-                </div>
-            </div>
-
-            <div class="content-card widget-card system-info-widget">
-                <div class="widget-header">
-                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path d="M2 7.5a13 13 0 0 1 16 0l-1.4 1.4a11 11 0 0 0-13.2 0L2 7.5z" />
-                        <path d="M4.9 10.4a8.5 8.5 0 0 1 10.2 0l-1.4 1.4a6.5 6.5 0 0 0-7.4 0l-1.4-1.4z" />
-                        <path d="M7.8 13.3a4 4 0 0 1 4.4 0l-1.4 1.4a2 2 0 0 0-1.6 0l-1.4-1.4z" />
-                        <circle cx="10" cy="17" r="1.2" />
-                    </svg>
-                    <h3>Network</h3>
-                </div>
-                <div class="system-info-list">
                     <div class="system-item">
-                        <div class="system-label">Connected Network</div>
+                        <div class="system-label">Network</div>
                         <div class="system-value">@wifiName</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">Signal Strength</div>
+                        <div class="system-label">Signal</div>
                         <div class="system-value">@wifiSignalStrength</div>
                     </div>
                 </div>
@@ -638,61 +554,6 @@
         </div>
 
         <div class="content-card">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        <svg fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20.317 4.369a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.249-1.844-.276-3.68-.276-5.486 0-.164-.393-.405-.874-.617-1.249a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.291.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3>Discord Rich Presence</h3>
-                        <p class="update-subtitle">Let friends see you're using RazorReaper — your current tool and version show on your Discord profile.</p>
-                    </div>
-                </div>
-                <div class="update-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@DiscordPresence.IsEnabled"
-                               @onchange="ToggleDiscordRpc" />
-                        <span>Enabled</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5z" />
-                            <path d="M7.414 15.414a2 2 0 01-2.828-2.828l3-3a2 2 0 012.828 0 1 1 0 001.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3>Start &amp; Close with ARK</h3>
-                        <p class="update-subtitle">Start: a lightweight background watcher launches RazorReaper as soon as ARK starts. Close: exits RazorReaper when ARK closes.</p>
-                    </div>
-                </div>
-                <div class="update-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@ArkLink.StartWithArk"
-                               @onchange="ToggleArkLinkStart" />
-                        <span>Start with ARK</span>
-                    </label>
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@ArkLink.CloseWithArk"
-                               @onchange="ToggleArkLinkClose" />
-                        <span>Close with ARK</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-card">
             <div class="paths-header">
                 <h3>System Paths</h3>
                 @if (!isEditingArkPath)
@@ -837,17 +698,45 @@
 
                     <div class="license-key-value">@DisplayedLicenseKey</div>
 
-                    @if (!string.IsNullOrWhiteSpace(LicenseService.LicenseType) || !string.IsNullOrWhiteSpace(LicenseService.ExpiresAt))
+                    @* The sidebar only says "Premium"; the plan, the date and how long is
+                       left all live here so there's one detailed place to look. *@
+                    <div class="license-key-facts">
+                        <span class="license-fact">
+                            <span class="license-fact-label">Plan</span>
+                            @LicensePlanLabel
+                        </span>
+
+                        <span class="license-fact">
+                            <span class="license-fact-label">Expires</span>
+                            @(LicenseIsPerpetual ? "Never" : FormatLicenseExpiry(LicenseService.ExpiresAt))
+                        </span>
+
+                        @* Skipped on a lifetime key — "Expires: Never" already said it. *@
+                        @if (!LicenseIsPerpetual)
+                        {
+                            <span class="license-fact @LicenseRemainingClass">
+                                <span class="license-fact-label">Time left</span>
+                                @LicenseRemainingLabel
+                            </span>
+                        }
+
+                        <span class="license-fact">
+                            <span class="license-fact-label">Device</span>
+                            Bound to this PC
+                        </span>
+                    </div>
+
+                    @if (LicenseExpiresSoon)
                     {
-                        <div class="license-key-facts">
-                            @if (!string.IsNullOrWhiteSpace(LicenseService.LicenseType))
-                            {
-                                <span class="license-fact"><span class="license-fact-label">Plan</span>@LicenseService.LicenseType</span>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(LicenseService.ExpiresAt))
-                            {
-                                <span class="license-fact"><span class="license-fact-label">Expires</span>@FormatLicenseExpiry(LicenseService.ExpiresAt)</span>
-                            }
+                        <div class="license-expiry-warning">
+                            @* The label above is a bare chip ("3 days", "Expired") so the facts row
+                               can reuse it, which leaves the sentence to supply its own grammar.
+                               A negative span still counts as expiring soon, so the past-tense
+                               branch is reachable and "runs out Expired." was a real render. *@
+                            @(LicenseRemaining <= TimeSpan.Zero
+                                ? "Your license has expired."
+                                : $"Your license runs out in {LicenseRemainingLabel}.")
+                            <a href="https://rr.sellhub.cx" target="_blank" rel="noopener">Renew</a>
                         </div>
                     }
                 </div>
@@ -885,7 +774,6 @@
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
     private UpdateCheckResult? updateResult;
-    private bool isCheckingForUpdates = false;
 
     private string licenseKeyInput = "";
     private bool isActivating = false;
@@ -980,6 +868,71 @@
         }
 
         return new string(chars);
+    }
+
+    // ---- License expiry detail --------------------------------------------
+    // A lifetime key simply carries no expiry date, so "no date" means perpetual
+    // rather than unknown.
+
+    private static bool TryGetExpiry(string? raw, out DateTimeOffset when)
+    {
+        when = default;
+        return !string.IsNullOrWhiteSpace(raw)
+            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out when);
+    }
+
+    private bool LicenseIsPerpetual => string.IsNullOrWhiteSpace(LicenseService.ExpiresAt);
+
+    /// <summary>The store sends plan names lowercase ("lifetime"); the other facts aren't.</summary>
+    private string LicensePlanLabel
+    {
+        get
+        {
+            var plan = LicenseService.LicenseType;
+            if (string.IsNullOrWhiteSpace(plan)) return "Premium";
+            // Plan names arrive as ASCII from the store, so the current culture has no say here —
+            // under tr-TR "invite" would come back capitalised as 'İ'.
+            return char.ToUpperInvariant(plan[0]) + plan[1..];
+        }
+    }
+
+    private TimeSpan? LicenseRemaining =>
+        TryGetExpiry(LicenseService.ExpiresAt, out var when)
+            ? when - DateTimeOffset.UtcNow
+            : null;
+
+    private string LicenseRemainingLabel
+    {
+        get
+        {
+            if (LicenseIsPerpetual) return "Lifetime";
+
+            var left = LicenseRemaining;
+            if (left is null) return "—";
+            if (left.Value <= TimeSpan.Zero) return "Expired";
+
+            var d = left.Value;
+            if (d.TotalDays >= 60) return $"{(int)(d.TotalDays / 30)} months";
+            if (d.TotalDays >= 2) return $"{(int)d.TotalDays} days";
+            if (d.TotalHours >= 2) return $"{(int)d.TotalHours} hours";
+            return $"{Math.Max(1, (int)d.TotalMinutes)} minutes";
+        }
+    }
+
+    /// <summary>Under a week left, or already gone — worth colouring.</summary>
+    private bool LicenseExpiresSoon
+        => LicenseRemaining is { } left && left < TimeSpan.FromDays(7);
+
+    private string LicenseRemainingClass
+    {
+        get
+        {
+            var left = LicenseRemaining;
+            if (left is null) return "";
+            if (left.Value <= TimeSpan.Zero) return "is-expired";
+            return left.Value < TimeSpan.FromDays(7) ? "is-soon" : "";
+        }
     }
 
     private static string FormatLicenseExpiry(string? raw)
@@ -1269,15 +1222,6 @@
     {
         isFontSettingsOpen = !isFontSettingsOpen;
     }
-
-    private void ToggleDiscordRpc(ChangeEventArgs e)
-        => DiscordPresence.IsEnabled = e.Value is bool b && b;
-
-    private void ToggleArkLinkStart(ChangeEventArgs e)
-        => ArkLink.StartWithArk = e.Value is bool b && b;
-
-    private void ToggleArkLinkClose(ChangeEventArgs e)
-        => ArkLink.CloseWithArk = e.Value is bool b && b;
 
     private void ToggleThemeSettings()
     {
@@ -2181,17 +2125,11 @@
         await JSRuntime.InvokeVoidAsync("playClickSound");
     }
 
-    private string LatestVersionLabel => updateResult?.LatestVersion?.ToString() ?? "N/A";
-
-    private string LastCheckedLabel => updateResult == null
-        ? "N/A"
-        : updateResult.CheckedAt.LocalDateTime.ToString("MMM dd, HH:mm");
-
     private string UpdateBadgeClass
     {
         get
         {
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return "update-badge update-badge-checking";
 
             if (updateResult == null)
@@ -2210,7 +2148,7 @@
     {
         get
         {
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return "Checking...";
 
             if (updateResult == null)
@@ -2231,23 +2169,19 @@
                 return $"Downloading update... {AutoUpdateManager.DownloadProgressPercent ?? 0}%";
 
             if (AutoUpdateManager.IsInstallerReady)
-                return $"v{AutoUpdateManager.PendingVersion} ready — will install on close.";
+                return $"Installing v{AutoUpdateManager.PendingVersion} — restarting...";
 
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return "Checking for updates...";
 
             if (updateResult == null)
-                return "Run a check to see if a new version is available.";
+                return "Checking for updates...";
 
             if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
                 return updateResult.ErrorMessage;
 
             if (updateResult.HasUpdate)
-            {
-                return AutoUpdateManager.IsAutoUpdateEnabled
-                    ? $"Version {updateResult.LatestVersion} detected — download will start automatically."
-                    : $"Version {updateResult.LatestVersion} available — enable auto-update or visit GitHub.";
-            }
+                return $"Version {updateResult.LatestVersion} found — downloading now.";
 
             return "You're on the latest version.";
         }
@@ -2257,7 +2191,7 @@
     {
         get
         {
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return true;
 
             if (updateResult == null)
@@ -2267,137 +2201,6 @@
                 return true;
 
             return updateResult.HasUpdate;
-        }
-    }
-
-    private async Task CheckForUpdatesAsync(bool showToast)
-    {
-        if (isCheckingForUpdates || _isDisposed)
-            return;
-
-        isCheckingForUpdates = true;
-        if (!_isDisposed)
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-
-        UpdateCheckResult result;
-        try
-        {
-            result = await UpdateService.CheckForUpdatesAsync();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Update check failed");
-            result = new UpdateCheckResult
-            {
-                CurrentVersion = UpdateService.CurrentVersion,
-                ErrorMessage = "Update check failed.",
-                CheckedAt = DateTimeOffset.UtcNow
-            };
-        }
-
-        updateResult = result;
-        isCheckingForUpdates = false;
-
-        if (showToast && !_isDisposed)
-        {
-            if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
-            {
-                NotificationService.ShowError(result.ErrorMessage);
-            }
-            else if (result.HasUpdate)
-            {
-                var latestLabel = result.LatestVersion?.ToString() ?? "new version";
-                NotificationService.ShowWarning($"Update available: v{latestLabel}");
-            }
-            else
-            {
-                NotificationService.ShowSuccess("You're up to date.");
-            }
-        }
-
-        if (!_isDisposed)
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private bool isUpdateNowInFlight;
-
-    private bool IsUpdateNowDisabled =>
-        isUpdateNowInFlight
-        || AutoUpdateManager.IsDownloading
-        || isCheckingForUpdates;
-
-    private string UpdateNowButtonLabel
-    {
-        get
-        {
-            if (AutoUpdateManager.IsDownloading)
-                return "Downloading…";
-            if (AutoUpdateManager.IsInstallerReady)
-                return "Install & Restart";
-            return "Update Now";
-        }
-    }
-
-    private async Task OnUpdateNowAsync()
-    {
-        if (isUpdateNowInFlight) return;
-        isUpdateNowInFlight = true;
-        StateHasChanged();
-
-        try
-        {
-            // Force a download if the auto-update toggle was off — Update Now is an explicit
-            // user gesture and must work even without the background-download path enabled.
-            if (!AutoUpdateManager.IsInstallerReady)
-            {
-                await AutoUpdateManager.PrepareInstallerOnDemandAsync();
-            }
-
-            if (!AutoUpdateManager.IsInstallerReady)
-            {
-                NotificationService.ShowError(
-                    string.IsNullOrWhiteSpace(AutoUpdateManager.StatusMessage)
-                        ? "Could not prepare the installer."
-                        : AutoUpdateManager.StatusMessage);
-                return;
-            }
-
-            if (!AutoUpdateManager.LaunchPendingInstaller())
-            {
-                NotificationService.ShowError("Could not launch the installer.");
-                return;
-            }
-
-            // Hand off to the installer. With /VERYSILENT it overwrites files and the .iss
-            // [Run] PostInstall entry relaunches RazorReaper.exe. We exit hard so file locks
-            // are released before the installer's file-replace step runs — ProcessExit still
-            // fires (telemetry flush stays bounded).
-            Environment.Exit(0);
-        }
-        finally
-        {
-            isUpdateNowInFlight = false;
-            if (!_isDisposed)
-            {
-                StateHasChanged();
-            }
-        }
-    }
-
-    private void ToggleAutoUpdate(ChangeEventArgs e)
-    {
-        var enabled = (bool)(e.Value ?? false);
-        AutoUpdateManager.IsAutoUpdateEnabled = enabled;
-
-        if (enabled && updateResult?.HasUpdate == true
-            && !AutoUpdateManager.IsInstallerReady
-            && !AutoUpdateManager.IsDownloading)
-        {
-            _ = Task.Run(() => AutoUpdateManager.RunStartupCheckAsync());
         }
     }
 

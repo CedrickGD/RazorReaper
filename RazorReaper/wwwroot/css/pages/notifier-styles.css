@@ -21,7 +21,7 @@
 
 .nt-card {
     margin-bottom: 0 !important;
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
 }
 
 .nt-recent-card {
@@ -29,7 +29,7 @@
 }
 
 h3.nt-card-title {
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
     margin-bottom: var(--space-1) !important;
 }

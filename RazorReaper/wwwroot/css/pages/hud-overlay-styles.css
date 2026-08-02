@@ -20,11 +20,11 @@
 
 .hud-card {
     margin-bottom: 0 !important;
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
 }
 
 h3.hud-card-title {
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
     margin-bottom: var(--space-1) !important;
 }
@@ -145,35 +145,6 @@ input.hud-num {
     align-items: center;
     gap: var(--space-2);
 }
-
-input.hud-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 150px;
-    height: 4px;
-    padding: 0 !important;
-    border: none !important;
-    border-radius: var(--radius-round) !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: none !important;
-    cursor: pointer;
-}
-
-    input.hud-slider:focus {
-        border: none !important;
-        box-shadow: none !important;
-        background: rgba(255, 255, 255, 0.16) !important;
-    }
-
-    input.hud-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 14px;
-        height: 14px;
-        border-radius: var(--radius-round);
-        background: var(--accent-purple);
-        border: none;
-    }
 
 select.hud-select {
     min-width: 200px;

@@ -82,7 +82,7 @@
                     <span class="ls-option-desc">Applied to the converted video. 100% keeps the original loudness; 0% mutes it.</span>
                 </div>
                 <div class="ls-volume">
-                    <input type="range" class="ls-slider" min="0" max="200" step="5"
+                    <input type="range" class="ls-slider" min="0" max="200" step="1"
                            @bind="_volumePercent" @bind:event="oninput" disabled="@_busy" />
                     <span class="ls-volume-value">@_volumePercent%</span>
                 </div>

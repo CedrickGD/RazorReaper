@@ -1,0 +1,193 @@
+@page "/settings"
+@using RazorReaper.Services
+@using RazorReaper.Services.Implementations
+@inject IAppearanceService Appearance
+@inject IDiscordPresenceService DiscordPresence
+@inject IArkLinkService ArkLink
+@inject INotificationService NotificationService
+@inject IJSRuntime JS
+@implements IDisposable
+
+@*
+    App settings. Anything that configures Razor Reaper itself lives here — appearance,
+    audio and app behaviour. Per-feature options stay on their own pages, and every
+    system-wide hotkey lives on Global Hotkeys rather than being scattered per page.
+*@
+
+<header class="page-header">
+    <h1 class="page-title">Settings</h1>
+    <p class="page-subtitle">Appearance, audio and app behaviour. Hotkeys live on their own page.</p>
+</header>
+
+<div class="settings-page">
+
+    @* ── Appearance ──────────────────────────────────────────────────────── *@
+    <section class="content-card">
+        <div class="settings-section-head">
+            <div>
+                <h3>Appearance</h3>
+                <p class="settings-section-desc">
+                    The accent recolours the whole app — every surface reads it from one variable.
+                </p>
+            </div>
+            @if (!Appearance.IsDefault)
+            {
+                <button class="rr-pill-btn ghost sm" @onclick="ResetAppearanceAsync">Reset</button>
+            }
+        </div>
+
+        @* Accent lives in the theme card on Home for now — it already has a full HSV
+           picker with per-shade overrides, so duplicating a simpler one here would mean
+           two places setting the same thing. Moving that card here is the next step. *@
+        <SettingRow Title="Accent colour" Description="Full picker with per-shade overrides, currently on the Home page.">
+            <a class="rr-pill-btn ghost sm" href="/home">Open</a>
+        </SettingRow>
+
+        @* Same story as the accent: Home already has an Interface Font card with real
+           presets that auto-install, so a second picker here would just disagree with it. *@
+        <SettingRow Title="Interface font" Description="Font presets that auto-install, currently on the Home page.">
+            <a class="rr-pill-btn ghost sm" href="/home">Open</a>
+        </SettingRow>
+
+        <SettingRow Title="Interface scale" Description="Scales every element. Useful on very high or very low resolutions.">
+            <div class="settings-scale">
+                @* step 1 + oninput: at step 5 the handle jumped between notches and the
+                   page only re-scaled once you let go. *@
+                <input type="range"
+                       min="@AppearanceService.MinScalePercent"
+                       max="@AppearanceService.MaxScalePercent"
+                       step="1"
+                       value="@Appearance.UiScalePercent"
+                       @oninput="OnScaleChangedAsync" />
+                <span class="settings-scale-value">@Appearance.UiScalePercent%</span>
+            </div>
+        </SettingRow>
+    </section>
+
+    @* ── App behaviour ───────────────────────────────────────────────────── *@
+    <section class="content-card">
+        <div class="settings-section-head">
+            <div>
+                <h3>App behaviour</h3>
+                <p class="settings-section-desc">How Razor Reaper behaves alongside ARK and Discord.</p>
+            </div>
+        </div>
+
+        <SettingRow Title="Discord Rich Presence"
+                    Description="Shows your current tool and version on your Discord profile.">
+            <Switch Value="DiscordPresence.IsEnabled" ValueChanged="OnDiscordChanged" />
+        </SettingRow>
+
+        <SettingRow Title="Start with ARK"
+                    Description="A lightweight watcher launches Razor Reaper as soon as ARK starts.">
+            <Switch Value="ArkLink.StartWithArk" ValueChanged="OnStartWithArkChanged" />
+        </SettingRow>
+
+        <SettingRow Title="Close with ARK"
+                    Description="Exits Razor Reaper when ARK closes.">
+            <Switch Value="ArkLink.CloseWithArk" ValueChanged="OnCloseWithArkChanged" />
+        </SettingRow>
+
+        <SettingRow Title="Updates"
+                    Description="Updates install themselves and restart the app. There is no opt-out.">
+            <span class="settings-static">Automatic</span>
+        </SettingRow>
+    </section>
+
+    @* ── Pointers ────────────────────────────────────────────────────────── *@
+    <section class="content-card">
+        <div class="settings-section-head">
+            <div>
+                <h3>Elsewhere</h3>
+                <p class="settings-section-desc">Settings that have a page of their own.</p>
+            </div>
+        </div>
+
+        <SettingRow Title="Global hotkeys" Description="Every system-wide hotkey, in one place.">
+            <a class="rr-pill-btn ghost sm" href="/hotkeys">Open</a>
+        </SettingRow>
+
+        <SettingRow Title="Gamma triggers" Description="Gamma supports mouse buttons and Logitech G HUB, so its triggers are configured on its own page.">
+            <a class="rr-pill-btn ghost sm" href="/gamma">Open</a>
+        </SettingRow>
+    </section>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Appearance.Changed += OnAppearanceChanged;
+        DiscordPresence.StateChanged += OnAppearanceChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ApplyAppearanceAsync();
+        }
+    }
+
+    private void OnAppearanceChanged() => InvokeAsync(StateHasChanged);
+
+    // ---- Appearance -------------------------------------------------------
+
+    private async Task OnScaleChangedAsync(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var percent))
+        {
+            Appearance.SetUiScalePercent(percent);
+            await ApplyAppearanceAsync();
+        }
+    }
+
+    private async Task ResetAppearanceAsync()
+    {
+        Appearance.ResetToDefaults();
+        try
+        {
+            await JS.InvokeVoidAsync("razorReaperTheme.reset");
+        }
+        catch
+        {
+            // Falls back to re-applying the (now default) values below.
+        }
+        await ApplyAppearanceAsync();
+        NotificationService.ShowSuccess("Appearance reset to defaults.");
+    }
+
+    private async Task ApplyAppearanceAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("razorReaperTheme.apply",
+                Appearance.UiScalePercent);
+        }
+        catch
+        {
+            // Theme script not ready; the value is persisted and applies on next launch.
+        }
+    }
+
+    // ---- App behaviour ----------------------------------------------------
+
+    private void OnDiscordChanged(bool enabled) => DiscordPresence.IsEnabled = enabled;
+
+    private void OnStartWithArkChanged(bool enabled)
+    {
+        ArkLink.StartWithArk = enabled;
+        StateHasChanged();
+    }
+
+    private void OnCloseWithArkChanged(bool enabled)
+    {
+        ArkLink.CloseWithArk = enabled;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Appearance.Changed -= OnAppearanceChanged;
+        DiscordPresence.StateChanged -= OnAppearanceChanged;
+    }
+}

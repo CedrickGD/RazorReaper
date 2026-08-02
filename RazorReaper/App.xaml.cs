@@ -29,6 +29,12 @@ namespace RazorReaper
             this.accessGate = accessGate;
 
             InitializeComponent();
+
+            // Updates are forced: when the manager has an installer staged it asks us to
+            // get out of the way. The orchestrator it spawns waits for this PID to exit,
+            // installs silently, then relaunches — so all we do is hand off and quit.
+            this.autoUpdateManager.InstallRequested += HandleInstallRequested;
+
             RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
             RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
             RunStartupTask("update-check", () => autoUpdateManager.RunStartupCheckAsync());
@@ -40,6 +46,36 @@ namespace RazorReaper
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+        }
+
+        private void HandleInstallRequested()
+        {
+            try
+            {
+                if (!autoUpdateManager.LaunchPendingInstaller())
+                {
+                    // Nothing staged, or the orchestrator wouldn't start. Staying open is
+                    // the right failure mode, but the manager has to be told: it stops
+                    // checking while an installer is staged, so leaving that state behind
+                    // would end updates for the rest of the session.
+                    autoUpdateManager.ResetPendingInstaller();
+                    AppDiagnostics.RecordError(
+                        AppErrorCodes.StartupTaskFailure,
+                        "Auto-update handoff failed: installer did not launch.");
+                    return;
+                }
+
+                // Hard exit so file locks are released before the installer's replace step.
+                // ProcessExit still fires, so the telemetry flush stays bounded.
+                Environment.Exit(0);
+            }
+            catch (Exception ex)
+            {
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.StartupTaskFailure,
+                    "Auto-update handoff threw.",
+                    ex);
+            }
         }
 
         private static void RunStartupTask(string name, Func<Task> work)
@@ -62,10 +98,11 @@ namespace RazorReaper
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            var version = UpdateService.GetCurrentVersion();
+            // Version lives at the foot of the sidebar now, so the title bar doesn't
+            // repeat it — otherwise the name and version each showed up twice on screen.
             var window = new Window(new MainPage())
             {
-                Title = $"Razor Reaper : Version {version}"
+                Title = "Razor Reaper"
             };
             window.Destroying += HandleWindowDestroying;
 

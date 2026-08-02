@@ -1,13 +1,22 @@
 /* ============================================================================
- *  Sidebar (navbar)
- *  - Width driven by --sidebar-width (set by wwwroot/js/navbar.js).
- *  - Collapsed (rail) state signalled by html[data-sidebar-collapsed].
- *  - During active drag, html[data-sidebar-resizing] disables transitions.
- *  - Scrolling happens on .nav-content (NOT .sidebar), so the brand + search
- *    stay pinned at the top and the icon list can scroll on its own. This also
- *    means the sidebar itself never establishes a scroll container, so the
- *    JS-positioned rail-mode flyouts (position: fixed) never get clipped.
+ *  Sidebar (navbar) — icon rail + pinned panel
+ *
+ *  Layout: a fixed-width rail of category icons on the left, and a panel on the
+ *  right listing the selected category's pages. --sidebar-width is the TOTAL of
+ *  both, set by wwwroot/js/navbar.js; the panel takes whatever the rail doesn't.
+ *
+ *  The panel is always open. There is no icon-only mode, so nothing here reacts
+ *  to a collapsed state and nothing appears on hover — clicking a rail icon is
+ *  the only thing that swaps the panel.
  * ========================================================================== */
+
+:root {
+    --nav-rail-width: 54px;
+    /* One easing curve for the whole sidebar, so nothing feels out of step. */
+    --nav-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --nav-fast: 0.14s;
+    --nav-base: 0.22s;
+}
 
 .sidebar {
     display: flex !important;
@@ -21,63 +30,202 @@
     position: fixed;
     left: 0;
     top: 0;
-    /* Visible — the resize handle sits at the right edge as an absolutely
-       positioned child and must not get clipped. Nothing else inside the
-       sidebar overflows in practice (groups manage their own scroll). */
     overflow: visible;
     z-index: 1000;
     box-shadow: 4px 0 20px var(--shadow-dark);
-    transition: width 0.18s ease;
+    transition: width var(--nav-base) var(--nav-ease);
 }
 
 html[data-sidebar-resizing] .sidebar {
     transition: none !important;
 }
 
-/* --- Brand row (logo only) -------------------------------------------- */
+/* -------------------------------------------------------------- Header --- */
+/* Spans the whole sidebar so the mark reads as a header, not as something
+   wedged into the rail's top corner. */
 
-.brand {
-    padding: 1.25rem 1rem !important;
-    border-bottom: 1px solid var(--border-color) !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+.nav-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    /* Generous and even above and below, so the mark reads as placed rather than
+       squeezed against the window edge. */
+    padding: 1.5rem 0.85rem 1.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .brand-logo {
-    width: 70px !important;
-    height: 70px !important;
+    width: 62px !important;
+    height: 62px !important;
     object-fit: contain !important;
     display: block !important;
-    transition: width 0.18s ease, height 0.18s ease;
+    flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------- Split --- */
+
+.nav-split {
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    min-height: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---------------------------------------------------------------- Rail --- */
+
+.nav-rail {
+    width: var(--nav-rail-width);
+    flex: 0 0 var(--nav-rail-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* No tint. The sidebar is one flat --background-sidebar the way it always was; a 22%
+       black wash here made the rail read ~4/255 darker than the panel beside it, which is
+       too small to look deliberate and just showed up as a seam. The hairline below is
+       what separates the two. */
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+}
+
+.rail-items {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0.5rem 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    gap: 0.3rem !important;
+    width: 100%;
+}
+
+.rail-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition:
+        color var(--nav-fast) var(--nav-ease),
+        background-color var(--nav-fast) var(--nav-ease),
+        transform var(--nav-fast) var(--nav-ease);
+}
+
+.rail-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.rail-icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.rail-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+
+}
+
+.rail-btn:active {
+    transform: translateY(0) scale(0.94);
+}
+
+.rail-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
+}
+
+/* Selected = the category the panel is showing. Neutral, not accent-filled: the purple
+   pill read as the *current page* when it only means "this is the list you're looking
+   at". The accent is reserved for .has-active below, which is the real location cue. */
+.rail-btn.selected {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* The sliver marking the category that owns the page you're actually on. It
+   grows from the centre rather than snapping in. */
+.rail-btn.has-active::before {
+    content: '';
+    position: absolute;
+    /* The button is centred in the 54px rail, so -8px would put this flush against
+       the window edge. -5px leaves a hairline of gutter beside it. */
+    left: -5px;
+    top: 50%;
+    width: 3px;
+    height: 20px;
+    border-radius: var(--radius-round);
+    background: var(--accent-purple);
+    transform: translateY(-50%) scaleY(0);
+    animation: railMarkIn var(--nav-base) var(--nav-ease) forwards;
+}
+
+@keyframes railMarkIn {
+    to { transform: translateY(-50%) scaleY(1); }
+}
+
+/* --------------------------------------------------------------- Panel --- */
+
+.nav-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0.55rem 0 0.8rem;
+    overflow: hidden;
 }
 
 /* --- Search trigger --------------------------------------------------- */
 
+/* Full sidebar width, not panel width — at 171px the label was clipping to "Se…".
+   Equal margin top and bottom puts it in its own band between the header rule above
+   and the split's rule below, instead of floating loose under the logo. */
 .search-trigger {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    margin: 0.85rem 0.75rem 0;
-    padding: 0.55rem 0.8rem;
+    gap: 0.5rem;
+    width: calc(100% - 1.3rem);
+    margin: 0.7rem 0.65rem;
+    padding: 0.48rem 0.6rem;
     border-radius: var(--radius-control);
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
     cursor: pointer;
-    transition: all 0.2s ease;
     user-select: none;
     flex-shrink: 0;
+    font-family: inherit;
+    text-align: left;
+    transition:
+        background-color var(--nav-fast) var(--nav-ease),
+        border-color var(--nav-fast) var(--nav-ease);
 }
 
-    .search-trigger:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(var(--accent-purple-rgb), 0.25);
-    }
+.search-trigger:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(var(--accent-purple-rgb), 0.3);
+}
+
+.search-trigger:focus-visible {
+    outline: none;
+    border-color: rgba(var(--accent-purple-rgb), 0.55);
+}
 
 .search-trigger-icon {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
     color: var(--accent-purple-light);
     opacity: 0.85;
@@ -85,9 +233,9 @@ html[data-sidebar-resizing] .sidebar {
 
 .search-trigger-text {
     flex: 1;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     color: var(--text-secondary);
-    opacity: 0.5;
+    opacity: 0.55;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -96,394 +244,292 @@ html[data-sidebar-resizing] .sidebar {
 .search-trigger-kbd {
     display: inline-flex;
     align-items: center;
-    gap: 0.2rem;
-    padding: 0.1rem 0.4rem;
+    padding: 0.08rem 0.34rem;
     border-radius: var(--radius-sm);
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-family: var(--font-mono);
     color: var(--text-secondary);
-    opacity: 0.5;
+    opacity: 0.45;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     line-height: 1.5;
     flex-shrink: 0;
 }
 
-/* --- Nav body (scroll container) ------------------------------------- */
+/* --- Panel body ------------------------------------------------------- */
 
-.nav-content {
+.panel-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    animation: panelIn var(--nav-base) var(--nav-ease);
+}
+
+@keyframes panelIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.panel-title {
+    padding: 0.3rem 0.85rem 0.45rem;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+.panel-list {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 0.5rem !important;
     display: flex !important;
     flex-direction: column !important;
-    flex: 1 1 auto !important;
-    /* CRITICAL: a flex item needs min-height: 0 to allow itself to be smaller
-       than its content. Without this, overflow-y: auto does nothing because
-       the flex item just grows to fit its children. */
-    min-height: 0 !important;
-    justify-content: flex-start !important;
-    padding: 0.85rem 0 1rem !important;
-    gap: 0.15rem;
+    gap: 0.12rem !important;
     overflow-y: auto;
     overflow-x: hidden;
-    /* Hide scrollbar completely — scroll still works via wheel/touch.
-       Reserving any scrollbar space would push or block the .sidebar-resize-handle. */
+    flex: 1 1 auto;
+    min-height: 0;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-.nav-content::-webkit-scrollbar {
+.panel-list::-webkit-scrollbar {
     display: none;
     width: 0;
-    height: 0;
 }
 
-.nav-menu {
-    list-style: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.3rem !important;
-    overflow: hidden;
-    max-height: 1200px;
-    transition: max-height 0.22s ease, opacity 0.18s ease, margin 0.22s ease;
-    opacity: 1;
+/* Rows fade in one after another when the category changes. Capped at eight
+   because that's the largest category — beyond it the delay would drag. */
+.panel-list > li {
+    animation: rowIn var(--nav-base) var(--nav-ease) both;
 }
 
-.nav-group {
+.panel-list > li:nth-child(1) { animation-delay: 0.00s; }
+.panel-list > li:nth-child(2) { animation-delay: 0.018s; }
+.panel-list > li:nth-child(3) { animation-delay: 0.036s; }
+.panel-list > li:nth-child(4) { animation-delay: 0.054s; }
+.panel-list > li:nth-child(5) { animation-delay: 0.072s; }
+.panel-list > li:nth-child(6) { animation-delay: 0.090s; }
+.panel-list > li:nth-child(7) { animation-delay: 0.108s; }
+.panel-list > li:nth-child(n+8) { animation-delay: 0.126s; }
+
+@keyframes rowIn {
+    from { opacity: 0; transform: translateX(-7px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.panel-link {
     position: relative;
-    padding: 0.2rem 0 0.45rem;
-}
-
-.nav-group + .nav-group {
-    margin-top: 0.1rem;
-}
-
-.nav-group.collapsed .nav-menu {
-    max-height: 0;
-    opacity: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-    pointer-events: none;
-}
-
-.nav-group.collapsed .nav-group-chevron {
-    transform: rotate(-90deg);
-}
-
-.nav-item {
-    padding: 0 0.75rem !important;
-}
-
-/* --- Group label (button that collapses the group) ------------------- */
-
-.nav-group-label {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: calc(100% - 1.7rem);
-    margin: 0.55rem 0.85rem 0.35rem !important;
-    padding: 0.3rem 0.2rem !important;
-    font-size: 0.66rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.09em !important;
-    text-transform: uppercase !important;
-    color: rgba(255, 255, 255, 0.55) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-    user-select: none !important;
-    background: transparent;
-    border-left: none;
-    border-right: none;
-    border-top: none;
-    cursor: pointer;
-    font-family: inherit;
-    transition: color 0.18s ease, border-color 0.18s ease;
-}
-
-.nav-group:first-child .nav-group-label {
-    margin-top: 0.1rem !important;
-}
-
-.nav-group-label:hover {
-    color: rgba(255, 255, 255, 0.9) !important;
-    border-bottom-color: rgba(var(--accent-purple-rgb), 0.4) !important;
-}
-
-.nav-group-label-text {
-    display: inline-block;
-}
-
-.nav-group-chevron {
-    width: 11px;
-    height: 11px;
-    color: rgba(255, 255, 255, 0.45);
-    transform: rotate(0deg);
-    transition: transform 0.22s ease, color 0.18s ease;
-    flex-shrink: 0;
-}
-
-.nav-group-label:hover .nav-group-chevron {
-    color: var(--accent-purple-light);
-}
-
-/* --- Nav link --------------------------------------------------------- */
-
-.nav-link {
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.75rem !important;
-    padding: 0.7rem 0.9rem !important;
-    padding-left: 1.1rem !important;
-    color: var(--text-secondary) !important;
-    text-decoration: none !important;
-    border-radius: var(--radius-control) !important;
-    background-color: transparent !important;
-    transition: color 0.18s ease, background-color 0.2s ease, border-left-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
-    font-weight: 500 !important;
-    font-size: 0.85rem !important;
-    position: relative !important;
-    overflow: hidden !important;
-    border-left: 3px solid transparent !important;
-    transform: translateX(0);
-    box-shadow: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radius-control);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
     white-space: nowrap;
+    transition:
+        color var(--nav-fast) var(--nav-ease),
+        background-color var(--nav-fast) var(--nav-ease),
+        transform var(--nav-fast) var(--nav-ease);
 }
 
-    .nav-link:focus {
-        outline: none !important;
-    }
+.panel-link:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.055);
 
-    .nav-link:focus-visible {
-        outline: none !important;
-    }
+}
 
-    .nav-link::after {
-        content: '' !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 50% !important;
-        transform: translateY(-50%) scaleY(0) !important;
-        width: 3px !important;
-        height: 60% !important;
-        background: linear-gradient(180deg, rgba(var(--accent-purple-rgb), 0.2), rgba(var(--accent-purple-rgb), 0.8), rgba(var(--accent-purple-rgb), 0.2)) !important;
-        border-radius: var(--radius-round) !important;
-        opacity: 0 !important;
-        transition: opacity 0.18s ease, transform 0.18s ease !important;
-    }
+.panel-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.45);
+}
 
-    .nav-link:hover::after,
-    .nav-link:focus-visible::after {
-        opacity: 1 !important;
-        transform: translateY(-50%) scaleY(1) !important;
-    }
+.panel-link.active {
+    color: var(--accent-purple-light);
+    background-color: rgba(var(--accent-purple-rgb), 0.12);
+}
 
-    .nav-link:hover {
-        color: var(--text-primary) !important;
-        background-color: rgba(255, 255, 255, 0.035) !important;
-        border-left-color: rgba(var(--accent-purple-rgb), 0.22) !important;
-        transform: translateX(2px);
-        box-shadow: none;
-    }
+.panel-link.active::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 58%;
+    border-radius: var(--radius-round);
+    background: var(--accent-purple);
+}
 
-    .nav-link.active {
-        color: var(--text-primary) !important;
-        background-color: rgba(var(--accent-purple-rgb), 0.08) !important;
-        border-left-color: rgba(var(--accent-purple-rgb), 0.45) !important;
-        box-shadow: inset 0 0 0 1px rgba(var(--accent-purple-rgb), 0.08);
-    }
-
-    .nav-link.active::after {
-        opacity: 1 !important;
-        transform: translateY(-50%) scaleY(1) !important;
-    }
-
-    .nav-link:active {
-        transform: translateX(1px) scale(0.98);
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.4);
-    }
+.panel-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 .nav-icon-wrap {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 17px;
+    height: 17px;
     flex-shrink: 0;
     color: inherit;
-    transition: transform 0.25s ease;
-    opacity: 0.95;
+    opacity: 0.85;
 }
 
 .nav-icon-wrap svg {
-    width: 20px !important;
-    height: 20px !important;
+    width: 17px !important;
+    height: 17px !important;
     display: block;
 }
 
-.nav-link:hover .nav-icon-wrap {
-    transform: scale(1.1) !important;
+/* -------------------------------------------------------- Status block --- */
+/* Its own section at the foot, matching the admin panel's status card: a rule
+   above, a coloured dot plus the live state, then muted meta beneath. */
+
+.nav-status {
+    flex-shrink: 0;
+    padding: 0.6rem 0.85rem 0.65rem;
+    /* Third shade removed for the same reason as the rail — the border carries it. */
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    user-select: none;
 }
 
-.nav-link-label {
-    display: inline-block;
+.nav-status-line {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.nav-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: var(--radius-round);
+    flex-shrink: 0;
+}
+
+    /* Green rather than the app accent: it has to read as a tier, and purple is
+       already the themeable accent used for selection all over the sidebar. Gold sat
+       too close to the warning colour to read as "everything is fine". */
+    .nav-status-dot.premium {
+        background: linear-gradient(160deg, #7fdca4, #2f9e63);
+        box-shadow: 0 0 0 3px rgba(80, 200, 130, 0.16);
+    }
+
+    .nav-status-dot.freemium {
+        background: #d8524f;
+        box-shadow: 0 0 0 3px rgba(216, 82, 79, 0.14);
+    }
+
+.nav-status-label {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    opacity: 0.88;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nav-status-dot.premium + .nav-status-label {
+    color: #6fce95;
     opacity: 1;
-    transition: opacity 0.14s ease;
+}
+
+.nav-status-dot.freemium + .nav-status-label {
+    color: #e07d7a;
+    opacity: 1;
+}
+
+.nav-status-meta {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    opacity: 0.42;
+    white-space: nowrap;
 }
 
 /* --- Resize handle ---------------------------------------------------- */
-/* Intentionally invisible — the sidebar's existing border-right is the only
-   visual edge. We just want the cursor to flip to ew-resize on hover so
-   users can grab it without any UI noise. */
+/* Invisible hit area with a grip that fades in on hover, so the edge is
+   discoverable without drawing a permanent line down the app. */
 
 .sidebar-resize-handle {
-    /* Invisible — sidebar's border-right is the only visual edge. We just
-       want the cursor to flip to ew-resize on hover so users can grab it. */
     position: absolute;
-    right: -4px;
+    right: -5px;
     top: 0;
-    width: 10px;
+    width: 11px;
     height: 100%;
     cursor: ew-resize;
     z-index: 1010;
     background: transparent;
     touch-action: none;
-}
-
-/* ============================================================================
- *  Rail (collapsed) mode
- * ========================================================================== */
-
-html[data-sidebar-collapsed] .brand {
-    padding: 0.85rem 0.4rem !important;
-}
-
-html[data-sidebar-collapsed] .brand-logo {
-    width: 36px !important;
-    height: 36px !important;
-}
-
-/* Search trigger replaced by Ctrl+K hint — hide the inline trigger. */
-html[data-sidebar-collapsed] .search-trigger {
-    display: none;
-}
-
-html[data-sidebar-collapsed] .nav-group-label {
-    display: none !important;
-}
-
-html[data-sidebar-collapsed] .nav-group.collapsed .nav-menu {
-    /* Force-expand items in rail mode; the per-group collapse only applies in expanded mode. */
-    max-height: none;
-    opacity: 1;
-    pointer-events: auto;
-    margin-top: 0;
-    margin-bottom: 0;
-}
-
-html[data-sidebar-collapsed] .nav-content {
-    padding: 0.6rem 0 0.8rem !important;
-    gap: 0;
-}
-
-html[data-sidebar-collapsed] .nav-group {
-    padding: 0.25rem 0;
-}
-
-html[data-sidebar-collapsed] .nav-group + .nav-group {
-    margin-top: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-html[data-sidebar-collapsed] .nav-menu {
-    gap: 0.25rem !important;
-}
-
-html[data-sidebar-collapsed] .nav-item {
-    padding: 0 0.5rem !important;
-}
-
-html[data-sidebar-collapsed] .nav-link {
-    padding: 0.6rem 0 !important;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    border-left: 0 !important;
-    gap: 0;
+    /* The grip is the only child; clicks must still land on the handle itself,
+       which the drag listener identifies by class. */
+    pointer-events: auto;
 }
 
-html[data-sidebar-collapsed] .nav-link::after {
-    display: none;
-}
-
-html[data-sidebar-collapsed] .nav-link:hover {
-    transform: none !important;
-    background-color: rgba(var(--accent-purple-rgb), 0.10) !important;
-}
-
-html[data-sidebar-collapsed] .nav-link.active {
-    background-color: rgba(var(--accent-purple-rgb), 0.16) !important;
-}
-
-html[data-sidebar-collapsed] .nav-link-label {
-    display: none;
-}
-
-/* ============================================================================
- *  Rail-mode tooltip
- *
- *  A single element appended to <body> by navbar.js — positioned via JS so
- *  it can sit to the right of whichever icon is currently hovered, without
- *  being clipped by .nav-link / .nav-content overflow rules.
- *  Styled to match the rest of the app's purple-tinted glass look.
- * ========================================================================== */
-
-.rail-tooltip {
-    position: fixed;
-    z-index: 1200;
-    padding: 0.4rem 0.7rem;
-    background: rgba(18, 18, 18, 0.98);
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
-    border-radius: var(--radius-chip);
-    color: var(--text-primary);
-    font-family: var(--font-primary);
-    font-size: 0.78rem;
-    font-weight: 500;
-    line-height: 1.2;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
-    box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.55),
-        0 0 0 1px rgba(0, 0, 0, 0.35),
-        0 0 18px rgba(var(--accent-purple-rgb), 0.18);
-    pointer-events: none;
-    user-select: none;
-    transform: translate(-4px, -50%);
+.resize-grip {
+    width: 4px;
+    height: 46px;
+    border-radius: var(--radius-round);
+    background: rgba(255, 255, 255, 0.55);
     opacity: 0;
-    visibility: hidden;
+    transform: scaleY(0.4);
     transition:
-        opacity 0.10s ease,
-        transform 0.14s ease,
-        visibility 0s linear 0.10s;
+        opacity var(--nav-fast) var(--nav-ease),
+        transform var(--nav-base) var(--nav-ease);
+    pointer-events: none;
 }
 
-.rail-tooltip.visible {
+.sidebar-resize-handle:hover .resize-grip {
+    opacity: 0.75;
+    transform: scaleY(1);
+}
+
+/* Stays lit for the whole drag, even once the pointer leaves the strip. */
+html[data-sidebar-resizing] .resize-grip {
     opacity: 1;
-    visibility: visible;
-    transform: translate(0, -50%);
-    transition:
-        opacity 0.10s ease,
-        transform 0.14s ease,
-        visibility 0s linear 0s;
+    transform: scaleY(1);
+    background: var(--accent-purple-light);
 }
 
-/* Subtle arrow on the left edge pointing back at the rail icon. */
-.rail-tooltip::before {
-    content: '';
-    position: absolute;
-    left: -5px;
-    top: 50%;
-    transform: translateY(-50%) rotate(45deg);
-    width: 8px;
-    height: 8px;
-    background: inherit;
-    border-left: 1px solid rgba(var(--accent-purple-rgb), 0.35);
-    border-bottom: 1px solid rgba(var(--accent-purple-rgb), 0.35);
+/* --- Reduced motion --------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .sidebar,
+    .rail-btn,
+    .search-trigger,
+    .panel-link,
+    .resize-grip {
+        transition: none !important;
+    }
+
+    .panel-body,
+    .panel-list > li,
+    .rail-btn.has-active::before {
+        animation: none !important;
+    }
+
+    .rail-btn.has-active::before {
+        transform: translateY(-50%) scaleY(1);
+    }
 }

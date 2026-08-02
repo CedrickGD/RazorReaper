@@ -1,4 +1,18 @@
-/* Global Hotkeys overview — one row per script: status dot, name, bound key, on/off toggle. */
+/* Global Hotkeys — the single editor. One row per binding: status dot, name +
+   description, then either a capture field or a link to the page that still owns it. */
+
+.hk-card + .hk-card {
+    margin-top: 1.25rem;
+}
+
+.hk-group-title {
+    margin: 0 0 0.35rem !important;
+    font-size: 0.68rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.42) !important;
+}
 
 .hk-list {
     display: flex;
@@ -7,7 +21,7 @@
 
 .hk-row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 1rem;
     padding: 0.7rem 0.25rem;
@@ -31,13 +45,39 @@
         box-shadow: 0 0 8px rgba(var(--accent-purple-rgb), 0.7);
     }
 
-.hk-name {
-    font-size: 0.95rem;
+.hk-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
 }
 
-.hk-key {
-    justify-self: end;
+.hk-name {
+    font-size: 0.92rem;
 }
+
+.hk-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.hk-field {
+    justify-self: end;
+    min-width: 170px;
+}
+
+/* Row-level link for bindings still owned by their own page. */
+.hk-link {
+    justify-self: end;
+    font-size: 0.82rem;
+    color: var(--accent-purple-light);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+    .hk-link:hover {
+        text-decoration: underline;
+    }
 
 .hk-combo {
     font-family: var(--font-mono);
@@ -53,13 +93,3 @@
     font-size: 0.82rem;
     color: var(--text-secondary);
 }
-
-.hk-note {
-    margin-top: 1rem;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-
-    .hk-note a {
-        color: var(--accent-purple-light);
-    }

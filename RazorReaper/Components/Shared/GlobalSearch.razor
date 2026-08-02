@@ -1,22 +1,38 @@
-@using Microsoft.AspNetCore.Components.Routing
+@using RazorReaper.Navigation
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject IPaletteCommandProvider CommandProvider
 @implements IAsyncDisposable
+
+@*
+    Command palette (Ctrl+K)
+    ------------------------
+    Indexes three things, all flattened to PaletteItem:
+      · Pages     — every route, from NavCatalog (shared with the sidebar).
+      · Locations — maps, caves, bosses and drop areas, from DeepLinkIndex. Selecting one
+                    navigates with query parameters so the target page opens preselected.
+      · Commands  — actions wired straight to the app's services, run without navigating.
+
+    The sidebar deliberately only shows pinned, recent and one open category, so this is
+    the primary way to reach the long tail.
+*@
 
 @if (_isVisible)
 {
-    <div class="search-overlay" @onclick="Close" @onkeydown="HandleKeyDown">
+    <div class="search-overlay" @onclick="Close">
         <div class="search-container" @onclick:stopPropagation>
             <div class="search-input-wrapper">
                 <svg class="search-input-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="9" cy="9" r="5.5" />
                     <path d="m13.5 13.5 3 3" />
                 </svg>
+                @* Only the input carries @onkeydown. Putting it on the overlay as well would
+                   also catch the bubbled event and move the selection twice per press. *@
                 <input @ref="_inputRef"
                        type="text"
                        class="search-input"
-                       placeholder="Search pages..."
-                       @bind-value="_query"
+                       placeholder="Search pages, locations and commands..."
+                       @bind-value="Query"
                        @bind-value:event="oninput"
                        @onkeydown="HandleKeyDown"
                        autocomplete="off"
@@ -24,25 +40,51 @@
                 <kbd class="search-kbd">ESC</kbd>
             </div>
 
-            @if (FilteredResults.Any())
+            @if (_flat.Count > 0)
             {
-                <ul class="search-results">
-                    @foreach (var (item, index) in FilteredResults.Select((v, i) => (v, i)))
+                <ul class="search-results" id="rr-search-results">
+                    @{
+                        var row = 0;
+                    }
+                    @foreach (var section in _sections)
                     {
-                        <li class="search-result-item @(index == _selectedIndex ? "selected" : "")"
-                            @onclick="() => NavigateTo(item.Route)"
-                            @onmouseenter="() => _selectedIndex = index">
-                            <div class="search-result-icon">
-                                @((MarkupString)item.Icon)
-                            </div>
-                            <div class="search-result-text">
-                                <span class="search-result-title">@item.Title</span>
-                                <span class="search-result-description">@item.Description</span>
-                            </div>
-                            <span class="search-result-category">@item.Category</span>
-                        </li>
+                        <li class="search-section-label" aria-hidden="true">@section.Label</li>
+
+                        @foreach (var item in section.Items)
+                        {
+                            var index = row++;
+                            var status = item.Status?.Invoke();
+
+                            <li class="search-result-item @(index == _selectedIndex ? "selected" : "")"
+                                id="@RowId(index)"
+                                @key="item.Id"
+                                @onclick="() => ActivateAsync(item)"
+                                @onmouseenter="() => Select(index)">
+                                <div class="search-result-icon">
+                                    @((MarkupString)item.IconSvg)
+                                </div>
+                                <div class="search-result-text">
+                                    <span class="search-result-title">@item.Title</span>
+                                    <span class="search-result-description">@item.Subtitle</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(status))
+                                {
+                                    <span class="search-result-status">@status</span>
+                                }
+                                <span class="search-result-category">@item.Category</span>
+                            </li>
+                        }
                     }
                 </ul>
+
+                <div class="search-footer">
+                    <span class="search-footer-hints">
+                        <kbd>↑</kbd><kbd>↓</kbd> navigate
+                        <kbd>↵</kbd> @(SelectedItem?.Kind == PaletteKind.Command ? "run" : "open")
+                        <kbd>esc</kbd> close
+                    </span>
+                    <span class="search-footer-count">@CountLabel</span>
+                </div>
             }
             else if (!string.IsNullOrWhiteSpace(_query))
             {
@@ -55,224 +97,149 @@
 }
 
 @code {
+    /// <summary>Rows rendered at once. Anything beyond this is reported in the footer, never dropped silently.</summary>
+    private const int MaxResults = 50;
+
     private bool _isVisible;
     private string _query = "";
     private int _selectedIndex;
+    private int _totalMatches;
     private ElementReference _inputRef;
     private DotNetObjectReference<GlobalSearch>? _dotNetRef;
 
-    private record SearchEntry(string Title, string Description, string Route, string Category, string Icon, string[] Keywords);
+    /// <summary>Candidate pool, rebuilt on each open because commands carry live user data.</summary>
+    private List<PaletteItem> _candidates = new();
 
-    private static readonly List<SearchEntry> AllPages = new()
+    private List<PaletteSection> _sections = new();
+
+    /// <summary>Display order of every rendered row — the index space <see cref="_selectedIndex"/> walks.</summary>
+    private List<PaletteItem> _flat = new();
+
+    private bool _scrollPending;
+
+    private sealed record PaletteSection(string Label, List<PaletteItem> Items);
+
+    /// <summary>
+    /// Recomputes on assignment rather than in a getter. The previous version filtered inside
+    /// a property getter that also reset the selected index — and because the render path reads
+    /// that property, every re-render snapped the highlight back to the first row, which made
+    /// the arrow keys look broken as soon as you typed anything.
+    /// </summary>
+    private string Query
     {
-        new("Home", "Dashboard, updates & recent activity", "/home", "Core",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9.5 10 4l7 5.5\"/><path d=\"M5.5 8.5V16h9V8.5\"/><path d=\"M8.5 16v-3.5h3V16\"/></svg>",
-            new[] { "home", "dashboard", "updates", "activity", "welcome" }),
-
-        new("Server", "Connect and manage ARK servers", "/server", "Core",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"5\" rx=\"1.4\"/><rect x=\"3\" y=\"11\" width=\"14\" height=\"5\" rx=\"1.4\"/><path d=\"M12.5 6.5h1\"/><path d=\"M15 6.5h.5\"/><path d=\"M12.5 13.5h1\"/><path d=\"M15 13.5h.5\"/></svg>",
-            new[] { "server", "connect", "ip", "manage", "query" }),
-
-        new("Game", "Control and monitor ARK: Survival Evolved", "/game", "Core",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4\" width=\"15\" height=\"12\" rx=\"2\"/><path d=\"M7 8l3 2-3 2\"/><path d=\"M11.5 12h3\"/></svg>",
-            new[] { "game", "launch", "start", "ark", "monitor", "status", "running" }),
-
-        new("INI Changer", "Manage & optimize ARK configuration presets", "/ini-changer", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 5.5h12\"/><path d=\"M4 10h12\"/><path d=\"M4 14.5h12\"/><circle cx=\"7\" cy=\"5.5\" r=\"1.25\"/><circle cx=\"12.5\" cy=\"10\" r=\"1.25\"/><circle cx=\"9\" cy=\"14.5\" r=\"1.25\"/></svg>",
-            new[] { "ini", "config", "configuration", "presets", "settings", "basedeviceprofiles", "optimize" }),
-
-        new("INI Builder", "One-click Game.ini & GameUserSettings.ini presets with auto-backup", "/ini-builder", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 5h8\"/><path d=\"M4 10h6\"/><path d=\"M4 15h5\"/><path d=\"M14.5 9v6\"/><path d=\"M11.5 12h6\"/></svg>",
-            new[] { "ini", "builder", "gameusersettings", "game.ini", "presets", "backup", "restore", "graphics", "fps", "pvp" }),
-
-        new("Vision Tools", "TEK camera, scope visibility, and custom FOV", "/vision", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z\"/><circle cx=\"10\" cy=\"10\" r=\"2.2\"/></svg>",
-            new[] { "vision", "fov", "camera", "tek", "suit", "scope", "zoom" }),
-
-        new("Gamma", "System-wide screen gamma with hotkey and Logitech G HUB triggers, presets and a cycle", "/gamma", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"10\" cy=\"10\" r=\"3.2\"/><path d=\"M10 2.5v2\"/><path d=\"M10 15.5v2\"/><path d=\"M2.5 10h2\"/><path d=\"M15.5 10h2\"/><path d=\"M4.7 4.7l1.4 1.4\"/><path d=\"M13.9 13.9l1.4 1.4\"/><path d=\"M15.3 4.7l-1.4 1.4\"/><path d=\"M6.1 13.9l-1.4 1.4\"/></svg>",
-            new[] { "gamma", "brightness", "screen", "vision", "ghub", "g hub", "logitech", "hotkey", "preset", "cycle", "monitor", "dark", "night" }),
-
-        new("Launch Options", "Quick ARK startup flags with trade-offs", "/launch-options", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 16.5V3.5\"/><path d=\"M5 4h8l-1.6 2.6L13 9H5\"/></svg>",
-            new[] { "launch", "options", "flags", "startup", "arguments", "steam", "parameters" }),
-
-        new("Fonts", "Customize ARK font settings", "/fonts", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 15 10 5l4 10\"/><path d=\"M7.4 11.5h5.2\"/></svg>",
-            new[] { "fonts", "text", "typography", "chinese", "global", "install" }),
-
-        new("Pixel Glitch", "Manage ARK texture files for visual mods", "/pixel", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.5 2.5 4 10h5l-.6 7.5L16 10h-5l-.5-7.5Z\"/></svg>",
-            new[] { "pixel", "glitch", "texture", "visual", "riot", "saddle", "armor" }),
-
-        new("Paintings", "Manage your in-game paintings", "/paintings", "ARK Tweaks",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7\"/><circle cx=\"7\" cy=\"7.5\" r=\"1\"/></svg>",
-            new[] { "paintings", "mypaintings", "art", "images" }),
-
-        new("Sky Changer", "Replace the in-game sky with an image or solid color", "/custom-lab", "Custom ARK",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3v4.5L4.3 14a1.5 1.5 0 0 0 1.3 2.3h8.8A1.5 1.5 0 0 0 15.7 14L12 7.5V3\"/><path d=\"M7 3h6\"/><path d=\"M5.7 12.5h8.6\"/></svg>",
-            new[] { "sky", "changer", "injector", "custom", "texture", "color" }),
-
-        new("Loading Screen", "Replace ARK's startup and loading videos with your own — reversible", "/loading-screen", "Custom ARK",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4\" width=\"15\" height=\"12\" rx=\"2\"/><path d=\"M5.5 4v12\"/><path d=\"M14.5 4v12\"/><path d=\"M8.5 8.2l3.4 1.8-3.4 1.8z\"/></svg>",
-            new[] { "loading", "screen", "video", "movie", "startup", "intro", "replace", "custom" }),
-
-        new("Mutagen Prices", "Browse creature mutation values by name", "/dino-prices", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M11 3H6.5a2 2 0 0 0-2 2v4.5L11 16l5-5-6-8Z\"/><circle cx=\"7.3\" cy=\"7.3\" r=\"1\"/></svg>",
-            new[] { "mutagen", "prices", "dino", "creature", "gen2", "mutation", "values" }),
-
-        new("Stretched Res", "Switch the desktop to a stretched resolution with a safe 15-second auto-revert", "/stretched-res", "Custom ARK",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"9\" rx=\"1.6\"/><path d=\"M8 17h4\"/><path d=\"M10 13.5V17\"/><path d=\"M6.6 7.6 4.8 9l1.8 1.4\"/><path d=\"M13.4 7.6 15.2 9l-1.8 1.4\"/><path d=\"M6.5 9h7\"/></svg>",
-            new[] { "stretched", "resolution", "res", "stretch", "1440x1080", "1280x1024", "1024x768", "hitbox", "aspect", "display", "nvidia", "scaling" }),
-
-        new("Char Manager", "Manage saved ARK character appearance presets — rename, edit sliders, import and export", "/char-manager", "Custom ARK",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"10\" cy=\"6.5\" r=\"3.2\"/><path d=\"M4.5 16.5c.9-3 3-4.7 5.5-4.7s4.6 1.7 5.5 4.7\"/></svg>",
-            new[] { "char", "character", "preset", "appearance", "manager", "slider", "body", "face", "skin", "import", "export" }),
-
-        new("Line List", "Track breeding lines with stats and mutations, and generate WTS/WTB trade posts", "/line-list", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 5h8\"/><path d=\"M8 10h8\"/><path d=\"M8 15h8\"/><circle cx=\"4.4\" cy=\"5\" r=\"0.9\"/><circle cx=\"4.4\" cy=\"10\" r=\"0.9\"/><circle cx=\"4.4\" cy=\"15\" r=\"0.9\"/></svg>",
-            new[] { "breeding", "line", "lines", "mutations", "stats", "wts", "wtb", "trade", "sell", "buy", "mutagen", "post" }),
-
-        new("OC BPs", "Genesis 2 mission rewards for overcapped blueprints", "/oc-bps", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"4.5\" y=\"3.5\" width=\"11\" height=\"13\" rx=\"2\"/><path d=\"M8 6h4\"/><path d=\"M7 9.5h6\"/><path d=\"M7 12.5h6\"/></svg>",
-            new[] { "oc", "blueprints", "bps", "genesis", "mission", "rewards", "overcapped" }),
-
-        new("Bosses", "Boss tribute guide sorted by map", "/bosses", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3 5 5.8V10c0 3 1.7 5.3 5 6.8 3.3-1.5 5-3.8 5-6.8V5.8L10 3Z\"/></svg>",
-            new[] { "bosses", "tribute", "guide", "map", "requirements", "mini-boss", "fight" }),
-
-        new("TP Locations", "Teleport location database — obelisks, caves, terminals and landmarks for every map", "/tp-locations", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 17s-5.5-4.6-5.5-8.5a5.5 5.5 0 0 1 11 0C15.5 12.4 10 17 10 17Z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>",
-            new[] { "tp", "teleport", "setplayerpos", "coordinates", "obelisk", "cave", "artifact", "terminal", "locations", "lat", "lon" }),
-
-        new("Underwater Drops", "Underwater loot crate locations with coordinates for every ocean map", "/underwater-drops", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 5.2c1.6 1.3 3.1 1.3 4.7 0 1.6-1.3 3-1.3 4.6 0 1.6 1.3 3.1 1.3 4.7 0\"/><rect x=\"6\" y=\"9.5\" width=\"8\" height=\"6.5\" rx=\"1.2\"/><path d=\"M6 12.2h8\"/><path d=\"M10 9.5v6.5\"/></svg>",
-            new[] { "underwater", "drops", "loot", "crates", "deep sea", "ocean", "shipwreck", "coordinates", "dive", "sea" }),
-
-        new("Map Mods", "Modded map spots — caves, landmarks, obelisks and POIs — plus the artifact-cave database, with coordinates and notes", "/map-mods", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 16.5 10 4l7 12.5H3Z\"/><path d=\"M7.6 16.5a2.4 2.4 0 0 1 4.8 0\"/></svg>",
-            new[] { "map", "mods", "map-mods", "caves", "cave", "artifact", "artifacts", "landmarks", "obelisk", "poi", "spots", "coordinates", "hazards", "loot", "mesa", "dungeon" }),
-
-        new("Steam Mods", "Browse installed workshop mods", "/steam-mods", "Mods & Intel",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5 4.5 6.7v6.6L10 16.5l5.5-3.2V6.7L10 3.5Z\"/><path d=\"M10 10V16\"/><path d=\"M4.5 6.7 10 10l5.5-3.3\"/></svg>",
-            new[] { "steam", "workshop", "mods", "installed", "browse" }),
-
-        new("Building", "Foundation raising and lowering tutorials", "/building", "Utilities",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"4\" y=\"4\" width=\"4\" height=\"4\" rx=\"1\"/><rect x=\"12\" y=\"4\" width=\"4\" height=\"4\" rx=\"1\"/><rect x=\"8\" y=\"12\" width=\"4\" height=\"4\" rx=\"1\"/></svg>",
-            new[] { "building", "foundation", "raising", "lowering", "tutorials", "video" }),
-
-        new("Macros", "Record and replay keyboard/mouse macros, plus the premade Fast Transfer macro", "/macros", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"10\" cy=\"10\" r=\"6.5\"/><path d=\"M8.4 7.6l4.2 2.4-4.2 2.4z\"/></svg>",
-            new[] { "macro", "macros", "recorder", "record", "replay", "playback", "fast transfer", "transfer all", "automation", "input", "hotkey" }),
-
-        new("Fed Suit", "Automates transmitter slot transfers for the Federation Suit grind", "/fed-suit", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"14\" height=\"14\" rx=\"3\"/><path d=\"M7.5 8.5h5l-1.8-1.8\"/><path d=\"M12.5 11.5h-5l1.8 1.8\"/></svg>",
-            new[] { "fed suit", "federation suit", "transmitter", "transfer", "slot", "macro", "grind", "tek" }),
-
-        new("Auto Antidote", "Watches the ARK HUD for your calibrated antidote icon and refreshes it automatically", "/auto-antidote", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3 4.5 5v4.5c0 3.6 2.3 6 5.5 7.5 3.2-1.5 5.5-3.9 5.5-7.5V5L10 3Z\"/><path d=\"M10 7.5v4\"/><path d=\"M8 9.5h4\"/></svg>",
-            new[] { "antidote", "auto antidote", "debuff", "buff", "hud", "refresh", "cure", "icon", "automation" }),
-
-        new("HUD Overlay", "In-game HUD overlay with clock, session timer, server info, tool status and alerts", "/hud-overlay", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4\" width=\"15\" height=\"12\" rx=\"2\"/><path d=\"M5 7.5h4\"/><path d=\"M5 10.5h2.5\"/><path d=\"M12 13h3\"/></svg>",
-            new[] { "hud", "overlay", "clock", "session", "timer", "server info", "notifier", "alerts", "on-screen", "osd", "ingame" }),
-
-        new("Notifier", "Live alerts for rare dinos, resources, element nodes and OSD events, shown on the HUD with sound", "/notifier", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15 8a5 5 0 0 0-10 0c0 5.5-2.5 7-2.5 7h15S15 13.5 15 8\"/><path d=\"M11.5 17.5a1.7 1.7 0 0 1-3 0\"/></svg>",
-            new[] { "notifier", "scanner", "alerts", "rare dino", "resource", "element node", "osd", "notifications", "hud", "discord", "cluster" }),
-
-        new("Scripts", "ARK automation scripts — start, stop and configure", "/scripts", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"4\" y=\"7\" width=\"12\" height=\"8.5\" rx=\"2\"/><path d=\"M10 4v3\"/><circle cx=\"10\" cy=\"3.4\" r=\"1\"/><circle cx=\"8\" cy=\"11\" r=\"1.05\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"11\" r=\"1.05\" fill=\"currentColor\"/></svg>",
-            new[] { "scripts", "automation", "macro", "yuty", "auto walk", "mammoth", "turret", "farm", "afk" }),
-
-        new("Global Hotkeys", "All bound hotkeys at a glance — toggle any on or off", "/hotkeys", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"6\" width=\"15\" height=\"8\" rx=\"1.5\"/><path d=\"M5.5 9h0.01M8 9h0.01M10.5 9h0.01M13 9h0.01M6.8 11.6h6.4\"/></svg>",
-            new[] { "hotkeys", "keys", "keybinds", "shortcuts", "bindings", "toggle", "overview" }),
-
-        new("Auto Clicker", "Advanced mouse automation tool", "/autoclicker", "Automation",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5v3\"/><path d=\"M7 5.5h6\"/><path d=\"M10 8.5v8\"/><path d=\"M10 16.5c3 0 4.8-1.8 4.8-4.3 0-1.8-1.1-3.2-2.9-3.7\"/><path d=\"M10 16.5c-3 0-4.8-1.8-4.8-4.3 0-1.8 1.1-3.2 2.9-3.7\"/></svg>",
-            new[] { "autoclicker", "auto", "clicker", "mouse", "automation", "click", "hotkey" }),
-
-        new("Macro / AHK", "Video, refs, scripts for macros", "/crafting-scripts", "Utilities",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"6\" width=\"15\" height=\"8.5\" rx=\"2\"/><path d=\"M5.5 9.5h1\"/><path d=\"M8.5 9.5h1\"/><path d=\"M11.5 9.5h1\"/><path d=\"M14.5 9.5h0.5\"/><path d=\"M5.5 12h5\"/><path d=\"M12.5 12h2.5\"/></svg>",
-            new[] { "macro", "ahk", "autohotkey", "crafting", "scripts", "jitbit" }),
-
-        new("Crosshair", "Always-on-top crosshair overlay with editor & presets", "/crosshair", "Utilities",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"10\" cy=\"10\" r=\"6\"/><path d=\"M10 2v3\"/><path d=\"M10 15v3\"/><path d=\"M2 10h3\"/><path d=\"M15 10h3\"/><circle cx=\"10\" cy=\"10\" r=\"1.1\" fill=\"currentColor\"/></svg>",
-            new[] { "crosshair", "overlay", "reticle", "aim", "dot", "valorant", "cs", "sniper", "workshop", "crosshairx", "rainbow", "preset" }),
-
-        new("Desync", "Freeze your position server-side (admin, auto-reverts)", "/desync", "Utilities",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 7.5a12 12 0 0 1 14 0\"/><path d=\"M5.8 10.4a8 8 0 0 1 8.4 0\"/><path d=\"M8.4 13.2a3.6 3.6 0 0 1 3.2 0\"/><path d=\"M10 16h0.01\"/><path d=\"M3.5 3.5l13 13\"/></svg>",
-            new[] { "desync", "lag", "freeze", "network", "qos", "firewall", "block" }),
-
-        new("File Modifier", "Remove/replace game files + clear redundant SeekFree data", "/file-modifier", "Utilities",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 2.5h6l4 4V13\"/><path d=\"M11 2.5V6.5h4\"/><path d=\"M4.5 14.5l3.2-3.2a1.4 1.4 0 0 1 2 2l-3.2 3.2-2.6.6z\"/></svg>",
-            new[] { "file", "modifier", "seekfree", "cleanup", "delete", "replace", "remove", "disk", "space", "texture", "loose" }),
-
-        new("Compact ARK", "Shrink the ARK install with Windows NTFS compression", "/compact-ark", "Utilities",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"4\" rx=\"1.2\"/><path d=\"M4.5 8v6.5A1.5 1.5 0 0 0 6 16h8a1.5 1.5 0 0 0 1.5-1.5V8\"/><path d=\"M8.2 11.5h3.6\"/></svg>",
-            new[] { "compact", "compress", "ntfs", "lzx", "disk", "space", "shrink", "size", "storage" }),
-
-        new("Troubleshoot", "Logging, diagnostics, and quick fixes", "/troubleshoot", "Help & About",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5 16.5 15H3.5L10 3.5Z\"/><path d=\"M10 7.2v4.3\"/><path d=\"M10 13.6h.01\"/></svg>",
-            new[] { "troubleshoot", "diagnostics", "logging", "error", "fix", "debug", "logs" }),
-
-        new("Credits", "Developer information & contact", "/credits", "Help & About",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"10\" cy=\"10\" r=\"6.5\"/><path d=\"M10 8v4\"/><path d=\"M10 6.3h.01\"/></svg>",
-            new[] { "credits", "about", "developer", "contact", "info", "support" }),
-
-        new("Feedback", "Send feedback, report a bug, or request a feature", "/feedback", "Help & About",
-            "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H8l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 12V6A1.5 1.5 0 0 1 4 4.5Z\"/><path d=\"M6.5 8.5h7\"/><path d=\"M6.5 11h4\"/></svg>",
-            new[] { "feedback", "bug", "report", "suggestion", "feature", "request", "contact", "help" }),
-    };
-
-    private List<SearchEntry> FilteredResults
-    {
-        get
+        get => _query;
+        set
         {
-            if (string.IsNullOrWhiteSpace(_query))
-                return AllPages;
-
-            var q = _query.Trim().ToLowerInvariant();
-            var scored = new List<(SearchEntry Entry, int Score)>();
-
-            foreach (var entry in AllPages)
-            {
-                int score = 0;
-
-                // Title exact start match (highest priority)
-                if (entry.Title.StartsWith(q, StringComparison.OrdinalIgnoreCase))
-                    score += 100;
-                // Title contains
-                else if (entry.Title.Contains(q, StringComparison.OrdinalIgnoreCase))
-                    score += 80;
-
-                // Keyword exact match
-                if (entry.Keywords.Any(k => k.Equals(q, StringComparison.OrdinalIgnoreCase)))
-                    score += 90;
-                // Keyword starts with
-                else if (entry.Keywords.Any(k => k.StartsWith(q, StringComparison.OrdinalIgnoreCase)))
-                    score += 60;
-                // Keyword contains
-                else if (entry.Keywords.Any(k => k.Contains(q, StringComparison.OrdinalIgnoreCase)))
-                    score += 40;
-
-                // Description contains
-                if (entry.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
-                    score += 30;
-
-                // Category contains
-                if (entry.Category.Contains(q, StringComparison.OrdinalIgnoreCase))
-                    score += 20;
-
-                if (score > 0)
-                    scored.Add((entry, score));
-            }
-
-            _selectedIndex = 0;
-            return scored.OrderByDescending(s => s.Score).Select(s => s.Entry).ToList();
+            _query = value ?? "";
+            Recompute(resetSelection: true);
         }
     }
+
+    private PaletteItem? SelectedItem =>
+        _selectedIndex >= 0 && _selectedIndex < _flat.Count ? _flat[_selectedIndex] : null;
+
+    private string CountLabel => _totalMatches > _flat.Count
+        ? $"{_flat.Count} of {_totalMatches}"
+        : $"{_flat.Count} result{(_flat.Count == 1 ? "" : "s")}";
+
+    private static string RowId(int index) => $"rr-search-row-{index}";
+
+    // ---- Result building --------------------------------------------------
+
+    private void Recompute(bool resetSelection)
+    {
+        var ranked = string.IsNullOrWhiteSpace(_query)
+            ? BuildDefaultRanking()
+            : PaletteSearch.Rank(_candidates, _query);
+
+        _totalMatches = ranked.Count;
+        if (ranked.Count > MaxResults) ranked = ranked.Take(MaxResults).ToList();
+
+        _sections = string.IsNullOrWhiteSpace(_query)
+            ? BuildDefaultSections(ranked)
+            : GroupByKind(ranked);
+
+        _flat = _sections.SelectMany(s => s.Items).ToList();
+
+        if (resetSelection) _selectedIndex = 0;
+        else _selectedIndex = Math.Clamp(_selectedIndex, 0, Math.Max(_flat.Count - 1, 0));
+    }
+
+    /// <summary>
+    /// Sections follow first appearance in the ranked list, so whichever kind holds the best
+    /// match leads — and ranking order is preserved inside each section.
+    /// </summary>
+    private static List<PaletteSection> GroupByKind(List<PaletteItem> ranked)
+    {
+        var sections = new List<PaletteSection>();
+
+        foreach (var item in ranked)
+        {
+            var label = KindLabel(item.Kind);
+            var section = sections.FirstOrDefault(s => s.Label == label);
+            if (section is null)
+            {
+                section = new PaletteSection(label, new List<PaletteItem>());
+                sections.Add(section);
+            }
+            section.Items.Add(item);
+        }
+
+        return sections;
+    }
+
+    private static string KindLabel(PaletteKind kind) => kind switch
+    {
+        PaletteKind.Page => "Pages",
+        PaletteKind.DeepLink => "Locations",
+        _ => "Commands"
+    };
+
+    // ---- Empty-query state ------------------------------------------------
+    // Opening the palette used to dump all 40 pages in declaration order, which is a wall,
+    // not a starting point. Now it offers where you've just been.
+
+    private List<string> _recentRoutes = new();
+
+    private List<PaletteItem> BuildDefaultRanking()
+        => DefaultRecent().Concat(DefaultFallback()).ToList();
+
+    private List<PaletteSection> BuildDefaultSections(List<PaletteItem> _)
+    {
+        var recent = DefaultRecent();
+        return recent.Count > 0
+            ? new List<PaletteSection> { new("Recent", recent) }
+            : new List<PaletteSection> { new("Jump to", DefaultFallback()) };
+    }
+
+    private List<PaletteItem> DefaultRecent()
+        => _recentRoutes
+            .Select(NavCatalog.FindByRoute)
+            .OfType<NavPage>()
+            .Select(ToPaletteItem)
+            .ToList();
+
+    /// <summary>Shown on a first run, before anything has been visited.</summary>
+    private static List<PaletteItem> DefaultFallback()
+        => NavCatalog.Groups
+            .First()
+            .Pages
+            .Select(ToPaletteItem)
+            .ToList();
+
+    private static PaletteItem ToPaletteItem(NavPage page) => new()
+    {
+        Kind = PaletteKind.Page,
+        Id = $"page:{page.Route}",
+        Title = page.Label,
+        Subtitle = page.Description,
+        Category = page.Category,
+        IconSvg = page.IconSvg,
+        Keywords = page.Keywords,
+        Route = page.Route
+    };
+
+    // ---- Lifecycle --------------------------------------------------------
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -282,15 +249,29 @@
             await JS.InvokeVoidAsync("registerGlobalSearch", _dotNetRef);
         }
 
-        if (_isVisible)
+        if (!_isVisible) return;
+
+        try
         {
+            await _inputRef.FocusAsync();
+        }
+        catch
+        {
+            // Element may not be rendered yet.
+        }
+
+        if (_scrollPending)
+        {
+            _scrollPending = false;
             try
             {
-                await _inputRef.FocusAsync();
+                // Keyboard selection can walk past the visible window; without this the
+                // highlight silently moves off-screen.
+                await JS.InvokeVoidAsync("razorReaperSearch.scrollIntoView", RowId(_selectedIndex));
             }
             catch
             {
-                // Element may not be rendered yet
+                // Non-critical.
             }
         }
     }
@@ -299,12 +280,47 @@
     public void ToggleSearch()
     {
         _isVisible = !_isVisible;
-        if (_isVisible)
+        if (_isVisible) _ = InvokeAsync(OpenAsync);
+        else _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OpenAsync()
+    {
+        _query = "";
+        _selectedIndex = 0;
+
+        // Recents come from the same localStorage the sidebar writes on navigation.
+        try
         {
-            _query = "";
-            _selectedIndex = 0;
+            _recentRoutes = (await JS.InvokeAsync<string[]>("razorReaperNavbar.getRecent")).ToList();
         }
-        _ = InvokeAsync(StateHasChanged);
+        catch
+        {
+            _recentRoutes = new List<string>();
+        }
+
+        _candidates = BuildCandidates();
+        Recompute(resetSelection: true);
+        StateHasChanged();
+    }
+
+    private List<PaletteItem> BuildCandidates()
+    {
+        var items = new List<PaletteItem>(NavCatalog.Pages.Count + DeepLinkIndex.Items.Count + 32);
+        items.AddRange(NavCatalog.Pages.Select(ToPaletteItem));
+        items.AddRange(DeepLinkIndex.Items);
+
+        try
+        {
+            items.AddRange(CommandProvider.GetCommands());
+        }
+        catch
+        {
+            // A service that fails to resolve shouldn't take the whole palette down —
+            // pages and locations still work.
+        }
+
+        return items;
     }
 
     private void Close()
@@ -312,34 +328,90 @@
         _isVisible = false;
         _query = "";
         _selectedIndex = 0;
+        _sections = new List<PaletteSection>();
+        _flat = new List<PaletteItem>();
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e)
+    // ---- Keyboard ---------------------------------------------------------
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        var results = FilteredResults;
+        if (_flat.Count == 0)
+        {
+            if (e.Key == "Escape") Close();
+            return;
+        }
 
         switch (e.Key)
         {
             case "Escape":
                 Close();
                 break;
+
             case "ArrowDown":
-                _selectedIndex = (_selectedIndex + 1) % Math.Max(results.Count, 1);
+                Move(1);
                 break;
+
             case "ArrowUp":
-                _selectedIndex = (_selectedIndex - 1 + Math.Max(results.Count, 1)) % Math.Max(results.Count, 1);
+                Move(-1);
                 break;
+
+            case "Home":
+                Select(0);
+                break;
+
+            case "End":
+                Select(_flat.Count - 1);
+                break;
+
             case "Enter":
-                if (results.Count > 0 && _selectedIndex < results.Count)
-                    NavigateTo(results[_selectedIndex].Route);
+                if (SelectedItem is { } selected) await ActivateAsync(selected);
                 break;
         }
     }
 
-    private void NavigateTo(string route)
+    private void Move(int delta)
     {
+        var count = _flat.Count;
+        _selectedIndex = ((_selectedIndex + delta) % count + count) % count;
+        _scrollPending = true;
+    }
+
+    private void Select(int index)
+    {
+        if (index < 0 || index >= _flat.Count) return;
+        _selectedIndex = index;
+    }
+
+    // ---- Activation -------------------------------------------------------
+
+    private async Task ActivateAsync(PaletteItem item)
+    {
+        if (item.Kind == PaletteKind.Command)
+        {
+            // Close first: a command can raise a notification or open an overlay, and the
+            // palette shouldn't still be covering the screen when it does.
+            Close();
+            StateHasChanged();
+
+            if (item.Invoke is not null)
+            {
+                try
+                {
+                    await item.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Palette command {Command} failed", item.Id);
+                }
+            }
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.Route)) return;
+
         Close();
-        Navigation.NavigateTo(route);
+        Navigation.NavigateTo(item.Route);
     }
 
     public async ValueTask DisposeAsync()
@@ -350,7 +422,7 @@
         }
         catch
         {
-            // JS interop may fail during disposal
+            // JS interop may fail during disposal.
         }
         _dotNetRef?.Dispose();
     }
