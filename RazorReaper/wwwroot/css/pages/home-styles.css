@@ -43,6 +43,18 @@
     gap: 0.5rem;
 }
 
+/* The timezone display name runs to "Amsterdam, Berlin, Bern, Rom, Stockholm, Wien" —
+   in a 170px cell it wrapped to five lines and dragged the whole row taller. */
+.status-item-wide {
+    grid-column: span 2;
+}
+
+@media (max-width: 760px) {
+    .status-item-wide {
+        grid-column: auto;
+    }
+}
+
 /* Purely informational since updates went mandatory — no toggle, no buttons, no
    release notes. Tightened to match what's left: a header line and one status row. */
 .update-card {

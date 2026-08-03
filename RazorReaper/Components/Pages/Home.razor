@@ -111,6 +111,21 @@
                         <div class="system-label">Signal</div>
                         <div class="system-value">@wifiSignalStrength</div>
                     </div>
+                    @* Came back from the old Local Time card. The clock itself is in the
+                       title bar now, but these three don't tick — they're reference, and
+                       reference belongs in the status block. *@
+                    <div class="system-item status-item-wide">
+                        <div class="system-label">Timezone</div>
+                        <div class="system-value">@timeZoneInfo</div>
+                    </div>
+                    <div class="system-item">
+                        <div class="system-label">UTC offset</div>
+                        <div class="system-value">@utcOffset</div>
+                    </div>
+                    <div class="system-item">
+                        <div class="system-label">Week</div>
+                        <div class="system-value">@weekNumber of @currentTime.Year</div>
+                    </div>
                 </div>
             </div>
 
@@ -1243,8 +1258,19 @@
         new("soft", "Soft", "Subtle tinted text"),
     };
 
+    /// <summary>
+    /// False until the stored accent has actually been read back from JS. Without it,
+    /// IsThemeDefault cannot tell "loaded, and it happens to be the default" from "never
+    /// loaded, so the field is still sitting on its initialiser" — and in the second case
+    /// it disables the Reset button, which is the one control that would fix a stuck
+    /// accent. Seen for real: localStorage held #FFFFFF, the whole UI was painted white by
+    /// index.html, and Reset was greyed out because C# believed it was already default.
+    /// </summary>
+    private bool themeSettingsLoaded;
+
     private bool IsThemeDefault =>
-        string.Equals(selectedAccentColor, DefaultAccentColor, StringComparison.OrdinalIgnoreCase)
+        themeSettingsLoaded
+        && string.Equals(selectedAccentColor, DefaultAccentColor, StringComparison.OrdinalIgnoreCase)
         && string.IsNullOrEmpty(accentLightOverride)
         && string.IsNullOrEmpty(accentDarkOverride)
         && string.IsNullOrEmpty(accentDarkerOverride)
@@ -1265,10 +1291,13 @@
                 accentDarkerOverride = settings.Darker ?? "";
                 accentSoftOverride = settings.Soft ?? "";
                 SyncPickerFromAccent();
+                themeSettingsLoaded = true;
             }
         }
         catch (Exception ex)
         {
+            // Leave themeSettingsLoaded false: the picker is now showing a colour the app
+            // may not actually be using, so Reset has to stay available.
             Logger.LogDebug(ex, "Could not load theme settings");
         }
     }

@@ -99,7 +99,9 @@
         </div>
 
         <div class="ac-cta-row">
-            <button class="ini-widget-cta @(isRunning ? "danger" : "")"
+            @* Shared Action button, not a bespoke gradient. ini-widget-cta is kept only for
+               the flex sizing that makes it fill the row. *@
+            <button class="rr-pill-btn ini-widget-cta @(isRunning ? "danger" : "primary")"
                     @onclick="ToggleClicking" disabled="@IsStartButtonDisabled()">
                 <span class="ac-cta-label">@(isRunning ? "Stop" : "Start")</span>
                 <kbd class="ac-cta-key">@hotkey</kbd>

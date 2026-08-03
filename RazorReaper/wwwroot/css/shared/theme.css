@@ -235,132 +235,122 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
 
+/* ── Buttons ─────────────────────────────────────────────────────────────────
+   Two designs, not sixty-eight. One affirmative action per surface gets .btn-primary;
+   everything else is .btn-secondary. .btn-danger and .btn-success are the same two
+   shapes recoloured — they are modifiers, not a third and fourth button.
+
+   Side padding is 0.8rem, down from 1rem. Buttons sit in rows all over this app and the
+   extra 0.4rem each reclaimed real width without shrinking any type. */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    gap: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid transparent !important;
     border-radius: var(--radius-control);
     font-weight: 500;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    line-height: 1.2;
     text-decoration: none;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
     position: relative;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: transparent !important;
 }
 
-    .btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-        transition: left 0.5s ease;
+    /* No ::before shine sweep. It fired on every button in the app on hover, which is a
+       lot of motion for a control you pass over constantly, and it was the flourish that
+       made these read as heavier than they are. */
+
+    .btn:hover:not(:disabled) {
+        color: var(--text-primary);
+        border-color: var(--text-secondary) !important;
     }
 
-    .btn:hover::before {
-        left: 100%;
-    }
-
-    .btn:hover {
-
-        border-color: rgba(255, 255, 255, 0.3) !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
-    }
-
-    /* Press feedback. The base .btn transition is 0.3s, which is far too slow to read
-       as a press, so the duration is overridden here only. Cancels the hover lift so
-       the button reads as going down, not sideways. */
     .btn:active:not(:disabled) {
-        transform: translateY(0) scale(0.97);
-        transition-duration: 0.14s;
-        box-shadow: none !important;
+        transform: scale(0.97);
+    }
+
+    .btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
     }
 
     .btn:disabled {
-        opacity: 0.4;
+        opacity: 0.45;
         cursor: not-allowed;
         transform: none !important;
     }
 
-.btn-primary {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.18), rgba(var(--accent-purple-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    box-shadow: none !important;
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.4) !important;
-}
-
-    .btn-primary:hover {
-
-        box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
-        border-color: var(--accent-purple) !important;
-        color: var(--accent-purple-light) !important;
-    }
-
+/* B — Quiet. The default: a hairline and nothing else. */
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: var(--text-primary) !important;
-    box-shadow: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
-    .btn-secondary:hover {
-
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
-        background: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.3) !important;
+    .btn-secondary:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-hover) !important;
     }
 
+/* A — Action. Tinted, never a saturated fill: it should be the clearest thing on the
+   surface, not the loudest thing on the screen. */
+.btn-primary,
 .btn-success {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.18), rgba(var(--accent-purple-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.4) !important;
+    background: rgba(var(--accent-purple-rgb), 0.14) !important;
+    color: var(--accent-purple-light) !important;
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.45) !important;
 }
 
-    .btn-success:hover {
-
-        box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
-        border-color: var(--accent-purple) !important;
+    .btn-primary:hover:not(:disabled),
+    .btn-success:hover:not(:disabled) {
+        background: rgba(var(--accent-purple-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-purple-rgb), 0.65) !important;
         color: var(--accent-purple-light) !important;
+    }
+
+/* Action, recoloured. Same geometry — only the hue says "this one is destructive". */
+.btn-danger {
+    background: rgba(var(--accent-red-rgb), 0.14) !important;
+    color: var(--accent-red-soft) !important;
+    border: 1px solid rgba(var(--accent-red-rgb), 0.45) !important;
+}
+
+    .btn-danger:hover:not(:disabled) {
+        background: rgba(var(--accent-red-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-red-rgb), 0.65) !important;
     }
 
 .btn-warning {
-    background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.18), rgba(var(--accent-orange-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(var(--accent-orange-rgb), 0.4) !important;
+    background: rgba(var(--accent-orange-rgb), 0.14) !important;
+    color: var(--accent-orange) !important;
+    border: 1px solid rgba(var(--accent-orange-rgb), 0.45) !important;
 }
 
-    .btn-warning:hover {
-
-        box-shadow: 0 8px 25px rgba(var(--accent-orange-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.28), rgba(var(--accent-orange-rgb), 0.15)) !important;
-        border-color: var(--accent-orange) !important;
-        color: var(--accent-orange) !important;
+    .btn-warning:hover:not(:disabled) {
+        background: rgba(var(--accent-orange-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-orange-rgb), 0.65) !important;
     }
 
-.btn-danger {
-    background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.18), rgba(var(--accent-red-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(var(--accent-red-rgb), 0.4) !important;
+/* The one size modifier. Not a new design — the same button, tighter. */
+.btn-small,
+.btn.sm {
+    padding: 0.28rem 0.6rem;
+    font-size: 0.76rem;
 }
 
-    .btn-danger:hover {
-
-        box-shadow: 0 8px 25px rgba(var(--accent-red-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.28), rgba(var(--accent-red-rgb), 0.15)) !important;
-        border-color: var(--accent-red) !important;
-        color: var(--accent-red-soft) !important;
+@media (prefers-reduced-motion: reduce) {
+    .btn:active:not(:disabled) {
+        transform: none;
     }
+}
+
 
 /* Global Input Styles */
 input, textarea, select {
@@ -651,116 +641,6 @@ h3 {
     gap: 0.75rem;
 }
 
-.game-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: var(--radius-chip);
-    background: var(--background-dark);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-weight: 500;
-    font-size: 0.85rem;
-    min-height: 36px;
-    position: relative;
-    overflow: hidden;
-    text-align: left;
-    justify-content: flex-start;
-}
-
-    .game-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-        transition: left 0.5s ease;
-    }
-
-    .game-btn:hover::before {
-        left: 100%;
-    }
-
-    .game-btn:hover:not(:disabled) {
-
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .game-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none !important;
-    }
-
-    .game-btn.primary {
-        border-color: var(--text-primary);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    }
-
-        .game-btn.primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
-            color: var(--text-primary);
-        }
-
-    .game-btn.success {
-        border-color: var(--accent-purple);
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.1), rgba(var(--accent-purple-rgb), 0.05));
-    }
-
-        .game-btn.success:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.2), rgba(var(--accent-purple-rgb), 0.1));
-            box-shadow: 0 2px 8px rgba(var(--accent-purple-rgb), 0.4);
-            color: var(--accent-purple);
-        }
-
-    .game-btn.warning {
-        border-color: var(--accent-orange);
-        background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.1), rgba(var(--accent-orange-rgb), 0.05));
-    }
-
-        .game-btn.warning:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.2), rgba(var(--accent-orange-rgb), 0.1));
-            box-shadow: 0 2px 8px rgba(var(--accent-orange-rgb), 0.4);
-            color: var(--accent-orange);
-        }
-
-    .game-btn.danger {
-        border-color: var(--accent-red);
-        background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.1), rgba(var(--accent-red-rgb), 0.05));
-    }
-
-        .game-btn.danger:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.2), rgba(var(--accent-red-rgb), 0.1));
-            box-shadow: 0 2px 8px rgba(var(--accent-red-rgb), 0.4);
-            color: var(--accent-red);
-        }
-
-    .game-btn svg {
-        width: 16px;
-        height: 16px;
-        opacity: 0.8;
-        transition: transform 0.3s ease;
-        flex-shrink: 0;
-    }
-
-    .game-btn:hover:not(:disabled) svg {
-        transform: scale(1.1);
-        opacity: 1;
-    }
-
-@media (max-width: 768px) {
-    .game-actions {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-}
 
 /* This block used to scale the page UP — 2rem title, 48px buttons, 1.5rem card padding,
    a 1.5rem-tall status block — on top of an already-large base. It read as a blown-up
@@ -775,7 +655,7 @@ h3 {
 }
 
 .game-page-container .status-info h3 {
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     margin-bottom: 0.2rem !important;
 }
 
@@ -787,12 +667,6 @@ h3 {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.5rem !important;
-}
-
-.game-page-container .game-btn {
-    padding: 0.6rem 0.8rem !important;
-    min-height: 38px !important;
-    font-size: 0.83rem !important;
 }
 
 @media (max-width: 768px) {
