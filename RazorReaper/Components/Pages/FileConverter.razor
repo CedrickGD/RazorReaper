@@ -41,6 +41,19 @@
         </Actions>
     </StatusHeader>
 
+    @* One progress indicator, not two. The percentage used to be in the status line as well
+       as in a card of its own floating in the right-hand column; the bar carries the number
+       now and sits against the status it belongs to. *@
+    @if (_busy)
+    {
+        <div class="convert-progress">
+            <div class="convert-progress-bar">
+                <div class="convert-progress-fill" style="width: @_progress%"></div>
+            </div>
+            <span class="convert-progress-label">@_progress%</span>
+        </div>
+    }
+
     @if (_source is null)
     {
         <div class="content-card convert-empty">
@@ -130,18 +143,6 @@
                         <div class="convert-dest-path" title="@_customFolder">@_customFolder</div>
                     }
                 </div>
-
-                @if (_busy)
-                {
-                    <div class="content-card convert-card">
-                        <div class="convert-progress">
-                            <div class="convert-progress-bar">
-                                <div class="convert-progress-fill" style="width: @_progress%"></div>
-                            </div>
-                            <span class="convert-progress-label">@_progress%</span>
-                        </div>
-                    </div>
-                }
             </div>
         </div>
     }
@@ -246,7 +247,7 @@
     {
         get
         {
-            if (_busy) return $"{_progress}% — long videos take a while.";
+            if (_busy) return "Long videos take a while — you can cancel any time.";
             if (_source is null) return "Pick a video, image or audio file to get started.";
             if (_lastOutput is not null) return $"Saved as {Path.GetFileName(_lastOutput)}.";
             return "Ready — pick a format and convert.";

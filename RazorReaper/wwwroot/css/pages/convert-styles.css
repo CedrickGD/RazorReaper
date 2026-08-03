@@ -74,13 +74,7 @@
         cursor: not-allowed;
     }
 
-/* ── Quality + progress ──────────────────────────────────────────────────── */
-
-.convert-quality {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-}
+/* ── Progress ────────────────────────────────────────────────────────────── */
 
 .convert-quality-value {
     font-family: var(--font-mono);
@@ -91,11 +85,16 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Sits directly under the status header as its own band, not inside a card — it is
+   about the operation, not about any one of the panels below. */
 .convert-progress {
     display: flex;
     align-items: center;
-    gap: 0.7rem;
-    margin-top: 0.9rem;
+    gap: 0.8rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .convert-progress-bar {
