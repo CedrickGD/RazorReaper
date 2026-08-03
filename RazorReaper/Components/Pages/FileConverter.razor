@@ -184,8 +184,9 @@
                    copies the converted file in, so nothing of yours moves or is lost. *@
                 <div class="convert-replace">
                     <p class="convert-replace-text">
-                        Use this as an ARK loading screen? Choose which movie to replace — the original
-                        is backed up first, and your converted file is copied in, not moved.
+                        Use this as an ARK loading screen? Choose which movie to replace — it is
+                        transcoded into the container ARK needs, the original is backed up first,
+                        and your file is copied in, not moved.
                     </p>
                     <div class="convert-replace-row">
                         <select class="convert-replace-select" @bind="_selectedMovie" disabled="@_replacing">
@@ -195,17 +196,17 @@
                             }
                         </select>
                         <button class="btn btn-primary" @onclick="ReplaceMovieAsync"
-                                disabled="@(_replacing || string.IsNullOrEmpty(_selectedMovie) || !MatchesAnyMovieExtension)">
+                                disabled="@(_replacing || string.IsNullOrEmpty(_selectedMovie))">
                             @(_replacing ? "Replacing…" : "Replace")
                         </button>
                     </div>
-                    @if (!MatchesAnyMovieExtension)
-                    {
-                        <p class="convert-replace-warn">
-                            ARK only plays <code>.mp4</code> and <code>.wmv</code> here — this one is
-                            <code>@Path.GetExtension(_lastOutput)</code>. Convert again to one of those first.
-                        </p>
-                    }
+                    <label class="convert-replace-both">
+                        <input type="checkbox" @bind="_replaceBoth" disabled="@_replacing" />
+                        <span>
+                            Replace both the <code>.mp4</code> and <code>.wmv</code> variants
+                            — ARK falls back to whichever it finds, so leaving one stale shows the old screen.
+                        </span>
+                    </label>
                 </div>
             }
         </div>
@@ -257,6 +258,7 @@
     private List<ArkMovieInfo> _movies = new();
     private string? _selectedMovie;
     private bool _replacing;
+    private bool _replaceBoth = true;
 
     private bool CanConvert => _source is not null && !string.IsNullOrEmpty(_target) && !_busy;
 
@@ -274,11 +276,6 @@
             return "Ready — pick a format and convert.";
         }
     }
-
-    /// <summary>ARK only plays these two, so replacing with anything else silently does nothing.</summary>
-    private bool MatchesAnyMovieExtension =>
-        _lastOutput is not null
-        && Path.GetExtension(_lastOutput).ToLowerInvariant() is ".mp4" or ".wmv";
 
     private static string MovieLabel(ArkMovieInfo movie)
         => $"{movie.DisplayName} ({movie.Extension})" + (movie.IsReplaced ? " — already replaced" : "");
@@ -494,7 +491,13 @@
         _replacing = true;
         try
         {
-            var result = await LoadingScreens.ReplaceAsync(_selectedMovie, _lastOutput);
+            // ConvertAndReplaceAsync, not ReplaceAsync: it transcodes into whichever
+            // container each sibling needs, so an .mp4 source can fill the .wmv slot too.
+            // With bothFormats the .mp4 and .wmv variants of the same movie are replaced
+            // together — replacing only one leaves ARK playing the stale other half.
+            var result = await LoadingScreens.ConvertAndReplaceAsync(
+                _selectedMovie, _lastOutput, volumePercent: 100, bothFormats: _replaceBoth,
+                progress: null, cancellationToken: default);
             if (result.Success)
             {
                 NotificationService.ShowSuccess(result.Message);
