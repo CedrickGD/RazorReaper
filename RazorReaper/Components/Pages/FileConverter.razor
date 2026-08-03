@@ -4,7 +4,9 @@
 @using RazorReaper.Services.Media
 @using RazorReaper.Components.Shared
 @inject IMediaConverter Converter
+@inject IMediaProbe Probe
 @inject IFfmpegProvider Ffmpeg
+@inject ILoadingScreenService LoadingScreens
 @inject INotificationService NotificationService
 @inject ILogger<FileConverter> Logger
 @implements IDisposable
@@ -15,20 +17,17 @@
    IniChanger and Home. The route stays /convert.
 
    Ported from Convert-X (github.com/CedrickGD/Convert-X). The format matrix and the ffmpeg
-   argument builder are shared with that project so both produce the same commands; only the
-   UI is native to RazorReaper. Exists mainly so a file that ARK will not accept can be made
-   into one that it will, without leaving the app. *@
+   argument builder are shared with that project so both emit the same commands; only the UI
+   is native here. The file you pick is never modified — every path writes a new file. *@
 
 <header class="page-header">
     <h1 class="page-title">Convert</h1>
-    <p class="page-subtitle">Turn a video, image or audio file into another format. Runs locally — nothing is uploaded.</p>
+    <p class="page-subtitle">Turn a video, image or audio file into another format. Runs locally, and never changes your original.</p>
 </header>
 
 <div class="convert-page">
 
-    <StatusHeader State="@(_busy ? "warning" : _lastOutput is not null ? "online" : "off")"
-                  Label="@StatusLabel"
-                  Description="@StatusDescription">
+    <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
         <Actions>
             @if (_busy)
             {
@@ -36,62 +35,159 @@
             }
             else
             {
-                <button class="btn btn-secondary" @onclick="PickFileAsync">Choose file</button>
+                <button class="btn btn-secondary" @onclick="PickFileAsync">@(_source is null ? "Choose file" : "Change file")</button>
                 <button class="btn btn-primary" @onclick="ConvertAsync" disabled="@(!CanConvert)">Convert</button>
             }
         </Actions>
     </StatusHeader>
 
-    @if (_source is not null)
+    @if (_source is null)
+    {
+        <div class="content-card convert-empty">
+            <div class="convert-empty-title">Nothing loaded yet</div>
+            <p class="convert-empty-text">
+                Choose a video, image or audio file and you'll get a preview, its details,
+                and every format it can become.
+            </p>
+            <button class="btn btn-primary" @onclick="PickFileAsync">Choose file</button>
+        </div>
+    }
+    else
     {
         <div class="convert-grid">
 
-            <div class="content-card convert-card">
-                <h3>Convert to</h3>
-                <p class="convert-card-desc">
-                    @($"{_sourceKind} source — {_targets.Count} format" + (_targets.Count == 1 ? "" : "s") + " available.")
-                </p>
+            <div class="content-card convert-card convert-preview-card">
+                <h3>Preview</h3>
 
-                <div class="convert-formats">
-                    @foreach (var format in _targets)
+                <div class="convert-preview">
+                    @if (_thumbnail is not null)
                     {
-                        <button type="button"
-                                class="convert-format @(format == _target ? "active" : "")"
-                                @onclick="() => _target = format"
-                                disabled="@_busy">@format</button>
+                        <img class="convert-thumb" src="@_thumbnail" alt="Preview of @_sourceName" />
+                    }
+                    else
+                    {
+                        <div class="convert-thumb-placeholder">
+                            @(_thumbLoading ? "Rendering preview…" : "No preview available")
+                        </div>
                     }
                 </div>
+
+                <div class="convert-filename" title="@_source">@_sourceName</div>
+
+                @if (_info is not null)
+                {
+                    <div class="convert-facts">
+                        <span class="convert-fact">@_info.Kind</span>
+                        @if (_info.SizeOnScreen is { } dims) { <span class="convert-fact">@dims</span> }
+                        @if (_info.DurationLabel is { } dur) { <span class="convert-fact">@dur</span> }
+                        <span class="convert-fact">@_info.SizeLabel</span>
+                        @if (_info.VideoCodec is { } vc) { <span class="convert-fact">@vc</span> }
+                        @if (_info.AudioCodec is { } ac) { <span class="convert-fact">@ac</span> }
+                    </div>
+                }
             </div>
 
-            <div class="content-card convert-card">
-                <h3>Quality</h3>
-                <p class="convert-card-desc">Higher keeps more detail and makes a bigger file. 75 is a good default.</p>
+            <div class="convert-column">
 
-                <div class="convert-quality">
-                    <input type="range" min="10" max="100" step="1"
-                           value="@_quality.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                           @oninput="OnQualityInput" disabled="@_busy" aria-label="Quality" />
-                    <span class="convert-quality-value">@_quality</span>
+                <div class="content-card convert-card">
+                    <h3>Convert to</h3>
+                    <div class="convert-formats">
+                        @foreach (var format in _targets)
+                        {
+                            <button type="button"
+                                    class="convert-format @(format == _target ? "active" : "")"
+                                    @onclick="() => _target = format"
+                                    disabled="@_busy">@format</button>
+                        }
+                    </div>
+
+                    <div class="convert-quality">
+                        <span class="convert-quality-label">Quality</span>
+                        <input type="range" min="10" max="100" step="1"
+                               value="@_quality.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                               @oninput="OnQualityInput" disabled="@_busy" aria-label="Quality" />
+                        <span class="convert-quality-value">@_quality</span>
+                    </div>
+                </div>
+
+                <div class="content-card convert-card">
+                    <h3>Save to</h3>
+                    <div class="convert-dest">
+                        @foreach (var option in Destinations)
+                        {
+                            <button type="button"
+                                    class="convert-dest-option @(_destination == option.Mode ? "active" : "")"
+                                    @onclick="() => SelectDestinationAsync(option.Mode)"
+                                    disabled="@_busy">
+                                <span class="convert-dest-label">@option.Label</span>
+                                <span class="convert-dest-hint">@option.Hint</span>
+                            </button>
+                        }
+                    </div>
+
+                    @if (_destination == DestinationMode.Custom && !string.IsNullOrEmpty(_customFolder))
+                    {
+                        <div class="convert-dest-path" title="@_customFolder">@_customFolder</div>
+                    }
                 </div>
 
                 @if (_busy)
                 {
-                    <div class="convert-progress">
-                        <div class="convert-progress-bar">
-                            <div class="convert-progress-fill" style="width: @_progress%"></div>
+                    <div class="content-card convert-card">
+                        <div class="convert-progress">
+                            <div class="convert-progress-bar">
+                                <div class="convert-progress-fill" style="width: @_progress%"></div>
+                            </div>
+                            <span class="convert-progress-label">@_progress%</span>
                         </div>
-                        <span class="convert-progress-label">@_progress%</span>
-                    </div>
-                }
-                else if (_lastOutput is not null)
-                {
-                    <div class="convert-done">
-                        <span class="convert-done-name">@Path.GetFileName(_lastOutput)</span>
-                        <button class="btn btn-secondary btn-small" @onclick="RevealOutput">Show in folder</button>
                     </div>
                 }
             </div>
+        </div>
+    }
 
+    @if (_lastOutput is not null && !_busy)
+    {
+        <div class="content-card convert-card convert-result">
+            <div class="convert-result-head">
+                <div class="convert-result-info">
+                    <h3>Converted</h3>
+                    <div class="convert-result-name" title="@_lastOutput">@Path.GetFileName(_lastOutput)</div>
+                </div>
+                <button class="btn btn-secondary" @onclick="RevealOutput">Show in folder</button>
+            </div>
+
+            @if (_movies.Count > 0)
+            {
+                @* Offered, not automatic: this writes into the game install, so it stays an
+                   explicit second step. ReplaceAsync backs the stock movie up first and
+                   copies the converted file in, so nothing of yours moves or is lost. *@
+                <div class="convert-replace">
+                    <p class="convert-replace-text">
+                        Use this as an ARK loading screen? Choose which movie to replace — the original
+                        is backed up first, and your converted file is copied in, not moved.
+                    </p>
+                    <div class="convert-replace-row">
+                        <select class="convert-replace-select" @bind="_selectedMovie" disabled="@_replacing">
+                            @foreach (var movie in _movies)
+                            {
+                                <option value="@movie.FileName">@MovieLabel(movie)</option>
+                            }
+                        </select>
+                        <button class="btn btn-primary" @onclick="ReplaceMovieAsync"
+                                disabled="@(_replacing || string.IsNullOrEmpty(_selectedMovie) || !MatchesAnyMovieExtension)">
+                            @(_replacing ? "Replacing…" : "Replace")
+                        </button>
+                    </div>
+                    @if (!MatchesAnyMovieExtension)
+                    {
+                        <p class="convert-replace-warn">
+                            ARK only plays <code>.mp4</code> and <code>.wmv</code> here — this one is
+                            <code>@Path.GetExtension(_lastOutput)</code>. Convert again to one of those first.
+                        </p>
+                    }
+                </div>
+            }
         </div>
     }
 
@@ -100,38 +196,86 @@
             Replacing an ARK loading screen? Convert to <strong>wmv</strong> — ARK ships each movie
             as both an <span class="convert-mono">.mp4</span> and a <span class="convert-mono">.wmv</span>,
             and the <span class="convert-mono">.wmv</span> is the one most files are missing.
-            Then take it to the <a class="convert-link" href="/loading-screen">Loading Screen</a> page.
+            The <a class="convert-link" href="/loading-screen">Loading Screen</a> page manages them all.
         </p>
     </div>
 
 </div>
 
 @code {
+    private enum DestinationMode { BesideOriginal, AppData, Custom }
+
+    private sealed record DestinationOption(DestinationMode Mode, string Label, string Hint);
+
+    private static readonly DestinationOption[] Destinations =
+    {
+        new(DestinationMode.BesideOriginal, "Next to the original", "Same folder as the file you picked"),
+        new(DestinationMode.AppData, "RazorReaper folder", "Kept with the app, out of your way"),
+        new(DestinationMode.Custom, "Choose a folder…", "Pick anywhere on disk"),
+    };
+
     private string? _source;
-    private MediaKind _sourceKind = MediaKind.Unknown;
+    private string _sourceName = "";
+    private MediaInfo? _info;
+    private string? _thumbnail;
+    private bool _thumbLoading;
+
     private IReadOnlyList<string> _targets = Array.Empty<string>();
     private string? _target;
-
     private int _quality = 75;
+
+    private DestinationMode _destination = DestinationMode.BesideOriginal;
+    private string? _customFolder;
+
     private int _progress;
     private bool _busy;
     private string? _lastOutput;
     private CancellationTokenSource? _cts;
 
+    private List<ArkMovieInfo> _movies = new();
+    private string? _selectedMovie;
+    private bool _replacing;
+
     private bool CanConvert => _source is not null && !string.IsNullOrEmpty(_target) && !_busy;
 
-    private string StatusLabel => _busy
-        ? "Converting…"
-        : _source is null ? "No file chosen" : Path.GetFileName(_source);
+    private string StatusState => _busy ? "warning" : _lastOutput is not null ? "online" : "off";
+
+    private string StatusLabel => _busy ? "Converting…" : _source is null ? "No file chosen" : _sourceName;
 
     private string StatusDescription
     {
         get
         {
-            if (_busy) return $"{_progress}% — this can take a while for long videos.";
+            if (_busy) return $"{_progress}% — long videos take a while.";
             if (_source is null) return "Pick a video, image or audio file to get started.";
-            if (_lastOutput is not null) return $"Saved next to the original as {Path.GetFileName(_lastOutput)}.";
-            return $"Ready — pick a format and convert.";
+            if (_lastOutput is not null) return $"Saved as {Path.GetFileName(_lastOutput)}.";
+            return "Ready — pick a format and convert.";
+        }
+    }
+
+    /// <summary>ARK only plays these two, so replacing with anything else silently does nothing.</summary>
+    private bool MatchesAnyMovieExtension =>
+        _lastOutput is not null
+        && Path.GetExtension(_lastOutput).ToLowerInvariant() is ".mp4" or ".wmv";
+
+    private static string MovieLabel(ArkMovieInfo movie)
+        => $"{movie.DisplayName} ({movie.Extension})" + (movie.IsReplaced ? " — already replaced" : "");
+
+    protected override void OnInitialized() => RefreshMovies();
+
+    private void RefreshMovies()
+    {
+        try
+        {
+            _movies = LoadingScreens.MoviesFolderExists()
+                ? LoadingScreens.ListMovies()
+                : new List<ArkMovieInfo>();
+            _selectedMovie ??= _movies.FirstOrDefault()?.FileName;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not list ARK movies");
+            _movies = new List<ArkMovieInfo>();
         }
     }
 
@@ -139,39 +283,68 @@
     {
         try
         {
-            var options = new PickOptions
+            // The dialog needs this window to be the active one, which it is not while ARK
+            // is fullscreen — see WindowActivator.
+            WindowActivator.BringToFront();
+
+            var picked = await FilePicker.Default.PickAsync(new PickOptions
             {
                 PickerTitle = "Choose a file to convert",
                 FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
                     { DevicePlatform.WinUI, MediaFormats.SourceExtensions.ToArray() }
                 })
-            };
-
-            var picked = await FilePicker.Default.PickAsync(options);
+            });
             if (picked is null) return;
 
+            var kind = MediaFormats.KindOf(picked.FullPath);
+            if (kind == MediaKind.Unknown)
+            {
+                NotificationService.ShowWarning($"{Path.GetExtension(picked.FullPath)} files aren't supported.");
+                return;
+            }
+
             _source = picked.FullPath;
-            _sourceKind = MediaFormats.KindOf(_source);
-            _targets = MediaFormats.TargetsFor(_sourceKind);
+            _sourceName = Path.GetFileName(_source);
+            _targets = MediaFormats.TargetsFor(kind);
             _lastOutput = null;
             _progress = 0;
+            _thumbnail = null;
+            _info = null;
 
-            // Default to something useful rather than nothing: same-kind conversions almost
-            // always want the first target, and for ARK that is usually wmv.
-            _target = _targets.FirstOrDefault(t => t != MediaFormats.Normalize(Path.GetExtension(_source)))
-                      ?? _targets.FirstOrDefault();
+            // Default to something other than what it already is — converting a file to its
+            // own format is almost never why someone came here.
+            var current = MediaFormats.Normalize(Path.GetExtension(_source));
+            _target = _targets.FirstOrDefault(t => t != current) ?? _targets.FirstOrDefault();
 
-            if (_sourceKind == MediaKind.Unknown)
-            {
-                NotificationService.ShowWarning($"{Path.GetExtension(_source)} files aren't supported.");
-                _source = null;
-            }
+            await LoadPreviewAsync();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Picking a file to convert failed");
-            NotificationService.ShowError("Could not open the file picker.");
+            NotificationService.ShowError("Windows would not open the file dialog. If ARK is running fullscreen, alt-tab to RazorReaper and try again.");
+        }
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        if (_source is null) return;
+
+        _thumbLoading = true;
+        StateHasChanged();
+        try
+        {
+            _info = await Probe.InspectAsync(_source);
+            _thumbnail = await Probe.ThumbnailAsync(_source);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Preview failed for {Path}", _source);
+        }
+        finally
+        {
+            _thumbLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -184,12 +357,57 @@
         }
     }
 
+    private async Task SelectDestinationAsync(DestinationMode mode)
+    {
+        if (mode == DestinationMode.Custom)
+        {
+            try
+            {
+                // MAUI has no folder picker on Windows, so a file inside the folder stands in
+                // for one: point at anything in the place you want the output.
+                WindowActivator.BringToFront();
+                var marker = await FilePicker.Default.PickAsync(new PickOptions
+                {
+                    PickerTitle = "Pick any file inside the folder you want to save into",
+                });
+                if (marker is null) return;
+
+                var folder = Path.GetDirectoryName(marker.FullPath);
+                if (string.IsNullOrWhiteSpace(folder)) return;
+                _customFolder = folder;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Folder pick failed");
+                NotificationService.ShowError("Could not choose a folder.");
+                return;
+            }
+        }
+
+        _destination = mode;
+    }
+
+    /// <summary>Null means "next to the source", which the converter already handles.</summary>
+    private string? ResolveOutputDirectory() => _destination switch
+    {
+        DestinationMode.AppData => EnsureAppDataFolder(),
+        DestinationMode.Custom => _customFolder,
+        _ => null,
+    };
+
+    private static string EnsureAppDataFolder()
+    {
+        var dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "RazorReaper", "Converted");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
     private async Task ConvertAsync()
     {
         if (!CanConvert || _source is null || _target is null) return;
 
-        // The bundled binary makes this instant; the fallback download only runs on builds
-        // made from a fresh clone, where the gitignored exe was never there.
         if (!Ffmpeg.IsInstalled)
         {
             NotificationService.ShowInfo("Setting the converter up — this happens once.");
@@ -214,11 +432,13 @@
                 _ = InvokeAsync(StateHasChanged);
             });
 
-            var result = await Converter.ConvertAsync(_source, _target, options, null, progress, _cts.Token);
+            var result = await Converter.ConvertAsync(
+                _source, _target, options, ResolveOutputDirectory(), progress, _cts.Token);
 
             if (result.Success)
             {
                 _lastOutput = result.OutputPath;
+                RefreshMovies();
                 NotificationService.ShowSuccess(result.Message);
             }
             else
@@ -240,6 +460,35 @@
             _busy = false;
             _cts?.Dispose();
             _cts = null;
+        }
+    }
+
+    private async Task ReplaceMovieAsync()
+    {
+        if (_lastOutput is null || string.IsNullOrEmpty(_selectedMovie) || _replacing) return;
+
+        _replacing = true;
+        try
+        {
+            var result = await LoadingScreens.ReplaceAsync(_selectedMovie, _lastOutput);
+            if (result.Success)
+            {
+                NotificationService.ShowSuccess(result.Message);
+                RefreshMovies();
+            }
+            else
+            {
+                NotificationService.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Replacing {Movie} failed", _selectedMovie);
+            NotificationService.ShowError($"Could not replace it: {ex.Message}");
+        }
+        finally
+        {
+            _replacing = false;
         }
     }
 

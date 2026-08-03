@@ -180,3 +180,217 @@
         transform: none;
     }
 }
+
+/* ── Preview, details, destination, replace ──────────────────────────────────
+   Added once the page grew past "pick a format": you should be able to see what you
+   loaded and where it is going before committing to an encode. */
+
+.convert-preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.convert-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.convert-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.convert-thumb {
+    display: block;
+    max-width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+}
+
+.convert-thumb-placeholder {
+    padding: 2rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.convert-filename {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Facts read as chips rather than a table: they are glanceable, not comparable. */
+.convert-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.convert-fact {
+    padding: 0.16rem 0.45rem;
+    border-radius: var(--radius-chip);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.convert-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 2.5rem 1.5rem !important;
+    text-align: center;
+}
+
+.convert-empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.convert-empty-text {
+    margin: 0;
+    max-width: 44ch;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.convert-quality {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+}
+
+.convert-quality-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ── Destination ─────────────────────────────────────────────────────────── */
+
+.convert-dest {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.4rem;
+}
+
+.convert-dest-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--border-color);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+    .convert-dest-option:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--border-hover);
+    }
+
+    .convert-dest-option.active {
+        background: rgba(var(--accent-purple-rgb), 0.14);
+        border-color: rgba(var(--accent-purple-rgb), 0.45);
+    }
+
+    .convert-dest-option:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+.convert-dest-label {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+}
+
+.convert-dest-hint {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.convert-dest-path {
+    margin-top: 0.6rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-chip);
+    background: var(--surface-inset);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Result + ARK replace ────────────────────────────────────────────────── */
+
+.convert-result-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.convert-result-info {
+    min-width: 0;
+}
+
+.convert-result-name {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent-purple-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.convert-replace {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.convert-replace-text {
+    margin: 0 0 0.6rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.convert-replace-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.convert-replace-select {
+    flex: 1;
+    min-width: 200px;
+}
+
+.convert-replace-warn {
+    margin: 0.6rem 0 0;
+    font-size: 0.78rem;
+    color: var(--accent-orange);
+}

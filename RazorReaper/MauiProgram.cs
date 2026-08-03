@@ -293,6 +293,7 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Media.IVideoConverter, RazorReaper.Services.Media.VideoConverter>();
             // General-purpose conversion for the Convert page (ported from Convert-X).
             services.AddSingleton<RazorReaper.Services.Media.IMediaConverter, RazorReaper.Services.Media.MediaConverter>();
+            services.AddSingleton<RazorReaper.Services.Media.IMediaProbe, RazorReaper.Services.Media.MediaProbe>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
             services.AddSingleton<IStretchedResService, StretchedResService>();
