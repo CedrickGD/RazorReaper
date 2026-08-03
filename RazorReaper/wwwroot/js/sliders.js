@@ -51,7 +51,29 @@
         }
     });
 
+    // Blazor sets element.value as a DOM *property*. That fires no 'input' event and
+    // produces no mutation record, so neither hook below sees it and the fill freezes at
+    // whatever the last drag left — a preset would move the thumb while the coloured part
+    // of the track stayed put. Wrapping the setter is the only place that observes it.
+    // The native setter still does the work; we only repaint after it.
+    function hookValueSetter() {
+        var proto = window.HTMLInputElement && HTMLInputElement.prototype;
+        var desc = proto && Object.getOwnPropertyDescriptor(proto, 'value');
+        if (!desc || !desc.set || !desc.configurable) return;
+
+        Object.defineProperty(proto, 'value', {
+            configurable: true,
+            enumerable: desc.enumerable,
+            get: desc.get,
+            set: function (v) {
+                desc.set.call(this, v);
+                if (this.type === 'range') paint(this);
+            }
+        });
+    }
+
     function start() {
+        hookValueSetter();
         paintAll(document);
         observer.observe(document.body, {
             childList: true,
