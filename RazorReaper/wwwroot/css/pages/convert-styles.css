@@ -1,0 +1,182 @@
+/* Convert page — file format conversion, ported from Convert-X.
+   Shared tokens and components only (StatusHeader, content-card, the two button designs). */
+
+.convert-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.convert-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .convert-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.convert-card {
+    margin-bottom: 0 !important;
+}
+
+.convert-card-desc {
+    margin: 0 0 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* ── Format picker ───────────────────────────────────────────────────────────
+   A wrapping grid rather than a select: there are up to 17 targets and seeing them
+   all at once is the point — you are usually hunting for one specific extension. */
+
+.convert-formats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 0.4rem;
+}
+
+.convert-format {
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
+}
+
+    .convert-format:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--border-hover);
+        color: var(--text-primary);
+    }
+
+    .convert-format:active:not(:disabled) {
+        transform: scale(0.97);
+    }
+
+    .convert-format.active {
+        background: rgba(var(--accent-purple-rgb), 0.14);
+        border-color: rgba(var(--accent-purple-rgb), 0.45);
+        color: var(--accent-purple-light);
+    }
+
+    .convert-format:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+/* ── Quality + progress ──────────────────────────────────────────────────── */
+
+.convert-quality {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.convert-quality-value {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    min-width: 2.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.convert-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+}
+
+.convert-progress-bar {
+    flex: 1;
+    height: 6px;
+    border-radius: var(--radius-round);
+    background: var(--surface-inset);
+    overflow: hidden;
+}
+
+.convert-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-round);
+    background: var(--accent-purple);
+    transition: width 0.3s ease;
+}
+
+.convert-progress-label {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    min-width: 2.6rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.convert-done {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.convert-done-name {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Footer note ─────────────────────────────────────────────────────────── */
+
+.convert-note {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.4);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.convert-note p {
+    margin: 0;
+}
+
+.convert-mono {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    color: var(--text-primary);
+}
+
+.convert-link {
+    color: var(--accent-purple-light);
+    text-decoration: none;
+}
+
+    .convert-link:hover {
+        text-decoration: underline;
+    }
+
+@media (prefers-reduced-motion: reduce) {
+    .convert-format:active:not(:disabled) {
+        transform: none;
+    }
+}

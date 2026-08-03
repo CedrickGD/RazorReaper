@@ -272,3 +272,15 @@
         flex-wrap: wrap;
     }
 }
+
+
+/* Accent link out to the Convert page — the usual reason someone gets stuck here is a
+   source file ARK will not accept. */
+.ls-convert-link {
+    color: var(--accent-purple-light);
+    text-decoration: none;
+}
+
+    .ls-convert-link:hover {
+        text-decoration: underline;
+    }

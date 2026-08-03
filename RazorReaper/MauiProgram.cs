@@ -291,6 +291,8 @@ namespace RazorReaper
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
             services.AddSingleton<RazorReaper.Services.Media.IFfmpegProvider, RazorReaper.Services.Media.FfmpegProvider>();
             services.AddSingleton<RazorReaper.Services.Media.IVideoConverter, RazorReaper.Services.Media.VideoConverter>();
+            // General-purpose conversion for the Convert page (ported from Convert-X).
+            services.AddSingleton<RazorReaper.Services.Media.IMediaConverter, RazorReaper.Services.Media.MediaConverter>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
             services.AddSingleton<IStretchedResService, StretchedResService>();

@@ -149,5 +149,16 @@
 		      StandardOutputImportance="normal" />
 	</Target>
 
+  <!-- Bundled ffmpeg for the Convert page. Condition, not a hard reference: the binary is
+       gitignored (97 MB), so a fresh clone still builds and FfmpegProvider falls back to
+       downloading it at runtime. When it is present it lands next to the exe and the Inno
+       script picks it up with the rest of the output. -->
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\Tools\ffmpeg.exe')">
+    <None Include="Tools\ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>ffmpeg.exe</Link>
+    </None>
+  </ItemGroup>
+
 </Project>
 

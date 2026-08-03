@@ -59,20 +59,36 @@ public sealed class FfmpegProvider : IFfmpegProvider
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RazorReaper", "Tools", "ffmpeg");
         _ffmpegPath = Path.Combine(_toolsDir, "ffmpeg.exe");
+
+        // Shipped alongside the exe by the csproj (see the Toolsfmpeg.exe ItemGroup).
+        // Preferred over the downloaded copy so a normal install converts offline on the
+        // very first run. The download path below stays as the fallback for builds made
+        // from a fresh clone, where the gitignored binary is absent.
+        _bundledPath = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
     }
 
-    public bool IsInstalled => File.Exists(_ffmpegPath);
+    private readonly string _bundledPath;
 
-    public string FfmpegPath => _ffmpegPath;
+    /// <summary>The bundled binary if it shipped, otherwise the downloaded one.</summary>
+    private string? ResolveExisting()
+    {
+        if (File.Exists(_bundledPath)) return _bundledPath;
+        if (File.Exists(_ffmpegPath)) return _ffmpegPath;
+        return null;
+    }
+
+    public bool IsInstalled => ResolveExisting() is not null;
+
+    public string FfmpegPath => ResolveExisting() ?? _ffmpegPath;
 
     public async Task<string?> EnsureAsync(IProgress<FfmpegSetupProgress>? progress, CancellationToken cancellationToken = default)
     {
-        if (IsInstalled) return _ffmpegPath;
+        if (ResolveExisting() is { } existing) return existing;
 
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (IsInstalled) return _ffmpegPath;
+            if (ResolveExisting() is { } raced) return raced;
 
             Directory.CreateDirectory(_toolsDir);
             var tempZip = Path.Combine(_toolsDir, $"ffmpeg-download-{Guid.NewGuid():N}.zip");

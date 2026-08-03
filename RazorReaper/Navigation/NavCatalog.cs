@@ -189,6 +189,12 @@ public static class NavCatalog
                 "Always-on-top crosshair overlay with editor & presets",
                 new[] { "crosshair", "overlay", "reticle", "aim", "dot", "valorant", "cs", "sniper", "workshop", "crosshairx", "rainbow", "preset" }),
 
+            new NavPage("Convert", "/convert", "Utilities", NavIcons.Convert,
+                "Convert video, image and audio files between formats",
+                new[] { "convert", "converter", "convertx", "format", "video", "image", "audio",
+                        "mp4", "wmv", "mkv", "avi", "webm", "mov", "gif", "png", "jpg", "webp",
+                        "mp3", "wav", "flac", "transcode", "ffmpeg", "loading", "screen" }),
+
             new NavPage("Compact ARK", "/compact-ark", "Utilities", NavIcons.Compact,
                 "Shrink the ARK install with Windows NTFS compression",
                 new[] { "compact", "compress", "ntfs", "lzx", "disk", "space", "shrink", "size", "storage" }),

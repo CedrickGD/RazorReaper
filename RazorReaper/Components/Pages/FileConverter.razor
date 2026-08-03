@@ -1,0 +1,275 @@
+@page "/convert"
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@using RazorReaper.Services.Media
+@using RazorReaper.Components.Shared
+@inject IMediaConverter Converter
+@inject IFfmpegProvider Ffmpeg
+@inject INotificationService NotificationService
+@inject ILogger<FileConverter> Logger
+@implements IDisposable
+
+@* NB: the component is FileConverter, not Convert. A component named Convert becomes a
+   type in the global namespace and shadows System.Convert for every other page in the
+   app — Convert.ToBase64String and Convert.ToInt32 stop compiling in Crosshair, MapMods,
+   IniChanger and Home. The route stays /convert.
+
+   Ported from Convert-X (github.com/CedrickGD/Convert-X). The format matrix and the ffmpeg
+   argument builder are shared with that project so both produce the same commands; only the
+   UI is native to RazorReaper. Exists mainly so a file that ARK will not accept can be made
+   into one that it will, without leaving the app. *@
+
+<header class="page-header">
+    <h1 class="page-title">Convert</h1>
+    <p class="page-subtitle">Turn a video, image or audio file into another format. Runs locally — nothing is uploaded.</p>
+</header>
+
+<div class="convert-page">
+
+    <StatusHeader State="@(_busy ? "warning" : _lastOutput is not null ? "online" : "off")"
+                  Label="@StatusLabel"
+                  Description="@StatusDescription">
+        <Actions>
+            @if (_busy)
+            {
+                <button class="btn btn-danger" @onclick="Cancel">Cancel</button>
+            }
+            else
+            {
+                <button class="btn btn-secondary" @onclick="PickFileAsync">Choose file</button>
+                <button class="btn btn-primary" @onclick="ConvertAsync" disabled="@(!CanConvert)">Convert</button>
+            }
+        </Actions>
+    </StatusHeader>
+
+    @if (_source is not null)
+    {
+        <div class="convert-grid">
+
+            <div class="content-card convert-card">
+                <h3>Convert to</h3>
+                <p class="convert-card-desc">
+                    @($"{_sourceKind} source — {_targets.Count} format" + (_targets.Count == 1 ? "" : "s") + " available.")
+                </p>
+
+                <div class="convert-formats">
+                    @foreach (var format in _targets)
+                    {
+                        <button type="button"
+                                class="convert-format @(format == _target ? "active" : "")"
+                                @onclick="() => _target = format"
+                                disabled="@_busy">@format</button>
+                    }
+                </div>
+            </div>
+
+            <div class="content-card convert-card">
+                <h3>Quality</h3>
+                <p class="convert-card-desc">Higher keeps more detail and makes a bigger file. 75 is a good default.</p>
+
+                <div class="convert-quality">
+                    <input type="range" min="10" max="100" step="1"
+                           value="@_quality.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                           @oninput="OnQualityInput" disabled="@_busy" aria-label="Quality" />
+                    <span class="convert-quality-value">@_quality</span>
+                </div>
+
+                @if (_busy)
+                {
+                    <div class="convert-progress">
+                        <div class="convert-progress-bar">
+                            <div class="convert-progress-fill" style="width: @_progress%"></div>
+                        </div>
+                        <span class="convert-progress-label">@_progress%</span>
+                    </div>
+                }
+                else if (_lastOutput is not null)
+                {
+                    <div class="convert-done">
+                        <span class="convert-done-name">@Path.GetFileName(_lastOutput)</span>
+                        <button class="btn btn-secondary btn-small" @onclick="RevealOutput">Show in folder</button>
+                    </div>
+                }
+            </div>
+
+        </div>
+    }
+
+    <div class="convert-note">
+        <p>
+            Replacing an ARK loading screen? Convert to <strong>wmv</strong> — ARK ships each movie
+            as both an <span class="convert-mono">.mp4</span> and a <span class="convert-mono">.wmv</span>,
+            and the <span class="convert-mono">.wmv</span> is the one most files are missing.
+            Then take it to the <a class="convert-link" href="/loading-screen">Loading Screen</a> page.
+        </p>
+    </div>
+
+</div>
+
+@code {
+    private string? _source;
+    private MediaKind _sourceKind = MediaKind.Unknown;
+    private IReadOnlyList<string> _targets = Array.Empty<string>();
+    private string? _target;
+
+    private int _quality = 75;
+    private int _progress;
+    private bool _busy;
+    private string? _lastOutput;
+    private CancellationTokenSource? _cts;
+
+    private bool CanConvert => _source is not null && !string.IsNullOrEmpty(_target) && !_busy;
+
+    private string StatusLabel => _busy
+        ? "Converting…"
+        : _source is null ? "No file chosen" : Path.GetFileName(_source);
+
+    private string StatusDescription
+    {
+        get
+        {
+            if (_busy) return $"{_progress}% — this can take a while for long videos.";
+            if (_source is null) return "Pick a video, image or audio file to get started.";
+            if (_lastOutput is not null) return $"Saved next to the original as {Path.GetFileName(_lastOutput)}.";
+            return $"Ready — pick a format and convert.";
+        }
+    }
+
+    private async Task PickFileAsync()
+    {
+        try
+        {
+            var options = new PickOptions
+            {
+                PickerTitle = "Choose a file to convert",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.WinUI, MediaFormats.SourceExtensions.ToArray() }
+                })
+            };
+
+            var picked = await FilePicker.Default.PickAsync(options);
+            if (picked is null) return;
+
+            _source = picked.FullPath;
+            _sourceKind = MediaFormats.KindOf(_source);
+            _targets = MediaFormats.TargetsFor(_sourceKind);
+            _lastOutput = null;
+            _progress = 0;
+
+            // Default to something useful rather than nothing: same-kind conversions almost
+            // always want the first target, and for ARK that is usually wmv.
+            _target = _targets.FirstOrDefault(t => t != MediaFormats.Normalize(Path.GetExtension(_source)))
+                      ?? _targets.FirstOrDefault();
+
+            if (_sourceKind == MediaKind.Unknown)
+            {
+                NotificationService.ShowWarning($"{Path.GetExtension(_source)} files aren't supported.");
+                _source = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Picking a file to convert failed");
+            NotificationService.ShowError("Could not open the file picker.");
+        }
+    }
+
+    private void OnQualityInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Integer,
+                         System.Globalization.CultureInfo.InvariantCulture, out var value))
+        {
+            _quality = Math.Clamp(value, 10, 100);
+        }
+    }
+
+    private async Task ConvertAsync()
+    {
+        if (!CanConvert || _source is null || _target is null) return;
+
+        // The bundled binary makes this instant; the fallback download only runs on builds
+        // made from a fresh clone, where the gitignored exe was never there.
+        if (!Ffmpeg.IsInstalled)
+        {
+            NotificationService.ShowInfo("Setting the converter up — this happens once.");
+            if (await Ffmpeg.EnsureAsync(null) is null)
+            {
+                NotificationService.ShowError("Could not set the converter up. Check your connection and try again.");
+                return;
+            }
+        }
+
+        _busy = true;
+        _progress = 0;
+        _lastOutput = null;
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            var options = new ConversionOptions { Quality = _quality };
+            var progress = new Progress<int>(p =>
+            {
+                _progress = p;
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = await Converter.ConvertAsync(_source, _target, options, null, progress, _cts.Token);
+
+            if (result.Success)
+            {
+                _lastOutput = result.OutputPath;
+                NotificationService.ShowSuccess(result.Message);
+            }
+            else
+            {
+                NotificationService.ShowError(result.Message);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            NotificationService.ShowInfo("Conversion cancelled.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Conversion failed");
+            NotificationService.ShowError($"Conversion failed: {ex.Message}");
+        }
+        finally
+        {
+            _busy = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    private void Cancel()
+    {
+        try { _cts?.Cancel(); }
+        catch (Exception ex) { Logger.LogDebug(ex, "Cancel failed"); }
+    }
+
+    private void RevealOutput()
+    {
+        if (_lastOutput is null || !File.Exists(_lastOutput)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{_lastOutput}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not reveal {Path}", _lastOutput);
+        }
+    }
+
+    public void Dispose()
+    {
+        try { _cts?.Cancel(); } catch { /* shutting down */ }
+        _cts?.Dispose();
+    }
+}
