@@ -29,6 +29,14 @@
                     Services.MediaCachePaths.Directory,
                     Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
 
+                // Same trick for the Convert page's playable preview: the picked file is
+                // hard-linked in here so a <video> can stream it with Range support.
+                System.IO.Directory.CreateDirectory(Services.Media.PreviewCache.Directory);
+                webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    Services.Media.PreviewCache.VirtualHost,
+                    Services.Media.PreviewCache.Directory,
+                    Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+
                 // Reset zoom factor to 1.0 on every launch (clears any persisted zoom).
                 webView2.CoreWebView2.NavigationCompleted += (_, _) =>
                 {
