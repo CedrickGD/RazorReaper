@@ -56,28 +56,14 @@
             </Actions>
         </StatusHeader>
 
-        <div class="content-card ls-info-card">
-            <div class="ls-info-header">
-                <div class="ls-info-icon">
-                    <svg fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-4a1 1 0 100 2 1 1 0 000-2zm-1 4a1 1 0 011-1h1a1 1 0 011 1v4a1 1 0 01-2 0v-3a1 1 0 01-1-1z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ls-info-title">
-                    <h3>How it works</h3>
-                </div>
-            </div>
+        @* Was two paragraphs in a card of its own, pushing everything you can actually
+           press below the fold. The settings under it already carry their own descriptions,
+           so this only needs to say where the backups go and where to get the right format. *@
+        <div class="ls-info-card">
             <p class="ls-info-text">
-                Pick any video and RazorReaper converts it to ARK's format for you. Turn on <em>Replace both formats</em>
-                to update the .mp4 and .wmv variants together, and set the audio volume before replacing.
-                Originals are backed up to <code>@_backupFolder</code> and changes apply on the next game start.
-            </p>
-            @* The converter ships with the app now, so nothing downloads on first use. The
-               link exists because most people arrive here with a file ARK will not take —
-               .wmv in particular is the variant almost nothing else produces. *@
-            <p class="ls-info-text">
-                Got a file in the wrong format? The <a class="ls-convert-link" href="/convert">Convert</a> page
-                turns any video, image or audio file into the one you need — including the
+                Pick any video and it is converted to ARK's format for you. Originals are backed up to
+                <code>@_backupFolder</code> and changes apply on the next game start.
+                Wrong format? The <a class="ls-convert-link" href="/convert">Convert</a> page makes the
                 <code>.wmv</code> variant ARK expects alongside the <code>.mp4</code>.
             </p>
         </div>
@@ -93,13 +79,6 @@
                            @bind="_volumePercent" @bind:event="oninput" disabled="@_busy" />
                     <span class="ls-volume-value">@_volumePercent%</span>
                 </div>
-            </div>
-            <div class="ls-option-row">
-                <div class="ls-option-label">
-                    <span class="ls-option-title">Replace both formats</span>
-                    <span class="ls-option-desc">Convert and swap the .mp4 and .wmv variant of a movie in one go.</span>
-                </div>
-                <Switch Value="_bothFormats" ValueChanged="v => _bothFormats = v" />
             </div>
         </div>
 
@@ -124,38 +103,45 @@
             }
             else
             {
-                @foreach (var group in MovieGroups)
-                {
-                    <div class="ls-group" @key="group.Title">
-                        <div class="ls-group-title">@group.Title</div>
-                        <div class="ls-rows">
-                            @foreach (var movie in group.Movies)
+                @* One row per movie, not per file. ARK ships each movie twice — an .mp4 and a
+                   .wmv — so listing files meant every name appeared twice. Replacing does both
+                   variants, which is what you want anyway: leave one behind and ARK may still
+                   play the old one.
+
+                   Two columns, with the size and buttons on fixed widths so they line up down
+                   each one. Earlier attempts let every row size itself, which put the buttons at
+                   a different x on every line; a single full-width column fixed that but left a
+                   canyon of empty space in the middle and pushed the list off the page. *@
+                <div class="ls-list">
+                    @foreach (var group in MovieGroups)
+                    {
+                        <div class="ls-group" @key="@("g:" + group.Title)">
+                            <div class="ls-group-title">@group.Title</div>
+                            @foreach (var entry in group.Entries)
                             {
-                                <SettingRow @key="movie.FileName" Title="@movie.DisplayName" Description="@RowDescription(movie)">
-                                    @if (movie.IsReplaced)
+                                <div class="ls-row @(entry.IsReplaced ? "replaced" : null)" @key="@("m:" + entry.Name)">
+                                    <span class="ls-row-name" title="@entry.Name">@entry.Name</span>
+                                    @if (entry.IsReplaced)
                                     {
-                                        <span class="ls-badge">Replaced</span>
+                                        <span class="ls-badge">Custom</span>
                                     }
-                                    <button type="button"
-                                            class="btn btn-primary"
-                                            @onclick="() => ReplaceMovieAsync(movie)"
-                                            disabled="@_busy">
-                                        Replace…
-                                    </button>
-                                    @if (movie.IsReplaced)
-                                    {
-                                        <button type="button"
-                                                class="btn btn-secondary"
-                                                @onclick="() => RestoreMovieAsync(movie)"
-                                                disabled="@_busy">
-                                            Restore
+                                    <span class="ls-row-size">@entry.SizeLabel</span>
+                                    <span class="ls-row-actions">
+                                        @if (entry.IsReplaced)
+                                        {
+                                            <button type="button" class="btn btn-secondary"
+                                                    @onclick="() => RestoreEntryAsync(entry)" disabled="@_busy">Restore</button>
+                                        }
+                                        <button type="button" class="btn btn-primary"
+                                                @onclick="() => ReplaceEntryAsync(entry)" disabled="@_busy">
+                                            @(entry.IsReplaced ? "Change" : "Replace")
                                         </button>
-                                    }
-                                </SettingRow>
+                                    </span>
+                                </div>
                             }
                         </div>
-                    </div>
-                }
+                    }
+                </div>
             }
         </div>
     }
@@ -172,7 +158,6 @@
     private int _replacedCount;
 
     private int _volumePercent = 100;
-    private bool _bothFormats;
 
     private bool _progressActive;
     private string _progressLabel = "";
@@ -186,10 +171,45 @@
         (ArkMovieKind.Other, "Other video files"),
     };
 
-    private IEnumerable<(string Title, List<ArkMovieInfo> Movies)> MovieGroups =>
+    /// <summary>
+    /// One movie and every container it ships in. ARK stores most movies as an .mp4 and a
+    /// .wmv of the same thing, and treating those as two separate entries is what made the
+    /// list twice as long as it needed to be with every name in it twice.
+    /// </summary>
+    private sealed record MovieEntry(string Name, List<ArkMovieInfo> Variants)
+    {
+        public bool IsReplaced => Variants.Any(v => v.IsReplaced);
+
+        /// <summary>"mp4 · wmv" — which containers exist, without the filenames.</summary>
+        public string VariantLabel =>
+            string.Join(" · ", Variants.Select(v => v.Extension.TrimStart('.')).Distinct());
+
+        public string SizeLabel => FormatSize(Variants.Sum(v => v.SizeBytes));
+
+        /// <summary>The one a replace is aimed at; the service handles its sibling.</summary>
+        public ArkMovieInfo Primary => Variants[0];
+    }
+
+    private IEnumerable<(string Title, List<MovieEntry> Entries)> MovieGroups =>
         GroupOrder
-            .Select(g => (g.Title, Movies: _movies.Where(m => m.Kind == g.Kind).ToList()))
-            .Where(g => g.Movies.Count > 0);
+            .Select(g => (
+                g.Title,
+                Entries: _movies
+                    .Where(m => m.Kind == g.Kind)
+                    .GroupBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                    .Select(grp => new MovieEntry(grp.Key, grp.ToList()))
+                    .ToList()))
+            .Where(g => g.Entries.Count > 0);
+
+    private Task ReplaceEntryAsync(MovieEntry entry) => ReplaceMovieAsync(entry.Primary);
+
+    private async Task RestoreEntryAsync(MovieEntry entry)
+    {
+        foreach (var variant in entry.Variants.Where(v => v.IsReplaced))
+        {
+            await RestoreMovieAsync(variant);
+        }
+    }
 
     private string HeaderState => _replacedCount > 0 ? "warning" : "online";
 
@@ -276,26 +296,16 @@
 
         if (picked is null) return;
 
-        // A same-format pick with default volume and a single target needs no conversion —
-        // fall back to the fast byte-copy path so ffmpeg never has to be involved.
-        var pickedExt = Path.GetExtension(picked).ToLowerInvariant();
-        var needsConvert = _bothFormats
-            || _volumePercent != 100
-            || !string.Equals(pickedExt, movie.Extension, StringComparison.OrdinalIgnoreCase);
+        // The byte-copy fast path is gone: a replace now covers both the .mp4 and the .wmv,
+        // and one picked file can only ever match one of them, so there is always a
+        // conversion to do.
 
         _busy = true;
         try
         {
             WarnIfArkRunning();
 
-            if (!needsConvert)
-            {
-                var op = await MovieService.ReplaceAsync(movie.FileName, picked);
-                ReportReplace(movie, op);
-                return;
-            }
-
-            // Make sure the converter is present (downloads ~80 MB on first use).
+            // Converter ships with the app; this only downloads on a build made from a fresh clone.
             if (!MovieService.ConverterReady)
             {
                 _progressActive = true;
@@ -321,7 +331,7 @@
             }
 
             _progressActive = true;
-            _progressLabel = _bothFormats ? "Converting both formats…" : "Converting video…";
+            _progressLabel = "Converting…";
             _progressPercent = 0;
             await InvokeAsync(StateHasChanged);
 
@@ -332,7 +342,7 @@
             });
 
             var result = await MovieService.ConvertAndReplaceAsync(
-                movie.FileName, picked, _volumePercent, _bothFormats, convertProgress);
+                movie.FileName, picked, _volumePercent, bothFormats: true, convertProgress);
             ReportReplace(movie, result);
         }
         catch (Exception ex)
