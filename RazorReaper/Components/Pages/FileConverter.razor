@@ -3,12 +3,14 @@
 @using RazorReaper.Services
 @using RazorReaper.Services.Media
 @using RazorReaper.Components.Shared
+@using Microsoft.Win32
 @inject IMediaConverter Converter
 @inject IMediaProbe Probe
 @inject IFfmpegProvider Ffmpeg
 @inject ILoadingScreenService LoadingScreens
 @inject INotificationService NotificationService
 @inject ILogger<FileConverter> Logger
+@inject IJSRuntime JS
 @implements IDisposable
 
 @* NB: the component is FileConverter, not Convert. A component named Convert becomes a
@@ -36,7 +38,11 @@
             else
             {
                 <button class="btn btn-secondary" @onclick="PickFileAsync">@(_source is null ? "Choose file" : "Change file")</button>
-                <button class="btn btn-primary" @onclick="ConvertAsync" disabled="@(!CanConvert)">Convert</button>
+                @* Says what the one press will actually do, so the replacement never happens
+                   silently just because a movie is selected further down the page. *@
+                <button class="btn btn-primary" @onclick="ConvertAsync" disabled="@(!CanConvert)">
+                    @(_replaceTarget.Length > 0 ? "Convert & replace" : "Convert")
+                </button>
             }
         </Actions>
     </StatusHeader>
@@ -79,7 +85,7 @@
                 <div class="convert-preview">
                     @if (_playableUrl is not null && _isVideo)
                     {
-                        <video class="convert-player" src="@_playableUrl" controls preload="metadata"
+                        <video id="@PlayerId" class="convert-player" src="@_playableUrl" controls preload="metadata"
                                poster="@_thumbnail"></video>
                     }
                     else if (_playableUrl is not null && !_isVideo)
@@ -89,7 +95,7 @@
                             {
                                 <img class="convert-thumb" src="@_thumbnail" alt="Waveform of @_sourceName" />
                             }
-                            <audio class="convert-audio-player" src="@_playableUrl" controls preload="metadata"></audio>
+                            <audio id="@PlayerId" class="convert-audio-player" src="@_playableUrl" controls preload="metadata"></audio>
                         </div>
                     }
                     else if (_thumbnail is not null)
@@ -104,19 +110,63 @@
                     }
                 </div>
 
+                @* Trim lives with the player, because you judge a cut by watching it. The ffmpeg
+                   builder already takes TrimStartSeconds/TrimEndSeconds and emits -ss before -i
+                   plus -t after, so this only has to collect two numbers. *@
+                @if (TrimAvailable)
+                {
+                    <div class="convert-trim">
+                        <div class="convert-trim-head">
+                            <span class="convert-trim-title">Trim</span>
+                            <span class="convert-trim-range">@Clock(_trimStart) – @Clock(_trimEnd)</span>
+                            <span class="convert-trim-length">@Clock(_trimEnd - _trimStart) kept</span>
+                            @if (TrimActive)
+                            {
+                                <button type="button" class="convert-trim-reset" @onclick="ResetTrim" disabled="@_busy">Reset</button>
+                            }
+                        </div>
+
+                        @* Two ranges stacked on one track. Only the thumbs take pointer events, so
+                           the handles stay independently draggable where they overlap. *@
+                        <div class="convert-trim-track">
+                            <div class="convert-trim-sel"
+                                 style="left:@Pct(_trimStart)%; right:@Pct(_sourceSeconds - _trimEnd)%"></div>
+                            <input type="range" class="convert-trim-handle" min="0" max="@Num(_sourceSeconds)" step="0.05"
+                                   value="@Num(_trimStart)" @oninput="OnTrimStartInput" disabled="@_busy"
+                                   aria-label="Trim start" />
+                            <input type="range" class="convert-trim-handle" min="0" max="@Num(_sourceSeconds)" step="0.05"
+                                   value="@Num(_trimEnd)" @oninput="OnTrimEndInput" disabled="@_busy"
+                                   aria-label="Trim end" />
+                        </div>
+
+                        <div class="convert-trim-actions">
+                            <button type="button" class="btn btn-secondary" @onclick="SetTrimStartHereAsync" disabled="@_busy">Start here</button>
+                            <button type="button" class="btn btn-secondary" @onclick="SetTrimEndHereAsync" disabled="@_busy">End here</button>
+                            <button type="button" class="btn btn-primary" @onclick="PlaySelectionAsync" disabled="@_busy">Play selection</button>
+                        </div>
+                    </div>
+                }
+
                 <div class="convert-filename" title="@_source">@_sourceName</div>
 
-                @if (_info is not null)
-                {
-                    <div class="convert-facts">
+                <div class="convert-facts">
+                    @* First chip, and outside the _info guard: what the file already is, so you do
+                       not convert it into itself. The codec chip is not this — an .mkv and an .mp4
+                       both say h264. *@
+                    @if (_sourceFormat.Length > 0)
+                    {
+                        <span class="convert-fact convert-fact-format">@_sourceFormat.ToUpperInvariant()</span>
+                    }
+                    @if (_info is not null)
+                    {
                         <span class="convert-fact">@_info.Kind</span>
                         @if (_info.SizeOnScreen is { } dims) { <span class="convert-fact">@dims</span> }
                         @if (_info.DurationLabel is { } dur) { <span class="convert-fact">@dur</span> }
                         <span class="convert-fact">@_info.SizeLabel</span>
                         @if (_info.VideoCodec is { } vc) { <span class="convert-fact">@vc</span> }
                         @if (_info.AudioCodec is { } ac) { <span class="convert-fact">@ac</span> }
-                    </div>
-                }
+                    }
+                </div>
             </div>
 
             <div class="convert-column">
@@ -124,10 +174,14 @@
                 <div class="content-card convert-card">
                     <h3>Convert to</h3>
                     <div class="convert-formats">
+                        @* The source's own format stays clickable — re-encoding to the same
+                           container at a lower quality is a real use of the quality slider — but
+                           it is marked, which is what stops the accidental no-op conversion. *@
                         @foreach (var format in _targets)
                         {
                             <button type="button"
-                                    class="convert-format @(format == _target ? "active" : "")"
+                                    class="convert-format @(format == _target ? "active" : "") @(format == _sourceFormat ? "current" : "")"
+                                    title="@(format == _sourceFormat ? "This is what the file already is" : null)"
                                     @onclick="() => _target = format"
                                     disabled="@_busy">@format</button>
                         }
@@ -142,24 +196,59 @@
                     </div>
                 </div>
 
+                @* Two selects rather than a row of option cards plus a second Replace step
+                   further down the page. The ARK replacement used to be its own block with
+                   its own dropdown, button and checkbox — a duplicate of what the Loading
+                   Screen page already does. It is a setting, so it reads as one here and
+                   Convert carries it out. *@
                 <div class="content-card convert-card">
-                    <h3>Save to</h3>
-                    <div class="convert-dest">
-                        @foreach (var option in Destinations)
-                        {
-                            <button type="button"
-                                    class="convert-dest-option @(_destination == option.Mode ? "active" : "")"
-                                    @onclick="() => SelectDestinationAsync(option.Mode)"
-                                    disabled="@_busy">
-                                <span class="convert-dest-label">@option.Label</span>
-                                <span class="convert-dest-hint">@option.Hint</span>
-                            </button>
-                        }
+                    <h3>When it's done</h3>
+
+                    @* Dropdown, not <select>: on Windows the native option list is drawn by the
+                       OS outside the page, so it stays an unreadable white system menu in a dark
+                       app no matter what the CSS says. *@
+                    <div class="convert-setting">
+                        <span class="convert-setting-label">Save to</span>
+                        <div class="convert-setting-control">
+                            <Dropdown Value="@_destination.ToString()"
+                                      ValueChanged="OnDestinationChanged"
+                                      Options="DestinationOptions"
+                                      Disabled="@_busy" />
+                        </div>
                     </div>
 
                     @if (_destination == DestinationMode.Custom && !string.IsNullOrEmpty(_customFolder))
                     {
                         <div class="convert-dest-path" title="@_customFolder">@_customFolder</div>
+                    }
+
+                    @* One line, only when the folder someone picked turned out to be unwritable.
+                       No Defender explanation and no buttons: the default never lands in a
+                       protected folder, so this is a rare corner, not something to teach. *@
+                    @if (_redirected)
+                    {
+                        <div class="convert-dest-note">Saved to the RazorReaper folder — Windows locks that one.</div>
+                    }
+
+                    @if (_movies.Count > 0)
+                    {
+                        <div class="convert-setting">
+                            <span class="convert-setting-label">Replace in ARK</span>
+                            <div class="convert-setting-control">
+                                <Dropdown Value="@_replaceTarget"
+                                          ValueChanged="OnReplaceTargetChanged"
+                                          Options="ReplaceOptions"
+                                          Disabled="@_busy" />
+                            </div>
+                        </div>
+
+                        @if (_replaceTarget.Length > 0)
+                        {
+                            <CheckBox @bind-Value="_replaceBoth" Disabled="@_busy">
+                                Swap the <code>.mp4</code> and <code>.wmv</code> together — ARK plays
+                                whichever it finds, so leaving one behind can show the old video.
+                            </CheckBox>
+                        }
                     }
                 </div>
             </div>
@@ -176,39 +265,6 @@
                 </div>
                 <button class="btn btn-secondary" @onclick="RevealOutput">Show in folder</button>
             </div>
-
-            @if (_movies.Count > 0)
-            {
-                @* Offered, not automatic: this writes into the game install, so it stays an
-                   explicit second step. ReplaceAsync backs the stock movie up first and
-                   copies the converted file in, so nothing of yours moves or is lost. *@
-                <div class="convert-replace">
-                    <p class="convert-replace-text">
-                        Use this as an ARK loading screen? Choose which movie to replace — it is
-                        transcoded into the container ARK needs, the original is backed up first,
-                        and your file is copied in, not moved.
-                    </p>
-                    <div class="convert-replace-row">
-                        <select class="convert-replace-select" @bind="_selectedMovie" disabled="@_replacing">
-                            @foreach (var movie in _movies)
-                            {
-                                <option value="@movie.FileName">@MovieLabel(movie)</option>
-                            }
-                        </select>
-                        <button class="btn btn-primary" @onclick="ReplaceMovieAsync"
-                                disabled="@(_replacing || string.IsNullOrEmpty(_selectedMovie))">
-                            @(_replacing ? "Replacing…" : "Replace")
-                        </button>
-                    </div>
-                    <label class="convert-replace-both">
-                        <input type="checkbox" @bind="_replaceBoth" disabled="@_replacing" />
-                        <span>
-                            Replace both the <code>.mp4</code> and <code>.wmv</code> variants
-                            — ARK falls back to whichever it finds, so leaving one stale shows the old screen.
-                        </span>
-                    </label>
-                </div>
-            }
         </div>
     }
 
@@ -224,31 +280,51 @@
 </div>
 
 @code {
-    private enum DestinationMode { BesideOriginal, AppData, Custom }
+    private enum DestinationMode { Downloads, BesideOriginal, AppData, Custom }
 
-    private sealed record DestinationOption(DestinationMode Mode, string Label, string Hint);
+    private sealed record DestinationOption(DestinationMode Mode, string Label);
 
+    // Downloads first, and the default. Windows Defender's controlled folder access locks
+    // Documents, Pictures, Videos, Music and any folder the user adds — and it locks them
+    // against every app it does not already know, which measurably includes ffmpeg-based
+    // tools. Downloads is never on that list, so the normal path never touches the problem.
+    // "Next to the original" stays available, it just is not what happens by default.
     private static readonly DestinationOption[] Destinations =
     {
-        new(DestinationMode.BesideOriginal, "Next to the original", "Same folder as the file you picked"),
-        new(DestinationMode.AppData, "RazorReaper folder", "Kept with the app, out of your way"),
-        new(DestinationMode.Custom, "Choose a folder…", "Pick anywhere on disk"),
+        new(DestinationMode.Downloads, "Downloads"),
+        new(DestinationMode.BesideOriginal, "Next to the original"),
+        new(DestinationMode.AppData, "RazorReaper folder"),
+        new(DestinationMode.Custom, "Choose a folder…"),
     };
+
+    /// <summary>The one media element on the page, so the trim buttons can drive it from JS.</summary>
+    private const string PlayerId = "convert-player";
 
     private string? _source;
     private string _sourceName = "";
+
+    /// <summary>Normalised extension of the loaded file — "mov", "mp4". Empty when nothing is loaded.</summary>
+    private string _sourceFormat = "";
+
     private MediaInfo? _info;
     private string? _thumbnail;
     private bool _thumbLoading;
     private string? _playableUrl;
     private bool _isVideo;
 
+    private double _sourceSeconds;
+    private double _trimStart;
+    private double _trimEnd;
+
     private IReadOnlyList<string> _targets = Array.Empty<string>();
     private string? _target;
     private int _quality = 75;
 
-    private DestinationMode _destination = DestinationMode.BesideOriginal;
+    private DestinationMode _destination = DestinationMode.Downloads;
     private string? _customFolder;
+
+    /// <summary>Set when the chosen folder could not be written to and AppData was used instead.</summary>
+    private bool _redirected;
 
     private int _progress;
     private bool _busy;
@@ -256,11 +332,56 @@
     private CancellationTokenSource? _cts;
 
     private List<ArkMovieInfo> _movies = new();
-    private string? _selectedMovie;
-    private bool _replacing;
+
+    /// <summary>Empty means "just convert"; otherwise the ARK movie file name to swap in.</summary>
+    private string _replaceTarget = "";
     private bool _replaceBoth = true;
 
     private bool CanConvert => _source is not null && !string.IsNullOrEmpty(_target) && !_busy;
+
+    /// <summary>Only time-based media can be trimmed, and only once ffmpeg reported a duration.</summary>
+    private bool TrimAvailable => _sourceSeconds > 0.5 && _info?.Kind is MediaKind.Video or MediaKind.Audio;
+
+    private bool TrimActive => _trimStart > 0.01 || _trimEnd < _sourceSeconds - 0.01;
+
+    private IReadOnlyList<Dropdown.Option> DestinationOptions => Destinations
+        .Select(d => new Dropdown.Option(d.Mode.ToString(), d.Label))
+        .ToList();
+
+    /// <summary>
+    /// One entry per movie, not per file. ARK ships each movie as both an .mp4 and a .wmv, and
+    /// both are swapped together, so listing them separately doubled a 12-entry list to 23 and
+    /// offered a choice that does not exist.
+    /// </summary>
+    private IReadOnlyList<Dropdown.Option> ReplaceOptions
+    {
+        get
+        {
+            var options = new List<Dropdown.Option> { new("", "Don't replace anything") };
+            options.AddRange(_movies
+                .GroupBy(m => m.DisplayName)
+                .Select(g => new Dropdown.Option(
+                    g.First().FileName,
+                    g.Key + (g.Any(m => m.IsReplaced) ? " — already replaced" : ""))));
+            return options;
+        }
+    }
+
+    private static string Clock(double seconds)
+    {
+        if (double.IsNaN(seconds) || seconds < 0) seconds = 0;
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.TotalHours >= 1 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
+    }
+
+    /// <summary>Seconds as a percentage of the source length, for the trim track's fill.</summary>
+    private string Pct(double seconds) => _sourceSeconds <= 0
+        ? "0"
+        : Math.Clamp(seconds / _sourceSeconds * 100, 0, 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Range inputs only accept dot decimals; under de-DE a plain ToString gives a comma.</summary>
+    private static string Num(double value)
+        => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 
     private string StatusState => _busy ? "warning" : _lastOutput is not null ? "online" : "off";
 
@@ -273,12 +394,12 @@
             if (_busy) return "Long videos take a while — you can cancel any time.";
             if (_source is null) return "Pick a video, image or audio file to get started.";
             if (_lastOutput is not null) return $"Saved as {Path.GetFileName(_lastOutput)}.";
-            return "Ready — pick a format and convert.";
+            // Worth saying on the button you are about to press, not only in the picker.
+            if (_target is not null && _target == _sourceFormat)
+                return $"Already {_sourceFormat.ToUpperInvariant()} — this re-encodes rather than converts.";
+            return $"{_sourceFormat.ToUpperInvariant()} file — pick a format and convert.";
         }
     }
-
-    private static string MovieLabel(ArkMovieInfo movie)
-        => $"{movie.DisplayName} ({movie.Extension})" + (movie.IsReplaced ? " — already replaced" : "");
 
     protected override void OnInitialized() => RefreshMovies();
 
@@ -289,7 +410,12 @@
             _movies = LoadingScreens.MoviesFolderExists()
                 ? LoadingScreens.ListMovies()
                 : new List<ArkMovieInfo>();
-            _selectedMovie ??= _movies.FirstOrDefault()?.FileName;
+
+            // A movie can disappear between scans; don't leave the select pointing at it.
+            if (_replaceTarget.Length > 0 && _movies.All(m => m.FileName != _replaceTarget))
+            {
+                _replaceTarget = "";
+            }
         }
         catch (Exception ex)
         {
@@ -332,11 +458,18 @@
             _info = null;
             _isVideo = kind == MediaKind.Video;
             _playableUrl = PreviewCache.Publish(_source);
+            _sourceSeconds = 0;
+            _trimStart = 0;
+            _trimEnd = 0;
+
+            // Detected once and kept, so the picker can mark it and the chips can show it.
+            // Normalize collapses jpeg/tif/m4v, so this compares equal to the target strings.
+            _sourceFormat = MediaFormats.Normalize(Path.GetExtension(_source));
 
             // Default to something other than what it already is — converting a file to its
             // own format is almost never why someone came here.
-            var current = MediaFormats.Normalize(Path.GetExtension(_source));
-            _target = _targets.FirstOrDefault(t => t != current) ?? _targets.FirstOrDefault();
+            _target = _targets.FirstOrDefault(t => t != _sourceFormat) ?? _targets.FirstOrDefault();
+            _redirected = false;
 
             await LoadPreviewAsync();
         }
@@ -357,6 +490,11 @@
         {
             _info = await Probe.InspectAsync(_source);
             _thumbnail = await Probe.ThumbnailAsync(_source);
+
+            // The trim range only becomes meaningful once ffmpeg has reported a duration.
+            _sourceSeconds = _info?.Duration?.TotalSeconds ?? 0;
+            _trimStart = 0;
+            _trimEnd = _sourceSeconds;
         }
         catch (Exception ex)
         {
@@ -366,6 +504,70 @@
         {
             _thumbLoading = false;
             StateHasChanged();
+        }
+    }
+
+    // ── Trim ────────────────────────────────────────────────────────────────────────────
+    // The two handles share one track, so each has to stay on its own side of the other.
+    // A fixed 0.2s floor keeps the selection from collapsing to nothing while dragging.
+
+    private const double MinTrimSeconds = 0.2;
+
+    private async Task OnTrimStartInput(ChangeEventArgs e)
+    {
+        if (!TryReadSeconds(e, out var value)) return;
+        _trimStart = Math.Clamp(value, 0, Math.Max(0, _trimEnd - MinTrimSeconds));
+        await SeekAsync(_trimStart);
+    }
+
+    private async Task OnTrimEndInput(ChangeEventArgs e)
+    {
+        if (!TryReadSeconds(e, out var value)) return;
+        _trimEnd = Math.Clamp(value, Math.Min(_sourceSeconds, _trimStart + MinTrimSeconds), _sourceSeconds);
+        await SeekAsync(_trimEnd);
+    }
+
+    private static bool TryReadSeconds(ChangeEventArgs e, out double value)
+        => double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float,
+                           System.Globalization.CultureInfo.InvariantCulture, out value);
+
+    private void ResetTrim()
+    {
+        _trimStart = 0;
+        _trimEnd = _sourceSeconds;
+    }
+
+    private async Task SetTrimStartHereAsync()
+    {
+        var at = await CurrentTimeAsync();
+        _trimStart = Math.Clamp(at, 0, Math.Max(0, _trimEnd - MinTrimSeconds));
+    }
+
+    private async Task SetTrimEndHereAsync()
+    {
+        var at = await CurrentTimeAsync();
+        _trimEnd = Math.Clamp(at, Math.Min(_sourceSeconds, _trimStart + MinTrimSeconds), _sourceSeconds);
+    }
+
+    private async Task PlaySelectionAsync()
+    {
+        try { await JS.InvokeVoidAsync("rrConvert.playRange", PlayerId, _trimStart, _trimEnd); }
+        catch (Exception ex) { Logger.LogDebug(ex, "Could not play the trim selection"); }
+    }
+
+    private async Task SeekAsync(double seconds)
+    {
+        try { await JS.InvokeVoidAsync("rrConvert.seek", PlayerId, seconds); }
+        catch (Exception ex) { Logger.LogDebug(ex, "Could not seek the preview"); }
+    }
+
+    private async Task<double> CurrentTimeAsync()
+    {
+        try { return await JS.InvokeAsync<double>("rrConvert.currentTime", PlayerId); }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not read the playhead");
+            return 0;
         }
     }
 
@@ -384,16 +586,11 @@
         {
             try
             {
-                // MAUI has no folder picker on Windows, so a file inside the folder stands in
-                // for one: point at anything in the place you want the output.
+                // A real folder picker. This used to open the file dialog and take the parent of
+                // whatever you clicked, which is why it demanded a file name for a folder choice.
                 WindowActivator.BringToFront();
-                var marker = await FilePicker.Default.PickAsync(new PickOptions
-                {
-                    PickerTitle = "Pick any file inside the folder you want to save into",
-                });
-                if (marker is null) return;
 
-                var folder = Path.GetDirectoryName(marker.FullPath);
+                var folder = await PickFolderAsync();
                 if (string.IsNullOrWhiteSpace(folder)) return;
                 _customFolder = folder;
             }
@@ -408,13 +605,85 @@
         _destination = mode;
     }
 
+    /// <summary>
+    /// WinRT's folder picker, which the Windows SDK projection already gives this TFM — the same
+    /// call Crosshair, CharManager and Troubleshoot make. Types stay fully qualified on purpose:
+    /// importing the namespaces makes Window ambiguous with Microsoft.Maui.Controls.Window.
+    /// </summary>
+    private static async Task<string?> PickFolderAsync()
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+
+        // PickSingleFolderAsync throws without at least one filter, odd as that is for folders.
+        picker.FileTypeFilter.Add("*");
+
+        var windows = Microsoft.Maui.Controls.Application.Current?.Windows;
+        if (windows is null || windows.Count == 0) return null;
+        if (windows[0].Handler?.PlatformView is not Microsoft.UI.Xaml.Window native) return null;
+
+        // Unpackaged app: the picker has no window of its own to parent to.
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(native));
+
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    /// <summary>
+    /// Cancelling the folder picker must leave the choice where it was, so the dropdown is
+    /// re-rendered from <c>_destination</c> rather than from what was clicked.
+    /// </summary>
+    private async Task OnDestinationChanged(string value)
+    {
+        if (Enum.TryParse<DestinationMode>(value, out var mode))
+        {
+            await SelectDestinationAsync(mode);
+        }
+        _redirected = false;
+        StateHasChanged();
+    }
+
+    private void OnReplaceTargetChanged(string value) => _replaceTarget = value;
+
+
     /// <summary>Null means "next to the source", which the converter already handles.</summary>
     private string? ResolveOutputDirectory() => _destination switch
     {
+        DestinationMode.Downloads => EnsureDownloadsFolder(),
         DestinationMode.AppData => EnsureAppDataFolder(),
         DestinationMode.Custom => _customFolder,
         _ => null,
     };
+
+    /// <summary>
+    /// Resolved through the shell rather than %USERPROFILE%\Downloads, because Downloads can be
+    /// moved or redirected and the hardcoded path would then be a folder that does not exist.
+    /// </summary>
+    private static string EnsureDownloadsFolder()
+    {
+        string? dir = null;
+        try
+        {
+            // KNOWNFOLDERID_Downloads. There is no Environment.SpecialFolder for it.
+            dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) is { Length: > 0 } profile
+                ? Path.Combine(profile, "Downloads")
+                : null;
+
+            using var key = Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders");
+            if (key?.GetValue("{374DE290-123F-4565-9164-39C4925E467B}") is string shell && shell.Length > 0)
+            {
+                dir = shell;
+            }
+        }
+        catch
+        {
+            // Fall through to whatever we already resolved.
+        }
+
+        dir ??= EnsureAppDataFolder();
+        try { Directory.CreateDirectory(dir); } catch { return EnsureAppDataFolder(); }
+        return dir;
+    }
 
     private static string EnsureAppDataFolder()
     {
@@ -446,21 +715,62 @@
 
         try
         {
-            var options = new ConversionOptions { Quality = _quality };
+            var options = new ConversionOptions
+            {
+                Quality = _quality,
+                // Only sent when the range was actually moved, so an untouched slider never
+                // adds -ss/-t and cannot shave a frame off the end by rounding.
+                TrimStartSeconds = TrimAvailable && TrimActive && _trimStart > 0 ? _trimStart : null,
+                TrimEndSeconds = TrimAvailable && TrimActive && _trimEnd < _sourceSeconds ? _trimEnd : null,
+            };
             var progress = new Progress<int>(p =>
             {
                 _progress = p;
                 _ = InvokeAsync(StateHasChanged);
             });
 
+            var wanted = ResolveOutputDirectory();
             var result = await Converter.ConvertAsync(
-                _source, _target, options, ResolveOutputDirectory(), progress, _cts.Token);
+                _source, _target, options, wanted, progress, _cts.Token);
+
+            // Windows Defender's "controlled folder access" refuses writes into Desktop,
+            // Documents, Pictures and Videos by apps it does not recognise, and an app cannot
+            // put itself on that allow list. Rather than lose the encode, put the file in our
+            // own folder — which is never protected — and say so.
+            //
+            // This is a retry on failure, not a check beforehand: probing the folder first
+            // meant writing a throwaway file into it on every pick, and each of those raised
+            // its own Defender warning. ffmpeg opens the output before it encodes, so a
+            // blocked destination costs nothing.
+            if (!result.Success && !_cts.IsCancellationRequested)
+            {
+                var fallback = EnsureAppDataFolder();
+                if (!string.Equals(wanted, fallback, StringComparison.OrdinalIgnoreCase))
+                {
+                    var retry = await Converter.ConvertAsync(
+                        _source, _target, options, fallback, progress, _cts.Token);
+                    if (retry.Success)
+                    {
+                        _redirected = true;
+                        result = retry;
+                    }
+                }
+            }
 
             if (result.Success)
             {
                 _lastOutput = result.OutputPath;
+
+                if (_replaceTarget.Length > 0 && _lastOutput is not null)
+                {
+                    await ReplaceMovieAsync(_replaceTarget, _lastOutput);
+                }
+                else
+                {
+                    NotificationService.ShowSuccess(result.Message);
+                }
+
                 RefreshMovies();
-                NotificationService.ShowSuccess(result.Message);
             }
             else
             {
@@ -484,24 +794,25 @@
         }
     }
 
-    private async Task ReplaceMovieAsync()
+    /// <summary>
+    /// Runs straight after a successful conversion when a movie is picked in the dropdown, so
+    /// there is no second button to press. The converted file is copied in, never moved.
+    /// </summary>
+    private async Task ReplaceMovieAsync(string movieFileName, string convertedPath)
     {
-        if (_lastOutput is null || string.IsNullOrEmpty(_selectedMovie) || _replacing) return;
-
-        _replacing = true;
         try
         {
             // ConvertAndReplaceAsync, not ReplaceAsync: it transcodes into whichever
             // container each sibling needs, so an .mp4 source can fill the .wmv slot too.
-            // With bothFormats the .mp4 and .wmv variants of the same movie are replaced
-            // together — replacing only one leaves ARK playing the stale other half.
+            // bothFormats replaces the .mp4 and .wmv of the same movie together — leaving one
+            // stale means ARK may still play the old half.
             var result = await LoadingScreens.ConvertAndReplaceAsync(
-                _selectedMovie, _lastOutput, volumePercent: 100, bothFormats: _replaceBoth,
+                movieFileName, convertedPath, volumePercent: 100, bothFormats: _replaceBoth,
                 progress: null, cancellationToken: default);
+
             if (result.Success)
             {
                 NotificationService.ShowSuccess(result.Message);
-                RefreshMovies();
             }
             else
             {
@@ -510,12 +821,8 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Replacing {Movie} failed", _selectedMovie);
-            NotificationService.ShowError($"Could not replace it: {ex.Message}");
-        }
-        finally
-        {
-            _replacing = false;
+            Logger.LogError(ex, "Replacing {Movie} failed", movieFileName);
+            NotificationService.ShowError($"Converted, but could not replace it: {ex.Message}");
         }
     }
 

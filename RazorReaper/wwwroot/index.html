@@ -73,6 +73,7 @@
     <script src="js/theme.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/sliders.js"></script>
+    <script src="js/convert.js"></script>
 
     <div id="app">Loading...</div>
 
@@ -838,10 +839,10 @@
     </script>
 
     <script>
-        // Decides whether the colour-picker popover should flip upward (open above the
-        // swatch instead of below) based on the available room. Pure layout query — no
-        // top/left math, since the popover is absolutely positioned relative to its
-        // swatch wrapper. Called by Components/Shared/ColorField.razor on every open.
+        // Decides whether a popover should flip upward (open above its trigger instead of
+        // below) based on the available room. Pure layout query — no top/left math, since
+        // the popover is absolutely positioned relative to its own wrapper. Called by
+        // Components/Shared/ColorField.razor and Components/Shared/Dropdown.razor on open.
         window.rrColorMeasureFlip = function (swatchEl, popHeight) {
             if (!swatchEl) return false;
             var rect = swatchEl.getBoundingClientRect();
