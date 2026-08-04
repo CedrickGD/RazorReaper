@@ -11,6 +11,18 @@ public class UpdateService : IUpdateService
     // server-side token), so the source repo can go private without breaking the updater.
     // The worker rewrites <url> to its own /update/download endpoint. See backend-worker.
     private const string UpdateManifestUrl = "https://backend.rr-admin-panel.workers.dev/update/update.xml";
+
+    /// <summary>
+    /// Used only when the worker cannot answer. The worker reads the manifest through
+    /// GitHub's rate-limited API from a shared Cloudflare edge IP, so the quota can be spent
+    /// by unrelated traffic and the endpoint intermittently 502s — which reached users as
+    /// "Could not reach the update server" on a service that was actually fine.
+    ///
+    /// This is the same document straight from the repo, with no API quota involved. It only
+    /// works while the repo is public; failing over to an unreachable host is no worse than
+    /// failing outright, so it stays regardless.
+    /// </summary>
+    private const string FallbackManifestUrl = "https://raw.githubusercontent.com/CedrickGD/RazorReaper/master/update.xml";
     private static readonly Version FallbackVersion = new Version(0, 0, 0, 0);
     private readonly HttpClient httpClient;
     private readonly ITelemetryService telemetryService;
@@ -32,15 +44,34 @@ public class UpdateService : IUpdateService
         return FormatVersion(GetAssemblyVersion());
     }
 
+    /// <summary>
+    /// Worker first, repo second. Both are the same document; the worker is preferred only
+    /// because it rewrites the download URL through itself.
+    /// </summary>
+    private async Task<string> FetchManifestAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await httpClient.GetAsync(UpdateManifestUrl, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Update manifest unavailable from the worker; falling back to the repo");
+
+            using var response = await httpClient.GetAsync(FallbackManifestUrl, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+    }
+
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
         var currentVersion = CurrentVersion;
         try
         {
-            using var response = await httpClient.GetAsync(UpdateManifestUrl, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var xmlContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var xmlContent = await FetchManifestAsync(cancellationToken);
             var document = XDocument.Parse(xmlContent);
             var item = document.Root;
 
