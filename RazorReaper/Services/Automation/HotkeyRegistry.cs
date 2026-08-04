@@ -74,7 +74,7 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
         AddScripts(list);
         AddAutomation(list);
         AddOverlays(list);
-        AddPageOwned(list);
+        AddAutoClicker(list);
         return list;
     }
 
@@ -191,25 +191,26 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
     }
 
     /// <summary>
-    /// Auto Clicker still registers its hotkey from page-local state, so it can be listed
-    /// here but not edited here. Listed rather than hidden — a hotkeys page that silently
-    /// omits a binding is worse than one that says where it lives.
+    /// Auto Clicker's hotkey used to be page-local, stored in the browser's localStorage where
+    /// nothing outside the page could read it — so it was listed here but not editable. It lives
+    /// in Preferences now, which any C# can reach, so it is an ordinary binding.
     /// </summary>
-    private static void AddPageOwned(List<HotkeyBinding> list)
+    private static void AddAutoClicker(List<HotkeyBinding> list)
     {
-        void Add(string id, string name, string description, string route)
-            => list.Add(new HotkeyBinding
+        list.Add(new HotkeyBinding
+        {
+            Id = "autoclicker:toggle",
+            Name = "Auto Clicker",
+            Group = "Automation",
+            Description = "Starts or stops clicking.",
+            OwnerRoute = "/autoclicker",
+            Get = () => AutoClickerHotkey.Display,
+            Set = value =>
             {
-                Id = id,
-                Name = name,
-                Group = "Set on their own page",
-                Description = description,
-                OwnerRoute = route,
-                Get = () => "",
-                Set = _ => { },
-                ReadOnlyHere = true
-            });
-
-        Add("autoclicker:toggle", "Auto Clicker", "Starts or stops clicking.", "/autoclicker");
+                // A combo the key map does not know would store a code of 0 and silently stop
+                // the hotkey working, so an unusable one falls back instead.
+                if (!AutoClickerHotkey.Set(value)) AutoClickerHotkey.Reset();
+            }
+        });
     }
 }
