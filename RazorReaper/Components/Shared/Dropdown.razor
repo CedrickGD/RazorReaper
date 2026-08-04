@@ -1,0 +1,134 @@
+@* Custom dropdown, replacing <select>.
+
+   Why not a native select: on Windows the open option list is drawn by the OS outside the page,
+   so no CSS reaches it — in a dark app you get a white system menu you cannot read. Only a
+   div-based list can be themed.
+
+   Keyboard model matches GlobalSearch: Up/Down/Home/End move, Enter picks, Escape closes.
+   Outside clicks land on a transparent full-viewport backdrop, same as ColorField. *@
+@inject IJSRuntime JS
+
+<div class="rr-dd @(_open ? "open" : "") @(_flipUp ? "flip-up" : "")">
+    <button type="button"
+            class="rr-dd-trigger"
+            @ref="_triggerEl"
+            @onclick="Toggle"
+            @onkeydown="OnKeyDown"
+            disabled="@Disabled"
+            aria-haspopup="listbox"
+            aria-expanded="@_open.ToString().ToLowerInvariant()"
+            title="@SelectedLabel">
+        <span class="rr-dd-value">@SelectedLabel</span>
+        <svg class="rr-dd-caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+            <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6"
+                  stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+    </button>
+
+    @if (_open)
+    {
+        <div class="rr-dd-backdrop" @onclick="Close"></div>
+        <div class="rr-dd-pop" role="listbox" @onclick:stopPropagation="true">
+            @foreach (var (option, index) in Options.Select((o, i) => (o, i)))
+            {
+                <button type="button"
+                        class="rr-dd-opt @(option.Value == Value ? "selected" : "") @(index == _active ? "active" : "")"
+                        role="option"
+                        aria-selected="@((option.Value == Value).ToString().ToLowerInvariant())"
+                        @onclick="() => PickAsync(option.Value)"
+                        @onmouseenter="() => _active = index">
+                    <span class="rr-dd-opt-label">@option.Label</span>
+                    @if (!string.IsNullOrEmpty(option.Hint))
+                    {
+                        <span class="rr-dd-opt-hint">@option.Hint</span>
+                    }
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    public sealed record Option(string Value, string Label, string? Hint = null);
+
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public IReadOnlyList<Option> Options { get; set; } = Array.Empty<Option>();
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Choose…";
+
+    private bool _open;
+    private bool _flipUp;
+    private int _active;
+    private ElementReference _triggerEl;
+
+    /// Rough popover height for the flip decision, same approach as ColorField: overestimating
+    /// only flips a little early, underestimating overhangs the window.
+    private double PopHeight => Math.Min(280, 12 + Options.Count * 30);
+
+    private string SelectedLabel =>
+        Options.FirstOrDefault(o => o.Value == Value)?.Label ?? Placeholder;
+
+    private async Task Toggle()
+    {
+        if (_open)
+        {
+            _open = false;
+            return;
+        }
+
+        _active = Math.Max(0, Options.ToList().FindIndex(o => o.Value == Value));
+        try
+        {
+            _flipUp = await JS.InvokeAsync<bool>("rrColorMeasureFlip", _triggerEl, PopHeight);
+        }
+        catch
+        {
+            _flipUp = false;
+        }
+        _open = true;
+    }
+
+    private void Close() => _open = false;
+
+    private async Task PickAsync(string value)
+    {
+        _open = false;
+        if (value == Value) return;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!_open)
+        {
+            // Opening with the keyboard should land on the current value, which Toggle does.
+            if (e.Key is "ArrowDown" or "ArrowUp" or "Enter" or " ") await Toggle();
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _active = Math.Min(Options.Count - 1, _active + 1);
+                break;
+            case "ArrowUp":
+                _active = Math.Max(0, _active - 1);
+                break;
+            case "Home":
+                _active = 0;
+                break;
+            case "End":
+                _active = Options.Count - 1;
+                break;
+            case "Enter":
+            case " ":
+                if (_active >= 0 && _active < Options.Count) await PickAsync(Options[_active].Value);
+                break;
+            case "Escape":
+                _open = false;
+                break;
+        }
+    }
+}
