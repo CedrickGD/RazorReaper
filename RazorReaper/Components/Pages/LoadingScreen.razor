@@ -276,6 +276,12 @@
         string? picked;
         try
         {
+            // MAUI takes the dialog's owner from the *active* window, and while ARK holds
+            // exclusive fullscreen this app is not active — IFileDialog::Show then fails with
+            // COMException 0x80004005, which reached the user as "Could not open the file
+            // picker" whenever the game was running. Raising our own window first fixes it.
+            WindowActivator.BringToFront();
+
             var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
             {
                 { DevicePlatform.WinUI, MovieService.SupportedSourceExtensions.ToArray() }
