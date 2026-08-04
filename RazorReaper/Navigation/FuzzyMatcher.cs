@@ -117,11 +117,20 @@ public static class FuzzyMatcher
             for (var i = textIndex; i < text.Length; i++)
             {
                 if (char.ToLowerInvariant(text[i]) != char.ToLowerInvariant(queryChar)) continue;
-                found = i;
-                // A boundary hit is worth skipping ahead for: in "Loading Screen", the 's'
-                // of "Screen" beats the 's' that never appears earlier anyway, and for
-                // repeated letters it biases toward the start of a word.
-                if (IsBoundary(text, i)) break;
+
+                // Keep the earliest hit. Overwriting it on every later one walked the cursor to
+                // the *last* occurrence and ate the rest of the text: "gg" scanned all the way
+                // to the final g of "Logging", leaving nothing for the second g, so it did not
+                // match at all.
+                if (found < 0) found = i;
+
+                // A word start is still worth jumping ahead for — in "Loading Screen" the 's'
+                // of "Screen" should win — but only as an upgrade over the hit we already have.
+                if (IsBoundary(text, i))
+                {
+                    found = i;
+                    break;
+                }
             }
 
             if (found < 0) return NoMatch;
