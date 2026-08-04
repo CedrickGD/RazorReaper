@@ -220,13 +220,9 @@
             <h3>Position</h3>
             <div class="field">
                 <label class="field-label">Monitor</label>
-                <select class="rr-select" value="@profile.MonitorDeviceName"
-                        @onchange="@((e) => SelectMonitor(e.Value?.ToString() ?? string.Empty))">
-                    @foreach (var m in monitors)
-                    {
-                        <option value="@m.DeviceName">@m.FriendlyName @(m.IsPrimary ? "· primary" : "")</option>
-                    }
-                </select>
+                <Dropdown Value="@profile.MonitorDeviceName"
+                          ValueChanged="SelectMonitor"
+                          Options="MonitorOptions" />
             </div>
             <div class="row-2">
                 <div class="field">
@@ -841,6 +837,10 @@
         setter(v);
         Push();
     }
+
+    private IReadOnlyList<Dropdown.Option> MonitorOptions =>
+        monitors.Select(m => new Dropdown.Option(
+            m.DeviceName, m.FriendlyName + (m.IsPrimary ? " · primary" : ""))).ToList();
 
     private void SelectMonitor(string deviceName)
     {

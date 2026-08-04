@@ -331,10 +331,9 @@
                     <p class="sound-settings-subtitle">Control UI click and notification audio.</p>
                 </div>
                 <div class="collapsible-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox" @bind="soundsEnabled" @bind:after="PersistSoundSettingsAsync" />
-                        <span>Enable UI sounds</span>
-                    </label>
+                    <span class="sound-toggle sound-toggle-master">
+                        <CheckBox Value="soundsEnabled" ValueChanged="SetSoundsEnabledAsync">Enable UI sounds</CheckBox>
+                    </span>
                     <button type="button"
                             class="collapsible-toggle"
                             @onclick="ToggleSoundSettings"
@@ -352,10 +351,9 @@
                     <div class="sound-setting">
                         <div class="sound-setting-header">
                             <span class="sound-setting-title">Notification Sound</span>
-                            <label class="sound-toggle sound-toggle-inline">
-                                <input type="checkbox" @bind="notificationSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
-                                <span>Enabled</span>
-                            </label>
+                            <span class="sound-toggle sound-toggle-inline">
+                                <CheckBox Value="notificationSoundEnabled" ValueChanged="SetNotificationSoundEnabledAsync">Enabled</CheckBox>
+                            </span>
                         </div>
                         <div class="sound-setting-body">
                             <div class="sound-source">
@@ -377,10 +375,9 @@
                     <div class="sound-setting">
                         <div class="sound-setting-header">
                             <span class="sound-setting-title">Click Sound</span>
-                            <label class="sound-toggle sound-toggle-inline">
-                                <input type="checkbox" @bind="clickSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
-                                <span>Enabled</span>
-                            </label>
+                            <span class="sound-toggle sound-toggle-inline">
+                                <CheckBox Value="clickSoundEnabled" ValueChanged="SetClickSoundEnabledAsync">Enabled</CheckBox>
+                            </span>
                         </div>
                         <div class="sound-setting-body">
                             <div class="sound-source">
@@ -1708,6 +1705,24 @@
         {
             Logger.LogDebug(ex, "Could not load sound settings");
         }
+    }
+
+    private async Task SetSoundsEnabledAsync(bool value)
+    {
+        soundsEnabled = value;
+        await PersistSoundSettingsAsync();
+    }
+
+    private async Task SetNotificationSoundEnabledAsync(bool value)
+    {
+        notificationSoundEnabled = value;
+        await PersistSoundSettingsAsync();
+    }
+
+    private async Task SetClickSoundEnabledAsync(bool value)
+    {
+        clickSoundEnabled = value;
+        await PersistSoundSettingsAsync();
     }
 
     private async Task PersistSoundSettingsAsync()

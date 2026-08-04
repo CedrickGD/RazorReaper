@@ -78,13 +78,9 @@
             <div class="hud-rows">
 
                 <SettingRow Title="Monitor" Description="Which display the overlay draws on.">
-                    <select class="hud-select" value="@_settings.MonitorDeviceName" @onchange="OnMonitorChanged">
-                        <option value="">Primary display</option>
-                        @foreach (var mon in _monitors)
-                        {
-                            <option value="@mon.DeviceName">@mon.FriendlyName@(mon.IsPrimary ? " · primary" : "")</option>
-                        }
-                    </select>
+                    <Dropdown Value="@_settings.MonitorDeviceName"
+                              ValueChanged="OnMonitorChanged"
+                              Options="MonitorOptions" />
                 </SettingRow>
 
                 <SettingRow Title="Corner" Description="Anchor the panel to a screen corner.">
@@ -263,9 +259,17 @@
         Apply();
     }
 
-    private void OnMonitorChanged(ChangeEventArgs e)
+    // Empty device name means "whatever Windows calls the primary right now", so it stays
+    // correct when displays are re-arranged.
+    private IReadOnlyList<Dropdown.Option> MonitorOptions =>
+        new[] { new Dropdown.Option("", "Primary display") }
+            .Concat(_monitors.Select(m => new Dropdown.Option(
+                m.DeviceName, m.FriendlyName + (m.IsPrimary ? " · primary" : ""))))
+            .ToList();
+
+    private void OnMonitorChanged(string deviceName)
     {
-        _settings.MonitorDeviceName = e.Value?.ToString() ?? "";
+        _settings.MonitorDeviceName = deviceName;
         Apply();
     }
 

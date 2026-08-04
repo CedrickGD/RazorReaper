@@ -309,8 +309,11 @@
     color: var(--text-secondary);
 }
 
-.sound-toggle input {
-    accent-color: var(--accent-purple);
+.sound-toggle .rr-check {
+    /* The pill and the inline toggles carry their own type scale and colour;
+       without this the shared checkbox imposes the primitive's. */
+    font-size: inherit;
+    color: inherit;
 }
 
 .sound-toggle-master {

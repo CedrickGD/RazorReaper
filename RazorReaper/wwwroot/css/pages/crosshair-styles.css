@@ -379,13 +379,19 @@
         border-left: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    /* ── Select ──────────────────────────────────────────────────────────── */
+    /* ── Dropdown ────────────────────────────────────────────────────────── */
 
-    .crosshair-layout .rr-select {
+    /* The primitive shrinks to its content, but a picker in a `.field` owns the full row. */
+    .crosshair-layout .field .rr-dd {
         width: 100%;
-        font-size: 0.85rem !important;
-        padding: 0.55rem 0.85rem !important;
     }
+
+        /* Sized like the number steppers next to it, which are taller than the base trigger. */
+        .crosshair-layout .field .rr-dd-trigger {
+            height: 36px;
+            padding: 0 0.55rem 0 0.85rem;
+            font-size: 0.85rem;
+        }
 
     .crosshair-layout .rr-input {
         flex: 1;

@@ -90,21 +90,6 @@ textarea.nt-triggers {
     line-height: 1.5;
 }
 
-select.nt-select {
-    padding: var(--space-2) var(--space-3) !important;
-    font-size: 0.82rem !important;
-    color: var(--text-primary);
-    background: var(--surface-inset);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-control);
-    cursor: pointer;
-}
-
-    select.nt-select:focus {
-        outline: none;
-        border-color: var(--accent-purple);
-    }
-
 /* ── Small buttons ──────────────────────────────────────────────────────── */
 
 .nt-mini {
@@ -133,6 +118,12 @@ select.nt-select {
     align-items: center;
     gap: var(--space-2);
 }
+
+    /* Fixed, so the Test button and Switch sit at the same x on every row instead of
+       drifting with the length of the selected sound label. */
+    .nt-type-control .rr-dd {
+        width: 128px;
+    }
 
 /* ── Info note (neutral surface + low-alpha accent left border) ─────────── */
 
@@ -318,6 +309,11 @@ input.nt-chan-cluster {
     width: 160px;
 }
 
+/* Sized like its sibling inputs so the add row stays one straight line. */
+.nt-channel-add .rr-dd {
+    width: 160px;
+}
+
 .nt-chan-add {
     margin-left: auto;
 }
@@ -410,7 +406,8 @@ input.nt-chan-cluster {
     }
 
     input.nt-chan-id,
-    input.nt-chan-cluster {
+    input.nt-chan-cluster,
+    .nt-channel-add .rr-dd {
         width: 100%;
     }
 

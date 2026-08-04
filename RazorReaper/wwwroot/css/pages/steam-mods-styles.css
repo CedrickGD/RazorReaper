@@ -90,8 +90,13 @@
     font-size: 0.8rem;
 }
 
-.steam-mods-input,
-.steam-mods-select {
+.steam-mods-input {
+    width: 100%;
+}
+
+/* .rr-dd is inline-flex, so without this the filter dropdowns collapse to their label width
+   and the grid columns no longer line up with the search box. */
+.steam-mods-filter-field .rr-dd {
     width: 100%;
 }
 

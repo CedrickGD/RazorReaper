@@ -208,10 +208,7 @@
                 else if (_selected is CraftingScript crafting)
                 {
                     <SettingRow Title="Mode" Description="Watcher = you walk and open stations; Walk = the script walks the row.">
-                        <select class="script-input" value="@crafting.Mode" @onchange="SetCraftMode">
-                            <option value="Watcher">Watcher</option>
-                            <option value="Walk">Walk</option>
-                        </select>
+                        <Dropdown Value="@crafting.Mode.ToString()" ValueChanged="SetCraftMode" Options="CraftModeOptions" />
                     </SettingRow>
                     <SettingRow Title="Craft key" Description="Starts a craft inside the open station (default: E).">
                         <input class="script-input" value="@crafting.CraftKey" @onchange="SetCraftKey" />
@@ -488,7 +485,13 @@
     private void SetDinoPresses(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.Presses = v; d.SaveSettings(); } }
     private void SetDinoDelay(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.ClickDelayMs = v; d.SaveSettings(); } }
 
-    private void SetCraftMode(ChangeEventArgs e) { if (_selected is CraftingScript c && Enum.TryParse<CraftingMode>(e.Value?.ToString(), out var m)) { c.Mode = m; c.SaveSettings(); } }
+    private static readonly IReadOnlyList<Dropdown.Option> CraftModeOptions = new List<Dropdown.Option>
+    {
+        new(nameof(CraftingMode.Watcher), "Watcher"),
+        new(nameof(CraftingMode.Walk), "Walk"),
+    };
+
+    private void SetCraftMode(string value) { if (_selected is CraftingScript c && Enum.TryParse<CraftingMode>(value, out var m)) { c.Mode = m; c.SaveSettings(); } }
     private void SetCraftKey(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.CraftKey = e.Value?.ToString() ?? "E"; c.SaveSettings(); } }
     private void SetCraftAccess(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.AccessKey = e.Value?.ToString() ?? "F"; c.SaveSettings(); } }
     private void SetCraftForward(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.ForwardKey = e.Value?.ToString() ?? "W"; c.SaveSettings(); } }

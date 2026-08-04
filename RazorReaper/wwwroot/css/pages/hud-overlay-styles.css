@@ -124,7 +124,7 @@ h3.hud-card-title {
         cursor: default;
     }
 
-/* ── Numbers, units, sliders, select ────────────────────────────────────── */
+/* ── Numbers, units, sliders, dropdown ──────────────────────────────────── */
 
 input.hud-num {
     width: 96px;
@@ -146,12 +146,11 @@ input.hud-num {
     gap: var(--space-2);
 }
 
-select.hud-select {
+/* .rr-dd shrinks to its content and the row's control column does not stretch it, so pin
+   the range — otherwise the monitor picker resizes with whichever display name is picked. */
+.hud-page .rr-dd {
     min-width: 200px;
     max-width: 240px;
-    padding: var(--space-2) var(--space-3) !important;
-    font-size: 0.85rem !important;
-    cursor: pointer;
 }
 
 /* ── Info note ──────────────────────────────────────────────────────────── */

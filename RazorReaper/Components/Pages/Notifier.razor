@@ -56,13 +56,9 @@
                 {
                     <SettingRow Title="@def.Label" Description="@def.Description">
                         <div class="nt-type-control">
-                            <select class="nt-select"
-                                    @bind:get="NotifierClient.GetTypeSound(def.Type)"
-                                    @bind:set="v => NotifierClient.SetTypeSound(def.Type, v)">
-                                <option value="@NotifierSound.None">Silent</option>
-                                <option value="@NotifierSound.Notification">Notification</option>
-                                <option value="@NotifierSound.Click">Click</option>
-                            </select>
+                            <Dropdown Value="@NotifierClient.GetTypeSound(def.Type).ToString()"
+                                      ValueChanged="v => OnTypeSound(def.Type, v)"
+                                      Options="SoundOptions" />
                             <button class="nt-mini" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert(def.Type)">Test</button>
                             <Switch Value="NotifierClient.IsTypeEnabled(def.Type)"
                                     ValueChanged="v => NotifierClient.SetTypeEnabled(def.Type, v)" />
@@ -142,13 +138,7 @@
                    placeholder="Channel ID (digits only)" @bind="_newChannelId" />
             <input class="nt-input nt-chan-cluster" type="text" spellcheck="false"
                    placeholder="Cluster / label" @bind="_newCluster" />
-            <select class="nt-select" @bind="_newType">
-                <option value="rare-dino">Rare dino</option>
-                <option value="resource">Resource</option>
-                <option value="element-node">Element node</option>
-                <option value="osd">OSD / events</option>
-                <option value="tribe-log">Tribe log</option>
-            </select>
+            <Dropdown @bind-Value="_newType" Options="ChannelTypeOptions" />
             <button class="nt-mini nt-chan-add" @onclick="AddChannel"
                     disabled="@(_channelsBusy || string.IsNullOrWhiteSpace(_newChannelId))">Add channel</button>
         </div>
@@ -232,7 +222,31 @@
             _ = LoadChannels(quiet: true);
     }
 
+    // ── Alert types ─────────────────────────────────────────────────────────
+
+    private IReadOnlyList<Dropdown.Option> SoundOptions { get; } = new List<Dropdown.Option>
+    {
+        new(nameof(NotifierSound.None), "Silent"),
+        new(nameof(NotifierSound.Notification), "Notification"),
+        new(nameof(NotifierSound.Click), "Click")
+    };
+
+    private void OnTypeSound(NotifierAlertType type, string value)
+    {
+        if (Enum.TryParse<NotifierSound>(value, out var sound))
+            NotifierClient.SetTypeSound(type, sound);
+    }
+
     // ── Watched channels ────────────────────────────────────────────────────
+
+    private IReadOnlyList<Dropdown.Option> ChannelTypeOptions { get; } = new List<Dropdown.Option>
+    {
+        new("rare-dino", "Rare dino"),
+        new("resource", "Resource"),
+        new("element-node", "Element node"),
+        new("osd", "OSD / events"),
+        new("tribe-log", "Tribe log")
+    };
 
     private async Task LoadChannels(bool quiet)
     {

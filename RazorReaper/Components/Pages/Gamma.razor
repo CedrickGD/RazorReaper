@@ -180,15 +180,20 @@
                         @foreach (var m in _monitors)
                         {
                             var selected = GammaSvc.SelectedMonitors.Contains(m.DeviceName);
-                            <label class="gm-monitor-row">
-                                <input type="checkbox" checked="@selected"
-                                       @onchange="e => ToggleMonitor(m.DeviceName, e)" />
+                            @* The whole row is the hit target. The checkbox is a button, so its
+                               click would bubble up here and toggle a second time — hence the
+                               wrapper that swallows it. *@
+                            <div class="gm-monitor-row" @onclick="() => ToggleMonitor(m.DeviceName, !selected)">
+                                <span class="gm-monitor-check" @onclick:stopPropagation="true">
+                                    <CheckBox Value="@selected"
+                                              ValueChanged="@(v => ToggleMonitor(m.DeviceName, v))" />
+                                </span>
                                 <span class="gm-monitor-name">@m.FriendlyName</span>
                                 @if (m.IsPrimary)
                                 {
                                     <span class="gm-monitor-tag">Primary</span>
                                 }
-                            </label>
+                            </div>
                         }
                     }
                 </div>
@@ -410,9 +415,8 @@
 
     // ── Monitors ────────────────────────────────────────────────────────────
 
-    private void ToggleMonitor(string deviceName, ChangeEventArgs e)
+    private void ToggleMonitor(string deviceName, bool add)
     {
-        bool add = e.Value is bool b ? b : (e.Value?.ToString() == "true");
         var selected = GammaSvc.SelectedMonitors.ToList();
         if (add)
         {

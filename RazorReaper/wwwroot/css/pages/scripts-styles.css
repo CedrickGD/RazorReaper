@@ -298,6 +298,12 @@
     text-align: right;
 }
 
+/* .rr-dd is inline-flex and would otherwise size to whichever label is selected, so the
+   Mode row would sit narrower than every input above it. Matched to .script-input. */
+.script-settings .rr-dd {
+    width: 120px;
+}
+
 @media (max-width: 820px) {
     .scripts-layout {
         grid-template-columns: minmax(0, 1fr);

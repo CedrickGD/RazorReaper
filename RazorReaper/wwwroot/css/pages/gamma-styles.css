@@ -272,6 +272,16 @@ input.gm-preset-val {
         background: var(--surface-inset-hover);
     }
 
+.gm-monitor-check {
+    display: flex;
+    flex-shrink: 0;
+}
+
+    /* The box's top margin aligns it to a label's first line; there is no label here. */
+    .gm-monitor-check .rr-check-box {
+        margin-top: 0;
+    }
+
 .gm-monitor-name {
     flex: 1;
     min-width: 0;

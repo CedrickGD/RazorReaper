@@ -62,38 +62,23 @@
 
             <div class="steam-mods-filter-field">
                 <label for="mod-sort">Sort</label>
-                <select id="mod-sort" class="steam-mods-select" @bind="SortOption">
-                    <option value="@SteamModsSort.LatestInstalled">Latest Installed</option>
-                    <option value="@SteamModsSort.LatestUpdated">Latest Updated</option>
-                    <option value="@SteamModsSort.SizeDescending">Size (Biggest-Smallest)</option>
-                    <option value="@SteamModsSort.SizeAscending">Size (Smallest-Biggest)</option>
-                    <option value="@SteamModsSort.NameAscending">Name A-Z</option>
-                    <option value="@SteamModsSort.NameDescending">Name Z-A</option>
-                    <option value="@SteamModsSort.IdAscending">Workshop ID (Low-High)</option>
-                    <option value="@SteamModsSort.IdDescending">Workshop ID (High-Low)</option>
-                </select>
+                <Dropdown Value="@sortOption.ToString()"
+                          ValueChanged="OnSortChanged"
+                          Options="SortOptions" />
             </div>
 
             <div class="steam-mods-filter-field">
                 <label for="mod-recency">Installed Filter</label>
-                <select id="mod-recency" class="steam-mods-select" @bind="RecencyFilter">
-                    <option value="@SteamModsRecency.All">All</option>
-                    <option value="@SteamModsRecency.Last7Days">Last 7 Days</option>
-                    <option value="@SteamModsRecency.Last30Days">Last 30 Days</option>
-                    <option value="@SteamModsRecency.Last90Days">Last 90 Days</option>
-                </select>
+                <Dropdown Value="@recencyFilter.ToString()"
+                          ValueChanged="OnRecencyChanged"
+                          Options="RecencyOptions" />
             </div>
 
             <div class="steam-mods-filter-field">
                 <label for="mod-size-filter">Size Filter</label>
-                <select id="mod-size-filter" class="steam-mods-select" @bind="SizeFilter">
-                    <option value="@SteamModsSizeFilter.All">All Sizes</option>
-                    <option value="@SteamModsSizeFilter.Unknown">Unknown Size</option>
-                    <option value="@SteamModsSizeFilter.Under100Mb">Under 100 MB</option>
-                    <option value="@SteamModsSizeFilter.Mb100To500">100 MB to 500 MB</option>
-                    <option value="@SteamModsSizeFilter.Mb500To1Gb">500 MB to 1 GB</option>
-                    <option value="@SteamModsSizeFilter.Over1Gb">Over 1 GB</option>
-                </select>
+                <Dropdown Value="@sizeFilter.ToString()"
+                          ValueChanged="OnSizeFilterChanged"
+                          Options="SizeFilterOptions" />
             </div>
         </div>
 
@@ -234,6 +219,26 @@
         }
     }
 
+    private IReadOnlyList<Dropdown.Option> SortOptions { get; } = new List<Dropdown.Option>
+    {
+        new(nameof(SteamModsSort.LatestInstalled), "Latest Installed"),
+        new(nameof(SteamModsSort.LatestUpdated), "Latest Updated"),
+        new(nameof(SteamModsSort.SizeDescending), "Size (Biggest-Smallest)"),
+        new(nameof(SteamModsSort.SizeAscending), "Size (Smallest-Biggest)"),
+        new(nameof(SteamModsSort.NameAscending), "Name A-Z"),
+        new(nameof(SteamModsSort.NameDescending), "Name Z-A"),
+        new(nameof(SteamModsSort.IdAscending), "Workshop ID (Low-High)"),
+        new(nameof(SteamModsSort.IdDescending), "Workshop ID (High-Low)")
+    };
+
+    private void OnSortChanged(string value)
+    {
+        if (Enum.TryParse<SteamModsSort>(value, out var parsed))
+        {
+            SortOption = parsed;
+        }
+    }
+
     private SteamModsRecency RecencyFilter
     {
         get => recencyFilter;
@@ -249,6 +254,22 @@
         }
     }
 
+    private IReadOnlyList<Dropdown.Option> RecencyOptions { get; } = new List<Dropdown.Option>
+    {
+        new(nameof(SteamModsRecency.All), "All"),
+        new(nameof(SteamModsRecency.Last7Days), "Last 7 Days"),
+        new(nameof(SteamModsRecency.Last30Days), "Last 30 Days"),
+        new(nameof(SteamModsRecency.Last90Days), "Last 90 Days")
+    };
+
+    private void OnRecencyChanged(string value)
+    {
+        if (Enum.TryParse<SteamModsRecency>(value, out var parsed))
+        {
+            RecencyFilter = parsed;
+        }
+    }
+
     private SteamModsSizeFilter SizeFilter
     {
         get => sizeFilter;
@@ -261,6 +282,24 @@
 
             sizeFilter = value;
             ApplyFilters();
+        }
+    }
+
+    private IReadOnlyList<Dropdown.Option> SizeFilterOptions { get; } = new List<Dropdown.Option>
+    {
+        new(nameof(SteamModsSizeFilter.All), "All Sizes"),
+        new(nameof(SteamModsSizeFilter.Unknown), "Unknown Size"),
+        new(nameof(SteamModsSizeFilter.Under100Mb), "Under 100 MB"),
+        new(nameof(SteamModsSizeFilter.Mb100To500), "100 MB to 500 MB"),
+        new(nameof(SteamModsSizeFilter.Mb500To1Gb), "500 MB to 1 GB"),
+        new(nameof(SteamModsSizeFilter.Over1Gb), "Over 1 GB")
+    };
+
+    private void OnSizeFilterChanged(string value)
+    {
+        if (Enum.TryParse<SteamModsSizeFilter>(value, out var parsed))
+        {
+            SizeFilter = parsed;
         }
     }
 
