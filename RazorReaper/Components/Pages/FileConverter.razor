@@ -194,6 +194,23 @@
                                @oninput="OnQualityInput" disabled="@_busy" aria-label="Quality" />
                         <span class="convert-quality-value">@_quality</span>
                     </div>
+
+                    @* Only where there is a track to touch — an image has none, and a target
+                       format with no audio stream ignores both settings anyway. *@
+                    @if (HasAudioControls)
+                    {
+                        <div class="convert-quality">
+                            <span class="convert-quality-label">Volume</span>
+                            <input type="range" min="0" max="200" step="1"
+                                   value="@_volumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                   @oninput="OnVolumeInput" disabled="@(_busy || _stripAudio)" aria-label="Volume" />
+                            <span class="convert-quality-value">@_volumePercent%</span>
+                        </div>
+
+                        @* Separate from volume 0: that keeps a silent track and still spends
+                           bitrate on it, this drops the stream. *@
+                        <CheckBox @bind-Value="_stripAudio" Disabled="@_busy">No audio at all</CheckBox>
+                    }
                 </div>
 
                 @* Two selects rather than a row of option cards plus a second Replace step
@@ -320,6 +337,9 @@
     private string? _target;
     private int _quality = 75;
 
+    private int _volumePercent = 100;
+    private bool _stripAudio;
+
     private DestinationMode _destination = DestinationMode.Downloads;
     private string? _customFolder;
 
@@ -341,6 +361,11 @@
 
     /// <summary>Only time-based media can be trimmed, and only once ffmpeg reported a duration.</summary>
     private bool TrimAvailable => _sourceSeconds > 0.5 && _info?.Kind is MediaKind.Video or MediaKind.Audio;
+
+    /// <summary>An image has no track, and neither has a source ffmpeg found no audio stream in.</summary>
+    private bool HasAudioControls =>
+        MediaFormats.KindOf(_source ?? "") is MediaKind.Video or MediaKind.Audio
+        && (_info is null || _info.AudioCodec is not null);
 
     private bool TrimActive => _trimStart > 0.01 || _trimEnd < _sourceSeconds - 0.01;
 
@@ -470,6 +495,8 @@
             // own format is almost never why someone came here.
             _target = _targets.FirstOrDefault(t => t != _sourceFormat) ?? _targets.FirstOrDefault();
             _redirected = false;
+            _volumePercent = 100;
+            _stripAudio = false;
 
             await LoadPreviewAsync();
         }
@@ -577,6 +604,15 @@
                          System.Globalization.CultureInfo.InvariantCulture, out var value))
         {
             _quality = Math.Clamp(value, 10, 100);
+        }
+    }
+
+    private void OnVolumeInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Integer,
+                         System.Globalization.CultureInfo.InvariantCulture, out var value))
+        {
+            _volumePercent = Math.Clamp(value, 0, 200);
         }
     }
 
@@ -718,6 +754,12 @@
             var options = new ConversionOptions
             {
                 Quality = _quality,
+                StripAudio = HasAudioControls && _stripAudio,
+                // Null at 100%, so an untouched slider adds no filter and the track is copied
+                // through rather than re-encoded.
+                Volume = HasAudioControls && !_stripAudio && _volumePercent != 100
+                    ? _volumePercent / 100.0
+                    : null,
                 // Only sent when the range was actually moved, so an untouched slider never
                 // adds -ss/-t and cannot shave a frame off the end by rounding.
                 TrimStartSeconds = TrimAvailable && TrimActive && _trimStart > 0 ? _trimStart : null,
