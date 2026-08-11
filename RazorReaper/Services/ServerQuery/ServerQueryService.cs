@@ -87,7 +87,16 @@ public sealed class ServerQueryService : IServerQueryService
                 data = response.Buffer;
             }
 
-            return ParseInfoResponse(data, (int)stopwatch.ElapsedMilliseconds);
+            var info = ParseInfoResponse(data, (int)stopwatch.ElapsedMilliseconds);
+            if (info == null) return null;
+
+            // ARK's A2S_INFO player count is not the number of people on the server — it counts
+            // reserved and queued slots too, which is why the HUD kept showing numbers like 67/70
+            // on a server with half that many players. The player list is the real thing, so ask
+            // for it and count the entries; if that query fails we keep the INFO number rather
+            // than showing nothing.
+            var actual = await QueryPlayerCountAsync(client, endpoint, cancellationToken);
+            return actual is { } count ? info with { Players = count } : info;
         }
         catch (TimeoutException)
         {
@@ -102,6 +111,118 @@ public sealed class ServerQueryService : IServerQueryService
             _logger.LogWarning(ex, "A2S query error for {IP}:{Port}", ip, queryPort);
         }
         return null;
+    }
+
+    /// <summary>
+    /// The player-list enrichment is optional garnish on top of a query that already
+    /// succeeded, so it gets a short budget of its own. On its own it re-used the full
+    /// 3.5s timeout, and a server with A2S_PLAYER firewalled off stalled every refresh
+    /// of the Server page and every Session HUD poll by that much (7s with a challenge).
+    /// </summary>
+    private const int PlayerQueryTimeoutMs = 1200;
+
+    /// <summary>
+    /// A2S_PLAYER: ask for the player list and count the entries actually returned. Null when
+    /// the server refuses or times out — the caller then keeps the A2S_INFO figure.
+    /// </summary>
+    private async Task<int?> QueryPlayerCountAsync(UdpClient client, IPEndPoint endpoint, CancellationToken ct)
+    {
+        try
+        {
+            // One shared budget across challenge + data receives, so the worst case stays
+            // ~1.2s rather than doubling whenever a challenge round is involved.
+            var deadline = Stopwatch.StartNew();
+            TimeSpan Remaining() =>
+                TimeSpan.FromMilliseconds(Math.Max(1, PlayerQueryTimeoutMs - deadline.ElapsedMilliseconds));
+
+            // 0x55 with a -1 challenge asks for the token; the server answers 'A' + 4 bytes.
+            var request = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF };
+            await client.SendAsync(request, request.Length, endpoint);
+            var data = (await client.ReceiveAsync().WaitAsync(Remaining(), ct)).Buffer;
+
+            if (data.Length >= 9 && data[4] == 0x41)
+            {
+                Array.Copy(data, 5, request, 5, 4);
+                await client.SendAsync(request, request.Length, endpoint);
+                data = (await client.ReceiveAsync().WaitAsync(Remaining(), ct)).Buffer;
+            }
+
+            // Split response (FE FF FF FF): a full 70-player ARK list overflows one datagram,
+            // which is precisely the crowded-server case this enrichment exists for — so
+            // reassemble instead of bailing back to the inflated INFO figure.
+            if (data.Length >= 4 && data[0] == 0xFE)
+            {
+                data = await ReassembleSplitAsync(client, data, Remaining, ct) ?? Array.Empty<byte>();
+            }
+
+            if (data.Length < 6 || data[0] != 0xFF || data[4] != 0x44) return null;
+
+            var offset = 5;
+            int header = data[offset++];
+
+            // Walk the entries rather than trusting the header byte (it wraps at 255 and
+            // some servers misreport it): index, name, score, duration. Termination needs
+            // no entry cap — offset strictly advances at least 9 bytes per iteration.
+            var counted = 0;
+            while (offset < data.Length)
+            {
+                offset++;                                   // index
+                if (offset >= data.Length) break;
+                ReadString(data, ref offset);               // name
+                offset += 8;                                // score (int32) + duration (float)
+                if (offset > data.Length) break;
+                counted++;
+            }
+
+            return counted > 0 ? counted : header;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (TimeoutException) { return null; }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "A2S_PLAYER query failed for {Endpoint}", endpoint);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Reassembles a Source-engine split response (FE FF FF FF header) into one payload.
+    /// Returns null for anything not worth risking a mis-parse on: mismatched IDs, an
+    /// implausible fragment count, a bzip2-compressed payload (ID bit 31), or a timeout
+    /// before all fragments arrive.
+    /// </summary>
+    private static async Task<byte[]?> ReassembleSplitAsync(
+        UdpClient client, byte[] first, Func<TimeSpan> remaining, CancellationToken ct)
+    {
+        // Split header: int32 -2, int32 id, byte total, byte number, int16 splitSize.
+        const int HeaderLen = 12;
+        if (first.Length < HeaderLen) return null;
+
+        var id = BitConverter.ToInt32(first, 4);
+        if ((id & unchecked((int)0x80000000)) != 0) return null; // compressed — not handled
+        int total = first[8];
+        if (total < 1 || total > 16) return null;
+
+        var parts = new byte[total][];
+        void Store(byte[] packet)
+        {
+            int number = packet[9];
+            if (number < total && parts[number] == null)
+                parts[number] = packet[HeaderLen..];
+        }
+
+        Store(first);
+        var have = 1;
+        while (have < total)
+        {
+            var next = (await client.ReceiveAsync().WaitAsync(remaining(), ct)).Buffer;
+            if (next.Length < HeaderLen || next[0] != 0xFE) continue;   // stray datagram
+            if (BitConverter.ToInt32(next, 4) != id) return null;      // different response
+            Store(next);
+            have = parts.Count(p => p != null);
+        }
+
+        return parts.SelectMany(p => p!).ToArray();
     }
 
     /// <summary>Parse an S2A_INFO ('I') payload; null for anything else or a truncated packet.</summary>
