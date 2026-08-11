@@ -1,0 +1,608 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@inject IJSRuntime JSRuntime
+@inject IActivityService ActivityService
+@inject ILogger<AccentColorCard> Logger
+@implements IDisposable
+
+@* Accent color card, moved off Home onto Settings. The HSV box + hue slider edit the
+   accent; four optional per-shade overrides pin individual ramp stops. Persisted via
+   getThemeSettings/updateThemeSettings (wwwroot/index.html → localStorage); the drag
+   itself runs in JS (rrColorBoxBegin) so pointer moves never round-trip through .NET.
+   Styled by home-styles.css' theme-* classes — global, page-agnostic. *@
+
+<div class="content-card theme-settings-card collapsible-card">
+    <div class="theme-settings-header">
+        <div>
+            <h3>Accent Color</h3>
+            <p class="theme-settings-subtitle">Recolor the whole app. Pick any color and every purple accent updates instantly — your choice is saved until you change it.</p>
+        </div>
+        <div class="collapsible-actions">
+            <div class="theme-current">
+                <span class="theme-current-label">Active</span>
+                <span class="theme-current-swatch" style="background:@selectedAccentColor" title="@selectedAccentColor"></span>
+            </div>
+            <button type="button"
+                    class="collapsible-toggle"
+                    @onclick="ToggleOpen"
+                    aria-expanded="@isOpen"
+                    aria-controls="theme-settings-content">
+                <span class="collapsible-toggle-label">@(isOpen ? "Collapse" : "Expand")</span>
+                <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="theme-settings-content" class="collapsible-content" hidden="@(!isOpen)">
+        <div class="theme-picker">
+            <div class="theme-sv-box"
+                 @ref="_svEl"
+                 style="background-color: hsl(@FormatNum(_pickerHue), 100%, 50%);"
+                 @onpointerdown="OnSvPointerDown">
+                <span class="theme-sv-handle"
+                      @ref="_svHandleEl"
+                      style="left: @FormatPct(_pickerSat); top: @FormatPct(1 - _pickerVal); background: @selectedAccentColor;"></span>
+            </div>
+            <input type="range" class="theme-hue-slider" min="0" max="360" step="1"
+                   value="@FormatNum(_pickerHue)"
+                   @oninput="OnHueInput" @onchange="OnHueChange"
+                   aria-label="Hue" />
+            <div class="theme-picker-controls">
+                <span class="theme-live-swatch" style="background:@selectedAccentColor" title="@selectedAccentColor"></span>
+                <input type="text" class="theme-hex-input" spellcheck="false" maxlength="7"
+                       value="@selectedAccentColor" @onchange="OnHexInputChange" aria-label="Hex color" />
+                <button class="btn btn-secondary theme-reset-btn" @onclick="ResetThemeAsync" disabled="@IsThemeDefault" title="Reset to default purple">
+                    <svg fill="currentColor" viewBox="0 0 20 20" style="width:15px;height:15px;">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    </svg>
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <button type="button"
+                class="theme-advanced-toggle"
+                @onclick="ToggleAdvanced"
+                aria-expanded="@isAdvancedOpen">
+            <svg class="theme-advanced-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+            </svg>
+            <span>Advanced — override individual shades</span>
+        </button>
+
+        @if (isAdvancedOpen)
+        {
+            <div class="theme-advanced-grid">
+                @foreach (var shade in AdvancedShades)
+                {
+                    var auto = IsShadeAuto(shade.Key);
+                    var shadeVal = GetShadeValue(shade.Key);
+                    <div class="theme-shade-field">
+                        <div class="theme-shade-head">
+                            <span class="theme-shade-name">@shade.Label</span>
+                            <span class="theme-shade-state @(auto ? "auto" : "custom")">@(auto ? "Auto" : "Custom")</span>
+                        </div>
+                        <div class="theme-shade-desc">@shade.Description</div>
+                        <div class="theme-shade-pick">
+                            <input type="color" class="theme-shade-native" value="@shadeVal"
+                                   @onchange="@(e => OnAdvancedShadeChanged(shade.Key, e.Value?.ToString() ?? string.Empty))" />
+                            <input type="text" class="theme-shade-hex" spellcheck="false" maxlength="7" value="@shadeVal"
+                                   @onchange="@(e => OnAdvancedShadeChanged(shade.Key, e.Value?.ToString() ?? string.Empty))" aria-label="@(shade.Label) hex" />
+                        </div>
+                        <button class="theme-shade-auto" @onclick="@(() => ClearAdvancedShadeAsync(shade.Key))" disabled="@auto">Reset to auto</button>
+                    </div>
+                }
+            </div>
+            <p class="theme-advanced-note">Each shade left on <strong>Auto</strong> is derived from the accent color. Pin a shade to lock it; "Reset to auto" hands it back to the accent.</p>
+        }
+    </div>
+</div>
+
+@code {
+    private const string DefaultAccentColor = "#8B5CF6";
+
+    private bool isOpen;
+    private bool isAdvancedOpen;
+    private bool _hasInitialized;
+
+    private string selectedAccentColor = DefaultAccentColor;
+    private string accentLightOverride = "";
+    private string accentDarkOverride = "";
+    private string accentDarkerOverride = "";
+    private string accentSoftOverride = "";
+
+    // Inline saturation/value picker state. _pickerHue/Sat/Val are the HSV the SV box +
+    // hue slider edit; selectedAccentColor is derived from them (and they re-sync from it
+    // when a hex pick changes the accent). Defaults to purple's HSV.
+    private ElementReference _svEl;
+    private ElementReference _svHandleEl;
+    private DotNetObjectReference<AccentColorCard>? _themeRef;
+    private double _pickerHue = 258;
+    private double _pickerSat = 0.63;
+    private double _pickerVal = 0.96;
+
+    private sealed record AdvancedShade(string Key, string Label, string Description);
+
+    private static readonly IReadOnlyList<AdvancedShade> AdvancedShades = new List<AdvancedShade>
+    {
+        new("light", "Light", "Hover / highlight accents"),
+        new("dark", "Dark", "Gradient end, pressed states"),
+        new("darker", "Darker", "Deep gradient / shadow tone"),
+        new("soft", "Soft", "Subtle tinted text"),
+    };
+
+    /// <summary>
+    /// False until the stored accent has actually been read back from JS. Without it,
+    /// IsThemeDefault cannot tell "loaded, and it happens to be the default" from "never
+    /// loaded, so the field is still sitting on its initialiser" — and in the second case
+    /// it disables the Reset button, which is the one control that would fix a stuck
+    /// accent. Seen for real: localStorage held #FFFFFF, the whole UI was painted white by
+    /// index.html, and Reset was greyed out because C# believed it was already default.
+    /// </summary>
+    private bool themeSettingsLoaded;
+
+    private bool IsThemeDefault =>
+        themeSettingsLoaded
+        && string.Equals(selectedAccentColor, DefaultAccentColor, StringComparison.OrdinalIgnoreCase)
+        && string.IsNullOrEmpty(accentLightOverride)
+        && string.IsNullOrEmpty(accentDarkOverride)
+        && string.IsNullOrEmpty(accentDarkerOverride)
+        && string.IsNullOrEmpty(accentSoftOverride);
+
+    protected override void OnInitialized() => SyncPickerFromAccent();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _hasInitialized)
+            return;
+
+        _hasInitialized = true;
+        await LoadThemeSettingsAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _themeRef?.Dispose();
+        _themeRef = null;
+    }
+
+    private void ToggleOpen() => isOpen = !isOpen;
+
+    private void ToggleAdvanced() => isAdvancedOpen = !isAdvancedOpen;
+
+    private async Task LoadThemeSettingsAsync()
+    {
+        try
+        {
+            var settings = await JSRuntime.InvokeAsync<ThemeSettings>("getThemeSettings");
+            if (settings != null)
+            {
+                selectedAccentColor = string.IsNullOrWhiteSpace(settings.Accent)
+                    ? DefaultAccentColor
+                    : settings.Accent.ToUpperInvariant();
+                accentLightOverride = settings.Light ?? "";
+                accentDarkOverride = settings.Dark ?? "";
+                accentDarkerOverride = settings.Darker ?? "";
+                accentSoftOverride = settings.Soft ?? "";
+                SyncPickerFromAccent();
+                themeSettingsLoaded = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Leave themeSettingsLoaded false: the picker is now showing a colour the app
+            // may not actually be using, so Reset has to stay available.
+            Logger.LogDebug(ex, "Could not load theme settings");
+        }
+    }
+
+    private async Task PersistThemeAsync()
+    {
+        try
+        {
+            var settings = new ThemeSettings
+            {
+                Accent = selectedAccentColor,
+                Light = accentLightOverride,
+                Dark = accentDarkOverride,
+                Darker = accentDarkerOverride,
+                Soft = accentSoftOverride
+            };
+
+            await JSRuntime.InvokeVoidAsync("updateThemeSettings", settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not save theme settings");
+        }
+    }
+
+    // ---- Inline saturation/value box (drag) ----------------------------------------
+    // The drag runs entirely in JS (rrColorBoxBegin) to avoid a JS<->.NET round-trip and
+    // a full component re-render on every pointer move. JS positions the handle and previews
+    // the color live, then reports the final hex once on release via OnSvCommitted.
+    private async Task OnSvPointerDown(PointerEventArgs e)
+    {
+        _themeRef ??= DotNetObjectReference.Create(this);
+        var opts = new
+        {
+            hue = _pickerHue,
+            light = accentLightOverride,
+            dark = accentDarkOverride,
+            darker = accentDarkerOverride,
+            soft = accentSoftOverride
+        };
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("rrColorBoxBegin", _svEl, _svHandleEl, opts, _themeRef, (long)e.PointerId, e.ClientX, e.ClientY);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Color box drag could not start");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnSvCommitted(string hex)
+    {
+        if (!TryNormalizeHex(hex, out var norm))
+        {
+            return;
+        }
+
+        selectedAccentColor = norm;
+        SyncPickerFromAccent();
+        await PersistThemeAsync();
+        StateHasChanged();
+    }
+
+    // ---- Hue slider ----------------------------------------------------------------
+    private async Task OnHueInput(ChangeEventArgs e)
+    {
+        if (TryParseHue(e.Value?.ToString()))
+        {
+            selectedAccentColor = HsvToHex(_pickerHue, _pickerSat, _pickerVal);
+            await PreviewThemeAsync();
+        }
+    }
+
+    private async Task OnHueChange(ChangeEventArgs e)
+    {
+        TryParseHue(e.Value?.ToString());
+        selectedAccentColor = HsvToHex(_pickerHue, _pickerSat, _pickerVal);
+        await PersistThemeAsync();
+    }
+
+    private bool TryParseHue(string? raw)
+    {
+        if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var h))
+        {
+            _pickerHue = ((h % 360) + 360) % 360;
+            return true;
+        }
+        return false;
+    }
+
+    // ---- Hex input -----------------------------------------------------------------
+    private async Task OnHexInputChange(ChangeEventArgs e)
+    {
+        if (TryNormalizeHex(e.Value?.ToString(), out var hex))
+        {
+            selectedAccentColor = hex;
+            SyncPickerFromAccent();
+            await PersistThemeAsync();
+        }
+    }
+
+    // Re-derive the picker's HSV from the current accent (after a hex pick or reset).
+    // Hue is preserved when the color is greyscale so the slider doesn't jump.
+    private void SyncPickerFromAccent()
+    {
+        var rgb = ParseHexColor(selectedAccentColor);
+        if (rgb == null)
+        {
+            return;
+        }
+
+        var (h, s, v) = RgbToHsv(rgb.Value.r, rgb.Value.g, rgb.Value.b);
+        if (s > 0.0001)
+        {
+            _pickerHue = h;
+        }
+        _pickerSat = s;
+        _pickerVal = v;
+    }
+
+    // Apply the current theme live without persisting — used while dragging/sliding so
+    // the whole UI updates in real time; the final value is saved on release/commit.
+    private async Task PreviewThemeAsync()
+    {
+        try
+        {
+            var settings = new ThemeSettings
+            {
+                Accent = selectedAccentColor,
+                Light = accentLightOverride,
+                Dark = accentDarkOverride,
+                Darker = accentDarkerOverride,
+                Soft = accentSoftOverride
+            };
+
+            await JSRuntime.InvokeVoidAsync("previewThemeAccent", settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not preview theme");
+        }
+    }
+
+    private static string FormatNum(double v) =>
+        Math.Round(v).ToString(CultureInfo.InvariantCulture);
+
+    private static string FormatPct(double fraction) =>
+        (Math.Clamp(fraction, 0, 1) * 100).ToString("0.###", CultureInfo.InvariantCulture) + "%";
+
+    private string GetShadeOverride(string key) => key switch
+    {
+        "light" => accentLightOverride,
+        "dark" => accentDarkOverride,
+        "darker" => accentDarkerOverride,
+        "soft" => accentSoftOverride,
+        _ => ""
+    };
+
+    private bool IsShadeAuto(string key) => string.IsNullOrEmpty(GetShadeOverride(key));
+
+    // Color shown in a shade's picker: the override if pinned, otherwise the shade
+    // derived from the accent — mirrors themeDeriveRamp() in wwwroot/index.html so the
+    // picker always reflects what's actually on screen.
+    private string GetShadeValue(string key)
+    {
+        var ov = GetShadeOverride(key);
+        return string.IsNullOrEmpty(ov) ? DeriveShade(selectedAccentColor, key) : ov;
+    }
+
+    private void SetShadeOverride(string key, string value)
+    {
+        switch (key)
+        {
+            case "light": accentLightOverride = value; break;
+            case "dark": accentDarkOverride = value; break;
+            case "darker": accentDarkerOverride = value; break;
+            case "soft": accentSoftOverride = value; break;
+        }
+    }
+
+    private async Task OnAdvancedShadeChanged(string key, string value)
+    {
+        // Blank clears the override back to Auto; otherwise require a valid hex so we never
+        // persist junk (which would silently break the CSS variable and desync the swatch).
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            SetShadeOverride(key, "");
+        }
+        else if (TryNormalizeHex(value, out var hex))
+        {
+            SetShadeOverride(key, hex);
+        }
+        else
+        {
+            return;
+        }
+
+        await PersistThemeAsync();
+    }
+
+    private async Task ClearAdvancedShadeAsync(string key)
+    {
+        SetShadeOverride(key, "");
+        await PersistThemeAsync();
+    }
+
+    private async Task ResetThemeAsync()
+    {
+        selectedAccentColor = DefaultAccentColor;
+        accentLightOverride = "";
+        accentDarkOverride = "";
+        accentDarkerOverride = "";
+        accentSoftOverride = "";
+        SyncPickerFromAccent();
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("resetThemeSettings");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Could not reset theme settings");
+        }
+
+        ActivityService.AddActivity("Accent color reset to purple", "info");
+    }
+
+    // ---- Shade derivation (mirror of themeDeriveRamp in wwwroot/index.html) ---------
+    private static string DeriveShade(string accent, string key)
+    {
+        var parsed = ParseHexColor(accent) ?? ParseHexColor(DefaultAccentColor)!.Value;
+        var (h, s, l) = RgbToHsl(parsed.r, parsed.g, parsed.b);
+        var baseHex = HslToHex(h, s, l);
+
+        if (string.Equals(baseHex, DefaultAccentColor, StringComparison.OrdinalIgnoreCase))
+        {
+            // Return the hand-tuned originals for the default purple.
+            return key switch
+            {
+                "light" => "#A78BFA",
+                "dark" => "#6D28D9",
+                "darker" => "#5B21B6",
+                "soft" => "#C4B5FD",
+                _ => DefaultAccentColor
+            };
+        }
+
+        return key switch
+        {
+            "light" => HslToHex(h, s, l + 10),
+            "dark" => HslToHex(h, s, l - 16),
+            "darker" => HslToHex(h, s, l - 24),
+            "soft" => HslToHex(h, Math.Min(s, 96), l + 19),
+            _ => baseHex
+        };
+    }
+
+    private static (int r, int g, int b)? ParseHexColor(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+        {
+            return null;
+        }
+
+        var h = hex.Trim().TrimStart('#');
+        if (h.Length == 3)
+        {
+            h = $"{h[0]}{h[0]}{h[1]}{h[1]}{h[2]}{h[2]}";
+        }
+        if (h.Length == 8)
+        {
+            h = h.Substring(0, 6);
+        }
+        if (h.Length != 6)
+        {
+            return null;
+        }
+        foreach (var c in h)
+        {
+            if (!Uri.IsHexDigit(c))
+            {
+                return null;
+            }
+        }
+
+        return (
+            Convert.ToInt32(h.Substring(0, 2), 16),
+            Convert.ToInt32(h.Substring(2, 2), 16),
+            Convert.ToInt32(h.Substring(4, 2), 16)
+        );
+    }
+
+    private static (double h, double s, double l) RgbToHsl(int r8, int g8, int b8)
+    {
+        double r = r8 / 255.0, g = g8 / 255.0, b = b8 / 255.0;
+        double max = Math.Max(r, Math.Max(g, b));
+        double min = Math.Min(r, Math.Min(g, b));
+        double h = 0, s = 0, l = (max + min) / 2.0;
+
+        if (max != min)
+        {
+            double d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            if (max == r)
+            {
+                h = (g - b) / d + (g < b ? 6 : 0);
+            }
+            else if (max == g)
+            {
+                h = (b - r) / d + 2;
+            }
+            else
+            {
+                h = (r - g) / d + 4;
+            }
+            h /= 6;
+        }
+
+        return (h * 360, s * 100, l * 100);
+    }
+
+    private static string HslToHex(double h, double s, double l)
+    {
+        h = ((h % 360) + 360) % 360;
+        s = Math.Clamp(s, 0, 100) / 100.0;
+        l = Math.Clamp(l, 0, 100) / 100.0;
+        double c = (1 - Math.Abs(2 * l - 1)) * s;
+        double x = c * (1 - Math.Abs((h / 60.0 % 2) - 1));
+        double m = l - c / 2;
+        double r = 0, g = 0, b = 0;
+
+        if (h < 60) { r = c; g = x; }
+        else if (h < 120) { r = x; g = c; }
+        else if (h < 180) { g = c; b = x; }
+        else if (h < 240) { g = x; b = c; }
+        else if (h < 300) { r = x; b = c; }
+        else { r = c; b = x; }
+
+        int To(double v) => Math.Clamp((int)Math.Round((v + m) * 255), 0, 255);
+        return $"#{To(r):X2}{To(g):X2}{To(b):X2}";
+    }
+
+    // ---- HSV (used by the inline picker; verified to round-trip in JS/C#) -----------
+    private static (double h, double s, double v) RgbToHsv(int r8, int g8, int b8)
+    {
+        double r = r8 / 255.0, g = g8 / 255.0, b = b8 / 255.0;
+        double max = Math.Max(r, Math.Max(g, b));
+        double min = Math.Min(r, Math.Min(g, b));
+        double d = max - min;
+        double h = 0;
+        double s = max == 0 ? 0 : d / max;
+        double v = max;
+
+        if (d != 0)
+        {
+            if (max == r) h = 60 * (((g - b) / d) % 6);
+            else if (max == g) h = 60 * ((b - r) / d + 2);
+            else h = 60 * ((r - g) / d + 4);
+            if (h < 0) h += 360;
+        }
+
+        return (h, s, v);
+    }
+
+    private static string HsvToHex(double h, double s, double v)
+    {
+        h = ((h % 360) + 360) % 360;
+        s = Math.Clamp(s, 0, 1);
+        v = Math.Clamp(v, 0, 1);
+        double c = v * s;
+        double x = c * (1 - Math.Abs((h / 60.0 % 2) - 1));
+        double m = v - c;
+        double r = 0, g = 0, b = 0;
+
+        if (h < 60) { r = c; g = x; }
+        else if (h < 120) { r = x; g = c; }
+        else if (h < 180) { g = c; b = x; }
+        else if (h < 240) { g = x; b = c; }
+        else if (h < 300) { r = x; b = c; }
+        else { r = c; b = x; }
+
+        int To(double t) => Math.Clamp((int)Math.Round((t + m) * 255), 0, 255);
+        return $"#{To(r):X2}{To(g):X2}{To(b):X2}";
+    }
+
+    private static bool TryNormalizeHex(string? raw, out string hex)
+    {
+        hex = "";
+        var rgb = ParseHexColor(raw);
+        if (rgb == null)
+        {
+            return false;
+        }
+        hex = $"#{rgb.Value.r:X2}{rgb.Value.g:X2}{rgb.Value.b:X2}";
+        return true;
+    }
+
+    // Mirrors the JS theme settings object in wwwroot/index.html. Accent is the base
+    // color; the per-shade fields are optional overrides (null/empty = auto-derive).
+    private sealed class ThemeSettings
+    {
+        public string? Accent { get; set; }
+        public string? Light { get; set; }
+        public string? Dark { get; set; }
+        public string? Darker { get; set; }
+        public string? Soft { get; set; }
+    }
+}

@@ -1,6 +1,7 @@
 @page "/settings"
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
+@using RazorReaper.Components.Shared
 @inject IAppearanceService Appearance
 @inject IDiscordPresenceService DiscordPresence
 @inject IArkLinkService ArkLink
@@ -36,19 +37,6 @@
             }
         </div>
 
-        @* Accent lives in the theme card on Home for now — it already has a full HSV
-           picker with per-shade overrides, so duplicating a simpler one here would mean
-           two places setting the same thing. Moving that card here is the next step. *@
-        <SettingRow Title="Accent colour" Description="Full picker with per-shade overrides, currently on the Home page.">
-            <a class="rr-pill-btn ghost sm" href="/home">Open</a>
-        </SettingRow>
-
-        @* Same story as the accent: Home already has an Interface Font card with real
-           presets that auto-install, so a second picker here would just disagree with it. *@
-        <SettingRow Title="Interface font" Description="Font presets that auto-install, currently on the Home page.">
-            <a class="rr-pill-btn ghost sm" href="/home">Open</a>
-        </SettingRow>
-
         <SettingRow Title="Interface scale" Description="Scales every element. Useful on very high or very low resolutions.">
             <div class="settings-scale">
                 @* step 1 + oninput: at step 5 the handle jumped between notches and the
@@ -63,6 +51,11 @@
             </div>
         </SettingRow>
     </section>
+
+    @* Accent + font, moved off Home: they configure the app, not the dashboard. Both are
+       self-contained shared components, so this page only places them. *@
+    <AccentColorCard />
+    <FontSettingsCard />
 
     @* ── App behaviour ───────────────────────────────────────────────────── *@
     <section class="content-card">
