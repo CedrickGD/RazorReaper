@@ -72,10 +72,12 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* A whole step wider than the usual gap: the dot is only 12px and sat too close to the
+   label it belongs to, which read as one crowded lump rather than status + name. */
 .status-header-state {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-4);
     min-width: 0;
 }
 

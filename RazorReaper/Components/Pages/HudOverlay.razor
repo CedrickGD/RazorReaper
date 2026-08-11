@@ -83,9 +83,9 @@
                               Options="MonitorOptions" />
                 </SettingRow>
 
-                <SettingRow Title="Corner" Description="Anchor the panel to a screen corner.">
+                <SettingRow Title="Placement" Description="Where the panel sits on the screen.">
                     <div class="hud-corner-seg">
-                        @foreach (var c in Corners)
+                        @foreach (var c in Placements)
                         {
                             <button class="hud-seg-btn @(_settings.Anchor == c.Anchor ? "active" : "")"
                                     @onclick="() => SetAnchor(c.Anchor)">@c.Label</button>
@@ -97,15 +97,43 @@
                     </div>
                 </SettingRow>
 
-                <SettingRow Title="Alert corner" Description="Where notifier alerts stack up.">
+                @* Alerts get the same nine placements as the panel plus their own free position:
+                   pinned to a corner they only ever grew inwards, so a centred alert ran off the
+                   screen and you saw half of it. *@
+                <SettingRow Title="Alert placement" Description="Where notifier alerts stack up. They grow away from the edge they sit on.">
                     <div class="hud-corner-seg">
-                        @foreach (var c in Corners)
+                        @foreach (var c in Placements)
                         {
                             <button class="hud-seg-btn @(_settings.AlertCorner == c.Anchor ? "active" : "")"
                                     @onclick="() => SetAlertCorner(c.Anchor)">@c.Label</button>
                         }
+                        <button class="hud-seg-btn custom @(_settings.AlertCorner == HudAnchor.Custom ? "active" : "")"
+                                @onclick="() => SetAlertCorner(HudAnchor.Custom)">Free</button>
                     </div>
                 </SettingRow>
+
+                @if (_settings.AlertCorner == HudAnchor.Custom)
+                {
+                    <SettingRow Title="Alert position" Description="Top-left of the alert stack, in pixels on the chosen monitor.">
+                        <input type="number" class="hud-num" min="0" max="10000" step="1"
+                               @bind="_settings.AlertX" @bind:after="Apply" />
+                        <span class="hud-unit">x</span>
+                        <input type="number" class="hud-num" min="0" max="10000" step="1"
+                               @bind="_settings.AlertY" @bind:after="Apply" />
+                        <span class="hud-unit">y</span>
+                    </SettingRow>
+                }
+                else
+                {
+                    <SettingRow Title="Alert margin" Description="Distance from the edge the alerts are anchored to.">
+                        <input type="number" class="hud-num" min="0" max="2000" step="1"
+                               @bind="_settings.AlertOffsetX" @bind:after="Apply" />
+                        <span class="hud-unit">x</span>
+                        <input type="number" class="hud-num" min="0" max="2000" step="1"
+                               @bind="_settings.AlertOffsetY" @bind:after="Apply" />
+                        <span class="hud-unit">y</span>
+                    </SettingRow>
+                }
 
                 <SettingRow Title="Offset X" Description="Horizontal margin from the corner." Disabled="@IsCustom">
                     <input type="number" class="hud-num" min="0" max="2000" step="1"
@@ -154,11 +182,18 @@
     private HudSettings _settings = new();
     private IReadOnlyList<MonitorInfo> _monitors = Array.Empty<MonitorInfo>();
 
-    private static readonly (HudAnchor Anchor, string Label)[] Corners =
+    // Reading order, three per row: the segmented control wraps, so this lays out as the
+    // nine positions of the screen rather than as a list of names.
+    private static readonly (HudAnchor Anchor, string Label)[] Placements =
     {
         (HudAnchor.TopLeft, "Top left"),
+        (HudAnchor.TopCenter, "Top"),
         (HudAnchor.TopRight, "Top right"),
+        (HudAnchor.MiddleLeft, "Left"),
+        (HudAnchor.Center, "Center"),
+        (HudAnchor.MiddleRight, "Right"),
         (HudAnchor.BottomLeft, "Bottom left"),
+        (HudAnchor.BottomCenter, "Bottom"),
         (HudAnchor.BottomRight, "Bottom right"),
     };
 

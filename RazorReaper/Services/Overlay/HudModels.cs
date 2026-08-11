@@ -21,7 +21,48 @@ public enum HudAnchor
     BottomLeft,
     BottomRight,
     /// <summary>Free position (monitor-relative CustomX/CustomY, set by dragging in move mode).</summary>
-    Custom
+    Custom,
+    // Appended after Custom on purpose: the settings JSON stores these as numbers, so the four
+    // corners and Custom must keep the values they already have on disk.
+    TopCenter,
+    BottomCenter,
+    MiddleLeft,
+    MiddleRight,
+    Center
+}
+
+/// <summary>Which way a stack grows away from its anchor.</summary>
+public enum HudGrowth
+{
+    Left,
+    Right,
+    Both
+}
+
+/// <summary>Placement helpers shared by the panel and the alert stack.</summary>
+public static class HudAnchorInfo
+{
+    public static bool IsTop(this HudAnchor a) =>
+        a is HudAnchor.TopLeft or HudAnchor.TopRight or HudAnchor.TopCenter;
+
+    public static bool IsBottom(this HudAnchor a) =>
+        a is HudAnchor.BottomLeft or HudAnchor.BottomRight or HudAnchor.BottomCenter;
+
+    public static bool IsLeft(this HudAnchor a) =>
+        a is HudAnchor.TopLeft or HudAnchor.BottomLeft or HudAnchor.MiddleLeft;
+
+    public static bool IsRight(this HudAnchor a) =>
+        a is HudAnchor.TopRight or HudAnchor.BottomRight or HudAnchor.MiddleRight;
+
+    /// <summary>
+    /// Which side a stack of boxes should extend towards. Anchored left it grows right, anchored
+    /// right it grows left, and centred it grows from the middle outwards in both directions —
+    /// otherwise a centred alert runs off the edge it was pushed against.
+    /// </summary>
+    public static HudGrowth GrowthOf(this HudAnchor a) =>
+        a.IsLeft() ? HudGrowth.Right :
+        a.IsRight() ? HudGrowth.Left :
+        HudGrowth.Both;
 }
 
 /// <summary>Severity of a notifier alert — drives the status color of its left edge.</summary>
@@ -56,7 +97,11 @@ public sealed record HudSnapshot(
     IReadOnlyList<HudModule> Modules,
     bool Compact,
     HudAnchor AlertCorner,
-    int? DesyncSeconds);
+    int? DesyncSeconds,
+    int AlertX = 0,
+    int AlertY = 0,
+    int AlertOffsetX = 16,
+    int AlertOffsetY = 16);
 
 /// <summary>
 /// Persisted HUD configuration (JSON at %LOCALAPPDATA%\RazorReaper\hud-overlay.json).
@@ -86,8 +131,16 @@ public sealed class HudSettings
     /// <summary>Collapse all modules into one condensed line.</summary>
     public bool Compact { get; set; }
 
-    /// <summary>Corner where notifier alerts stack (Custom falls back to BottomRight).</summary>
+    /// <summary>Where notifier alerts stack. Custom uses AlertX/AlertY.</summary>
     public HudAnchor AlertCorner { get; set; } = HudAnchor.BottomRight;
+
+    /// <summary>Monitor-relative top-left of the alert stack when AlertCorner is Custom.</summary>
+    public int AlertX { get; set; }
+    public int AlertY { get; set; }
+
+    /// <summary>Margin from the anchored edge for the alert stack, in pixels.</summary>
+    public int AlertOffsetX { get; set; } = 16;
+    public int AlertOffsetY { get; set; } = 16;
 
     /// <summary>Target monitor device name (e.g. \\.\DISPLAY1); empty = primary.</summary>
     public string MonitorDeviceName { get; set; } = "";
@@ -118,7 +171,8 @@ public sealed class HudSettings
         AccentR = Math.Clamp(AccentR, 0, 255);
         AccentG = Math.Clamp(AccentG, 0, 255);
         AccentB = Math.Clamp(AccentB, 0, 255);
-        if (AlertCorner == HudAnchor.Custom) AlertCorner = HudAnchor.BottomRight;
+        AlertOffsetX = Math.Clamp(AlertOffsetX, 0, 4000);
+        AlertOffsetY = Math.Clamp(AlertOffsetY, 0, 4000);
 
         var seen = new HashSet<HudModuleKind>();
         var cleaned = new List<HudModule>();
@@ -146,6 +200,10 @@ public sealed class HudSettings
         Scale = Scale,
         Compact = Compact,
         AlertCorner = AlertCorner,
+        AlertX = AlertX,
+        AlertY = AlertY,
+        AlertOffsetX = AlertOffsetX,
+        AlertOffsetY = AlertOffsetY,
         MonitorDeviceName = MonitorDeviceName,
         AccentR = AccentR,
         AccentG = AccentG,

@@ -80,13 +80,16 @@ h3.hud-card-title {
 
 /* ── Corner / segmented selectors ───────────────────────────────────────── */
 
+/* Three columns, because the options ARE the nine positions of the screen: laid out
+   3×3 in reading order the control is its own diagram. A tenth entry (Custom/Free)
+   wraps onto its own row underneath. Two columns turned that map into a list. */
 .hud-corner-seg {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 2px;
     padding: 2px;
-    width: 220px;
-    max-width: 220px;
+    width: 280px;
+    max-width: 280px;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-control);
