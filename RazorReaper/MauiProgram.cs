@@ -307,6 +307,7 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.IInputRecorderService, RazorReaper.Services.Automation.InputRecorderService>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenSampler, RazorReaper.Services.Automation.ScreenSampler>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenOcr, RazorReaper.Services.Automation.ScreenOcr>();
+            services.AddSingleton<RazorReaper.Services.Automation.DurabilityReader>();
             services.AddSingleton<RazorReaper.Services.Automation.IForegroundGate, RazorReaper.Services.Automation.ForegroundGate>();
             services.AddSingleton<RazorReaper.Services.Automation.IFastTransferMacro, RazorReaper.Services.Automation.FastTransferMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IFedSuitMacro, RazorReaper.Services.Automation.FedSuitMacro>();
