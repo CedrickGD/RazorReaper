@@ -41,6 +41,9 @@ public abstract class AutomationScriptBase : IDisposable
     private string? _registeredHotkeyText;
     private bool _disposed;
 
+    /// <summary>Last logged gate state, so the scan loop only reports transitions.</summary>
+    private bool? _lastGateOpen;
+
     protected AutomationScriptBase(
         string scriptKey,
         string displayName,
@@ -178,11 +181,24 @@ public abstract class AutomationScriptBase : IDisposable
     protected async Task RunLoopAsync(int intervalMs, Func<CancellationToken, Task> tickAsync, bool foregroundOnly, CancellationToken ct)
     {
         intervalMs = Math.Clamp(intervalMs, 10, 60000);
+        _lastGateOpen = null;   // report the state once per run, whatever it is
         while (!ct.IsCancellationRequested)
         {
             try
             {
-                if (!foregroundOnly || Foreground.IsGameForeground())
+                var gateOpen = !foregroundOnly || Foreground.IsGameForeground();
+
+                // Only on a change. "Is the gate open?" is the first question whenever a script
+                // runs but does nothing (it was shut for everyone once, see ForegroundGate), so
+                // the answer has to be in the log — but per tick it would be ~100 lines a second
+                // at the Auto Clicker's 10ms floor.
+                if (gateOpen != _lastGateOpen)
+                {
+                    _lastGateOpen = gateOpen;
+                    Logger.LogDebug("{Script} loop: gate={Gate}", _displayName, gateOpen);
+                }
+
+                if (gateOpen)
                     await tickAsync(ct);
             }
             catch (OperationCanceledException) { throw; }

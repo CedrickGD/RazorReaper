@@ -43,7 +43,12 @@ public sealed class ForegroundGate : IForegroundGate
             lock (_gate)
             {
                 var now = Environment.TickCount64;
-                if (now - _refreshedAt > 5000)
+
+                // NB: `now - _refreshedAt` with _refreshedAt seeded at long.MinValue overflows
+                // and wraps NEGATIVE, so the very first refresh never ran — the pid set stayed
+                // empty and every gated script silently never ticked. Compare against the
+                // sentinel explicitly instead of doing arithmetic on it.
+                if (_refreshedAt == long.MinValue || now - _refreshedAt > 5000)
                 {
                     _refreshedAt = now;
                     var processes = _process.GetProcessesByName(_config.Value.Ark.GameProcessName);
