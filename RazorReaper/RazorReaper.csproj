@@ -13,6 +13,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<EnableDefaultCssItems>false</EnableDefaultCssItems>
 		<Nullable>enable</Nullable>
+		<!-- Services/Automation/DesktopDuplicator.cs calls the DXGI/D3D11 vtables through
+		     function pointers; that is the whole use of unsafe in this project. -->
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
 		<!-- Display name -->
 		<ApplicationTitle>RazorReaper</ApplicationTitle>
