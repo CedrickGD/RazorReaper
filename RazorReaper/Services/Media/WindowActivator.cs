@@ -26,6 +26,9 @@ public static class WindowActivator
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
     /// <summary>Restores from minimised or hidden, unlike SW_SHOW which leaves both alone.</summary>
     private const int SW_RESTORE = 9;
 #endif
@@ -47,7 +50,10 @@ public static class WindowActivator
             var hwnd = WindowNative.GetWindowHandle(native);
             if (hwnd == IntPtr.Zero) return;
 
-            ShowWindow(hwnd, SW_RESTORE);
+            // Only when it is actually minimised. SW_RESTORE on a maximised window is a
+            // restore in the literal sense — pressing "Choose file" dropped a full-screen
+            // window back to its small size every single time.
+            if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
             SetForegroundWindow(hwnd);
         }
         catch

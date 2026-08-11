@@ -203,13 +203,16 @@
                             <span class="convert-quality-label">Volume</span>
                             <input type="range" min="0" max="200" step="1"
                                    value="@_volumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                                   @oninput="OnVolumeInput" disabled="@(_busy || _stripAudio)" aria-label="Volume" />
+                                   @oninput="OnVolumeInput" disabled="@(_busy || StripActive)" aria-label="Volume" />
                             <span class="convert-quality-value">@_volumePercent%</span>
                         </div>
 
                         @* Separate from volume 0: that keeps a silent track and still spends
                            bitrate on it, this drops the stream. *@
-                        <CheckBox @bind-Value="_stripAudio" Disabled="@_busy">No audio at all</CheckBox>
+                        @if (CanStripAudio)
+                        {
+                            <CheckBox @bind-Value="_stripAudio" Disabled="@_busy">No audio at all</CheckBox>
+                        }
                     }
                 </div>
 
@@ -362,10 +365,28 @@
     /// <summary>Only time-based media can be trimmed, and only once ffmpeg reported a duration.</summary>
     private bool TrimAvailable => _sourceSeconds > 0.5 && _info?.Kind is MediaKind.Video or MediaKind.Audio;
 
+    /// <summary>A gif has no audio stream — the encoder ignores both controls outright.</summary>
+    private bool TargetKeepsAudio => _target != "gif";
+
     /// <summary>An image has no track, and neither has a source ffmpeg found no audio stream in.</summary>
     private bool HasAudioControls =>
         MediaFormats.KindOf(_source ?? "") is MediaKind.Video or MediaKind.Audio
-        && (_info is null || _info.AudioCodec is not null);
+        && (_info is null || _info.AudioCodec is not null)
+        && TargetKeepsAudio;
+
+    /// <summary>
+    /// Dropping the track only means something when something else is left over. An mp3 with
+    /// no audio is an empty file, and so is an mp4 turned into one — the checkbox used to be
+    /// offered there and silently did nothing except throw the volume setting away with it.
+    /// </summary>
+    private bool CanStripAudio =>
+        HasAudioControls
+        && MediaFormats.KindOf(_source ?? "") is MediaKind.Video
+        && !MediaFormats.Audio.Contains(_target ?? "");
+
+    /// <summary>The tick only counts where the box is actually offered — switching to an
+    /// audio target hides it, and a stale true must not silently mute the volume slider.</summary>
+    private bool StripActive => CanStripAudio && _stripAudio;
 
     private bool TrimActive => _trimStart > 0.01 || _trimEnd < _sourceSeconds - 0.01;
 
@@ -754,10 +775,10 @@
             var options = new ConversionOptions
             {
                 Quality = _quality,
-                StripAudio = HasAudioControls && _stripAudio,
+                StripAudio = StripActive,
                 // Null at 100%, so an untouched slider adds no filter and the track is copied
                 // through rather than re-encoded.
-                Volume = HasAudioControls && !_stripAudio && _volumePercent != 100
+                Volume = HasAudioControls && !StripActive && _volumePercent != 100
                     ? _volumePercent / 100.0
                     : null,
                 // Only sent when the range was actually moved, so an untouched slider never

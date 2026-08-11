@@ -92,15 +92,20 @@ public static class FfmpegArgBuilder
         {
             BuildGif(args, options);
         }
+        else if (MediaFormats.Audio.Contains(format))
+        {
+            // Decided by the target, not the source: pulling the track out of a video lands
+            // here too. The video branch's switch only knows containers, so a video reaching
+            // an audio format used to fall straight through it — no -vn, no codec, no
+            // bitrate, and the quality slider silently did nothing.
+            BuildAudio(args, format, options);
+        }
         else
         {
             switch (kind)
             {
                 case MediaKind.Video:
                     BuildVideo(args, format, options, sourceDurationSeconds);
-                    break;
-                case MediaKind.Audio:
-                    BuildAudio(args, format, options);
                     break;
                 case MediaKind.Image:
                     // The ICO muxer hard-refuses anything over 256x256, so an ordinary photo
@@ -145,6 +150,10 @@ public static class FfmpegArgBuilder
         // Size mode budgets a fixed audio bitrate, so state it or the size maths breaks.
         var audioExtra = sizeMode ? new[] { "-b:a", $"{TargetSizeAudioKbit}k" } : Array.Empty<string>();
 
+        // Load-bearing below: a filtered track can never be stream-copied, so mkv has to
+        // know that its usual -c:a copy is off the table.
+        var audioFiltered = false;
+
         if (o.StripAudio)
         {
             args.Add("-an");
@@ -153,6 +162,7 @@ public static class FfmpegArgBuilder
         {
             args.Add("-af");
             args.Add(chain);
+            audioFiltered = true;
         }
 
         var filters = BuildEditFilters(o);
@@ -194,8 +204,10 @@ public static class FfmpegArgBuilder
                 X264Rate();
                 args.Add("-preset"); args.Add(preset);
                 // Stream-copied audio has a size the budget cannot control, so size mode
-                // re-encodes it instead of copying.
-                if (sizeMode) { args.Add("-c:a"); args.Add("aac"); args.AddRange(audioExtra); }
+                // re-encodes it instead of copying — and so does a volume or speed change,
+                // which ffmpeg refuses outright next to a copy ("Filtering and streamcopy
+                // cannot be used together", exit -22, no output file).
+                if (sizeMode || audioFiltered) { args.Add("-c:a"); args.Add("aac"); args.AddRange(audioExtra); }
                 else { args.Add("-c:a"); args.Add("copy"); }
                 break;
 
