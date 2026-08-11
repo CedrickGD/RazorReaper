@@ -1,0 +1,123 @@
+/* ── Feedback page ───────────────────────────────────────────────────────────
+   Moved verbatim out of an inline <style> block in Feedback.razor — the only page
+   that styled itself inline. Same rules, standard location: every page owns a sheet
+   under css/pages/, and an inline block silently outranks anything linked in the
+   head, which is exactly how this page ended up with two competing style sources. */
+
+/* Was a 640px card in a 1126px column — a bit over half the page, with the rest
+   dead space. Two columns fill it, and the form still keeps a comfortable measure. */
+.feedback-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(220px, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+@media (max-width: 940px) {
+    .feedback-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.feedback-card,
+.feedback-side {
+    margin-bottom: 0 !important;
+}
+
+.feedback-field {
+    margin-bottom: 14px;
+}
+
+.feedback-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.feedback-textarea,
+.feedback-input {
+    width: 100%;
+    background: var(--background-dark);
+    border: 1px solid var(--border-hover);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.feedback-textarea {
+    resize: vertical;
+    /* Grows into the space the page now has instead of leaving it blank below. */
+    min-height: min(320px, calc(100vh - 420px));
+    line-height: 1.55;
+}
+
+.feedback-textarea:focus,
+.feedback-input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.2);
+}
+
+.feedback-counter {
+    margin-top: 6px;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.feedback-side-title {
+    margin: 0 0 0.7rem !important;
+    font-size: 0.95rem !important;
+}
+
+.feedback-side-list {
+    list-style: none;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+}
+
+.feedback-side-list li {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-control);
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feedback-note {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 0.7rem;
+}
+
+.feedback-note:last-child {
+    margin-bottom: 0;
+}
+
+.feedback-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.feedback-spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--text-primary);
+    animation: feedback-spin 1s ease-in-out infinite;
+}
+
+@keyframes feedback-spin {
+    to { transform: rotate(360deg); }
+}
