@@ -15,7 +15,6 @@
     .contact-info-card,
     .ocbps-card,
     .ocbps-intro,
-    .game-panel,
     .server-connection-panel,
     .troubleshooting-item
 ) {
@@ -33,7 +32,6 @@
     .contact-info-card,
     .ocbps-card,
     .ocbps-intro,
-    .game-panel,
     .server-connection-panel,
     .troubleshooting-item
 ):hover {

@@ -39,7 +39,6 @@
 .cave-copy-btn,
 .aa-step-btn,
 .gm-capture-btn,
-.game-action-btn,
 .cr-discord-join {
     display: inline-flex !important;
     align-items: center !important;
@@ -83,7 +82,6 @@
     .cave-copy-btn:hover:not(:disabled),
     .aa-step-btn:hover:not(:disabled),
     .gm-capture-btn:hover:not(:disabled),
-    .game-action-btn:hover:not(:disabled),
     .cr-discord-join:hover {
         background: rgba(255, 255, 255, 0.05) !important;
         border-color: var(--border-hover) !important;

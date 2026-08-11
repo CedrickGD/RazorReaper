@@ -572,109 +572,16 @@ h3 {
     color: var(--text-secondary);
 }
 
-.game-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem 0;
-}
+/* The unprefixed .game-status / .status-indicator / .status-dot / .status-info / .status-text
+   rules that used to live here went with the Game page rework — it was their only caller.
+   Everything else on this app uses its own prefix (server-status-dot, nav-status-dot,
+   overlay-status-info, injector-status-text, setting-status-dot), so nothing inherits from
+   these; StatusHeader in primitives.css is the shared status element now. */
 
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.status-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    position: relative;
-}
-
-    .status-dot.online {
-        background: var(--accent-purple);
-        box-shadow: 0 0 12px rgba(var(--accent-purple-rgb), 0.6);
-    }
-
-    .status-dot.offline {
-        background: var(--accent-red);
-        box-shadow: 0 0 12px rgba(var(--accent-red-rgb), 0.6);
-    }
-
-    .status-dot::after {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -4px;
-        right: -4px;
-        bottom: -4px;
-        border-radius: 50%;
-        border: 2px solid currentColor;
-        opacity: 0;
-        animation: pulse 2s infinite;
-    }
-
-    .status-dot.online::after {
-        color: var(--accent-purple);
-    }
-
-    .status-dot.offline::after {
-        color: var(--accent-red);
-    }
-
-.status-info h3 {
-    font-size: var(--card-title-size);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 0.25rem 0;
-}
-
-.status-text {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.game-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.75rem;
-}
-
-
-/* This block used to scale the page UP — 2rem title, 48px buttons, 1.5rem card padding,
-   a 1.5rem-tall status block — on top of an already-large base. It read as a blown-up
-   mockup next to every other page. It now only says what genuinely differs here (the
-   two-up card row and the button grid); size comes from the shared scale above. */
-.game-page-container .status-indicator {
-    gap: 0.9rem !important;
-}
-
-.game-page-container .game-status {
-    padding: 0.6rem 0 !important;
-}
-
-.game-page-container .status-info h3 {
-    font-size: var(--card-title-size) !important;
-    margin-bottom: 0.2rem !important;
-}
-
-.game-page-container .status-text {
-    font-size: 0.85rem !important;
-}
-
-.game-page-container .game-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.5rem !important;
-}
-
-@media (max-width: 768px) {
-    .game-page-container .game-actions {
-        grid-template-columns: 1fr !important;
-        gap: 0.5rem !important;
-    }
-}
+/* The .game-page-container overrides that used to sit here are gone: page rules do not
+   belong in the shared sheet, and every one of them was an !important fighting the scale
+   defined a few lines above. The Game page is on the shared primitives now and its own
+   two bits of layout live in pages/game-styles.css. */
 
 /* Global animations */
 @keyframes fadeInUp {
