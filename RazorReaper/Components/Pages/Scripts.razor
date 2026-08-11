@@ -186,14 +186,31 @@
                 }
                 else if (_selected is FlakScript flak)
                 {
-                    <SettingRow Title="Match threshold" Description="Similarity % at which the durability warning counts as visible.">
-                        <input class="script-input" type="number" min="50" max="100" value="@flak.MatchThresholdPercent" @onchange="SetFlakThreshold" />
+                    <SettingRow Title="Swap below" Description="Durability points left on a piece before it is replaced. An absolute number, so it means the same on any server multiplier.">
+                        <input class="script-input" type="number" min="1" max="100000" value="@flak.DurabilityThreshold" @onchange="SetFlakThreshold" />
                     </SettingRow>
-                    <SettingRow Title="Equip key" Description="Hotbar key bound to the replacement armor (default: 0).">
-                        <input class="script-input" value="@flak.EquipKey" @onchange="SetFlakKey" />
+
+                    @* One key per row, because the helmet row has to pull the spare helmet. Rows
+                       are top-to-bottom exactly as ARK draws them next to your character. *@
+                    @for (var i = 0; i < FlakScript.MaxRows; i++)
+                    {
+                        var row = i;
+                        var rowKey = flak.RowKeys[row];
+                        <SettingRow Title="@($"Row {row + 1} hotbar key")"
+                                    Description="@RowKeyHint(row, rowKey)">
+                            <input class="script-input" value="@rowKey" @onchange="@(e => SetFlakRowKey(row, e))" />
+                        </SettingRow>
+                    }
+
+                    <SettingRow Title="Scan interval" Description="Milliseconds between reads.">
+                        <input class="script-input" type="number" min="500" max="10000" value="@flak.ScanIntervalMs" @onchange="SetFlakScan" />
                     </SettingRow>
-                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
-                        <input class="script-input" type="number" min="200" max="5000" value="@flak.ScanIntervalMs" @onchange="SetFlakScan" />
+
+                    @* The whole thing hangs on whether the numbers are read correctly, so the page
+                       shows what it just read. Without this there is no way to tell a bad region
+                       from a bad threshold from OCR that cannot see the digits at all. *@
+                    <SettingRow Title="Last read" Description="@FlakReadingHint(flak)">
+                        <span class="script-reading">@(string.IsNullOrEmpty(flak.LastReading) ? "—" : flak.LastReading)</span>
                     </SettingRow>
                 }
                 else if (_selected is DinoReadyScript dino)
@@ -253,12 +270,23 @@
             {
                 <div class="content-card scripts-calibration">
                     <h3>Calibration</h3>
-                    <SettingRow Title="Button region" Description='@(cal.HasRegion ? cal.RegionSummary : "Not set for this resolution.")'>
+                    <SettingRow Title="@cal.RegionTitle" Description='@(cal.HasRegion ? cal.RegionSummary : "Not set for this resolution.")'>
                         <button class="btn btn-secondary" @onclick="CalibrateRegion" disabled="@_calibrating">Calibrate region</button>
                     </SettingRow>
-                    <SettingRow Title="Reference snapshot" Description='@(cal.HasReference ? "Captured." : "Capture with the target visible on screen.")'>
-                        <button class="btn btn-secondary" @onclick="CaptureReferenceSnapshot" disabled="@(!cal.HasRegion || _calibrating)">Capture reference</button>
-                    </SettingRow>
+                    @* OCR scripts read the region as text; offering them the snapshot/mask
+                       workflow sent people off capturing references that changed nothing. *@
+                    @if (cal.UsesReference)
+                    {
+                        <SettingRow Title="Reference snapshot" Description='@(cal.HasReference ? "Captured." : "Capture with the target visible on screen.")'>
+                            <button class="btn btn-secondary" @onclick="CaptureReferenceSnapshot" disabled="@(!cal.HasRegion || _calibrating)">Capture reference</button>
+                        </SettingRow>
+                        @* Anything drawn over the live game world needs this or it never matches twice:
+                           the world behind it moves and the comparison is over the whole region. *@
+                        <SettingRow Title="Ignore background"
+                                    Description='@(cal.MaskSummary is { Length: > 0 } m ? m : "Turn the camera so the background changes, keep the target on screen, then press.")'>
+                            <button class="btn btn-secondary" @onclick="RefineReferenceMask" disabled="@(!cal.HasReference || _calibrating)">Ignore background</button>
+                        </SettingRow>
+                    }
                     @if (!string.IsNullOrEmpty(_calStatus))
                     {
                         <div class="setting-row-desc" style="margin-top: 0.5rem;">@_calStatus</div>
@@ -298,7 +326,7 @@
         AntiAfkScript => "Opens/closes inventory on an interval to avoid the idle kick.",
         ExoSuitScript => "Exo-Mek farming: opens inventory, filters \"exo\", spams transfer, repeats.",
         TurretManagerScript => "When a turret inventory is open, presses transfer to refill its ammo.",
-        FlakScript => "Watches for a low-durability warning and re-equips replacement armor.",
+        FlakScript => "Reads the durability numbers next to your armor and swaps in a fresh piece from the hotbar — flak, riot or tek, without opening anything.",
         DinoReadyScript => "Single-stat leveler: clicks a calibrated stat + button N times (one-shot).",
         CraftingScript => "Crafts at Fabricator/Chem Bench/Replicator — Watcher or Walk mode, with ping compensation.",
         _ => ""
@@ -478,8 +506,38 @@
     private void SetTurretPresses(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.TransferPresses = v; t.SaveSettings(); } }
     private void SetTurretScan(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.ScanIntervalMs = v; t.SaveSettings(); } }
 
-    private void SetFlakThreshold(ChangeEventArgs e) { if (_selected is FlakScript f && double.TryParse(e.Value?.ToString(), out var v)) { f.MatchThresholdPercent = v; f.SaveSettings(); } }
-    private void SetFlakKey(ChangeEventArgs e) { if (_selected is FlakScript f) { f.EquipKey = e.Value?.ToString() ?? "0"; f.SaveSettings(); } }
+    /// <summary>The line under "Last read": what was seen, and what the script made of it.</summary>
+    private static string FlakReadingHint(FlakScript f)
+    {
+        if (!f.IsRunning) return "Start the script to see what it reads.";
+
+        // Empty LastReading means no scan has happened yet — the loop only ticks while ARK
+        // is the foreground window, which it never is while you sit on this page. Blaming
+        // the calibration here sent people off recalibrating a region that was never read.
+        if (string.IsNullOrEmpty(f.LastReading)) return "Waiting for ARK to be in the foreground…";
+        if (f.Lowest is not { } low) return "No number recognised — check the calibrated region.";
+
+        // Absolute time, not "Ns ago": the counter only re-renders on a tick, and ticks
+        // stop the moment you alt-tab here — a frozen live counter is a lie.
+        var swapped = f.LastSwapUtc is { } t ? $" · last swap {t.ToLocalTime():HH:mm:ss}" : "";
+        return low <= f.DurabilityThreshold
+            ? $"Lowest {low} — at or below {f.DurabilityThreshold}, swapping{swapped}"
+            : $"Lowest {low} — above {f.DurabilityThreshold}, nothing to do{swapped}";
+    }
+
+    private void SetFlakThreshold(ChangeEventArgs e) { if (_selected is FlakScript f && int.TryParse(e.Value?.ToString(), out var v)) { f.DurabilityThreshold = v; f.SaveSettings(); } }
+    private void SetFlakRowKey(int row, ChangeEventArgs e) { if (_selected is FlakScript f && row >= 0 && row < FlakScript.MaxRows) { f.RowKeys[row] = e.Value?.ToString() ?? ""; f.SaveSettings(); } }
+
+    /// <summary>Says outright when a typed key cannot be sent — the script skips those silently.</summary>
+    private static string RowKeyHint(int row, string? key)
+    {
+        if (!string.IsNullOrWhiteSpace(key) && !FlakScript.IsUsableKey(key))
+            return $"'{key}' is not a key that can be sent — use a single character like 8, or a name like F5.";
+
+        return row == 0
+            ? "Hotbar slot holding the spare for the top armor row. Leave a row empty to ignore it."
+            : "Leave empty if you carry no spare for this row.";
+    }
     private void SetFlakScan(ChangeEventArgs e) { if (_selected is FlakScript f && int.TryParse(e.Value?.ToString(), out var v)) { f.ScanIntervalMs = v; f.SaveSettings(); } }
 
     private void SetDinoPresses(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.Presses = v; d.SaveSettings(); } }
@@ -525,6 +583,11 @@
     private void CaptureReferenceSnapshot()
     {
         if (_selected is ICalibratableScript cal) cal.CaptureReference();
+    }
+
+    private void RefineReferenceMask()
+    {
+        if (_selected is ICalibratableScript cal) cal.RefineReferenceMask();
     }
 
     private async void OnScriptChanged() => await InvokeAsync(StateHasChanged);

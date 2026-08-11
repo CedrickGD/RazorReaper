@@ -202,24 +202,15 @@
     color: var(--text-secondary) !important;
 }
 
-/* Settings pair up inside their card: minmax(0,…) and not a bare 1fr, because 1fr is
-   minmax(auto, 1fr) and the rows' min-content would push the columns past the card and
-   clip every control. */
+/* One column, like every other settings card in the app. Paired into two, each row had
+   ~200px for a title, a description and a control: "Similarity % at which…" wrapped two
+   words to a line and the tiles came out ragged heights. Fed Suit's stylesheet already
+   documents the same conclusion — SettingRow controls have fixed widths and don't
+   shrink, so half-width cells crush the text, never the input. */
 .script-settings {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 0.5rem;
-    align-content: start;
-}
-
-    .script-settings > h3 {
-        grid-column: 1 / -1;
-    }
-
-/* The hotkey is a link out, not a setting — and squeezed into half a card the combo and
-   its link wrapped, which dragged the whole grid row taller. */
-.scripts-detail .script-hotkey-row {
-    grid-column: 1 / -1;
 }
 
 /* Slightly tighter than the app-wide row — two of these sit per line — but descriptions
@@ -273,10 +264,6 @@
     .script-panels {
         grid-template-columns: minmax(0, 1fr);
     }
-
-    .script-settings {
-        grid-template-columns: minmax(0, 1fr);
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -296,6 +283,17 @@
 .script-input {
     width: 120px !important;
     text-align: right;
+}
+
+/* Live OCR readout: monospaced so the digits do not jump around as they change every scan,
+   and right-aligned to line up with the inputs above it. */
+.script-reading {
+    display: inline-block;
+    min-width: 120px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-purple-light);
 }
 
 /* .rr-dd is inline-flex and would otherwise size to whichever label is selected, so the
