@@ -282,16 +282,21 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
         }
         _references[key] = capture;
         _referenceMasks.TryRemove(key, out _);
+        Persist(key);
     }
 
     public bool HasReference(string key)
-        => !string.IsNullOrWhiteSpace(key) && _references.ContainsKey(key);
+    {
+        if (string.IsNullOrWhiteSpace(key)) return false;
+        if (_references.ContainsKey(key)) return true;
+        return TryLoad(key);
+    }
 
     public bool RefineReferenceMask(string key, Rectangle region, out int kept, byte tolerance = 12)
     {
         kept = 0;
         if (string.IsNullOrWhiteSpace(key)) return false;
-        if (!_references.TryGetValue(key, out var reference)) return false;
+        if (!TryGetReference(key, out var reference)) return false;
 
         var current = CaptureRegion(region);
         if (current.IsEmpty) return false;
@@ -328,12 +333,13 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
         }
 
         _referenceMasks[key] = mask;
+        Persist(key);
         return true;
     }
 
     public (int Kept, int Total) ReferenceMaskInfo(string key)
     {
-        if (string.IsNullOrWhiteSpace(key) || !_references.TryGetValue(key, out var reference))
+        if (string.IsNullOrWhiteSpace(key) || !TryGetReference(key, out var reference))
             return (0, 0);
 
         var total = reference.Width * reference.Height;
@@ -347,6 +353,114 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
         if (string.IsNullOrWhiteSpace(key)) return;
         _references.TryRemove(key, out _);
         _referenceMasks.TryRemove(key, out _);
+        try { if (File.Exists(PathFor(key))) File.Delete(PathFor(key)); }
+        catch (Exception ex) { _logger.LogDebug(ex, "Could not delete the stored reference for '{Key}'", key); }
+    }
+
+    // ── Persistence ─────────────────────────────────────────────────────────────────────────
+    // A reference used to live only in memory, so every restart silently invalidated the
+    // calibration of every vision script: the page still said "Captured", the script still
+    // started, and it simply never matched. Snapshot and mask go to disk together — a mask
+    // without its snapshot is meaningless, and a snapshot whose mask went missing would
+    // compare the moving background again.
+
+    private static readonly string StoreDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RazorReaper", "automation-references");
+
+    /// <summary>Keys are script-defined ("flak-region"); keep the file name to what they can contain.</summary>
+    private static string PathFor(string key)
+    {
+        var safe = new string(key.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_').ToArray());
+        return Path.Combine(StoreDir, (safe.Length > 0 ? safe : "unnamed") + ".ref");
+    }
+
+    /// <summary>Reference snapshots this session has already looked for on disk, hit or miss.</summary>
+    private readonly ConcurrentDictionary<string, bool> _loadAttempted = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool TryGetReference(string key, out ScreenCapture capture)
+    {
+        if (_references.TryGetValue(key, out capture!)) return true;
+        if (TryLoad(key)) return _references.TryGetValue(key, out capture!);
+        capture = null!;
+        return false;
+    }
+
+    private void Persist(string key)
+    {
+        if (!_references.TryGetValue(key, out var reference)) return;
+
+        try
+        {
+            Directory.CreateDirectory(StoreDir);
+            _referenceMasks.TryGetValue(key, out var mask);
+
+            using var stream = File.Create(PathFor(key));
+            using var writer = new BinaryWriter(stream);
+            writer.Write(1);                    // format version
+            writer.Write(reference.Width);
+            writer.Write(reference.Height);
+            writer.Write(mask is not null);
+            writer.Write(reference.Bgra);
+            if (mask is not null)
+            {
+                // One byte per pixel: a bit-packed mask saves a few hundred KB and costs a
+                // fiddly reader, and these files are written once per calibration.
+                var bytes = new byte[mask.Length];
+                for (var i = 0; i < mask.Length; i++) bytes[i] = mask[i] ? (byte)1 : (byte)0;
+                writer.Write(bytes);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not store the reference for '{Key}'", key);
+        }
+    }
+
+    private bool TryLoad(string key)
+    {
+        // One attempt per key per run: a miss must not re-hit the disk on every scan tick.
+        if (!_loadAttempted.TryAdd(key, true)) return _references.ContainsKey(key);
+
+        try
+        {
+            var path = PathFor(key);
+            if (!File.Exists(path)) return false;
+
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream);
+            if (reader.ReadInt32() != 1) return false;
+
+            var width = reader.ReadInt32();
+            var height = reader.ReadInt32();
+            var hasMask = reader.ReadBoolean();
+            if (width <= 0 || height <= 0 || (long)width * height > 40_000_000) return false;
+
+            var pixels = width * height;
+            var bgra = reader.ReadBytes(pixels * 4);
+            if (bgra.Length != pixels * 4) return false;
+
+            _references[key] = new ScreenCapture(width, height, bgra);
+
+            if (hasMask)
+            {
+                var bytes = reader.ReadBytes(pixels);
+                if (bytes.Length == pixels)
+                {
+                    var mask = new bool[pixels];
+                    for (var i = 0; i < pixels; i++) mask[i] = bytes[i] != 0;
+                    _referenceMasks[key] = mask;
+                }
+            }
+
+            _logger.LogInformation("Restored the stored reference for '{Key}' ({W}x{H})", key, width, height);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read the stored reference for '{Key}'", key);
+            return false;
+        }
     }
 
     public bool MatchesReference(string key, Rectangle region, double tolerance)
@@ -365,7 +479,7 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
     private double? MeanDifference(string key, Rectangle region)
     {
         if (string.IsNullOrWhiteSpace(key)) return null;
-        if (!_references.TryGetValue(key, out var reference)) return null;
+        if (!TryGetReference(key, out var reference)) return null;
 
         var current = CaptureRegion(region);
         if (current.IsEmpty) return null;

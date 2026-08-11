@@ -17,7 +17,6 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     protected readonly ICalibrationService Calibration;
 
     private readonly string _regionKey;
-    private bool _hasReference;
 
     protected CalibratableScriptBase(
         string scriptKey,
@@ -38,7 +37,12 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     }
 
     public bool HasRegion => Calibration.HasRegion(_regionKey);
-    public bool HasReference => _hasReference && Sampler.HasReference(_regionKey);
+    /// <summary>
+    /// Asks the sampler outright rather than tracking a "captured this session" flag: the
+    /// snapshot is stored on disk now, so one taken yesterday is just as valid — and the flag
+    /// would have hidden it, leaving the page saying "not captured" over a perfectly good file.
+    /// </summary>
+    public bool HasReference => Sampler.HasReference(_regionKey);
 
     /// <summary>Snapshot matching is the default; OCR scripts override this to false.</summary>
     public virtual bool UsesReference => true;
@@ -114,7 +118,6 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
             return false;
         }
         Sampler.CaptureReference(_regionKey, region);
-        _hasReference = true;
         Notifications.ShowSuccess("Reference snapshot captured.");
         RaiseChanged();
         return true;
@@ -148,7 +151,6 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
 
     public void ClearReference()
     {
-        _hasReference = false;
         try { Sampler.ClearReference(_regionKey); }
         catch (Exception ex) { Logger.LogWarning(ex, "{Script} reference clear failed", DisplayName); }
         RaiseChanged();

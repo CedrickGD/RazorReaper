@@ -20,7 +20,66 @@ internal static class FlakTest
 {
     public static bool ShouldRun(string[] args) =>
         args.Any(a => string.Equals(a, "--flaktest", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(a, "--captest", StringComparison.OrdinalIgnoreCase));
+                   || string.Equals(a, "--captest", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(a, "--reftest", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// --reftest x,y,w,h out.txt — captures a reference with one sampler, throws it away, and
+    /// asks a fresh one whether it still knows the snapshot. That is the whole point of storing
+    /// references on disk, and the only way to check it without restarting the app by hand.
+    /// </summary>
+    private static int RunReferenceTest(string[] args, int index)
+    {
+        var outPath = index + 2 < args.Length ? args[index + 2] : "reftest.txt";
+        var report = new List<string>();
+        try
+        {
+            var parts = (index + 1 < args.Length ? args[index + 1] : "").Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length != 4 || !int.TryParse(parts[0], out var x) || !int.TryParse(parts[1], out var y)
+                || !int.TryParse(parts[2], out var w) || !int.TryParse(parts[3], out var h))
+            {
+                File.WriteAllText(outPath, "usage: --reftest x,y,w,h out.txt");
+                return 2;
+            }
+
+            const string key = "reftest-region";
+            var region = new System.Drawing.Rectangle(x, y, w, h);
+            using var factory = LoggerFactory.Create(b => b
+                .SetMinimumLevel(LogLevel.Debug)
+                .AddProvider(new ListLoggerProvider(report)));
+
+            // First sampler: capture and mask, then drop it entirely.
+            var first = new ScreenSampler(factory.CreateLogger<ScreenSampler>());
+            first.CaptureReference(key, region);
+            var capturedFresh = first.HasReference(key);
+            var refined = first.RefineReferenceMask(key, region, out var kept);
+            first.Dispose();
+
+            // Second sampler: knows nothing except what is on disk.
+            var second = new ScreenSampler(factory.CreateLogger<ScreenSampler>());
+            var survived = second.HasReference(key);
+            var maskInfo = second.ReferenceMaskInfo(key);
+            var matches = second.MatchesReference(key, region, 25.5);
+            second.ClearReference(key);
+            var cleared = !new ScreenSampler(factory.CreateLogger<ScreenSampler>()).HasReference(key);
+            second.Dispose();
+
+            report.Add($"captured={capturedFresh} refined={refined} keptPx={kept}");
+            report.Add($"after restart: known={survived} mask={maskInfo.Kept}/{maskInfo.Total} matches={matches}");
+            report.Add($"cleared from disk={cleared}");
+
+            var ok = capturedFresh && survived && matches && cleared;
+            report.Add(ok ? "PASS" : "FAIL");
+            File.WriteAllLines(outPath, report);
+            return ok ? 0 : 1;
+        }
+        catch (Exception ex)
+        {
+            report.Add(ex.ToString());
+            try { File.WriteAllLines(outPath, report); } catch { /* headless */ }
+            return 2;
+        }
+    }
 
     /// <summary>
     /// --captest x,y,w,h out.png — grabs a live screen region through the shipping
@@ -80,6 +139,9 @@ internal static class FlakTest
         // <region.png>.flaktest.txt next to the input.
         var capIndex = Array.FindIndex(args, a => string.Equals(a, "--captest", StringComparison.OrdinalIgnoreCase));
         if (capIndex >= 0) return RunCaptureTest(args, capIndex);
+
+        var refIndex = Array.FindIndex(args, a => string.Equals(a, "--reftest", StringComparison.OrdinalIgnoreCase));
+        if (refIndex >= 0) return RunReferenceTest(args, refIndex);
 
         var report = new List<string>();
         string? reportPath = null;
