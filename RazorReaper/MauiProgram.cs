@@ -367,6 +367,7 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Navigation.IPaletteCommandProvider, RazorReaper.Navigation.PaletteCommandProvider>();
             services.AddSingleton<IHwidService, HwidService>();
             services.AddSingleton<ILicenseService, LicenseService>();
+            services.AddSingleton<IUsageGateService, UsageGateService>();
             services.AddSingleton<IAccessGateService, AccessGateService>();
         }
     }

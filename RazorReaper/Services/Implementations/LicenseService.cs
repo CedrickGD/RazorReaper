@@ -12,18 +12,23 @@ public class LicenseService : ILicenseService
     private readonly IHwidService _hwidService;
     private const string ApiBaseUrl = "https://rr-admin-panel.pages.dev"; // Change to your actual worker URL
     private const string LicenseKeyPref = "RR_LicenseKey";
+    private const string ExpiresAtPref = "RR_LicenseExpiresAt";
+    private const string LicenseTypePref = "RR_LicenseType";
     // How often we re-check the server while activated. Kept short so a revoke/delete in the
     // admin panel cuts the user off within seconds instead of surviving until the next launch.
     private static readonly TimeSpan ValidationInterval = TimeSpan.FromSeconds(30);
     private Timer? _validationTimer;
 
     public bool IsActivated { get; private set; }
-    public bool IsPremium => IsActivated; // For now, if they are activated, they are premium.
-    public bool IsFreeTier => !IsActivated;
+    // Premium = activated and not past the license end. The expiry check runs locally on every
+    // read so a timed license cuts off at expires_at even when the machine is offline — the
+    // offline grace below restores the last validated state, never more than that.
+    public bool IsPremium => IsActivated && !IsExpired(ExpiresAt);
+    public bool IsFreeTier => !IsPremium;
     public string CurrentLicenseKey => Preferences.Get(LicenseKeyPref, string.Empty);
     public string? ExpiresAt { get; private set; }
     public string? LicenseType { get; private set; }
-    
+
     public event Action? OnLicenseStateChanged;
     public event Action? OnLicenseActivated;
 
@@ -31,9 +36,48 @@ public class LicenseService : ILicenseService
     {
         _httpClient = httpClient;
         _hwidService = hwidService;
-        
-        // Start background validation timer (disabled initially)
+
         _validationTimer = new Timer(async _ => await BackgroundValidateAsync(), null, Timeout.Infinite, Timeout.Infinite);
+
+        // Offline grace: restore the last server-validated state so a valid license works
+        // without a network round-trip at startup. The 30s poll still re-validates as soon as
+        // the server is reachable, and a server-side revoke/delete downgrades immediately.
+        var cachedKey = CurrentLicenseKey;
+        if (!string.IsNullOrWhiteSpace(cachedKey))
+        {
+            var cachedExpiry = Preferences.Get(ExpiresAtPref, string.Empty);
+            var expiresAt = string.IsNullOrWhiteSpace(cachedExpiry) ? null : cachedExpiry;
+            if (!IsExpired(expiresAt))
+            {
+                IsActivated = true;
+                ExpiresAt = expiresAt;
+                LicenseType = Preferences.Get(LicenseTypePref, string.Empty) is { Length: > 0 } t ? t : null;
+            }
+            _validationTimer?.Change(TimeSpan.FromSeconds(2), ValidationInterval);
+        }
+    }
+
+    private static bool IsExpired(string? expiresAt)
+    {
+        if (string.IsNullOrWhiteSpace(expiresAt)) return false; // lifetime
+        return DateTimeOffset.TryParse(expiresAt, out var end) && end <= DateTimeOffset.UtcNow;
+    }
+
+    private void PersistValidatedState()
+    {
+        Preferences.Set(ExpiresAtPref, ExpiresAt ?? string.Empty);
+        Preferences.Set(LicenseTypePref, LicenseType ?? string.Empty);
+    }
+
+    private void ClearCachedState()
+    {
+        // The key itself must go too: with only expiry/type removed, the next launch would
+        // read the surviving key, see no expiry, and resurrect the license as an unlimited
+        // lifetime via the offline-grace path — after the server explicitly rejected it.
+        // Only the explicit-rejection path calls this, never a transient network failure.
+        Preferences.Remove(LicenseKeyPref);
+        Preferences.Remove(ExpiresAtPref);
+        Preferences.Remove(LicenseTypePref);
     }
 
     private async Task BackgroundValidateAsync()
@@ -59,6 +103,7 @@ public class LicenseService : ILicenseService
                 IsActivated = true;
                 ExpiresAt = result.ExpiresAt;
                 LicenseType = result.Type;
+                PersistValidatedState();
                 OnLicenseStateChanged?.Invoke();
                 // Raised after the state change so the UI has already re-rendered into its
                 // premium form by the time the celebration overlay covers it.
@@ -98,12 +143,18 @@ public class LicenseService : ILicenseService
                 IsActivated = true;
                 ExpiresAt = result.ExpiresAt;
                 LicenseType = result.Type;
+                PersistValidatedState();
                 OnLicenseStateChanged?.Invoke();
                 _validationTimer?.Change(ValidationInterval, ValidationInterval);
                 return (true, "License is valid.");
             }
-            
+
+            // The server explicitly rejected the key (revoked, expired, deleted) — drop the
+            // offline-grace cache too, otherwise the next restart would resurrect premium.
             IsActivated = false;
+            ExpiresAt = null;
+            LicenseType = null;
+            ClearCachedState();
             _validationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             OnLicenseStateChanged?.Invoke();
             return (false, result?.Error ?? "Invalid license.");
