@@ -19,7 +19,14 @@ public interface ISessionHudService : IDisposable
 public sealed class SessionHudService : ISessionHudService
 {
     private const int PollIntervalMs = 5_000;
-    private static readonly TimeSpan QueryInterval = TimeSpan.FromSeconds(15);
+
+    // One poll = one query. The count on the HUD is the one number that should be live —
+    // at the old 15s throttle it lagged noticeably behind joins/leaves, and an A2S round
+    // is two UDP packets, so there is nothing worth saving.
+    private static readonly TimeSpan QueryInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>After this many straight failures the HUD shows nothing rather than old numbers.</summary>
+    private const int MaxFailedQueries = 3;
 
     // A history entry slightly older than the game process still counts as this session's
     // join (Steam stamps it when the game connects; clocks and process starts aren't exact).
@@ -50,6 +57,7 @@ public sealed class SessionHudService : ISessionHudService
     private int _currentPort;
     private string? _lastGoodName;
     private DateTime _lastQueryUtc = DateTime.MinValue;
+    private int _failedQueries;
 
     public SessionHudService(
         ILogger<SessionHudService> logger,
@@ -158,6 +166,7 @@ public sealed class SessionHudService : ISessionHudService
                     _currentPort = entry.QueryPort;
                     _lastGoodName = null;
                     _lastQueryUtc = DateTime.MinValue;
+                    _failedQueries = 0;
                     newServer = true;
                 }
                 if (!newServer && DateTime.UtcNow - _lastQueryUtc < QueryInterval) return;
@@ -183,10 +192,27 @@ public sealed class SessionHudService : ISessionHudService
                     if (generation != _generation) return;
                     name = string.IsNullOrWhiteSpace(info.Name) ? entry.Address : info.Name;
                     _lastGoodName = name;
+                    _failedQueries = 0;
                 }
                 _hud.SetServerInfo(name, info.Players, info.MaxPlayers, info.PingMs);
             }
-            // On a failed/timed-out query keep the last good values on screen.
+            else
+            {
+                // One or two misses are UDP being UDP — keep the last good values. From the
+                // third on the numbers are stale enough to mislead ("player count from an hour
+                // ago"), so the count and ping come off; the name stays as context.
+                bool goStale;
+                lock (_gate)
+                {
+                    if (generation != _generation) return;
+                    goStale = ++_failedQueries == MaxFailedQueries;
+                }
+                if (goStale)
+                {
+                    _logger.LogDebug("Session HUD: {Count} failed queries — clearing stale server numbers", MaxFailedQueries);
+                    _hud.SetServerInfo(_lastGoodName ?? entry.Address, null, null, null);
+                }
+            }
         }
         catch (OperationCanceledException)
         {

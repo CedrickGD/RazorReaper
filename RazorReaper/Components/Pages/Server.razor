@@ -495,7 +495,9 @@
                 if (!_isDisposed)
                     StateHasChanged();
             });
-        }, null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        // 20s, down from 60: the player count is the number this page exists for, and a
+        // minute-old value on a wipe-day server is off by a lobby's worth of people.
+        }, null, TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20));
     }
 
     public void Dispose()
