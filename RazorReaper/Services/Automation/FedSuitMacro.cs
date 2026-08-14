@@ -87,6 +87,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private readonly ICalibrationService _calibration;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
+    private readonly IUsageGateService _usageGate;
     private readonly ILogger<FedSuitMacro> _logger;
     private readonly IMacroRunner _runner;
     private readonly object _gate = new();
@@ -109,6 +110,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         ICalibrationService calibration,
         INotificationService notifications,
         IActivityService activity,
+        IUsageGateService usageGate,
         ILogger<FedSuitMacro> logger)
     {
         _engine = engine;
@@ -116,6 +118,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         _calibration = calibration;
         _notifications = notifications;
         _activity = activity;
+        _usageGate = usageGate;
         _logger = logger;
 
         _settings = LoadSettings();
@@ -202,8 +205,28 @@ public sealed class FedSuitMacro : IFedSuitMacro
         catch { /* notifications are best-effort */ }
 
         _ = Task.Run(() => RunToCompletionAsync(sequence));
+        // Start() must stay synchronous (the global hotkey calls it), so the quota check runs
+        // right behind the start and stops the macro again if the month is used up. Stops
+        // themselves never count.
+        _ = Task.Run(EnforceQuotaAsync);
         RaiseChanged();
         return true;
+    }
+
+    private async Task EnforceQuotaAsync()
+    {
+        try
+        {
+            var gate = await _usageGate.TryConsumeAsync(UsageFeatures.FedSuit);
+            if (gate.Allowed) return;
+
+            Stop();
+            _notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} Fed-Suit starts). Resets next month — Premium is unlimited.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Fed-Suit quota check failed — failing open");
+        }
     }
 
     public void Stop()

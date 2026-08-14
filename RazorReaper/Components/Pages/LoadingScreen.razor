@@ -7,6 +7,7 @@
 @inject INotificationService Notifications
 @inject IActivityService Activity
 @inject IProcessService ProcessService
+@inject IUsageGateService UsageGate
 @inject ILogger<LoadingScreen> Logger
 
 <div class="loading-screen-page">
@@ -46,6 +47,7 @@
     {
         <StatusHeader State="@HeaderState" Label="@HeaderLabel" Description="@HeaderDescription">
             <Actions>
+                <UsageChip Feature="@UsageFeatures.LoadingScreen" />
                 <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">Rescan</button>
                 <button type="button"
                         class="btn btn-warning"
@@ -334,6 +336,15 @@
                     Notifications.ShowError("Could not download the video converter — check your connection and try again.");
                     return;
                 }
+            }
+
+            // Counted here, after the converter is confirmed ready but before the progress UI
+            // appears — a denied replace must not flash "Converting…". Restores never count.
+            var gate = await UsageGate.TryConsumeAsync(UsageFeatures.LoadingScreen);
+            if (!gate.Allowed)
+            {
+                Notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} loading-screen replacements). Resets next month — Premium is unlimited.");
+                return;
             }
 
             _progressActive = true;

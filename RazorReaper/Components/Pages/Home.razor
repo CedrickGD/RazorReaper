@@ -737,13 +737,21 @@
 
     private bool LicenseIsPerpetual => string.IsNullOrWhiteSpace(LicenseService.ExpiresAt);
 
-    /// <summary>The store sends plan names lowercase ("lifetime"); the other facts aren't.</summary>
+    /// <summary>The store sends plan names lowercase ("lifetime", "3-months"); the other facts aren't.</summary>
     private string LicensePlanLabel
     {
         get
         {
             var plan = LicenseService.LicenseType;
             if (string.IsNullOrWhiteSpace(plan)) return "Premium";
+            switch (plan.ToLowerInvariant())
+            {
+                case "lifetime": return "Lifetime";
+                case "1-month": return "1 Month";
+                case "3-months": return "3 Months";
+                case "6-months": return "6 Months";
+                case "12-months": return "12 Months";
+            }
             // Plan names arrive as ASCII from the store, so the current culture has no say here —
             // under tr-TR "invite" would come back capitalised as 'İ'.
             return char.ToUpperInvariant(plan[0]) + plan[1..];

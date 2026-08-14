@@ -9,6 +9,7 @@
 @inject IFfmpegProvider Ffmpeg
 @inject ILoadingScreenService LoadingScreens
 @inject INotificationService NotificationService
+@inject IUsageGateService UsageGate
 @inject ILogger<FileConverter> Logger
 @inject IJSRuntime JS
 @implements IDisposable
@@ -865,6 +866,15 @@
     {
         try
         {
+            // Converting is always free; only the replace-into-game step shares the
+            // loading-screen quota, so this page can't sidestep the Loading Screen page.
+            var gate = await UsageGate.TryConsumeAsync(UsageFeatures.LoadingScreen);
+            if (!gate.Allowed)
+            {
+                NotificationService.ShowWarning($"Converted, but the free monthly limit for loading-screen replacements ({gate.Limit}) is reached. Resets next month — Premium is unlimited.");
+                return;
+            }
+
             // ConvertAndReplaceAsync, not ReplaceAsync: it transcodes into whichever
             // container each sibling needs, so an .mp4 source can fill the .wmv slot too.
             // bothFormats replaces the .mp4 and .wmv of the same movie together — leaving one

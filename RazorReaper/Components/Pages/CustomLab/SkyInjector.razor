@@ -8,6 +8,7 @@
 @inject ICustomLabSettingsService LabSettings
 @inject INotificationService Notifications
 @inject IProcessService ProcessService
+@inject IUsageGateService UsageGate
 @inject ILogger<SkyInjector> Logger
 @implements IDisposable
 
@@ -165,6 +166,7 @@
 
     @* ── Actions ─────────────────────────────────────────────────── *@
     <div class="injector-actions">
+        <UsageChip Feature="@UsageFeatures.SkyChanger" />
         <button type="button"
                 class="injector-action-btn primary"
                 @onclick="InjectAsync"
@@ -756,8 +758,20 @@
     {
         if (!CanInject) return;
 
+        // _busy goes up before the gate's HTTP round-trip — CanInject checks it, so a
+        // double-click can't slip in a second consume during the await.
         _busy = true;
         _lastAction = "inject";
+
+        // Restores are never gated — only the inject counts against the free monthly quota.
+        var gate = await UsageGate.TryConsumeAsync(UsageFeatures.SkyChanger);
+        if (!gate.Allowed)
+        {
+            _busy = false;
+            _lastAction = null;
+            Notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} sky injects). Resets next month — Premium is unlimited.");
+            return;
+        }
         AppendLog(_opts.Mode == SkyInjectionMode.Image
             ? $"Swapping sky → {Path.GetFileName(_opts.ImagePath)} (tile {_opts.TileSize}x, flip {_opts.FlipVertically})…"
             : $"Swapping sky → solid color {_opts.HexColor}…", "info");

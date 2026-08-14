@@ -19,6 +19,7 @@
                   Label="@(Macro.IsRunning ? "Running" : "Stopped")"
                   Description="@StatusDescription">
         <Actions>
+            <UsageChip Feature="@UsageFeatures.FedSuit" />
             <button class="btn btn-primary" @onclick="StartMacro" disabled="@Macro.IsRunning">Start</button>
             <button class="btn btn-danger" @onclick="StopMacro" disabled="@(!Macro.IsRunning)">Stop</button>
         </Actions>

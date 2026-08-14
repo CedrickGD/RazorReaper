@@ -36,6 +36,9 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
         _regionKey = $"{scriptKey}-region";
     }
 
+    /// <summary>Vision scripts are unquota'd — the shared input-script quota skips them.</summary>
+    public override bool UsesVision => true;
+
     public bool HasRegion => Calibration.HasRegion(_regionKey);
     /// <summary>
     /// Asks the sampler outright rather than tracking a "captured this session" flag: the

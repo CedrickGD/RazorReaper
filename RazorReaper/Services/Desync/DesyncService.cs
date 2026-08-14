@@ -50,6 +50,7 @@ public sealed class DesyncService : IDesyncService
     private readonly IOptions<AppConfiguration> _config;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
+    private readonly IUsageGateService _usageGate;
     private readonly ILogger<DesyncService> _logger;
 
     private readonly object _gate = new();
@@ -58,6 +59,7 @@ public sealed class DesyncService : IDesyncService
     private DateTime _revertAtUtc;
     private int _totalSeconds;
     private volatile bool _active;
+    private bool _activating;
     private bool _disposed;
 
     public DesyncService(
@@ -67,6 +69,7 @@ public sealed class DesyncService : IDesyncService
         IOptions<AppConfiguration> config,
         INotificationService notifications,
         IActivityService activity,
+        IUsageGateService usageGate,
         ILogger<DesyncService> logger)
     {
         _process = process;
@@ -75,6 +78,7 @@ public sealed class DesyncService : IDesyncService
         _config = config;
         _notifications = notifications;
         _activity = activity;
+        _usageGate = usageGate;
         _logger = logger;
 
         // A rule could survive a crash from a previous run — clear it at startup. Kept as a task so an
@@ -110,6 +114,28 @@ public sealed class DesyncService : IDesyncService
         if (_disposed) return false;
         if (_active) return true;
 
+        // Claimed before the first await: two overlapping calls (double-click) would both
+        // pass the _active check, add the rule twice and consume the quota twice.
+        lock (_gate)
+        {
+            if (_activating) return false;
+            _activating = true;
+        }
+
+        try
+        {
+            return await ActivateCoreAsync(seconds);
+        }
+        finally
+        {
+            lock (_gate) { _activating = false; }
+        }
+    }
+
+    private async Task<bool> ActivateCoreAsync(int seconds)
+    {
+        if (_active) return true;
+
         if (!IsAdministrator)
         {
             _notifications.ShowWarning("Desync needs RazorReaper to run as Administrator — restart it elevated.");
@@ -141,6 +167,17 @@ public sealed class DesyncService : IDesyncService
             _notifications.ShowError(add.Output.Length > 0
                 ? $"Could not create the firewall rule: {add.Output}"
                 : "Could not create the firewall rule (needs Administrator).");
+            return false;
+        }
+
+        // Counted only after the rule actually exists — a failed pre-check or netsh error must
+        // not burn a use. If the month is used up, take the rule right back out; deactivate and
+        // the auto-revert themselves never count.
+        var quota = await _usageGate.TryConsumeAsync(UsageFeatures.Desync);
+        if (!quota.Allowed)
+        {
+            await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
+            _notifications.ShowWarning($"Free monthly limit reached ({quota.Limit} desync activations). Resets next month — Premium is unlimited.");
             return false;
         }
 

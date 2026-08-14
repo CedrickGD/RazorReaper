@@ -4,6 +4,7 @@
 @inject IFontInstaller FontInstaller
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@inject IUsageGateService UsageGate
 @inject ILogger<FontSettingsCard> Logger
 @implements IDisposable
 
@@ -20,6 +21,7 @@
             <p class="font-settings-subtitle">Switch the UI font preset. Fonts auto-install in the background.</p>
         </div>
         <div class="collapsible-actions">
+            <UsageChip Feature="@UsageFeatures.Fonts" />
             <div class="font-current">
                 <span class="font-current-label">Active</span>
                 <span class="font-current-value">@GetFontPresetName(selectedFontPresetId)</span>
@@ -89,6 +91,7 @@
     private const string DefaultMonoStack = "\"Cascadia Code\", \"JetBrainsMono Nerd Font\", \"FiraCode Nerd Font\", Consolas, \"Courier New\", monospace";
 
     private bool isOpen;
+    private bool _isSelectingPreset;
     private string selectedFontPresetId = FontDefaultPresetId;
     private readonly HashSet<string> installingFontPresets = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> fontInstallStatus = new(StringComparer.OrdinalIgnoreCase);
@@ -188,13 +191,39 @@
 
     private async Task SelectFontPresetAsync(FontPreset preset)
     {
-        selectedFontPresetId = preset.Id;
-        await PersistFontSettingsAsync(preset);
+        if (selectedFontPresetId == preset.Id) return; // re-clicking the active preset is a no-op
+        // Set synchronously before the first await: a double-click's second invocation runs
+        // during the consume round-trip, when selectedFontPresetId is still stale — without
+        // this flag it would burn a second quota use (the whole month, at a limit of 2).
+        if (_isSelectingPreset) return;
+        _isSelectingPreset = true;
 
-        ActivityService.AddActivity($"UI font set: {preset.Name}", "info");
-        Logger.LogInformation("UI font preset selected: {PresetId}", preset.Id);
+        try
+        {
+            // The default (System UI) is always free — the way back never counts. Only switching
+            // TO a non-default preset draws from the monthly quota.
+            if (preset.Id != FontDefaultPresetId)
+            {
+                var gate = await UsageGate.TryConsumeAsync(UsageFeatures.Fonts);
+                if (!gate.Allowed)
+                {
+                    NotificationService.ShowWarning($"Free monthly limit reached ({gate.Limit} font switches). The default font is always free — Premium is unlimited.");
+                    return;
+                }
+            }
 
-        _ = EnsureFontPresetInstalledAsync(preset);
+            selectedFontPresetId = preset.Id;
+            await PersistFontSettingsAsync(preset);
+
+            ActivityService.AddActivity($"UI font set: {preset.Name}", "info");
+            Logger.LogInformation("UI font preset selected: {PresetId}", preset.Id);
+
+            _ = EnsureFontPresetInstalledAsync(preset);
+        }
+        finally
+        {
+            _isSelectingPreset = false;
+        }
     }
 
     private async Task PersistFontSettingsAsync(FontPreset preset)

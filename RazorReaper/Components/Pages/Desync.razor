@@ -1,4 +1,5 @@
 @page "/desync"
+@using RazorReaper.Services
 @using RazorReaper.Services.Desync
 @inject IDesyncService DesyncService
 @implements IDisposable
@@ -13,6 +14,7 @@
                   Label="@(DesyncService.IsActive ? "Active" : "Inactive")"
                   Description="Adds a temporary Windows Firewall rule blocking outbound traffic for ShooterGame.exe.">
         <Actions>
+            <UsageChip Feature="@UsageFeatures.Desync" />
             @if (!DesyncService.IsActive)
             {
                 <button class="btn btn-primary" @onclick="StartAsync" disabled="@(!DesyncService.IsAdministrator)">Activate</button>

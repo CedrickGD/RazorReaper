@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 
@@ -73,6 +74,13 @@ public abstract class AutomationScriptBase : IDisposable
     public string DisplayName => _displayName;
     public string ScriptKey => _scriptKey;
 
+    /// <summary>
+    /// True for the screen-reading scripts (they override via <c>CalibratableScriptBase</c>).
+    /// Only the input-only scripts draw from the shared monthly free quota — the vision ones
+    /// are unquota'd (and unadvertised) until they are proven live.
+    /// </summary>
+    public virtual bool UsesVision => false;
+
     /// <summary>Raised whenever state or a script-specific stat changes. May fire on a background thread.</summary>
     public event Action? Changed;
 
@@ -101,8 +109,33 @@ public abstract class AutomationScriptBase : IDisposable
 
         Notifications.ShowSuccess($"{_displayName} started.");
         TryActivity($"{_displayName} started", "success");
+        // Start() must stay synchronous (the global hotkey calls it through Toggle), so the
+        // quota check trails the start and stops the script again if the month is used up.
+        // Vision scripts and stops never count.
+        if (!UsesVision) _ = Task.Run(EnforceInputQuotaAsync);
         RaiseChanged();
         return true;
+    }
+
+    private async Task EnforceInputQuotaAsync()
+    {
+        try
+        {
+            // Resolved late, not via ctor: the base ctor signature is mirrored by 16 scripts,
+            // and the headless test harnesses construct them without a MAUI application at all.
+            var gate = IPlatformApplication.Current?.Services?.GetService<IUsageGateService>();
+            if (gate is null) return;
+
+            var result = await gate.TryConsumeAsync(UsageFeatures.InputScripts);
+            if (result.Allowed) return;
+
+            Stop();
+            Notifications.ShowWarning($"Free monthly limit reached ({result.Limit} input-script starts across all scripts). Resets next month — Premium is unlimited.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "{Script} quota check failed — failing open", _displayName);
+        }
     }
 
     public void Stop() => StopCore(notify: true);
