@@ -102,7 +102,7 @@ namespace RazorReaper
             // repeat it — otherwise the name and version each showed up twice on screen.
             var window = new Window(new MainPage())
             {
-                Title = "Razor Reaper"
+                Title = "Razor Reaper — Ark QOL Tool"
             };
             window.Destroying += HandleWindowDestroying;
 
