@@ -14,7 +14,6 @@ namespace RazorReaper.WinUI
     public partial class App : MauiWinUIApplication
     {
         private static Mutex? _mutex;
-        private readonly bool _isLocalPreview;
         private readonly string _showSignalName;
         private AppWindow? _mainAppWindow;
         private bool _wiredCrosshairTray;
@@ -32,9 +31,7 @@ namespace RazorReaper.WinUI
         public App()
         {
             var arguments = Environment.GetCommandLineArgs();
-            _isLocalPreview = AppRunMode.IsLocalPreviewRequested(arguments);
-            var synchronizationNames = WindowsBootstrapPolicy.GetSynchronizationNames(_isLocalPreview);
-            _showSignalName = synchronizationNames.ShowEventName;
+            _showSignalName = "RazorReaper_ShowWindow_Event";
 
             // An elevated relaunch (Restart as Administrator) starts a second process while the
             // old, non-elevated one is still exiting and still holds the single-instance mutex.
@@ -43,7 +40,7 @@ namespace RazorReaper.WinUI
             var relaunchedElevated = arguments
                 .Contains(RazorReaper.Services.Elevation.IElevationService.RestartMarker, StringComparer.OrdinalIgnoreCase);
 
-            _mutex = new Mutex(true, synchronizationNames.MutexName, out bool isNewInstance);
+            _mutex = new Mutex(true, "RazorReaper_SingleInstance_Mutex", out bool isNewInstance);
 
             if (!isNewInstance)
             {
@@ -57,10 +54,7 @@ namespace RazorReaper.WinUI
                 else
                 {
                     SignalExistingInstanceToShow();
-                    if (!_isLocalPreview)
-                    {
-                        BringExistingInstanceToFront();
-                    }
+                    BringExistingInstanceToFront();
                     Environment.Exit(0);
                     return;
                 }
@@ -100,15 +94,6 @@ namespace RazorReaper.WinUI
 
             // Services were constructed during MAUI startup; resolve from DI.
             var services = IPlatformApplication.Current?.Services;
-            var runMode = services?.GetService<IAppRunMode>();
-            if (!WindowsBootstrapPolicy.ShouldWireIntegrations(_isLocalPreview, runMode))
-            {
-                // Keep the ordinary window, but never create the production tray/crosshair,
-                // Discord IPC, ARK watcher, show-signal thread, or their callbacks in preview.
-                _wiredCrosshairTray = true;
-                return;
-            }
-
             var discordPresence = services?.GetService<IDiscordPresenceService>();
 
             // Intercept the X button — hide the window and keep the process alive so the overlay

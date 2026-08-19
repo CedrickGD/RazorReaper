@@ -14,16 +14,11 @@ namespace RazorReaper
     {
         public static MauiApp CreateMauiApp()
         {
-            var runMode = new AppRunMode(Environment.GetCommandLineArgs());
-
             // If we were relaunched elevated, wait for the prior instance to exit before we touch
             // the WebView2 data folder (only one process may hold a given folder at a time).
-            if (!runMode.IsLocalPreview)
-            {
-                WaitForPriorInstanceIfRelaunched();
-            }
+            WaitForPriorInstanceIfRelaunched();
 
-            ConfigureWebView2UserDataFolder(runMode);
+            ConfigureWebView2UserDataFolder();
 
             var builder = MauiApp.CreateBuilder();
             builder
@@ -34,13 +29,13 @@ namespace RazorReaper
                 });
 
             // Configure Serilog
-            ConfigureLogging(builder, runMode);
+            ConfigureLogging(builder);
 
             // Load configuration from appsettings.json
             ConfigureAppConfiguration(builder);
 
             // Register services
-            ConfigureServices(builder.Services, runMode);
+            ConfigureServices(builder.Services);
 
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
@@ -95,16 +90,16 @@ namespace RazorReaper
             }
         }
 
-        private static void ConfigureWebView2UserDataFolder(IAppRunMode runMode)
+        private static void ConfigureWebView2UserDataFolder()
         {
 #if WINDOWS
-            LocalPreviewWebViewProfilePolicy.Prepare(runMode, () =>
+            try
             {
                 // Elevated and normal instances get separate WebView2 data folders: a folder can
                 // only be held by one process at a time, and during an elevate-relaunch the old
                 // instance's WebView2 processes may still hold the normal folder for a moment,
                 // which would otherwise crash the new elevated instance before it can render.
-                var webViewFolderName = GetWebView2FolderName(runMode, IsProcessElevated());
+                var webViewFolderName = GetWebView2FolderName(IsProcessElevated());
                 var userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "RazorReaper",
@@ -113,24 +108,18 @@ namespace RazorReaper
                 Directory.CreateDirectory(userDataFolder);
                 Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", userDataFolder);
 
-                // Preview never reads or rewrites the normal production WebView profile.
-                if (!runMode.IsLocalPreview)
-                {
-                    ResetWebView2ZoomPreference(userDataFolder);
-                }
-            });
+                // Clear any persisted zoom factor so the UI always starts at 100%.
+                ResetWebView2ZoomPreference(userDataFolder);
+            }
+            catch
+            {
+                // Fall back to WebView2 default behavior if the custom folder cannot be prepared.
+            }
 #endif
         }
 
-        internal static string GetWebView2FolderName(IAppRunMode runMode, bool isElevated)
-        {
-            if (runMode.IsLocalPreview)
-            {
-                return "WebView2-local-preview";
-            }
-
-            return isElevated ? "WebView2-admin" : "WebView2";
-        }
+        internal static string GetWebView2FolderName(bool isElevated)
+            => isElevated ? "WebView2-admin" : "WebView2";
 
 #if WINDOWS
         private static void ResetWebView2ZoomPreference(string userDataFolder)
@@ -192,25 +181,10 @@ namespace RazorReaper
         }
 #endif
 
-        private static void ConfigureLogging(MauiAppBuilder builder, IAppRunMode runMode)
+        private static void ConfigureLogging(MauiAppBuilder builder)
         {
-            var loggingPlan = LocalPreviewLoggingPolicy.CreatePlan(runMode);
             var levelSwitch = new LoggingLevelSwitch();
             LoggingControl.Initialize(levelSwitch);
-
-            if (!loggingPlan.UseProductionDiagnostics || !loggingPlan.UseFileSink)
-            {
-                // Preview must not read AppDiagnostics Preferences and must not open any file sink.
-                LoggingControl.ApplySettings(enabled: true, verbose: false);
-                Log.Logger = new LoggerConfiguration()
-                    .MinimumLevel.ControlledBy(levelSwitch)
-                    .WriteTo.Debug()
-                    .CreateLogger();
-
-                builder.Logging.ClearProviders();
-                builder.Logging.AddSerilog(Log.Logger);
-                return;
-            }
 
             var logFolder = AppDiagnostics.GetLogFolder();
             var logPath = AppDiagnostics.GetLogFilePath();
@@ -282,7 +256,7 @@ namespace RazorReaper
             builder.Services.Configure<AppConfiguration>(config);
         }
 
-        private static void ConfigureServices(IServiceCollection services, IAppRunMode runMode)
+        private static void ConfigureServices(IServiceCollection services)
         {
             // Register application services
             services.AddSingleton<IPreferencesStore, MauiPreferencesStore>();
@@ -345,11 +319,6 @@ namespace RazorReaper
             // Registered after the scripts below are enumerable as AutomationScriptBase.
             services.AddSingleton<RazorReaper.Services.Automation.IHotkeyRegistry, RazorReaper.Services.Automation.HotkeyRegistry>();
 
-            // Constructing a script loads local preferences and registers a global hotkey. The
-            // screenshot-only preview therefore exposes an empty script catalogue; normal runs
-            // retain the exact historical registration order and behavior.
-            if (LocalPreviewMarketingPolicy.ShouldRegisterAutomationScripts(runMode))
-            {
             // ATS3-parity automation scripts (each derives from AutomationScriptBase)
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.YutyScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.AutoWalkScript>();
@@ -386,7 +355,6 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FlakScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.DinoReadyScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.CraftingScript>());
-            }
 
             services.AddSingleton<RazorReaper.Services.Desync.IDesyncService, RazorReaper.Services.Desync.DesyncService>();
             services.AddSingleton<RazorReaper.Services.FileModifier.IFileModifierService, RazorReaper.Services.FileModifier.FileModifierService>();
@@ -400,9 +368,20 @@ namespace RazorReaper
             // Registered after them so every dependency is already known to the container.
             services.AddSingleton<IHwidService, HwidService>();
 
-            // This must remain the final registration boundary: Microsoft DI resolves the last
-            // descriptor for a service, so preview replacements cannot safely be registered first.
-            LocalPreviewComposition.Register(services, runMode);
+            services.AddSingleton<IClientIdentityService, ClientIdentityService>();
+            services.AddSingleton<ITelemetryService, TelemetryService>();
+            services.AddSingleton<IUsageGateService, UsageGateService>();
+            services.AddSingleton<IUpdateService, UpdateService>();
+            services.AddSingleton<IAutoUpdateManager, AutoUpdateManager>();
+            services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
+            services.AddSingleton<ILicenseService, LicenseService>();
+            services.AddSingleton<IAccessGateService, AccessGateService>();
+            services.AddSingleton<IArkLinkService, ArkLinkService>();
+            services.AddSingleton<RazorReaper.Navigation.IPaletteCommandProvider, RazorReaper.Navigation.PaletteCommandProvider>();
+            services.AddSingleton<RazorReaper.Services.Overlay.IHudOverlayService, RazorReaper.Services.Overlay.HudOverlayService>();
+            services.AddSingleton<RazorReaper.Services.Overlay.ISessionHudService, RazorReaper.Services.Overlay.SessionHudService>();
+            services.AddSingleton<IGameIniService, GameIniService>();
+            services.AddSingleton<ILineListService, LineListService>();
         }
     }
 }

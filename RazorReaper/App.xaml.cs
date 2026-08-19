@@ -8,7 +8,6 @@ namespace RazorReaper
     public partial class App : Application
     {
         private static readonly TimeSpan TelemetryShutdownTimeout = TimeSpan.FromSeconds(5);
-        private readonly IAppRunMode appRunMode;
         private readonly IServiceProvider services;
         private ITelemetryService? telemetryService;
         private IAutoUpdateManager? autoUpdateManager;
@@ -17,27 +16,22 @@ namespace RazorReaper
         private int telemetryShutdownStarted;
         private Task? telemetryShutdownTask;
 
-        public App(IAppRunMode appRunMode, IServiceProvider services)
+        public App(IServiceProvider services)
         {
-            this.appRunMode = appRunMode;
             this.services = services;
 
             InitializeComponent();
 
-            AppStartupPolicy.Queue(appRunMode, ResolveProductionStartupActions, RunStartupTask);
+            QueueStartupTasks();
 
-            if (!appRunMode.IsLocalPreview)
-            {
-                AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
-                AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
-                TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
-            }
+            AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
+            AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
+            TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
         }
 
-        private AppStartupActions ResolveProductionStartupActions()
+        private void QueueStartupTasks()
         {
-            // Resolve in the same order as the former constructor injection. This factory is
-            // never called in local preview, so constructor side effects cannot cross the guard.
+            // Resolved in the same order as the former constructor injection.
             var fontInstaller = services.GetRequiredService<IFontInstaller>();
             var scopeModeStartupService = services.GetRequiredService<IScopeModeStartupService>();
             var telemetry = services.GetRequiredService<ITelemetryService>();
@@ -52,8 +46,7 @@ namespace RazorReaper
             services.GetRequiredService<RazorReaper.Services.Automation.IArkKeyBindingService>();
 
             // Constructing the binder claims the Auto Clicker's key for the lifetime of the app.
-            // Resolved here rather than by the page so the hotkey survives navigating away, and
-            // so local preview - which never runs this factory - registers no hotkey at all.
+            // Resolved here rather than by the page so the hotkey survives navigating away.
             services.GetRequiredService<RazorReaper.Services.Automation.IAutoClickerHotkeyBinder>();
 
             telemetryService = telemetry;
@@ -66,28 +59,27 @@ namespace RazorReaper
             // installs silently, then relaunches — so all we do is hand off and quit.
             updateManager.InstallRequested += HandleInstallRequested;
 
-            return new AppStartupActions(
-                FontInstall: () => fontInstaller.EnsurePresetFontsInstalledAsync(),
-                ScopeMode: () => scopeModeStartupService.ApplySavedScopeModeAsync(),
-                UpdateCheck: () => updateManager.RunStartupCheckAsync(),
-                TelemetryStart: () => telemetry.StartAsync(),
-                AccessGate: () => access.StartAsync(),
-                DiscordRpc: () =>
-                {
-                    discord.Initialize();
-                    return Task.CompletedTask;
-                },
-                ArkLink: () =>
-                {
-                    arkLink.Start();
-                    return Task.CompletedTask;
-                });
+            RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
+            RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
+            RunStartupTask("update-check", () => updateManager.RunStartupCheckAsync());
+            RunStartupTask("telemetry-start", () => telemetry.StartAsync());
+            RunStartupTask("access-gate", () => access.StartAsync());
+            RunStartupTask("discord-rpc", () =>
+            {
+                discord.Initialize();
+                return Task.CompletedTask;
+            });
+            RunStartupTask("ark-link", () =>
+            {
+                arkLink.Start();
+                return Task.CompletedTask;
+            });
         }
 
         private void HandleInstallRequested()
         {
             var manager = autoUpdateManager;
-            if (appRunMode.IsLocalPreview || manager is null)
+            if (manager is null)
             {
                 return;
             }
@@ -142,7 +134,7 @@ namespace RazorReaper
         {
             // Version lives at the foot of the sidebar now, so the title bar doesn't
             // repeat it — otherwise the name and version each showed up twice on screen.
-            var window = new Window(new MainPage(appRunMode))
+            var window = new Window(new MainPage())
             {
                 Title = "Razor Reaper — Ark QOL Tool"
             };
@@ -153,27 +145,19 @@ namespace RazorReaper
 
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
-            AppShutdownPolicy.Run(
-                appRunMode,
-                () => new AppShutdownActions(
-                    UpdaterHandoff: () => SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller()),
-                    DiscordShutdown: () => SafeInvoke(() => discordPresence!.Shutdown()),
-                    // Fire-and-forget so the window disappears instantly when the user clicks X.
-                    // ProcessExit waits on this task as a backstop so the session_end POST
-                    // gets a chance to land before the process tears down.
-                    TelemetryStop: () => telemetryShutdownTask = Task.Run(FlushTelemetryShutdown),
-                    TelemetryTrack: null));
+            SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller());
+            SafeInvoke(() => discordPresence!.Shutdown());
+
+            // Fire-and-forget so the window disappears instantly when the user clicks X.
+            // ProcessExit waits on this task as a backstop so the session_end POST gets a
+            // chance to land before the process tears down.
+            telemetryShutdownTask = Task.Run(FlushTelemetryShutdown);
         }
 
         private void HandleProcessExit(object? sender, EventArgs e)
         {
-            AppShutdownPolicy.Run(
-                appRunMode,
-                () => new AppShutdownActions(
-                    UpdaterHandoff: () => SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller()),
-                    DiscordShutdown: null,
-                    TelemetryStop: FlushTelemetryAtProcessExit,
-                    TelemetryTrack: null));
+            SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller());
+            FlushTelemetryAtProcessExit();
         }
 
         private void FlushTelemetryAtProcessExit()
@@ -221,14 +205,7 @@ namespace RazorReaper
                 "Unhandled exception during app execution.",
                 exception);
 
-            AppShutdownPolicy.Run(
-                appRunMode,
-                () => new AppShutdownActions(
-                    UpdaterHandoff: null,
-                    DiscordShutdown: null,
-                    TelemetryStop: null,
-                    TelemetryTrack: () =>
-                    {
+            {
                         _ = telemetryService!.TrackEventAsync(
                             "app_error",
                             TelemetryEventStatus.Down,
@@ -240,7 +217,7 @@ namespace RazorReaper
                                 ["is_terminating"] = e.IsTerminating,
                                 ["exception_type"] = exception?.GetType().FullName ?? "unknown"
                             });
-                    }));
+            }
         }
 
         private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
@@ -264,14 +241,7 @@ namespace RazorReaper
                 return;
             }
 
-            AppShutdownPolicy.Run(
-                appRunMode,
-                () => new AppShutdownActions(
-                    UpdaterHandoff: null,
-                    DiscordShutdown: null,
-                    TelemetryStop: null,
-                    TelemetryTrack: () =>
-                    {
+            {
                         _ = telemetryService!.TrackEventAsync(
                             "app_error",
                             TelemetryEventStatus.Down,
@@ -284,7 +254,7 @@ namespace RazorReaper
                                 // AggregateException alone says nothing — surface the actual fault type.
                                 ["base_exception_type"] = e.Exception.GetBaseException().GetType().FullName
                             });
-                    }));
+            }
         }
 
         /// <summary>
@@ -306,7 +276,7 @@ namespace RazorReaper
         private void FlushTelemetryShutdown()
         {
             var telemetry = telemetryService;
-            if (appRunMode.IsLocalPreview || telemetry is null)
+            if (telemetry is null)
             {
                 return;
             }

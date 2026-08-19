@@ -3,7 +3,6 @@
 @using RazorReaper.Services.Automation
 @using RazorReaper.Services.Automation.Scripts
 @inject IEnumerable<AutomationScriptBase> AllScripts
-@inject IAppRunMode AppRunMode
 @implements IDisposable
 
 @* The page claims the window height and scrolls inside its own panes, so nothing here
@@ -23,56 +22,17 @@
             <span>All scripts</span>
             <span class="scripts-list-count">@_scripts.Count(s => s.IsRunning) running</span>
         </div>
-        @if (AppRunMode.IsLocalPreview)
+        @foreach (var script in _scripts)
         {
-            @foreach (var name in PreviewScriptNames)
-            {
-                <button class="script-item @(name == PreviewSelectedScript ? "active" : "")"
-                        @onclick="() => PreviewSelectedScript = name">
-                    <span class="script-dot"></span>
-                    <span class="script-item-name">@name</span>
-                </button>
-            }
-        }
-        else
-        {
-            @foreach (var script in _scripts)
-            {
-                <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
-                    <span class="script-dot @(script.IsRunning ? "on" : "")"></span>
-                    <span class="script-item-name">@script.DisplayName</span>
-                </button>
-            }
+            <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
+                <span class="script-dot @(script.IsRunning ? "on" : "")"></span>
+                <span class="script-item-name">@script.DisplayName</span>
+            </button>
         }
     </aside>
 
     <section class="scripts-detail">
-        @if (AppRunMode.IsLocalPreview)
-        {
-            <div class="scripts-detail-body">
-                <div class="script-hero">
-                    <StatusHeader State="off"
-                                  Label="@PreviewSelectedScript"
-                                  Description="@PreviewDescription">
-                        <Actions>
-                            <span class="usage-chip">Stopped · preview only</span>
-                        </Actions>
-                    </StatusHeader>
-                </div>
-                <div class="script-panels">
-                    <div class="content-card script-settings">
-                        <h3>Safe preview</h3>
-                        <SettingRow Title="Run state" Description="Marketing preview never registers hotkeys or sends input.">
-                            <span class="setting-value">Stopped</span>
-                        </SettingRow>
-                        <SettingRow Title="Start / Stop hotkey" Description="Configure a system-wide toggle in a normal app session.">
-                            <span class="setting-value">Not assigned</span>
-                        </SettingRow>
-                    </div>
-                </div>
-            </div>
-        }
-        else if (_selected is not null)
+        @if (_selected is not null)
         {
             @* @key on the selected script remounts the pane, which restarts the entry
                animation — otherwise picking a different script hard-cuts the whole
@@ -355,20 +315,6 @@
 </div>
 
 @code {
-    private static readonly string[] PreviewScriptNames =
-        ["Yuty", "Auto Walk", "Mammoth", "Auto Download", "Fast TP", "Armor Swap"];
-    private string PreviewSelectedScript { get; set; } = "Yuty";
-    private string PreviewDescription => PreviewSelectedScript switch
-    {
-        "Yuty" => "Keeps the Yutyrannus courage roar on an interval while mounted.",
-        "Auto Walk" => "Holds the forward key while ARK remains the active window.",
-        "Mammoth" => "Alternates drum inputs on a controlled interval.",
-        "Auto Download" => "Repeats a configured chat command on an interval.",
-        "Fast TP" => "Types a configured destination into the open teleport menu.",
-        "Armor Swap" => "Monitors durability values and swaps configured hotbar pieces.",
-        _ => "Native automation with an explicit stopped state.",
-    };
-
     private readonly List<AutomationScriptBase> _scripts = new();
     private AutomationScriptBase? _selected;
 

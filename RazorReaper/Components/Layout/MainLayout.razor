@@ -7,7 +7,6 @@
 @using RazorReaper.Services.Implementations
 @using RazorReaper.Services.Overlay
 @inject NavigationManager Navigation
-@inject IAppRunMode AppRunMode
 @inject IServiceProvider Services
 @inject IAutoUpdateManager AutoUpdateManager
 @inject INotificationService NotificationService
@@ -37,7 +36,7 @@
 @* Full-screen access gate: covers the entire app (nav included) whenever this machine is
    suspended or banned. Rendered last so it sits on top; it fails open, so it only appears when
    the server has affirmatively reported a suspension. *@
-@if (LocalPreviewLayoutPolicy.ShouldRenderAccessBlock(AppRunMode, () => AccessGate.IsSuspended))
+@if (AccessGate.IsSuspended)
 {
     <AccessBlocked />
 }
@@ -45,29 +44,22 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var integrationActions = new LocalPreviewLayoutActions(
-            ResolveHudAndSession: ResolveHudAndSession,
-            DetectVersionUpgrade: DetectVersionUpgrade,
-            ValidateLicenseAsync: ValidateLicenseAsync,
-            SubscribeAccess: SubscribeAccess,
-            ReflectDiscordAndHud: () => ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri)),
-            SubscribeNavigation: SubscribeNavigation);
+        ResolveHudAndSession();
+        DetectVersionUpgrade();
+        await ValidateLicenseAsync();
 
-        await LocalPreviewLayoutPolicy.RunBeforeLocalNavigationAsync(AppRunMode, integrationActions);
-
-        if (LocalPreviewLaunchPolicy.ShouldConsumeElevationReturnRoute(AppRunMode))
+        // If we were just relaunched elevated, jump straight back to the page the user was on
+        // instead of landing on Home.
+        var elevation = Services.GetRequiredService<RazorReaper.Services.Elevation.IElevationService>();
+        var returnRoute = elevation.ConsumePendingReturnRoute();
+        if (!string.IsNullOrWhiteSpace(returnRoute))
         {
-            // If we were just relaunched elevated, jump straight back to the page the user was on
-            // instead of landing on Home. Preview never consumes this production redirect.
-            var elevation = Services.GetRequiredService<RazorReaper.Services.Elevation.IElevationService>();
-            var returnRoute = elevation.ConsumePendingReturnRoute();
-            if (!string.IsNullOrWhiteSpace(returnRoute))
-            {
-                Navigation.NavigateTo(returnRoute);
-            }
+            Navigation.NavigateTo(returnRoute);
         }
 
-        LocalPreviewLayoutPolicy.RunAfterLocalNavigation(AppRunMode, integrationActions);
+        SubscribeAccess();
+        ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
+        SubscribeNavigation();
     }
 
     private IHudOverlayService? _hudOverlay;
@@ -141,7 +133,7 @@
 
     private void ReflectPage(string relativePath)
     {
-        if (AppRunMode.IsLocalPreview || _hudOverlay is null)
+        if (_hudOverlay is null)
         {
             return;
         }

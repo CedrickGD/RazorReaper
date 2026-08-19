@@ -21,7 +21,6 @@
 @inject IUpdateService UpdateService
 @inject IAutoUpdateManager AutoUpdateManager
 @inject ILicenseService LicenseService
-@inject IAppRunMode AppRunMode
 @implements IAsyncDisposable
 
 
@@ -30,10 +29,7 @@
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
 
-        @if (!AppRunMode.IsLocalPreview)
-        {
-            <AnnouncementBanner />
-        }
+        <AnnouncementBanner />
 
         <div class="content-card update-card">
             <div class="update-card-header">
@@ -918,36 +914,6 @@
     protected override Task OnInitializedAsync()
     {
         LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
-
-        if (AppRunMode.IsLocalPreview)
-        {
-            var snapshot = LocalPreviewMarketingPolicy.ResolveHomeSnapshot(
-                AppRunMode,
-                () => throw new InvalidOperationException("Preview must not read production home state."));
-
-            userName = snapshot.UserName;
-            wifiName = snapshot.NetworkName;
-            wifiSignalStrength = "—";
-            cpuName = snapshot.CpuName;
-            gpuName = snapshot.GpuName;
-            motherboardName = snapshot.MotherboardName;
-            arkInstallPath = snapshot.ArkInstallPath;
-            configPath = snapshot.ConfigPath;
-            currentTime = new DateTime(2026, 8, 16, 20, 15, 0, DateTimeKind.Local);
-            timeZoneInfo = "Preview workspace";
-            utcOffset = "Hidden";
-            weekNumber = 33;
-            systemUptime = "Details hidden";
-            appSessionDuration = "Local preview";
-            updateResult = new UpdateCheckResult
-            {
-                CurrentVersion = UpdateService.CurrentVersion,
-                HasUpdate = false,
-                CheckedAt = DateTimeOffset.UnixEpoch,
-            };
-            _hasInitialized = true;
-            return Task.CompletedTask;
-        }
 
         // Keep initial render lightweight to reduce navigation lag.
         userName = Environment.UserName;

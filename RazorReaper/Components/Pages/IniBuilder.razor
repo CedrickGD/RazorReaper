@@ -6,7 +6,6 @@
 @using RazorReaper.Services.Implementations
 
 @inject IGameIniService GameIni
-@inject IAppRunMode AppRunMode
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ILogger<IniBuilder> Logger
@@ -208,15 +207,9 @@
             ? "Close ARK before applying — it overwrites GameUserSettings.ini on exit."
             : $"Editing INIs in {configFolder}";
 
-    private LocalPreviewSurfaceStatus CurrentStatus => LocalPreviewMarketingPolicy.ResolveIniBuilderStatus(
-        AppRunMode,
-        ProductionStatusState,
-        ProductionStatusLabel,
-        ProductionStatusDescription);
-
-    private string StatusState => CurrentStatus.State;
-    private string StatusLabel => CurrentStatus.Label;
-    private string StatusDescription => CurrentStatus.Description;
+    private string StatusState => ProductionStatusState;
+    private string StatusLabel => ProductionStatusLabel;
+    private string StatusDescription => ProductionStatusDescription;
 
     private string LastAppliedLabel => string.IsNullOrEmpty(lastAppliedAt)
         ? "Last applied"
@@ -230,16 +223,8 @@
     protected override async Task OnInitializedAsync()
     {
         presets = GameIni.GetBuiltInPresets();
-        if (AppRunMode.IsLocalPreview)
-        {
-            lastAppliedPreset = "Preview only";
-            lastAppliedAt = string.Empty;
-        }
-        else
-        {
-            lastAppliedPreset = Preferences.Get(LastPresetKey, string.Empty);
-            lastAppliedAt = Preferences.Get(LastPresetTimeKey, string.Empty);
-        }
+        lastAppliedPreset = Preferences.Get(LastPresetKey, string.Empty);
+        lastAppliedAt = Preferences.Get(LastPresetTimeKey, string.Empty);
         RefreshStatus();
         await LoadDraftAsync();
         await RefreshBackupsAsync();
