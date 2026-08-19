@@ -624,7 +624,11 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
             GetWindowThreadProcessId(hwnd, out var pid);
 
             var now = Environment.TickCount64;
-            if (now - _pidsRefreshedAt > 5000)
+            // NB: `now - _pidsRefreshedAt` with the field seeded at long.MinValue overflows into a
+            // negative number, so the refresh never ran, the pid set stayed empty and this returned
+            // false forever — the watcher scanned but could never trigger. Same bug ForegroundGate
+            // had; this second copy was missed when that one was fixed.
+            if (_pidsRefreshedAt == long.MinValue || now - _pidsRefreshedAt > 5000)
             {
                 _pidsRefreshedAt = now;
                 var processes = _process.GetProcessesByName(_config.Value.Ark.GameProcessName);
