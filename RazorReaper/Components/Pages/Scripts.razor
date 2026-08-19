@@ -272,6 +272,54 @@
                         </SettingRow>
                     }
                 }
+                else if (_selected is AutoAntidoteScript antidote)
+                {
+                    <SettingRow Title="Trigger" Description="When the watcher fires: the icon appearing, disappearing, or its timer running low.">
+                        <Dropdown Value="@antidote.Service.Settings.Mode.ToString()" ValueChanged="SetAntidoteMode" Options="AntidoteModeOptions" />
+                    </SettingRow>
+                    <SettingRow Title="Burst key" Description="Hotbar key pressed when it fires.">
+                        <input class="script-input" value="@antidote.Service.Settings.BurstKey" @onchange="SetAntidoteBurstKey" />
+                    </SettingRow>
+                    <SettingRow Title="Burst presses" Description="Presses per trigger.">
+                        <input class="script-input" type="number" min="1" max="20" value="@antidote.Service.Settings.BurstPresses" @onchange="SetAntidoteBurstPresses" />
+                    </SettingRow>
+                    @if (antidote.Service.Settings.Mode == AutoAntidoteTriggerMode.TimerBelow)
+                    {
+                        <SettingRow Title="Timer threshold" Description="Fires at or below this many seconds remaining.">
+                            <input class="script-input" type="number" min="1" max="600" value="@antidote.Service.Settings.TimerThresholdSeconds" @onchange="SetAntidoteTimer" />
+                        </SettingRow>
+                    }
+                    else
+                    {
+                        <SettingRow Title="Match threshold" Description="Similarity % at which the icon counts as visible.">
+                            <input class="script-input" type="number" min="50" max="100" value="@antidote.Service.Settings.MatchThresholdPercent" @onchange="SetAntidoteThreshold" />
+                        </SettingRow>
+                    }
+                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                        <input class="script-input" type="number" min="100" max="10000" value="@antidote.Service.Settings.ScanIntervalMs" @onchange="SetAntidoteScan" />
+                    </SettingRow>
+                    <SettingRow Title="Cooldown" Description="Seconds before it may fire again.">
+                        <input class="script-input" type="number" min="0" max="600" value="@antidote.Service.Settings.CooldownSeconds" @onchange="SetAntidoteCooldown" />
+                    </SettingRow>
+                }
+                else if (_selected is FedSuitScript fed)
+                {
+                    <SettingRow Title="Open key" Description="Opens the transmitter — prefilled from your ARK 'Access inventory' binding.">
+                        <input class="script-input" value="@fed.Macro.Settings.OpenKey" @onchange="SetFedOpenKey" />
+                    </SettingRow>
+                    <SettingRow Title="Transfer key" Description="Moves a batch — prefilled from your ARK 'Transfer item' binding.">
+                        <input class="script-input" value="@fed.Macro.Settings.TransferKey" @onchange="SetFedTransferKey" />
+                    </SettingRow>
+                    <SettingRow Title="Exit key" Description="Closes the transmitter between cycles.">
+                        <input class="script-input" value="@fed.Macro.Settings.ExitKey" @onchange="SetFedExitKey" />
+                    </SettingRow>
+                    <SettingRow Title="Presses per cycle" Description="Transfer presses before closing.">
+                        <input class="script-input" type="number" min="1" max="200" value="@fed.Macro.Settings.PressesPerCycle" @onchange="SetFedPresses" />
+                    </SettingRow>
+                    <SettingRow Title="Wait after open" Description="Milliseconds to let the inventory finish opening.">
+                        <input class="script-input" type="number" min="0" max="5000" value="@fed.Macro.Settings.WaitAfterOpenMs" @onchange="SetFedWait" />
+                    </SettingRow>
+                }
 
                 @* Full width (see scripts-styles.css): squeezed into half, the combo and its
                    link wrapped onto a second line and dragged the whole grid row taller. *@
@@ -280,7 +328,23 @@
                 </SettingRow>
             </div>
 
-            @if (_selected is ICalibratableScript cal)
+            @if (_selected is AutoAntidoteScript antidoteCal)
+            {
+                <div class="content-card scripts-calibration">
+                    <h3>Calibration</h3>
+                    <SettingRow Title="Icon region" Description='@(antidoteCal.Service.HasRegion ? antidoteCal.Service.RegionSummary : "Not set for this resolution.")'>
+                        <button class="btn btn-secondary" @onclick="CalibrateAntidoteRegion" disabled="@_calibrating">Calibrate region</button>
+                    </SettingRow>
+                    <SettingRow Title="Reference snapshot" Description='@(antidoteCal.Service.HasReference ? "Captured." : "Capture with the icon visible on screen.")'>
+                        <button class="btn btn-secondary" @onclick="CaptureAntidoteReference" disabled="@(!antidoteCal.Service.HasRegion || _calibrating)">Capture reference</button>
+                    </SettingRow>
+                    @if (!string.IsNullOrEmpty(_calStatus))
+                    {
+                        <div class="setting-row-desc" style="margin-top: 0.5rem;">@_calStatus</div>
+                    }
+                </div>
+            }
+            else if (_selected is ICalibratableScript cal)
             {
                 <div class="content-card scripts-calibration">
                     <h3>Calibration</h3>
@@ -362,6 +426,121 @@
             y.IntervalMs = v;
             y.SaveSettings();
         }
+    }
+
+    // Fed Suit hands out a copy of its settings, so each edit mutates the copy and pushes the
+    // whole thing back through UpdateSettings — which is also what re-validates the keys.
+    private void ApplyFed(FedSuitScript f, Action<FedSuitSettings> edit)
+    {
+        var settings = f.Macro.Settings;
+        edit(settings);
+        f.Macro.UpdateSettings(settings);
+    }
+
+    private void SetFedOpenKey(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f) ApplyFed(f, s => s.OpenKey = e.Value?.ToString() ?? "F");
+    }
+
+    private void SetFedTransferKey(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f) ApplyFed(f, s => s.TransferKey = e.Value?.ToString() ?? "T");
+    }
+
+    private void SetFedExitKey(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f) ApplyFed(f, s => s.ExitKey = e.Value?.ToString() ?? "Esc");
+    }
+
+    private void SetFedPresses(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f && int.TryParse(e.Value?.ToString(), out var v))
+            ApplyFed(f, s => s.PressesPerCycle = v);
+    }
+
+    private void SetFedWait(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f && int.TryParse(e.Value?.ToString(), out var v))
+            ApplyFed(f, s => s.WaitAfterOpenMs = v);
+    }
+
+    private static readonly IReadOnlyList<Dropdown.Option> AntidoteModeOptions = new List<Dropdown.Option>
+    {
+        new(nameof(AutoAntidoteTriggerMode.IconAppears), "Icon appears"),
+        new(nameof(AutoAntidoteTriggerMode.IconDisappears), "Icon disappears"),
+        new(nameof(AutoAntidoteTriggerMode.TimerBelow), "Timer below"),
+    };
+
+    private void SaveAntidote(AutoAntidoteScript a) => a.Service.SaveSettings();
+
+    private void SetAntidoteMode(string value)
+    {
+        if (_selected is AutoAntidoteScript a && Enum.TryParse<AutoAntidoteTriggerMode>(value, out var m))
+        {
+            a.Service.Settings.Mode = m;
+            SaveAntidote(a);
+        }
+    }
+
+    private void SetAntidoteBurstKey(ChangeEventArgs e)
+    {
+        if (_selected is AutoAntidoteScript a) { a.Service.Settings.BurstKey = e.Value?.ToString() ?? "5"; SaveAntidote(a); }
+    }
+
+    private void SetAntidoteBurstPresses(ChangeEventArgs e)
+    {
+        if (_selected is AutoAntidoteScript a && int.TryParse(e.Value?.ToString(), out var v)) { a.Service.Settings.BurstPresses = v; SaveAntidote(a); }
+    }
+
+    private void SetAntidoteThreshold(ChangeEventArgs e)
+    {
+        if (_selected is AutoAntidoteScript a && double.TryParse(e.Value?.ToString(), out var v)) { a.Service.Settings.MatchThresholdPercent = v; SaveAntidote(a); }
+    }
+
+    private void SetAntidoteTimer(ChangeEventArgs e)
+    {
+        if (_selected is AutoAntidoteScript a && int.TryParse(e.Value?.ToString(), out var v)) { a.Service.Settings.TimerThresholdSeconds = v; SaveAntidote(a); }
+    }
+
+    private void SetAntidoteScan(ChangeEventArgs e)
+    {
+        if (_selected is AutoAntidoteScript a && int.TryParse(e.Value?.ToString(), out var v)) { a.Service.Settings.ScanIntervalMs = v; SaveAntidote(a); }
+    }
+
+    private void SetAntidoteCooldown(ChangeEventArgs e)
+    {
+        if (_selected is AutoAntidoteScript a && int.TryParse(e.Value?.ToString(), out var v)) { a.Service.Settings.CooldownSeconds = v; SaveAntidote(a); }
+    }
+
+    private async Task CalibrateAntidoteRegion()
+    {
+        if (_selected is not AutoAntidoteScript a) return;
+
+        _calibrating = true;
+        _calStatus = "Hover one corner of the icon, then the opposite corner.";
+        StateHasChanged();
+        try
+        {
+            var progress = new Progress<RegionCaptureProgress>(pr =>
+            {
+                _calStatus = $"Hover corner {pr.CornerIndex} — capturing in {pr.SecondsRemaining}s...";
+                InvokeAsync(StateHasChanged);
+            });
+
+            var ok = await a.Service.CaptureRegionAsync(progress);
+            _calStatus = ok ? "Region captured." : "Region capture cancelled.";
+        }
+        finally
+        {
+            _calibrating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CaptureAntidoteReference()
+    {
+        if (_selected is not AutoAntidoteScript a) return;
+        _calStatus = a.Service.CaptureReference() ? "Reference captured." : "Could not capture the reference.";
     }
 
     private void SetWalkMode(string value)

@@ -122,13 +122,7 @@ public static class NavCatalog
                         // too — "flak" stays above because that is what people still type.
                         "armor swap", "armor", "riot", "durability" }),
 
-            new NavPage("Fed Suit", "/fed-suit", "Automation", NavIcons.FedSuit,
-                "Automates transmitter slot transfers for the Federation Suit grind",
-                new[] { "fed suit", "federation suit", "transmitter", "transfer", "slot", "macro", "grind", "tek" }),
 
-            new NavPage("Auto Antidote", "/auto-antidote", "Automation", NavIcons.Antidote,
-                "Watches the ARK HUD for your calibrated antidote icon and refreshes it automatically",
-                new[] { "antidote", "auto antidote", "debuff", "buff", "hud", "refresh", "cure", "icon", "automation" }),
 
             new NavPage("HUD Overlay", "/hud-overlay", "Automation", NavIcons.Hud,
                 "In-game HUD overlay with clock, session timer, server info, tool status and alerts",

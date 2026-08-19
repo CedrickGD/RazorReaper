@@ -52,19 +52,13 @@ public interface IHotkeyRegistry
 public sealed class HotkeyRegistry : IHotkeyRegistry
 {
     private readonly IEnumerable<AutomationScriptBase> scripts;
-    private readonly IAutoAntidoteService antidote;
-    private readonly IFedSuitMacro fedSuit;
     private readonly ICrosshairService crosshair;
 
     public HotkeyRegistry(
         IEnumerable<AutomationScriptBase> scripts,
-        IAutoAntidoteService antidote,
-        IFedSuitMacro fedSuit,
         ICrosshairService crosshair)
     {
         this.scripts = scripts;
-        this.antidote = antidote;
-        this.fedSuit = fedSuit;
         this.crosshair = crosshair;
     }
 
@@ -72,7 +66,6 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
     {
         var list = new List<HotkeyBinding>();
         AddScripts(list);
-        AddAutomation(list);
         AddOverlays(list);
         AddAutoClicker(list);
         return list;
@@ -109,57 +102,9 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
         }
     }
 
-    private void AddAutomation(List<HotkeyBinding> list)
-    {
-        list.Add(new HotkeyBinding
-        {
-            Id = "antidote:toggle",
-            Name = "Auto Antidote",
-            Group = "Automation",
-            Description = "Starts or stops the antidote watcher.",
-            OwnerRoute = "/auto-antidote",
-            Get = () => antidote.Settings.ToggleHotkey ?? "",
-            Set = value =>
-            {
-                antidote.Settings.ToggleHotkey = value ?? "";
-                antidote.SaveSettings();
-            },
-            IsActive = () => antidote.State != AutoAntidoteState.Off
-        });
-
-        list.Add(new HotkeyBinding
-        {
-            Id = "fedsuit:start",
-            Name = "Fed Suit — start",
-            Group = "Automation",
-            Description = "Starts the transmitter transfer loop.",
-            OwnerRoute = "/fed-suit",
-            Get = () => fedSuit.Settings.StartHotkey ?? "",
-            Set = value =>
-            {
-                var settings = fedSuit.Settings;
-                settings.StartHotkey = value ?? "";
-                fedSuit.UpdateSettings(settings);
-            },
-            IsActive = () => fedSuit.IsRunning
-        });
-
-        list.Add(new HotkeyBinding
-        {
-            Id = "fedsuit:stop",
-            Name = "Fed Suit — stop",
-            Group = "Automation",
-            Description = "Hard-stops the transmitter loop.",
-            OwnerRoute = "/fed-suit",
-            Get = () => fedSuit.Settings.StopHotkey ?? "",
-            Set = value =>
-            {
-                var settings = fedSuit.Settings;
-                settings.StopHotkey = value ?? "";
-                fedSuit.UpdateSettings(settings);
-            }
-        });
-    }
+    // Auto Antidote and Fed Suit are ordinary scripts now, so the script section above already
+    // lists their toggles. They used to own separate bindings here (and a start/stop pair for Fed
+    // Suit) back when each lived on its own page.
 
     private void AddOverlays(List<HotkeyBinding> list)
     {

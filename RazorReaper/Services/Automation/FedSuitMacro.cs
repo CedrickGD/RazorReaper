@@ -125,7 +125,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         _runner = _engine.GetRunner(RunnerName);
         _runner.StepStarted += OnStepStarted;
         // First registration is quiet (log only) — the page surfaces registration state inline.
-        RegisterHotkeys(notifyFailures: false);
     }
 
     public FedSuitSettings Settings
@@ -172,7 +171,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         }
 
         SaveSettings(normalized);
-        if (rebind) RegisterHotkeys(notifyFailures: true);
         RaiseChanged();
     }
 

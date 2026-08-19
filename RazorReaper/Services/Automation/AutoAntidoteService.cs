@@ -170,7 +170,6 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         LoadSettings();
         try
         {
-            ApplyToggleHotkey(notifyOnFailure: false);
         }
         catch (Exception ex)
         {
@@ -393,7 +392,6 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
 
         try
         {
-            ApplyToggleHotkey(notifyOnFailure: true);
         }
         catch (Exception ex)
         {

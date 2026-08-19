@@ -336,6 +336,8 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.FlakScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.DinoReadyScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.CraftingScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.AutoAntidoteScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.FedSuitScript>();
 
             // Expose every script as AutomationScriptBase so the Scripts hub + Global Hotkeys page
             // enumerate them uniformly (registration order = display order). Add new scripts here too.
@@ -355,6 +357,8 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FlakScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.DinoReadyScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.CraftingScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AutoAntidoteScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FedSuitScript>());
 
             services.AddSingleton<RazorReaper.Services.Desync.IDesyncService, RazorReaper.Services.Desync.DesyncService>();
             services.AddSingleton<RazorReaper.Services.FileModifier.IFileModifierService, RazorReaper.Services.FileModifier.FileModifierService>();
