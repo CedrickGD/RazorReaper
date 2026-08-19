@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
@@ -7,58 +8,99 @@ namespace RazorReaper
     public partial class App : Application
     {
         private static readonly TimeSpan TelemetryShutdownTimeout = TimeSpan.FromSeconds(5);
-        private readonly ITelemetryService telemetryService;
-        private readonly IAutoUpdateManager autoUpdateManager;
-        private readonly IDiscordPresenceService discordPresence;
-        private readonly IAccessGateService accessGate;
+        private readonly IAppRunMode appRunMode;
+        private readonly IServiceProvider services;
+        private ITelemetryService? telemetryService;
+        private IAutoUpdateManager? autoUpdateManager;
+        private IDiscordPresenceService? discordPresence;
+        private IAccessGateService? accessGate;
         private int telemetryShutdownStarted;
         private Task? telemetryShutdownTask;
 
-        public App(
-            IFontInstaller fontInstaller,
-            IScopeModeStartupService scopeModeStartupService,
-            ITelemetryService telemetryService,
-            IAutoUpdateManager autoUpdateManager,
-            IDiscordPresenceService discordPresence,
-            IAccessGateService accessGate,
-            IArkLinkService arkLink)
+        public App(IAppRunMode appRunMode, IServiceProvider services)
         {
-            this.telemetryService = telemetryService;
-            this.autoUpdateManager = autoUpdateManager;
-            this.discordPresence = discordPresence;
-            this.accessGate = accessGate;
+            this.appRunMode = appRunMode;
+            this.services = services;
 
             InitializeComponent();
+
+            AppStartupPolicy.Queue(appRunMode, ResolveProductionStartupActions, RunStartupTask);
+
+            if (!appRunMode.IsLocalPreview)
+            {
+                AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
+                AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
+                TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+            }
+        }
+
+        private AppStartupActions ResolveProductionStartupActions()
+        {
+            // Resolve in the same order as the former constructor injection. This factory is
+            // never called in local preview, so constructor side effects cannot cross the guard.
+            var fontInstaller = services.GetRequiredService<IFontInstaller>();
+            var scopeModeStartupService = services.GetRequiredService<IScopeModeStartupService>();
+            var telemetry = services.GetRequiredService<ITelemetryService>();
+            var updateManager = services.GetRequiredService<IAutoUpdateManager>();
+            var discord = services.GetRequiredService<IDiscordPresenceService>();
+            var access = services.GetRequiredService<IAccessGateService>();
+            var arkLink = services.GetRequiredService<IArkLinkService>();
+
+            // Scan the player's ARK key bindings before anything reads a script default. Scripts
+            // resolve their defaults in their constructors, so a lazy scan would arrive too late
+            // and they would silently fall back to ARK's factory layout.
+            services.GetRequiredService<RazorReaper.Services.Automation.IArkKeyBindingService>();
+
+            // Constructing the binder claims the Auto Clicker's key for the lifetime of the app.
+            // Resolved here rather than by the page so the hotkey survives navigating away, and
+            // so local preview - which never runs this factory - registers no hotkey at all.
+            services.GetRequiredService<RazorReaper.Services.Automation.IAutoClickerHotkeyBinder>();
+
+            telemetryService = telemetry;
+            autoUpdateManager = updateManager;
+            discordPresence = discord;
+            accessGate = access;
 
             // Updates are forced: when the manager has an installer staged it asks us to
             // get out of the way. The orchestrator it spawns waits for this PID to exit,
             // installs silently, then relaunches — so all we do is hand off and quit.
-            this.autoUpdateManager.InstallRequested += HandleInstallRequested;
+            updateManager.InstallRequested += HandleInstallRequested;
 
-            RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
-            RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
-            RunStartupTask("update-check", () => autoUpdateManager.RunStartupCheckAsync());
-            RunStartupTask("telemetry-start", () => this.telemetryService.StartAsync());
-            RunStartupTask("access-gate", () => this.accessGate.StartAsync());
-            RunStartupTask("discord-rpc", () => { discordPresence.Initialize(); return Task.CompletedTask; });
-            RunStartupTask("ark-link", () => { arkLink.Start(); return Task.CompletedTask; });
-
-            AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
-            AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
-            TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+            return new AppStartupActions(
+                FontInstall: () => fontInstaller.EnsurePresetFontsInstalledAsync(),
+                ScopeMode: () => scopeModeStartupService.ApplySavedScopeModeAsync(),
+                UpdateCheck: () => updateManager.RunStartupCheckAsync(),
+                TelemetryStart: () => telemetry.StartAsync(),
+                AccessGate: () => access.StartAsync(),
+                DiscordRpc: () =>
+                {
+                    discord.Initialize();
+                    return Task.CompletedTask;
+                },
+                ArkLink: () =>
+                {
+                    arkLink.Start();
+                    return Task.CompletedTask;
+                });
         }
 
         private void HandleInstallRequested()
         {
+            var manager = autoUpdateManager;
+            if (appRunMode.IsLocalPreview || manager is null)
+            {
+                return;
+            }
+
             try
             {
-                if (!autoUpdateManager.LaunchPendingInstaller())
+                if (!manager.LaunchPendingInstaller())
                 {
                     // Nothing staged, or the orchestrator wouldn't start. Staying open is
                     // the right failure mode, but the manager has to be told: it stops
                     // checking while an installer is staged, so leaving that state behind
                     // would end updates for the rest of the session.
-                    autoUpdateManager.ResetPendingInstaller();
+                    manager.ResetPendingInstaller();
                     AppDiagnostics.RecordError(
                         AppErrorCodes.StartupTaskFailure,
                         "Auto-update handoff failed: installer did not launch.");
@@ -100,7 +142,7 @@ namespace RazorReaper
         {
             // Version lives at the foot of the sidebar now, so the title bar doesn't
             // repeat it — otherwise the name and version each showed up twice on screen.
-            var window = new Window(new MainPage())
+            var window = new Window(new MainPage(appRunMode))
             {
                 Title = "Razor Reaper — Ark QOL Tool"
             };
@@ -111,18 +153,31 @@ namespace RazorReaper
 
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
-            SafeInvoke(() => autoUpdateManager.LaunchPendingInstaller());
-            SafeInvoke(() => discordPresence.Shutdown());
-            // Fire-and-forget so the window disappears instantly when the user clicks X.
-            // ProcessExit waits on this task as a backstop so the session_end POST
-            // gets a chance to land before the process tears down.
-            telemetryShutdownTask = Task.Run(FlushTelemetryShutdown);
+            AppShutdownPolicy.Run(
+                appRunMode,
+                () => new AppShutdownActions(
+                    UpdaterHandoff: () => SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller()),
+                    DiscordShutdown: () => SafeInvoke(() => discordPresence!.Shutdown()),
+                    // Fire-and-forget so the window disappears instantly when the user clicks X.
+                    // ProcessExit waits on this task as a backstop so the session_end POST
+                    // gets a chance to land before the process tears down.
+                    TelemetryStop: () => telemetryShutdownTask = Task.Run(FlushTelemetryShutdown),
+                    TelemetryTrack: null));
         }
 
         private void HandleProcessExit(object? sender, EventArgs e)
         {
-            SafeInvoke(() => autoUpdateManager.LaunchPendingInstaller());
+            AppShutdownPolicy.Run(
+                appRunMode,
+                () => new AppShutdownActions(
+                    UpdaterHandoff: () => SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller()),
+                    DiscordShutdown: null,
+                    TelemetryStop: FlushTelemetryAtProcessExit,
+                    TelemetryTrack: null));
+        }
 
+        private void FlushTelemetryAtProcessExit()
+        {
             // If Destroying already queued the flush, wait (bounded) for it to land.
             // The Interlocked guard in FlushTelemetryShutdown would otherwise short-circuit
             // this call to a no-op and the background POST would be killed on exit.
@@ -166,17 +221,26 @@ namespace RazorReaper
                 "Unhandled exception during app execution.",
                 exception);
 
-            _ = telemetryService.TrackEventAsync(
-                "app_error",
-                TelemetryEventStatus.Down,
-                exception?.Message ?? "Unhandled app exception.",
-                new Dictionary<string, object?>
-                {
-                    ["error_code"] = AppErrorCodes.UnhandledException,
-                    ["error_kind"] = "unhandled",
-                    ["is_terminating"] = e.IsTerminating,
-                    ["exception_type"] = exception?.GetType().FullName ?? "unknown"
-                });
+            AppShutdownPolicy.Run(
+                appRunMode,
+                () => new AppShutdownActions(
+                    UpdaterHandoff: null,
+                    DiscordShutdown: null,
+                    TelemetryStop: null,
+                    TelemetryTrack: () =>
+                    {
+                        _ = telemetryService!.TrackEventAsync(
+                            "app_error",
+                            TelemetryEventStatus.Down,
+                            exception?.Message ?? "Unhandled app exception.",
+                            new Dictionary<string, object?>
+                            {
+                                ["error_code"] = AppErrorCodes.UnhandledException,
+                                ["error_kind"] = "unhandled",
+                                ["is_terminating"] = e.IsTerminating,
+                                ["exception_type"] = exception?.GetType().FullName ?? "unknown"
+                            });
+                    }));
         }
 
         private void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
@@ -200,18 +264,27 @@ namespace RazorReaper
                 return;
             }
 
-            _ = telemetryService.TrackEventAsync(
-                "app_error",
-                TelemetryEventStatus.Down,
-                e.Exception.Message,
-                new Dictionary<string, object?>
-                {
-                    ["error_code"] = AppErrorCodes.UnobservedTaskException,
-                    ["error_kind"] = "background",
-                    ["exception_type"] = e.Exception.GetType().FullName ?? "unknown",
-                    // AggregateException alone says nothing — surface the actual fault type.
-                    ["base_exception_type"] = e.Exception.GetBaseException().GetType().FullName
-                });
+            AppShutdownPolicy.Run(
+                appRunMode,
+                () => new AppShutdownActions(
+                    UpdaterHandoff: null,
+                    DiscordShutdown: null,
+                    TelemetryStop: null,
+                    TelemetryTrack: () =>
+                    {
+                        _ = telemetryService!.TrackEventAsync(
+                            "app_error",
+                            TelemetryEventStatus.Down,
+                            e.Exception.Message,
+                            new Dictionary<string, object?>
+                            {
+                                ["error_code"] = AppErrorCodes.UnobservedTaskException,
+                                ["error_kind"] = "background",
+                                ["exception_type"] = e.Exception.GetType().FullName ?? "unknown",
+                                // AggregateException alone says nothing — surface the actual fault type.
+                                ["base_exception_type"] = e.Exception.GetBaseException().GetType().FullName
+                            });
+                    }));
         }
 
         /// <summary>
@@ -232,6 +305,12 @@ namespace RazorReaper
 
         private void FlushTelemetryShutdown()
         {
+            var telemetry = telemetryService;
+            if (appRunMode.IsLocalPreview || telemetry is null)
+            {
+                return;
+            }
+
             // Idempotent: both Destroying and ProcessExit may fire on the same shutdown.
             if (Interlocked.Exchange(ref telemetryShutdownStarted, 1) != 0)
             {
@@ -242,7 +321,7 @@ namespace RazorReaper
             {
                 using var cts = new CancellationTokenSource(TelemetryShutdownTimeout);
                 // Run on a thread-pool thread to avoid deadlocks if invoked from the UI sync context.
-                Task.Run(async () => await telemetryService.StopAsync(cts.Token).ConfigureAwait(false))
+                Task.Run(async () => await telemetry.StopAsync(cts.Token).ConfigureAwait(false))
                     .Wait(TelemetryShutdownTimeout);
             }
             catch (OperationCanceledException)

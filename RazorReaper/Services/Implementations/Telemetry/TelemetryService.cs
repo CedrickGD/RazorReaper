@@ -12,11 +12,10 @@ namespace RazorReaper.Services.Implementations;
 /// <summary>
 /// Ships allowlisted telemetry events (session lifecycle, app errors, feature usage) to the
 /// configured HTTP endpoint. Stateless formatting and validation live in <see cref="TelemetryFormatting"/>;
-/// identity (install/hardware ids) lives in the <c>TelemetryService.Identity.cs</c> partial.
+/// install and hardware identifiers come from the shared client-identity service.
 /// </summary>
-public sealed partial class TelemetryService : ITelemetryService
+public sealed class TelemetryService : ITelemetryService
 {
-    private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
     private const string SessionStartEventName = "session_start";
     private const string SessionActiveEventName = "session_active";
     private const string SessionEndEventName = "session_end";
@@ -54,13 +53,13 @@ public sealed partial class TelemetryService : ITelemetryService
     private readonly IHttpClientFactory httpClientFactory;
     private readonly IOptions<AppConfiguration> options;
     private readonly IDeviceLocationService deviceLocationService;
+    private readonly IClientIdentityService clientIdentityService;
+    private readonly IPreferencesStore preferencesStore;
     private readonly ILogger<TelemetryService> logger;
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
 
     private bool isStarted;
     private bool configurationWarningLogged;
-    private string? installId;
-    private string? hardwareId;
     private string? sessionId;
     private DateTimeOffset sessionStartedAtUtc;
     private CancellationTokenSource? heartbeatCts;
@@ -69,11 +68,15 @@ public sealed partial class TelemetryService : ITelemetryService
         IHttpClientFactory httpClientFactory,
         IOptions<AppConfiguration> options,
         IDeviceLocationService deviceLocationService,
+        IClientIdentityService clientIdentityService,
+        IPreferencesStore preferencesStore,
         ILogger<TelemetryService> logger)
     {
         this.httpClientFactory = httpClientFactory;
         this.options = options;
         this.deviceLocationService = deviceLocationService;
+        this.clientIdentityService = clientIdentityService;
+        this.preferencesStore = preferencesStore;
         this.logger = logger;
     }
 
@@ -351,12 +354,12 @@ public sealed partial class TelemetryService : ITelemetryService
 
     private async Task<Dictionary<string, object?>> BuildBaseMetricsAsync(string source, CancellationToken cancellationToken)
     {
-        var hwid = GetOrCreateHardwareId();
+        var identity = clientIdentityService.GetIdentity();
         var metrics = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             ["app_name"] = source,
-            ["install_id"] = GetOrCreateInstallId(),
-            ["hwid"] = hwid,
+            ["install_id"] = identity.InstallId,
+            ["hwid"] = identity.HardwareId,
             ["machine_name"] = Environment.MachineName,
             ["user_label"] = Environment.MachineName,
             ["framework"] = $".NET {Environment.Version}",
@@ -386,10 +389,10 @@ public sealed partial class TelemetryService : ITelemetryService
 
         try
         {
-            metrics["rpc_enabled"] = Preferences.Get(IDiscordPresenceService.EnabledPreferenceKey, true);
+            metrics["rpc_enabled"] = preferencesStore.Get(IDiscordPresenceService.EnabledPreferenceKey, true);
 
             // Last Discord account the RPC client connected as (kept even while RPC is off).
-            var discordUser = Preferences.Get(IDiscordPresenceService.ConnectedUserPreferenceKey, string.Empty);
+            var discordUser = preferencesStore.Get(IDiscordPresenceService.ConnectedUserPreferenceKey, string.Empty);
             if (!string.IsNullOrWhiteSpace(discordUser))
             {
                 metrics["discord_user"] = discordUser;
@@ -397,7 +400,7 @@ public sealed partial class TelemetryService : ITelemetryService
         }
         catch
         {
-            // Preferences unavailable; the panel treats a missing value as "unknown".
+            // Preference storage unavailable; the panel treats a missing value as "unknown".
         }
 
         var location = await deviceLocationService.GetBestEffortLocationAsync(cancellationToken);

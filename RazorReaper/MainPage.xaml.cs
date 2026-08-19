@@ -2,9 +2,14 @@
 {
     public partial class MainPage : ContentPage
     {
-        public MainPage()
+        private readonly Services.IAppRunMode _appRunMode;
+
+        public MainPage(Services.IAppRunMode appRunMode)
         {
+            _appRunMode = appRunMode;
             InitializeComponent();
+            // Set before the WebView is attached so preview never renders Home even briefly.
+            blazorWebView.StartPath = Services.Implementations.LocalPreviewLaunchPolicy.GetStartPath(appRunMode);
 
 #if WINDOWS
             blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
@@ -20,22 +25,25 @@
                 webView2.CoreWebView2.Settings.IsZoomControlEnabled = false;
                 webView2.CoreWebView2.Settings.IsPinchZoomEnabled = false;
 
-                // Serve the hosted-media cache through a virtual host so large
-                // files (videos) stream from disk with Range support instead of
-                // being embedded as base64 data URLs.
-                System.IO.Directory.CreateDirectory(Services.MediaCachePaths.Directory);
-                webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    Services.MediaCachePaths.VirtualHost,
-                    Services.MediaCachePaths.Directory,
-                    Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+                if (Services.Implementations.LocalPreviewLaunchPolicy.ShouldMapProductionMediaCaches(_appRunMode))
+                {
+                    // Serve the hosted-media cache through a virtual host so large
+                    // files (videos) stream from disk with Range support instead of
+                    // being embedded as base64 data URLs.
+                    System.IO.Directory.CreateDirectory(Services.MediaCachePaths.Directory);
+                    webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                        Services.MediaCachePaths.VirtualHost,
+                        Services.MediaCachePaths.Directory,
+                        Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
 
-                // Same trick for the Convert page's playable preview: the picked file is
-                // hard-linked in here so a <video> can stream it with Range support.
-                System.IO.Directory.CreateDirectory(Services.Media.PreviewCache.Directory);
-                webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    Services.Media.PreviewCache.VirtualHost,
-                    Services.Media.PreviewCache.Directory,
-                    Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+                    // Same trick for the Convert page's playable preview: the picked file is
+                    // hard-linked in here so a <video> can stream it with Range support.
+                    System.IO.Directory.CreateDirectory(Services.Media.PreviewCache.Directory);
+                    webView2.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                        Services.Media.PreviewCache.VirtualHost,
+                        Services.Media.PreviewCache.Directory,
+                        Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+                }
 
                 // Reset zoom factor to 1.0 on every launch (clears any persisted zoom).
                 webView2.CoreWebView2.NavigationCompleted += (_, _) =>

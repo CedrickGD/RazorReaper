@@ -6,6 +6,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using RazorReaper.Services;
+using RazorReaper.Services.Implementations;
 using WinRT.Interop;
 
 namespace RazorReaper.WinUI
@@ -13,16 +14,12 @@ namespace RazorReaper.WinUI
     public partial class App : MauiWinUIApplication
     {
         private static Mutex? _mutex;
+        private readonly bool _isLocalPreview;
+        private readonly string _showSignalName;
         private AppWindow? _mainAppWindow;
         private bool _wiredCrosshairTray;
         private EventWaitHandle? _showSignal;
         private Action? _requestShowMainWindow;
-
-        // Named event a duplicate launch signals so the running instance shows its window.
-        // Needed because Process.MainWindowHandle is IntPtr.Zero for a HIDDEN window, so the
-        // ShowWindow/SetForegroundWindow fallback below can't reach a tray-hidden or
-        // --waitforark instance.
-        private const string ShowSignalName = "RazorReaper_ShowWindow_Event";
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -34,14 +31,19 @@ namespace RazorReaper.WinUI
 
         public App()
         {
+            var arguments = Environment.GetCommandLineArgs();
+            _isLocalPreview = AppRunMode.IsLocalPreviewRequested(arguments);
+            var synchronizationNames = WindowsBootstrapPolicy.GetSynchronizationNames(_isLocalPreview);
+            _showSignalName = synchronizationNames.ShowEventName;
+
             // An elevated relaunch (Restart as Administrator) starts a second process while the
             // old, non-elevated one is still exiting and still holds the single-instance mutex.
             // That handoff must NOT be treated as a duplicate launch — otherwise the new elevated
             // instance bails here (before MAUI even starts) and nothing comes back up.
-            var relaunchedElevated = Environment.GetCommandLineArgs()
+            var relaunchedElevated = arguments
                 .Contains(RazorReaper.Services.Elevation.IElevationService.RestartMarker, StringComparer.OrdinalIgnoreCase);
 
-            _mutex = new Mutex(true, "RazorReaper_SingleInstance_Mutex", out bool isNewInstance);
+            _mutex = new Mutex(true, synchronizationNames.MutexName, out bool isNewInstance);
 
             if (!isNewInstance)
             {
@@ -55,7 +57,10 @@ namespace RazorReaper.WinUI
                 else
                 {
                     SignalExistingInstanceToShow();
-                    BringExistingInstanceToFront();
+                    if (!_isLocalPreview)
+                    {
+                        BringExistingInstanceToFront();
+                    }
                     Environment.Exit(0);
                     return;
                 }
@@ -95,6 +100,15 @@ namespace RazorReaper.WinUI
 
             // Services were constructed during MAUI startup; resolve from DI.
             var services = IPlatformApplication.Current?.Services;
+            var runMode = services?.GetService<IAppRunMode>();
+            if (!WindowsBootstrapPolicy.ShouldWireIntegrations(_isLocalPreview, runMode))
+            {
+                // Keep the ordinary window, but never create the production tray/crosshair,
+                // Discord IPC, ARK watcher, show-signal thread, or their callbacks in preview.
+                _wiredCrosshairTray = true;
+                return;
+            }
+
             var discordPresence = services?.GetService<IDiscordPresenceService>();
 
             // Intercept the X button — hide the window and keep the process alive so the overlay
@@ -159,7 +173,7 @@ namespace RazorReaper.WinUI
         {
             try
             {
-                _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalName);
+                _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, _showSignalName);
                 var listener = new Thread(() =>
                 {
                     while (true)
@@ -192,11 +206,11 @@ namespace RazorReaper.WinUI
             }
         }
 
-        private static void SignalExistingInstanceToShow()
+        private void SignalExistingInstanceToShow()
         {
             try
             {
-                if (EventWaitHandle.TryOpenExisting(ShowSignalName, out var signal))
+                if (EventWaitHandle.TryOpenExisting(_showSignalName, out var signal))
                 {
                     using (signal)
                     {

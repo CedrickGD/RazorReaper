@@ -65,7 +65,8 @@ public sealed class AntiAfkScript : AutomationScriptBase
     {
         try
         {
-            InventoryKey = Preferences.Get($"{Key}.invkey", "I");
+            // Default follows the player's own ARK binding; a stored value still wins.
+            InventoryKey = Preferences.Get($"{Key}.invkey", ArkKeyDefaults.For(ArkActions.ShowMyInventory, "I"));
             IntervalSeconds = Preferences.Get($"{Key}.interval", 600);
         }
         catch (Exception ex) { Logger.LogWarning(ex, "Anti-AFK LoadSettings failed"); }

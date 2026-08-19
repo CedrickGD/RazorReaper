@@ -171,9 +171,12 @@ public sealed class CraftingScript : CalibratableScriptBase
         {
             var mode = Preferences.Get($"{Key}.mode", (int)CraftingMode.Watcher);
             Mode = Enum.IsDefined(typeof(CraftingMode), mode) ? (CraftingMode)mode : CraftingMode.Watcher;
-            CraftKey = Preferences.Get($"{Key}.craftkey", "E");
-            AccessKey = Preferences.Get($"{Key}.accesskey", "F");
-            ForwardKey = Preferences.Get($"{Key}.forwardkey", "W");
+            // "Use" is what actually starts a craft on the highlighted recipe; the access key is
+            // the same one that opens any container. Both follow the player's ARK bindings unless
+            // they have set their own here.
+            CraftKey = Preferences.Get($"{Key}.craftkey", ArkKeyDefaults.For(ArkActions.Use, "E"));
+            AccessKey = Preferences.Get($"{Key}.accesskey", ArkKeyDefaults.For(ArkActions.AccessInventory, "F"));
+            ForwardKey = Preferences.Get($"{Key}.forwardkey", ArkKeyDefaults.For(ArkActions.MoveForward, "W"));
             CraftPresses = Preferences.Get($"{Key}.presses", 3);
             PingCompensationMs = Preferences.Get($"{Key}.ping", 0);
             MatchThresholdPercent = Preferences.Get($"{Key}.threshold", 90.0);

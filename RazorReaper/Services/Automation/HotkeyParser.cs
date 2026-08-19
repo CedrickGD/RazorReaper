@@ -25,7 +25,15 @@ public static class HotkeyParser
         ["PageUp"] = 0x21,
         ["PageDown"] = 0x22,
         ["Insert"] = 0x2D,
-        ["Delete"] = 0x2E
+        ["Delete"] = 0x2E,
+        // Side-specific modifiers, so a script can hold the key ARK uses for sprint or crouch.
+        // Deliberately not the bare "Shift"/"Ctrl"/"Alt" names — those are combo tokens.
+        ["LeftShift"] = 0xA0,
+        ["RightShift"] = 0xA1,
+        ["LeftControl"] = 0xA2,
+        ["RightControl"] = 0xA3,
+        ["LeftAlt"] = 0xA4,
+        ["RightAlt"] = 0xA5
     };
 
     public static bool IsModifierName(string token) =>

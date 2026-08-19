@@ -93,9 +93,9 @@ public sealed class ExoSuitScript : AutomationScriptBase
     {
         try
         {
-            AccessKey = Preferences.Get($"{Key}.access", "I");
+            AccessKey = Preferences.Get($"{Key}.access", ArkKeyDefaults.For(ArkActions.AccessInventory, "I"));
             SearchTerm = Preferences.Get($"{Key}.search", "exo");
-            TransferKey = Preferences.Get($"{Key}.transfer", "T");
+            TransferKey = Preferences.Get($"{Key}.transfer", ArkKeyDefaults.For(ArkActions.TransferItem, "T"));
             TransferPresses = Preferences.Get($"{Key}.presses", 5);
             PerPressDelayMs = Preferences.Get($"{Key}.perpress", 120);
             RepeatDelayMs = Preferences.Get($"{Key}.repeat", 800);

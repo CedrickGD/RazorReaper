@@ -3,8 +3,10 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Maui.Storage
 @using RazorReaper.Services
+@using RazorReaper.Services.Implementations
 
 @inject IGameIniService GameIni
+@inject IAppRunMode AppRunMode
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ILogger<IniBuilder> Logger
@@ -192,19 +194,29 @@
     private string configFolder = "";
     private bool isApplying;
 
-    private string StatusState => !arkFound ? "error" : arkRunning ? "warning" : "online";
+    private string ProductionStatusState => !arkFound ? "error" : arkRunning ? "warning" : "online";
 
-    private string StatusLabel => !arkFound
+    private string ProductionStatusLabel => !arkFound
         ? "ARK installation not found"
         : arkRunning
             ? "ARK is running"
             : "Ready to apply";
 
-    private string StatusDescription => !arkFound
+    private string ProductionStatusDescription => !arkFound
         ? "ARK install not found — make sure Steam and ARK are installed."
         : arkRunning
             ? "Close ARK before applying — it overwrites GameUserSettings.ini on exit."
             : $"Editing INIs in {configFolder}";
+
+    private LocalPreviewSurfaceStatus CurrentStatus => LocalPreviewMarketingPolicy.ResolveIniBuilderStatus(
+        AppRunMode,
+        ProductionStatusState,
+        ProductionStatusLabel,
+        ProductionStatusDescription);
+
+    private string StatusState => CurrentStatus.State;
+    private string StatusLabel => CurrentStatus.Label;
+    private string StatusDescription => CurrentStatus.Description;
 
     private string LastAppliedLabel => string.IsNullOrEmpty(lastAppliedAt)
         ? "Last applied"
@@ -218,8 +230,16 @@
     protected override async Task OnInitializedAsync()
     {
         presets = GameIni.GetBuiltInPresets();
-        lastAppliedPreset = Preferences.Get(LastPresetKey, string.Empty);
-        lastAppliedAt = Preferences.Get(LastPresetTimeKey, string.Empty);
+        if (AppRunMode.IsLocalPreview)
+        {
+            lastAppliedPreset = "Preview only";
+            lastAppliedAt = string.Empty;
+        }
+        else
+        {
+            lastAppliedPreset = Preferences.Get(LastPresetKey, string.Empty);
+            lastAppliedAt = Preferences.Get(LastPresetTimeKey, string.Empty);
+        }
         RefreshStatus();
         await LoadDraftAsync();
         await RefreshBackupsAsync();

@@ -47,6 +47,7 @@ public sealed class AutomationHotkeyService : IAutomationHotkeyService
     private readonly object _startLock = new();
     private readonly ManualResetEventSlim _started = new(false);
     private readonly ConcurrentDictionary<int, Action> _callbacks = new();
+    private readonly ConcurrentDictionary<int, int> _registeredKeys = new();
     private readonly ConcurrentDictionary<int, long> _lastFired = new();
     private readonly ConcurrentQueue<HotkeyOp> _ops = new();
 
@@ -76,6 +77,7 @@ public sealed class AutomationHotkeyService : IAutomationHotkeyService
 
             var id = Interlocked.Increment(ref _nextId);
             _callbacks[id] = callback;
+            _registeredKeys[id] = virtualKey;
 
             var op = new HotkeyOp
             {
@@ -111,6 +113,7 @@ public sealed class AutomationHotkeyService : IAutomationHotkeyService
         // Remove the callback first so the hotkey can't fire again even before the Win32
         // unregistration lands on the pump thread.
         _callbacks.TryRemove(registrationId, out _);
+        _registeredKeys.TryRemove(registrationId, out _);
         _lastFired.TryRemove(registrationId, out _);
         if (_hwnd == IntPtr.Zero) return;
 
@@ -233,6 +236,15 @@ public sealed class AutomationHotkeyService : IAutomationHotkeyService
     {
         if (!_callbacks.TryGetValue(id, out var callback)) return;
 
+        // Never fire on input we produced ourselves. A running script holding or tapping a key
+        // would otherwise toggle whatever hotkey sits on that key — and the script it starts can
+        // do the same again, cascading.
+        if (_registeredKeys.TryGetValue(id, out var vk) && SynthesizedInput.IsActive(vk))
+        {
+            _logger.LogDebug("Hotkey id={Id} ignored: vk=0x{Vk:X2} is currently synthesized by us", id, vk);
+            return;
+        }
+
         // Debounce accidental double-taps; MOD_NOREPEAT already suppresses auto-repeat.
         var now = Environment.TickCount64;
         var last = _lastFired.GetOrAdd(id, 0);
@@ -290,6 +302,7 @@ public sealed class AutomationHotkeyService : IAutomationHotkeyService
         _disposed = true;
 
         _callbacks.Clear();
+        _registeredKeys.Clear();
         _lastFired.Clear();
 
         if (_hwnd != IntPtr.Zero)

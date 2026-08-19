@@ -3,6 +3,7 @@
 @using RazorReaper.Services.Automation
 @using RazorReaper.Services.Automation.Scripts
 @inject IEnumerable<AutomationScriptBase> AllScripts
+@inject IAppRunMode AppRunMode
 @implements IDisposable
 
 @* The page claims the window height and scrolls inside its own panes, so nothing here
@@ -10,7 +11,7 @@
 <div class="scripts-page">
 <header class="page-header">
     <h1 class="page-title">Scripts</h1>
-    <p class="page-subtitle">Premade automation that runs natively — no AutoHotkey or other external tools. External input only, BattlEye-safe.</p>
+    <p class="page-subtitle">Premade automation that runs natively — no AutoHotkey or other external tools. External input only.</p>
 </header>
 
 <div class="scripts-layout">
@@ -22,17 +23,56 @@
             <span>All scripts</span>
             <span class="scripts-list-count">@_scripts.Count(s => s.IsRunning) running</span>
         </div>
-        @foreach (var script in _scripts)
+        @if (AppRunMode.IsLocalPreview)
         {
-            <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
-                <span class="script-dot @(script.IsRunning ? "on" : "")"></span>
-                <span class="script-item-name">@script.DisplayName</span>
-            </button>
+            @foreach (var name in PreviewScriptNames)
+            {
+                <button class="script-item @(name == PreviewSelectedScript ? "active" : "")"
+                        @onclick="() => PreviewSelectedScript = name">
+                    <span class="script-dot"></span>
+                    <span class="script-item-name">@name</span>
+                </button>
+            }
+        }
+        else
+        {
+            @foreach (var script in _scripts)
+            {
+                <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
+                    <span class="script-dot @(script.IsRunning ? "on" : "")"></span>
+                    <span class="script-item-name">@script.DisplayName</span>
+                </button>
+            }
         }
     </aside>
 
     <section class="scripts-detail">
-        @if (_selected is not null)
+        @if (AppRunMode.IsLocalPreview)
+        {
+            <div class="scripts-detail-body">
+                <div class="script-hero">
+                    <StatusHeader State="off"
+                                  Label="@PreviewSelectedScript"
+                                  Description="@PreviewDescription">
+                        <Actions>
+                            <span class="usage-chip">Stopped · preview only</span>
+                        </Actions>
+                    </StatusHeader>
+                </div>
+                <div class="script-panels">
+                    <div class="content-card script-settings">
+                        <h3>Safe preview</h3>
+                        <SettingRow Title="Run state" Description="Marketing preview never registers hotkeys or sends input.">
+                            <span class="setting-value">Stopped</span>
+                        </SettingRow>
+                        <SettingRow Title="Start / Stop hotkey" Description="Configure a system-wide toggle in a normal app session.">
+                            <span class="setting-value">Not assigned</span>
+                        </SettingRow>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (_selected is not null)
         {
             @* @key on the selected script remounts the pane, which restarts the entry
                animation — otherwise picking a different script hard-cuts the whole
@@ -71,7 +111,7 @@
 
                 @if (_selected is YutyScript yuty)
                 {
-                    <SettingRow Title="Roar key" Description="Key pressed each interval (ARK default: C).">
+                    <SettingRow Title="Roar key" Description="Key pressed each interval. ARK exposes no binding for the Yuty roar, so set this one yourself.">
                         <input class="script-input" value="@yuty.RoarKey" @onchange="SetYutyKey" />
                     </SettingRow>
                     <SettingRow Title="Interval" Description="Milliseconds between roars.">
@@ -80,9 +120,18 @@
                 }
                 else if (_selected is AutoWalkScript walk)
                 {
-                    <SettingRow Title="Forward key" Description="Key held while running (ARK default: W).">
+                    <SettingRow Title="Movement" Description="Walk at normal speed, or hold sprint the whole time.">
+                        <Dropdown Value="@(walk.Sprint ? "Sprint" : "Walk")" ValueChanged="SetWalkMode" Options="WalkModeOptions" />
+                    </SettingRow>
+                    <SettingRow Title="Forward key" Description="Held to move forward — prefilled from your ARK 'Move forward' binding.">
                         <input class="script-input" value="@walk.ForwardKey" @onchange="SetWalkKey" />
                     </SettingRow>
+                    @if (walk.Sprint)
+                    {
+                        <SettingRow Title="Sprint key" Description="Held alongside forward — prefilled from your ARK 'Run' binding.">
+                            <input class="script-input" value="@walk.SprintKey" @onchange="SetWalkSprintKey" />
+                        </SettingRow>
+                    }
                 }
                 else if (_selected is MammothScript mammoth)
                 {
@@ -146,7 +195,7 @@
                 }
                 else if (_selected is AntiAfkScript antiafk)
                 {
-                    <SettingRow Title="Inventory key" Description="Key toggled to reset the idle timer (default: I).">
+                    <SettingRow Title="Inventory key" Description="Toggles your inventory — prefilled from your ARK 'Show my inventory' binding.">
                         <input class="script-input" value="@antiafk.InventoryKey" @onchange="SetAntiAfkKey" />
                     </SettingRow>
                     <SettingRow Title="Interval (seconds)" Description="Seconds between pulses.">
@@ -155,13 +204,13 @@
                 }
                 else if (_selected is ExoSuitScript exo)
                 {
-                    <SettingRow Title="Access key" Description="Opens your inventory (default: I).">
+                    <SettingRow Title="Access key" Description="Opens the container — prefilled from your ARK 'Access inventory' binding.">
                         <input class="script-input" value="@exo.AccessKey" @onchange="SetExoAccess" />
                     </SettingRow>
                     <SettingRow Title="Search filter" Description="Typed into the inventory search (default: exo).">
                         <input class="script-input" value="@exo.SearchTerm" @onchange="SetExoSearch" />
                     </SettingRow>
-                    <SettingRow Title="Transfer key" Description="Pressed to move the filtered items (default: T).">
+                    <SettingRow Title="Transfer key" Description="Moves the filtered items — prefilled from your ARK 'Transfer item' binding.">
                         <input class="script-input" value="@exo.TransferKey" @onchange="SetExoTransfer" />
                     </SettingRow>
                     <SettingRow Title="Transfer presses" Description="Presses per cycle.">
@@ -179,7 +228,7 @@
                     <SettingRow Title="Match threshold" Description="Similarity % at which the turret inventory counts as open.">
                         <input class="script-input" type="number" min="50" max="100" value="@turret.MatchThresholdPercent" @onchange="SetTurretThreshold" />
                     </SettingRow>
-                    <SettingRow Title="Transfer key" Description="Pressed to push ammo into the turret (default: T).">
+                    <SettingRow Title="Transfer key" Description="Pushes ammo into the turret — prefilled from your ARK 'Transfer item' binding.">
                         <input class="script-input" value="@turret.TransferKey" @onchange="SetTurretKey" />
                     </SettingRow>
                     <SettingRow Title="Transfer presses" Description="Presses per detection.">
@@ -232,10 +281,10 @@
                     <SettingRow Title="Mode" Description="Watcher = you walk and open stations; Walk = the script walks the row.">
                         <Dropdown Value="@crafting.Mode.ToString()" ValueChanged="SetCraftMode" Options="CraftModeOptions" />
                     </SettingRow>
-                    <SettingRow Title="Craft key" Description="Starts a craft inside the open station (default: E).">
+                    <SettingRow Title="Craft key" Description="Starts a craft in the open station — prefilled from your ARK 'Use' binding.">
                         <input class="script-input" value="@crafting.CraftKey" @onchange="SetCraftKey" />
                     </SettingRow>
-                    <SettingRow Title="Access key" Description="Opens/closes the station (default: F).">
+                    <SettingRow Title="Access key" Description="Opens and closes the station — prefilled from your ARK 'Access inventory' binding.">
                         <input class="script-input" value="@crafting.AccessKey" @onchange="SetCraftAccess" />
                     </SettingRow>
                     <SettingRow Title="Craft presses" Description="Craft presses per station.">
@@ -255,7 +304,7 @@
                     }
                     else
                     {
-                        <SettingRow Title="Forward key" Description="Held to walk between stations (default: W).">
+                        <SettingRow Title="Forward key" Description="Held to walk between stations — prefilled from your ARK 'Move forward' binding.">
                             <input class="script-input" value="@crafting.ForwardKey" @onchange="SetCraftForward" />
                         </SettingRow>
                         <SettingRow Title="Walk time" Description="Milliseconds held forward between stations.">
@@ -306,6 +355,20 @@
 </div>
 
 @code {
+    private static readonly string[] PreviewScriptNames =
+        ["Yuty", "Auto Walk", "Mammoth", "Auto Download", "Fast TP", "Armor Swap"];
+    private string PreviewSelectedScript { get; set; } = "Yuty";
+    private string PreviewDescription => PreviewSelectedScript switch
+    {
+        "Yuty" => "Keeps the Yutyrannus courage roar on an interval while mounted.",
+        "Auto Walk" => "Holds the forward key while ARK remains the active window.",
+        "Mammoth" => "Alternates drum inputs on a controlled interval.",
+        "Auto Download" => "Repeats a configured chat command on an interval.",
+        "Fast TP" => "Types a configured destination into the open teleport menu.",
+        "Armor Swap" => "Monitors durability values and swaps configured hotbar pieces.",
+        _ => "Native automation with an explicit stopped state.",
+    };
+
     private readonly List<AutomationScriptBase> _scripts = new();
     private AutomationScriptBase? _selected;
 
@@ -352,6 +415,24 @@
         {
             y.IntervalMs = v;
             y.SaveSettings();
+        }
+    }
+
+    private void SetWalkMode(string value)
+    {
+        if (_selected is AutoWalkScript w)
+        {
+            w.Sprint = string.Equals(value, "Sprint", StringComparison.OrdinalIgnoreCase);
+            w.SaveSettings();
+        }
+    }
+
+    private void SetWalkSprintKey(ChangeEventArgs e)
+    {
+        if (_selected is AutoWalkScript w)
+        {
+            w.SprintKey = e.Value?.ToString() ?? "LeftShift";
+            w.SaveSettings();
         }
     }
 
@@ -547,6 +628,12 @@
 
     private void SetDinoPresses(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.Presses = v; d.SaveSettings(); } }
     private void SetDinoDelay(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.ClickDelayMs = v; d.SaveSettings(); } }
+
+    private static readonly IReadOnlyList<Dropdown.Option> WalkModeOptions = new List<Dropdown.Option>
+    {
+        new("Walk", "Walk"),
+        new("Sprint", "Sprint"),
+    };
 
     private static readonly IReadOnlyList<Dropdown.Option> CraftModeOptions = new List<Dropdown.Option>
     {

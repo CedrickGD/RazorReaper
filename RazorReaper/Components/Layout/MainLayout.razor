@@ -1,18 +1,18 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.Extensions.DependencyInjection
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services
+@using RazorReaper.Services.Implementations
 @using RazorReaper.Services.Overlay
 @inject NavigationManager Navigation
+@inject IAppRunMode AppRunMode
+@inject IServiceProvider Services
 @inject IAutoUpdateManager AutoUpdateManager
 @inject INotificationService NotificationService
 @inject IUpdateService UpdateService
 @inject IDiscordPresenceService DiscordPresence
-@inject IHudOverlayService HudOverlay
-@* Resolved here so server auto-detection for the HUD runs without any page being open. *@
-@inject ISessionHudService SessionHud
-@inject RazorReaper.Services.Elevation.IElevationService Elevation
 @inject ILicenseService LicenseService
 @inject IAccessGateService AccessGate
 @inject IAppearanceService Appearance
@@ -37,7 +37,7 @@
 @* Full-screen access gate: covers the entire app (nav included) whenever this machine is
    suspended or banned. Rendered last so it sits on top; it fails open, so it only appears when
    the server has affirmatively reported a suspension. *@
-@if (AccessGate.IsSuspended)
+@if (LocalPreviewLayoutPolicy.ShouldRenderAccessBlock(AppRunMode, () => AccessGate.IsSuspended))
 {
     <AccessBlocked />
 }
@@ -45,40 +45,74 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        var integrationActions = new LocalPreviewLayoutActions(
+            ResolveHudAndSession: ResolveHudAndSession,
+            DetectVersionUpgrade: DetectVersionUpgrade,
+            ValidateLicenseAsync: ValidateLicenseAsync,
+            SubscribeAccess: SubscribeAccess,
+            ReflectDiscordAndHud: () => ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri)),
+            SubscribeNavigation: SubscribeNavigation);
+
+        await LocalPreviewLayoutPolicy.RunBeforeLocalNavigationAsync(AppRunMode, integrationActions);
+
+        if (LocalPreviewLaunchPolicy.ShouldConsumeElevationReturnRoute(AppRunMode))
+        {
+            // If we were just relaunched elevated, jump straight back to the page the user was on
+            // instead of landing on Home. Preview never consumes this production redirect.
+            var elevation = Services.GetRequiredService<RazorReaper.Services.Elevation.IElevationService>();
+            var returnRoute = elevation.ConsumePendingReturnRoute();
+            if (!string.IsNullOrWhiteSpace(returnRoute))
+            {
+                Navigation.NavigateTo(returnRoute);
+            }
+        }
+
+        LocalPreviewLayoutPolicy.RunAfterLocalNavigation(AppRunMode, integrationActions);
+    }
+
+    private IHudOverlayService? _hudOverlay;
+    private bool _accessSubscribed;
+    private bool _navigationSubscribed;
+
+    private void ResolveHudAndSession()
+    {
+        _hudOverlay = Services.GetRequiredService<IHudOverlayService>();
+        // Resolved only in normal mode so server auto-detection can run without a page open.
+        _ = Services.GetRequiredService<ISessionHudService>();
+    }
+
+    private void DetectVersionUpgrade()
+    {
         var previousVersion = AutoUpdateManager.DetectVersionUpgrade();
         if (previousVersion != null)
         {
             var current = UpdateService.CurrentVersionLabel;
             NotificationService.ShowSuccess($"Successfully updated to v{current}.");
         }
+    }
 
-        var result = await LicenseService.ValidateLicenseAsync();
+    private async Task ValidateLicenseAsync()
+    {
+        _ = await LicenseService.ValidateLicenseAsync();
+    }
 
-        // If we were just relaunched elevated, jump straight back to the page the user was on
-        // instead of landing on Home.
-        var returnRoute = Elevation.ConsumePendingReturnRoute();
-        if (!string.IsNullOrWhiteSpace(returnRoute))
-        {
-            Navigation.NavigateTo(returnRoute);
-        }
-
+    private void SubscribeAccess()
+    {
         // Re-render the layout whenever the access gate flips so the full-screen block
         // appears/disappears live (a mid-session suspend, or an admin lift, both land here).
         AccessGate.OnAccessStateChanged += HandleAccessChanged;
-
-        // Reflect the current page in Discord Rich Presence and the HUD tool module,
-        // then keep both synced on navigation.
-        ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
-        Navigation.LocationChanged += OnLocationChanged;
+        _accessSubscribed = true;
     }
 
-    private System.Threading.Timer? _titleClock;
+    private void SubscribeNavigation()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        _navigationSubscribed = true;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-
-        StartTitleClock();
 
         // Applied at the layout level so the scale covers every page, not just the
         // settings page that set it. Re-applied whenever it changes.
@@ -107,52 +141,31 @@
 
     private void ReflectPage(string relativePath)
     {
+        if (AppRunMode.IsLocalPreview || _hudOverlay is null)
+        {
+            return;
+        }
+
         var label = DiscordPresence.ResolveToolLabel(relativePath);
 
         DiscordPresence.SetActivityForPath(relativePath);
         // The HUD tool module shows the current page (like Rich Presence) — far more useful
         // than "Idle" since the app is minimized while you're in the game.
-        HudOverlay.SetActiveTool(label);
-    }
-
-    /// <summary>
-    /// The title bar shows the clock, not the current page. The sidebar already says which
-    /// page you're on and it's visible the whole time; the title bar is the one strip that
-    /// stays readable when the app is behind ARK, so the time is worth more there.
-    /// </summary>
-    private void StartTitleClock()
-    {
-        SetWindowTitle();
-
-        // Ticks on the minute boundary rather than every second: the title only shows
-        // HH:mm, so a per-second timer would rewrite the same string 59 times out of 60.
-        _titleClock = new System.Threading.Timer(
-            _ => InvokeAsync(SetWindowTitle),
-            null,
-            TimeSpan.FromSeconds(60 - DateTime.Now.Second),
-            TimeSpan.FromMinutes(1));
-    }
-
-    private static void SetWindowTitle()
-    {
-        try
-        {
-            var window = Microsoft.Maui.Controls.Application.Current?.Windows?.FirstOrDefault();
-            if (window is null) return;
-
-            window.Title = $"Razor Reaper — {DateTime.Now:HH:mm}";
-        }
-        catch
-        {
-            // Purely cosmetic; never let a title update take the layout down.
-        }
+        _hudOverlay.SetActiveTool(label);
     }
 
     public void Dispose()
     {
-        Navigation.LocationChanged -= OnLocationChanged;
-        AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+        if (_navigationSubscribed)
+        {
+            Navigation.LocationChanged -= OnLocationChanged;
+        }
+
+        if (_accessSubscribed)
+        {
+            AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+        }
+
         Appearance.Changed -= HandleAppearanceChanged;
-        _titleClock?.Dispose();
     }
 }

@@ -2,7 +2,6 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Maui.Storage;
 using RazorReaper.Configuration;
 using RazorReaper.Services;
 
@@ -16,11 +15,8 @@ namespace RazorReaper.Services.Implementations;
 /// </summary>
 public sealed class AccessGateService : IAccessGateService
 {
-    // Mirrors TelemetryService.InstallIdPreferenceKey so both send the identical install id.
-    private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
-
     private readonly HttpClient _httpClient;
-    private readonly IHwidService _hwidService;
+    private readonly IClientIdentityService _clientIdentityService;
     private readonly IOptions<AppConfiguration> _options;
     private readonly ILogger<AccessGateService> _logger;
 
@@ -40,12 +36,12 @@ public sealed class AccessGateService : IAccessGateService
 
     public AccessGateService(
         HttpClient httpClient,
-        IHwidService hwidService,
+        IClientIdentityService clientIdentityService,
         IOptions<AppConfiguration> options,
         ILogger<AccessGateService> logger)
     {
         _httpClient = httpClient;
-        _hwidService = hwidService;
+        _clientIdentityService = clientIdentityService;
         _options = options;
         _logger = logger;
     }
@@ -83,10 +79,11 @@ public sealed class AccessGateService : IAccessGateService
 
         try
         {
+            var identity = _clientIdentityService.GetIdentity();
             var payload = new
             {
-                hwid = _hwidService.GetHardwareId(),
-                install_id = Preferences.Get(InstallIdPreferenceKey, string.Empty),
+                hwid = identity.HardwareId,
+                install_id = identity.InstallId,
             };
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(Math.Clamp(settings.RequestTimeoutSeconds, 3, 60)));

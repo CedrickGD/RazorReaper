@@ -1,8 +1,10 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using RazorReaper.Navigation
 @using RazorReaper.Services
+@using RazorReaper.Services.Implementations
 @inject ILicenseService LicenseService
 @inject IUpdateService UpdateService
+@inject IAppRunMode AppRunMode
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -87,13 +89,19 @@
     @* Its own section at the foot, laid out like the status block in the admin panel:
        a rule, a dot + state on top, muted meta underneath. Parenthesise the version —
        "v@UpdateService..." parses as literal text, which is how it rendered wrong once. *@
-    <div class="nav-status">
-        <div class="nav-status-line" title="@LicenseTooltip">
-            <span class="nav-status-dot @LicenseDotClass"></span>
-            <span class="nav-status-label">@LicenseLabel</span>
+    @if (LocalPreviewMarketingPolicy.ShouldShowSidebarStatus(AppRunMode))
+    {
+        <div class="nav-status">
+            <div class="nav-status-line" title="@LicenseTooltip">
+                <span class="nav-status-dot @LicenseDotClass"></span>
+                <span class="nav-status-label">@LicenseLabel</span>
+            </div>
+            @if (LocalPreviewMarketingPolicy.ShouldShowVersion(AppRunMode))
+            {
+                <div class="nav-status-meta">@($"v{UpdateService.CurrentVersionLabel}")</div>
+            }
         </div>
-        <div class="nav-status-meta">@($"v{UpdateService.CurrentVersionLabel}")</div>
-    </div>
+    }
 
     @* Drag-to-resize. The pointerdown listener is attached directly to the DOM
        node via JS after first render (see OnAfterRenderAsync below), bypassing

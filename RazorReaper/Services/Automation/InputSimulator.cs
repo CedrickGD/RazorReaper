@@ -123,6 +123,13 @@ public sealed class InputSimulator : IInputSimulator
     private void SendKey(int virtualKey, bool keyUp)
     {
         if (virtualKey <= 0 || virtualKey > 0xFF) return;
+
+        // Record before dispatching: the hotkey pump must already know this key is ours by the
+        // time Windows delivers the resulting WM_HOTKEY, or a script's own keystroke toggles
+        // whatever hotkey happens to sit on that key.
+        if (keyUp) SynthesizedInput.Released(virtualKey);
+        else SynthesizedInput.Pressed(virtualKey);
+
         uint flags = keyUp ? KEYEVENTF_KEYUP : 0u;
         if (IsExtendedKey(virtualKey)) flags |= KEYEVENTF_EXTENDEDKEY;
 
