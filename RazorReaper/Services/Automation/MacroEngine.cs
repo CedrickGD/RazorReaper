@@ -21,6 +21,8 @@ public enum MacroStepType
     ClickAt,
     /// <summary>Move the cursor to (X, Y) without clicking.</summary>
     MoveTo,
+    /// <summary>Type <see cref="MacroStep.Text"/> into whatever has focus.</summary>
+    TypeText,
     /// <summary>Wait <see cref="MacroStep.DelayMs"/> milliseconds (jitter applies).</summary>
     Delay,
     /// <summary>Bring the ARK window to the foreground (restore + focus only — never touches other apps).</summary>
@@ -43,6 +45,9 @@ public sealed record MacroStep
     /// <summary>Mouse button for <see cref="MacroStepType.ClickAt"/> steps.</summary>
     public MouseButton Button { get; init; } = MouseButton.Left;
 
+    /// <summary>Text for <see cref="MacroStepType.TypeText"/>.</summary>
+    public string? Text { get; init; }
+
     /// <summary>Creates a key-down step.</summary>
     public static MacroStep KeyDown(int virtualKey) => new() { Type = MacroStepType.KeyDown, VirtualKey = virtualKey };
     /// <summary>Creates a key-up step.</summary>
@@ -54,6 +59,8 @@ public sealed record MacroStep
         => new() { Type = MacroStepType.ClickAt, X = x, Y = y, Button = button };
     /// <summary>Creates a cursor move step.</summary>
     public static MacroStep MoveTo(int x, int y) => new() { Type = MacroStepType.MoveTo, X = x, Y = y };
+
+    public static MacroStep TypeText(string text) => new() { Type = MacroStepType.TypeText, Text = text };
     /// <summary>Creates a delay step.</summary>
     public static MacroStep Delay(int delayMs) => new() { Type = MacroStepType.Delay, DelayMs = delayMs };
     /// <summary>Creates a focus-game-window step.</summary>
@@ -411,6 +418,10 @@ internal sealed class MacroRunner : IMacroRunner
                 break;
             case MacroStepType.MoveTo:
                 sim.MoveTo(step.X, step.Y);
+                break;
+            case MacroStepType.TypeText:
+                if (!string.IsNullOrEmpty(step.Text))
+                    await sim.TypeTextAsync(step.Text, 20, sequence.DelayJitter, token);
                 break;
             case MacroStepType.Delay:
                 await sim.DelayAsync(step.DelayMs, sequence.DelayJitter, token);

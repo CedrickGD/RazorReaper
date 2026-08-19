@@ -162,27 +162,6 @@
                         <input class="script-input" type="number" min="30" max="3600" value="@antiafk.IntervalSeconds" @onchange="SetAntiAfkInterval" />
                     </SettingRow>
                 }
-                else if (_selected is ExoSuitScript exo)
-                {
-                    <SettingRow Title="Access key" Description="Opens the container — prefilled from your ARK 'Access inventory' binding.">
-                        <input class="script-input" value="@exo.AccessKey" @onchange="SetExoAccess" />
-                    </SettingRow>
-                    <SettingRow Title="Search filter" Description="Typed into the inventory search (default: exo).">
-                        <input class="script-input" value="@exo.SearchTerm" @onchange="SetExoSearch" />
-                    </SettingRow>
-                    <SettingRow Title="Transfer key" Description="Moves the filtered items — prefilled from your ARK 'Transfer item' binding.">
-                        <input class="script-input" value="@exo.TransferKey" @onchange="SetExoTransfer" />
-                    </SettingRow>
-                    <SettingRow Title="Transfer presses" Description="Presses per cycle.">
-                        <input class="script-input" type="number" min="1" max="50" value="@exo.TransferPresses" @onchange="SetExoPresses" />
-                    </SettingRow>
-                    <SettingRow Title="Per-press delay" Description="Milliseconds between presses.">
-                        <input class="script-input" type="number" min="10" max="2000" value="@exo.PerPressDelayMs" @onchange="SetExoPerPress" />
-                    </SettingRow>
-                    <SettingRow Title="Repeat delay" Description="Milliseconds between cycles.">
-                        <input class="script-input" type="number" min="100" max="20000" value="@exo.RepeatDelayMs" @onchange="SetExoRepeat" />
-                    </SettingRow>
-                }
                 else if (_selected is TurretManagerScript turret)
                 {
                     <SettingRow Title="Match threshold" Description="Similarity % at which the turret inventory counts as open.">
@@ -316,6 +295,9 @@
                     <SettingRow Title="Open key" Description="Opens the transmitter — prefilled from your ARK 'Access inventory' binding.">
                         <input class="script-input" value="@fed.Macro.Settings.OpenKey" @onchange="SetFedOpenKey" />
                     </SettingRow>
+                    <SettingRow Title="Search filter" Description="Typed into the inventory search to narrow what gets moved (e.g. exo). Leave empty to transfer what is already listed.">
+                        <input class="script-input" value="@fed.Macro.Settings.SearchFilter" @onchange="SetFedSearchFilter" />
+                    </SettingRow>
                     <SettingRow Title="Transfer key" Description="Moves a batch — prefilled from your ARK 'Transfer item' binding.">
                         <input class="script-input" value="@fed.Macro.Settings.TransferKey" @onchange="SetFedTransferKey" />
                     </SettingRow>
@@ -411,11 +393,12 @@
         NoglinScript => "Detects the Noglin mind-control icon and drops FPS to 1 until it clears.",
         InvSizeScript => "Experimental: Shift+right-click spam to inflate inventory (needs your blueprint hotkeys; lag/loss risk).",
         AntiAfkScript => "Opens/closes inventory on an interval to avoid the idle kick.",
-        ExoSuitScript => "Exo-Mek farming: opens inventory, filters \"exo\", spams transfer, repeats.",
         TurretManagerScript => "When a turret inventory is open, presses transfer to refill its ammo.",
         FlakScript => "Reads the durability numbers next to your armor and swaps in a fresh piece from the hotbar — flak, riot or tek, without opening anything.",
         DinoReadyScript => "Single-stat leveler: clicks a calibrated stat + button N times (one-shot).",
         CraftingScript => "Crafts at Fabricator/Chem Bench/Replicator — Watcher or Walk mode, with ping compensation.",
+        AutoAntidoteScript => "Watches a calibrated icon and presses a hotbar key when it appears, disappears, or its timer runs low.",
+        FedSuitScript => "Transmitter loop: opens it, narrows to what you want, transfers a batch, closes, repeats.",
         _ => ""
     };
 
@@ -449,6 +432,11 @@
     private void SetFedOpenKey(ChangeEventArgs e)
     {
         if (_selected is FedSuitScript f) ApplyFed(f, s => s.OpenKey = e.Value?.ToString() ?? "F");
+    }
+
+    private void SetFedSearchFilter(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f) ApplyFed(f, s => s.SearchFilter = e.Value?.ToString() ?? string.Empty);
     }
 
     private void SetFedTransferKey(ChangeEventArgs e)
@@ -714,12 +702,6 @@
         }
     }
 
-    private void SetExoAccess(ChangeEventArgs e) { if (_selected is ExoSuitScript x) { x.AccessKey = e.Value?.ToString() ?? "I"; x.SaveSettings(); } }
-    private void SetExoSearch(ChangeEventArgs e) { if (_selected is ExoSuitScript x) { x.SearchTerm = e.Value?.ToString() ?? "exo"; x.SaveSettings(); } }
-    private void SetExoTransfer(ChangeEventArgs e) { if (_selected is ExoSuitScript x) { x.TransferKey = e.Value?.ToString() ?? "T"; x.SaveSettings(); } }
-    private void SetExoPresses(ChangeEventArgs e) { if (_selected is ExoSuitScript x && int.TryParse(e.Value?.ToString(), out var v)) { x.TransferPresses = v; x.SaveSettings(); } }
-    private void SetExoPerPress(ChangeEventArgs e) { if (_selected is ExoSuitScript x && int.TryParse(e.Value?.ToString(), out var v)) { x.PerPressDelayMs = v; x.SaveSettings(); } }
-    private void SetExoRepeat(ChangeEventArgs e) { if (_selected is ExoSuitScript x && int.TryParse(e.Value?.ToString(), out var v)) { x.RepeatDelayMs = v; x.SaveSettings(); } }
 
     private void SetTurretThreshold(ChangeEventArgs e) { if (_selected is TurretManagerScript t && double.TryParse(e.Value?.ToString(), out var v)) { t.MatchThresholdPercent = v; t.SaveSettings(); } }
     private void SetTurretKey(ChangeEventArgs e) { if (_selected is TurretManagerScript t) { t.TransferKey = e.Value?.ToString() ?? "T"; t.SaveSettings(); } }
