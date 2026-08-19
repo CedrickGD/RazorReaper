@@ -301,6 +301,15 @@
                     <SettingRow Title="Cooldown" Description="Seconds before it may fire again.">
                         <input class="script-input" type="number" min="0" max="600" value="@antidote.Service.Settings.CooldownSeconds" @onchange="SetAntidoteCooldown" />
                     </SettingRow>
+                    @* Without this you are guessing at the threshold: the number moves live while
+                       the watcher scans, so you can read off what "present" and "absent" actually
+                       score on your screen and set the cut-off between them. *@
+                    <SettingRow Title="Live match" Description="Similarity of the last scan, and how often it has fired.">
+                        <span class="setting-value">
+                            @(antidote.Service.LastMatchPercent is { } pct ? $"{pct:0.#}%" : "—")
+                            · @antidote.Service.TriggerCount fired
+                        </span>
+                    </SettingRow>
                 }
                 else if (_selected is FedSuitScript fed)
                 {
