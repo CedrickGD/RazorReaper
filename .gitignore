@@ -368,3 +368,7 @@ FodyWeavers.xsd
 
 # Worktree-only scratch folder for asset import (not for ship)
 .scratch/
+
+# Bundled ffmpeg for the Convert page (too large for git; the build copies it to the
+# output when present, and FfmpegProvider downloads it at runtime when it is not).
+RazorReaper/Tools/*.exe

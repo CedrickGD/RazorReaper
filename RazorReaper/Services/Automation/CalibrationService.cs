@@ -17,6 +17,22 @@ public sealed record CalibrationRegion(string Name, int Left, int Top, int Right
     public Rectangle ToRectangle() => Rectangle.FromLTRB(Left, Top, Right, Bottom);
 }
 
+/// <summary>
+/// Size rules for a calibrated region. A region is matched pixel-by-pixel against a reference
+/// snapshot, so a degenerate one carries no signal: two corners read at the same spot produce a
+/// 0x0 rectangle that would "match" anything. Validation lives here as a pure function so it can
+/// be tested without a cursor, a screen or a settings file.
+/// </summary>
+public static class CalibrationRegionRules
+{
+    /// <summary>Smallest usable width and height, in physical pixels.</summary>
+    public const int MinimumSidePx = 4;
+
+    /// <summary>True when the rectangle is large enough on both axes to be worth matching.</summary>
+    public static bool IsUsableSize(int left, int top, int right, int bottom)
+        => (right - left) >= MinimumSidePx && (bottom - top) >= MinimumSidePx;
+}
+
 /// <summary>Progress signal during region capture: which corner (1 or 2) and seconds remaining.</summary>
 public sealed record RegionCaptureProgress(int CornerIndex, int SecondsRemaining);
 
@@ -183,6 +199,21 @@ public sealed class CalibrationService : ICalibrationService
                 Math.Max(corner1.X, corner2.X),
                 Math.Max(corner1.Y, corner2.Y),
                 CurrentResolutionKey);
+
+            // Both corners landing on (nearly) the same pixel used to be stored as a 0x0 region and
+            // reported as a success, which then enabled "Capture reference" against nothing. Keep
+            // whatever was calibrated before rather than replacing it with an unusable rectangle.
+            if (!CalibrationRegionRules.IsUsableSize(region.Left, region.Top, region.Right, region.Bottom))
+            {
+                _logger.LogWarning(
+                    "Region capture for '{Name}' rejected: {Width}x{Height} is below the {Min}px minimum",
+                    region.Name, region.Right - region.Left, region.Bottom - region.Top,
+                    CalibrationRegionRules.MinimumSidePx);
+                _notifications.ShowWarning(
+                    $"Region too small ({region.Right - region.Left}x{region.Bottom - region.Top}). "
+                    + "Hover two opposite corners of the target, not the same spot — the previous calibration was kept.");
+                return null;
+            }
 
             lock (_storeLock)
             {

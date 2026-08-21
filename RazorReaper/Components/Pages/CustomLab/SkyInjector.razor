@@ -8,6 +8,7 @@
 @inject ICustomLabSettingsService LabSettings
 @inject INotificationService Notifications
 @inject IProcessService ProcessService
+@inject IUsageGateService UsageGate
 @inject ILogger<SkyInjector> Logger
 @implements IDisposable
 
@@ -154,15 +155,10 @@
                             it look smaller / more zoomed in.
                         </p>
                     </div>
-                    <select class="injector-select"
-                            value="@_opts.TileSize"
-                            @onchange="OnTileChanged"
-                            disabled="@(_opts.Mode != SkyInjectionMode.Image || _busy)">
-                        <option value="1">1× — normal</option>
-                        <option value="2">2× — 2 by 2 tiles</option>
-                        <option value="3">3× — 3 by 3 tiles</option>
-                        <option value="4">4× — 4 by 4 tiles (very small)</option>
-                    </select>
+                    <Dropdown Value="@_opts.TileSize.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                              ValueChanged="OnTileChanged"
+                              Options="TileOptions"
+                              Disabled="@(_opts.Mode != SkyInjectionMode.Image || _busy)" />
                 </div>
             </div>
         </div>
@@ -170,6 +166,7 @@
 
     @* ── Actions ─────────────────────────────────────────────────── *@
     <div class="injector-actions">
+        <UsageChip Feature="@UsageFeatures.SkyChanger" />
         <button type="button"
                 class="injector-action-btn primary"
                 @onclick="InjectAsync"
@@ -393,18 +390,12 @@
         color: var(--text-secondary);
     }
 
-    .injector-select {
-        padding: 0.45rem 0.7rem;
-        background: var(--glass-bg);
-        border: 1px solid var(--glass-hover);
-        border-radius: var(--radius-chip);
-        color: var(--text-primary);
-        font-size: 0.88rem;
-        cursor: pointer;
-        min-width: 200px;
-    }
+    /* The tile picker keeps the width floor the native select had, so the row stays put. */
+    .injector-options-card .rr-dd { min-width: 200px; }
 
-    .injector-select:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* Its row is the card's last one, and .lab-card is overflow:hidden — the open option
+       list would be cut off at the card edge. Only this card gives that up. */
+    .lab-card.injector-options-card { overflow: visible; }
 
     .injector-actions {
         display: flex;
@@ -685,9 +676,18 @@
         _ = UpdatePreview();
     }
 
-    private void OnTileChanged(ChangeEventArgs e)
+    private static readonly IReadOnlyList<Dropdown.Option> TileOptions = new List<Dropdown.Option>
     {
-        if (int.TryParse(e.Value?.ToString(), out var v))
+        new("1", "1× — normal"),
+        new("2", "2× — 2 by 2 tiles"),
+        new("3", "3× — 3 by 3 tiles"),
+        new("4", "4× — 4 by 4 tiles (very small)")
+    };
+
+    private void OnTileChanged(string value)
+    {
+        if (int.TryParse(value, System.Globalization.NumberStyles.Integer,
+                         System.Globalization.CultureInfo.InvariantCulture, out var v))
         {
             _opts.TileSize = Math.Clamp(v, 1, 4);
         }
@@ -758,8 +758,20 @@
     {
         if (!CanInject) return;
 
+        // _busy goes up before the gate's HTTP round-trip — CanInject checks it, so a
+        // double-click can't slip in a second consume during the await.
         _busy = true;
         _lastAction = "inject";
+
+        // Restores are never gated — only the inject counts against the free monthly quota.
+        var gate = await UsageGate.TryConsumeAsync(UsageFeatures.SkyChanger);
+        if (!gate.Allowed)
+        {
+            _busy = false;
+            _lastAction = null;
+            Notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} sky injects). Resets next month — Premium is unlimited.");
+            return;
+        }
         AppendLog(_opts.Mode == SkyInjectionMode.Image
             ? $"Swapping sky → {Path.GetFileName(_opts.ImagePath)} (tile {_opts.TileSize}x, flip {_opts.FlipVertically})…"
             : $"Swapping sky → solid color {_opts.HexColor}…", "info");

@@ -57,7 +57,7 @@
     backdrop-filter: blur(12px);
     border-color: rgba(255, 255, 255, 0.15);
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
+
 }
 
 .fonts-layout .font-option-btn.active {
@@ -134,7 +134,7 @@
 .fonts-layout .fonts-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
+
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
@@ -242,7 +242,7 @@
     background: rgba(0, 0, 0, 0.5);
     border-color: rgba(var(--accent-purple-rgb), 0.4);
     box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.2);
-    transform: translateY(-1px);
+
 }
 
 .fonts-layout .path-display.clickable:active {
@@ -274,7 +274,7 @@
     background: rgba(0, 0, 0, 0.5);
     border-color: rgba(var(--accent-purple-rgb), 0.4);
     box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.2);
-    transform: translateY(-1px);
+
 }
 
 .fonts-layout .code-display.clickable:active {

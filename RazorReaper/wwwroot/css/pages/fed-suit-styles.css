@@ -3,11 +3,13 @@
    StatusHeader, HotkeyField, Switch — styled in css/shared/primitives.css).
    Tokens only: radius/spacing scales and accent/status variables from theme.css. */
 
+/* No max-width: the 960px cap left a dead band on the right of every wide window while
+   the settings stacked into a 731px scroll below the fold. Full width, and the two
+   cards sit side by side once there's room for them. */
 .fedsuit-page {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    max-width: 960px;
 }
 
 /* Vertical rhythm comes from the flex gap, not per-card margins. */
@@ -15,14 +17,33 @@
     margin-bottom: 0 !important;
 }
 
-.fedsuit-page .fs-card {
-    padding: var(--space-5) !important;
+/* Settings and Calibration pair up instead of stacking — together they were the whole
+   reason this page scrolled. */
+.fs-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+.fs-card-grid > .fs-card {
+    margin-bottom: 0 !important;
+}
+
+/* NB: do not pair these rows into two columns. Their controls (HotkeyField, number
+   inputs) have fixed widths and don't shrink, so in a half-width cell the label column
+   collapses to a few characters and every description wraps one letter per line. */
+
+@media (max-width: 1100px) {
+    .fs-card-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 /* Design restraint: 600 only for titles (the global h3 rule forces 700). */
 .fedsuit-page h3 {
     font-weight: 600 !important;
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     margin-bottom: 0 !important;
 }
 

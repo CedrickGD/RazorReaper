@@ -1,4 +1,12 @@
 :root {
+    /* One size for every card heading. Pages had drifted between 1.0rem and 1.3rem, so
+       the same kind of title was a different size depending on which page you were on.
+       Use this token in page stylesheets instead of a literal rem value. */
+    --card-title-size: 1.05rem;
+
+    /* Likewise for card padding — pages ran anywhere from 16px to 32px. */
+    --card-pad: 1.25rem 1.35rem;
+
     --primary-color: #ffffff;
     --secondary-color: #000000;
     --background-dark: #0a0a0a;
@@ -146,7 +154,7 @@ html {
 .main-content {
     margin-left: var(--sidebar-width) !important;
     flex: 1 !important;
-    padding: 2rem !important;
+    padding: 1.5rem 1.75rem !important;
     min-height: 100vh !important;
     max-height: 100vh !important;
     position: relative !important;
@@ -176,14 +184,18 @@ html[data-sidebar-resizing] .main-content::before {
         transition: left 0.18s ease;
     }
 
+/* Density: the header used to burn ~205px before a single control appeared, which is
+   why short pages (Feedback, Scripts) scrolled and looked half-empty on a 713px view.
+   ~120px now. Everything below is scaled to match — this is the app's base size, so
+   pages should inherit it rather than override it upward. */
 .page-header {
-    margin-bottom: 3rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.9rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .page-title {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     background: var(--gradient-purple);
     -webkit-background-clip: text;
@@ -203,7 +215,7 @@ html[data-sidebar-resizing] .main-content::before {
 
 .page-subtitle {
     color: var(--text-secondary);
-    font-size: 1.1rem;
+    font-size: 0.92rem;
     font-weight: 400;
 }
 
@@ -211,8 +223,8 @@ html[data-sidebar-resizing] .main-content::before {
     background: rgba(0, 0, 0, 0.15) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: var(--radius-card) !important;
-    padding: 2rem !important;
-    margin-bottom: 2rem !important;
+    padding: var(--card-pad) !important;
+    margin-bottom: 1rem !important;
     animation: fadeInUp 0.6s ease-out !important;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
@@ -223,123 +235,122 @@ html[data-sidebar-resizing] .main-content::before {
 }
 
 
+/* ── Buttons ─────────────────────────────────────────────────────────────────
+   Two designs, not sixty-eight. One affirmative action per surface gets .btn-primary;
+   everything else is .btn-secondary. .btn-danger and .btn-success are the same two
+   shapes recoloured — they are modifiers, not a third and fourth button.
+
+   Side padding is 0.8rem, down from 1rem. Buttons sit in rows all over this app and the
+   extra 0.4rem each reclaimed real width without shrinking any type. */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    gap: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid transparent !important;
     border-radius: var(--radius-control);
     font-weight: 500;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    line-height: 1.2;
     text-decoration: none;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
     position: relative;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: transparent !important;
 }
 
-    .btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-        transition: left 0.5s ease;
+    /* No ::before shine sweep. It fired on every button in the app on hover, which is a
+       lot of motion for a control you pass over constantly, and it was the flourish that
+       made these read as heavier than they are. */
+
+    .btn:hover:not(:disabled) {
+        color: var(--text-primary);
+        border-color: var(--text-secondary) !important;
     }
 
-    .btn:hover::before {
-        left: 100%;
+    .btn:active:not(:disabled) {
+        transform: scale(0.97);
     }
 
-    .btn:hover {
-        transform: translateY(-2px);
-        border-color: rgba(255, 255, 255, 0.3) !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+    .btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
     }
 
     .btn:disabled {
-        opacity: 0.4;
+        opacity: 0.45;
         cursor: not-allowed;
         transform: none !important;
     }
 
-.btn-primary {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.18), rgba(var(--accent-purple-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    box-shadow: none !important;
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.4) !important;
-}
-
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
-        border-color: var(--accent-purple) !important;
-        color: var(--accent-purple-light) !important;
-    }
-
+/* B — Quiet. The default: a hairline and nothing else. */
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: var(--text-primary) !important;
-    box-shadow: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
-    .btn-secondary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
-        background: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.3) !important;
+    .btn-secondary:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-hover) !important;
     }
 
+/* A — Action. Tinted, never a saturated fill: it should be the clearest thing on the
+   surface, not the loudest thing on the screen. */
+.btn-primary,
 .btn-success {
-    background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.18), rgba(var(--accent-purple-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.4) !important;
+    background: rgba(var(--accent-purple-rgb), 0.14) !important;
+    color: var(--accent-purple-light) !important;
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.45) !important;
 }
 
-    .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(var(--accent-purple-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.28), rgba(var(--accent-purple-rgb), 0.15)) !important;
-        border-color: var(--accent-purple) !important;
+    .btn-primary:hover:not(:disabled),
+    .btn-success:hover:not(:disabled) {
+        background: rgba(var(--accent-purple-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-purple-rgb), 0.65) !important;
         color: var(--accent-purple-light) !important;
+    }
+
+/* Action, recoloured. Same geometry — only the hue says "this one is destructive". */
+.btn-danger {
+    background: rgba(var(--accent-red-rgb), 0.14) !important;
+    color: var(--accent-red-soft) !important;
+    border: 1px solid rgba(var(--accent-red-rgb), 0.45) !important;
+}
+
+    .btn-danger:hover:not(:disabled) {
+        background: rgba(var(--accent-red-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-red-rgb), 0.65) !important;
     }
 
 .btn-warning {
-    background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.18), rgba(var(--accent-orange-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(var(--accent-orange-rgb), 0.4) !important;
+    background: rgba(var(--accent-orange-rgb), 0.14) !important;
+    color: var(--accent-orange) !important;
+    border: 1px solid rgba(var(--accent-orange-rgb), 0.45) !important;
 }
 
-    .btn-warning:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(var(--accent-orange-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.28), rgba(var(--accent-orange-rgb), 0.15)) !important;
-        border-color: var(--accent-orange) !important;
-        color: var(--accent-orange) !important;
+    .btn-warning:hover:not(:disabled) {
+        background: rgba(var(--accent-orange-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-orange-rgb), 0.65) !important;
     }
 
-.btn-danger {
-    background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.18), rgba(var(--accent-red-rgb), 0.08)) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(var(--accent-red-rgb), 0.4) !important;
+/* The one size modifier. Not a new design — the same button, tighter. */
+.btn-small,
+.btn.sm {
+    padding: 0.28rem 0.6rem;
+    font-size: 0.76rem;
 }
 
-    .btn-danger:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(var(--accent-red-rgb), 0.35) !important;
-        background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.28), rgba(var(--accent-red-rgb), 0.15)) !important;
-        border-color: var(--accent-red) !important;
-        color: var(--accent-red-soft) !important;
+@media (prefers-reduced-motion: reduce) {
+    .btn:active:not(:disabled) {
+        transform: none;
     }
+}
+
 
 /* Global Input Styles */
 input, textarea, select {
@@ -377,9 +388,12 @@ h2 {
     margin-bottom: 1.5rem !important;
 }
 
+/* The base every card heading falls back to. Pages that don't set a size were sitting
+   at 1.25rem while the ones that did clustered around 1.05, so a card title changed
+   size as you moved between pages. Both ends meet on --card-title-size now. */
 h3 {
-    font-size: 1.25rem !important;
-    margin-bottom: 1rem !important;
+    font-size: var(--card-title-size) !important;
+    margin-bottom: 0.75rem !important;
 }
 
 .text-center {
@@ -441,21 +455,30 @@ h3 {
 }
 
 
+/* Same slim pill as .rr-scroll in primitives.css. This used to be a solid white-to-grey
+   gradient in an opaque gutter — a bright bar down the right edge of a dark app, which
+   is the "|" that showed up next to anything near the edge. */
 .main-content::-webkit-scrollbar {
     width: 8px;
+    background: transparent;
 }
 
 .main-content::-webkit-scrollbar-track {
-    background: var(--background-dark);
+    background: transparent;
+    margin: 4px 0;
 }
 
 .main-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--text-primary), var(--text-secondary));
-    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.14);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: var(--radius-round);
+    transition: background-color 0.16s ease;
 }
 
     .main-content::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), var(--text-primary));
+        background: rgba(var(--accent-purple-rgb), 0.55);
+        background-clip: padding-box;
     }
 
 ::-webkit-scrollbar {
@@ -549,250 +572,16 @@ h3 {
     color: var(--text-secondary);
 }
 
-.game-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem 0;
-}
+/* The unprefixed .game-status / .status-indicator / .status-dot / .status-info / .status-text
+   rules that used to live here went with the Game page rework — it was their only caller.
+   Everything else on this app uses its own prefix (server-status-dot, nav-status-dot,
+   overlay-status-info, injector-status-text, setting-status-dot), so nothing inherits from
+   these; StatusHeader in primitives.css is the shared status element now. */
 
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.status-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    position: relative;
-}
-
-    .status-dot.online {
-        background: var(--accent-purple);
-        box-shadow: 0 0 12px rgba(var(--accent-purple-rgb), 0.6);
-    }
-
-    .status-dot.offline {
-        background: var(--accent-red);
-        box-shadow: 0 0 12px rgba(var(--accent-red-rgb), 0.6);
-    }
-
-    .status-dot::after {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -4px;
-        right: -4px;
-        bottom: -4px;
-        border-radius: 50%;
-        border: 2px solid currentColor;
-        opacity: 0;
-        animation: pulse 2s infinite;
-    }
-
-    .status-dot.online::after {
-        color: var(--accent-purple);
-    }
-
-    .status-dot.offline::after {
-        color: var(--accent-red);
-    }
-
-.status-info h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 0.25rem 0;
-}
-
-.status-text {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.game-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.75rem;
-}
-
-.game-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: var(--radius-chip);
-    background: var(--background-dark);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-weight: 500;
-    font-size: 0.85rem;
-    min-height: 36px;
-    position: relative;
-    overflow: hidden;
-    text-align: left;
-    justify-content: flex-start;
-}
-
-    .game-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-        transition: left 0.5s ease;
-    }
-
-    .game-btn:hover::before {
-        left: 100%;
-    }
-
-    .game-btn:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .game-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none !important;
-    }
-
-    .game-btn.primary {
-        border-color: var(--text-primary);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    }
-
-        .game-btn.primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
-            color: var(--text-primary);
-        }
-
-    .game-btn.success {
-        border-color: var(--accent-purple);
-        background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.1), rgba(var(--accent-purple-rgb), 0.05));
-    }
-
-        .game-btn.success:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.2), rgba(var(--accent-purple-rgb), 0.1));
-            box-shadow: 0 2px 8px rgba(var(--accent-purple-rgb), 0.4);
-            color: var(--accent-purple);
-        }
-
-    .game-btn.warning {
-        border-color: var(--accent-orange);
-        background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.1), rgba(var(--accent-orange-rgb), 0.05));
-    }
-
-        .game-btn.warning:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(var(--accent-orange-rgb), 0.2), rgba(var(--accent-orange-rgb), 0.1));
-            box-shadow: 0 2px 8px rgba(var(--accent-orange-rgb), 0.4);
-            color: var(--accent-orange);
-        }
-
-    .game-btn.danger {
-        border-color: var(--accent-red);
-        background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.1), rgba(var(--accent-red-rgb), 0.05));
-    }
-
-        .game-btn.danger:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.2), rgba(var(--accent-red-rgb), 0.1));
-            box-shadow: 0 2px 8px rgba(var(--accent-red-rgb), 0.4);
-            color: var(--accent-red);
-        }
-
-    .game-btn svg {
-        width: 16px;
-        height: 16px;
-        opacity: 0.8;
-        transition: transform 0.3s ease;
-        flex-shrink: 0;
-    }
-
-    .game-btn:hover:not(:disabled) svg {
-        transform: scale(1.1);
-        opacity: 1;
-    }
-
-@media (max-width: 768px) {
-    .game-actions {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-}
-
-.game-page-container .page-header {
-    margin-bottom: 2rem !important;
-    padding-bottom: 1rem !important;
-}
-
-.game-page-container .page-title {
-    font-size: 2rem !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.game-page-container .page-subtitle {
-    font-size: 1rem !important;
-    color: var(--text-secondary) !important;
-}
-
-.game-page-container .content-card {
-    margin-bottom: 1.5rem !important;
-    padding: 1.5rem !important;
-}
-
-.game-page-container .game-status {
-    padding: 1.5rem 0 !important;
-}
-
-.game-page-container .status-indicator {
-    gap: 1.25rem !important;
-}
-
-.game-page-container .status-info h3 {
-    font-size: 1.25rem !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.game-page-container .status-text {
-    font-size: 0.95rem !important;
-}
-
-.game-page-container .game-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem !important;
-}
-
-.game-page-container .game-btn {
-    padding: 1rem 1.25rem !important;
-    min-height: 48px !important;
-    font-size: 0.9rem !important;
-}
-
-    .game-page-container .game-btn svg {
-        width: 18px !important;
-        height: 18px !important;
-    }
-
-@media (max-width: 768px) {
-    .game-page-container .page-title {
-        font-size: 1.75rem !important;
-    }
-
-    .game-page-container .game-actions {
-        grid-template-columns: 1fr !important;
-        gap: 0.75rem !important;
-    }
-}
+/* The .game-page-container overrides that used to sit here are gone: page rules do not
+   belong in the shared sheet, and every one of them was an !important fighting the scale
+   defined a few lines above. The Game page is on the shared primitives now and its own
+   two bits of layout live in pages/game-styles.css. */
 
 /* Global animations */
 @keyframes fadeInUp {
@@ -947,7 +736,7 @@ h3 {
 }
 
 .premium-upgrade-btn:hover {
-    transform: translateY(-2px);
+
     box-shadow: 0 6px 16px rgba(var(--accent-purple-rgb), 0.6);
 }
 

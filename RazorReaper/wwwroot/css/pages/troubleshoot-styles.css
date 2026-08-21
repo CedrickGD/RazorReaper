@@ -23,7 +23,7 @@
 
 .troubleshoot-title-text h3 {
     margin: 0;
-    font-size: 1.3rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .troubleshoot-title-text p {
@@ -122,7 +122,7 @@
 .troubleshoot-log-open:hover {
     background: rgba(var(--accent-purple-rgb), 0.2);
     border-color: var(--accent-purple);
-    transform: translateY(-1px);
+
 }
 
 .troubleshoot-log-open svg {

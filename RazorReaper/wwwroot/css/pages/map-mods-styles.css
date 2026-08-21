@@ -171,7 +171,7 @@
 .map-mods-spot:hover {
     border-color: rgba(255, 255, 255, 0.15);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
-    transform: translateY(-2px);
+
 }
 
 .map-mods-spot-header {
@@ -183,7 +183,7 @@
 
 .map-mods-spot h3 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: var(--card-title-size);
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -517,7 +517,7 @@
 
 .cs-modal-header h3 {
     margin: 0 !important;
-    font-size: 1.1rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
 }
 

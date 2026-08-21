@@ -1,199 +1,145 @@
 @using Microsoft.AspNetCore.Components.Routing
+@using RazorReaper.Navigation
 @using RazorReaper.Services
+@using RazorReaper.Services.Implementations
 @inject ILicenseService LicenseService
+@inject IUpdateService UpdateService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
+@*
+    Sidebar structure — icon rail + pinned panel
+    -------------------------------------------
+    Left: a thin rail of the seven category icons, always visible.
+    Right: a panel listing the selected category's pages, always open.
+
+    Clicking a rail icon swaps the panel. Nothing opens on hover, so there is no
+    transient surface to chase with the pointer, and the panel fills the column
+    height instead of leaving a void under a short list.
+
+    There is deliberately no icon-only mode: the panel never collapses, so the
+    sidebar always reads as labelled navigation.
+*@
+
 <nav class="sidebar @(LicenseService.IsActivated ? "" : "locked-content")" data-sidebar @ref="_navRef">
-    <div class="brand">
-        <img class="brand-logo" src="images/RRlogo.png" alt="Razor Reaper logo" />
+
+    @* Header and search span the FULL sidebar width, above the rail/panel split.
+       Tucking the logo into the 54px rail and the search into the panel left three
+       mismatched boxes stacked in the corner, and squeezed the search to "Se…".
+       No wordmark — the title bar already says the name. *@
+    <div class="nav-head">
+        <img class="brand-logo" src="images/RRlogo.png" alt="Razor Reaper" />
     </div>
 
-    <div class="search-trigger" @onclick="OpenSearch" title="Search (Ctrl+K)">
+    <button type="button" class="search-trigger" @onclick="OpenSearch" title="Search pages, locations and commands (Ctrl+K)">
         <svg class="search-trigger-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="9" cy="9" r="5.5" />
             <path d="m13.5 13.5 3 3" />
         </svg>
-        <span class="search-trigger-text">Search...</span>
+        <span class="search-trigger-text">Search</span>
         <kbd class="search-trigger-kbd">Ctrl K</kbd>
+    </button>
+
+    <div class="nav-split">
+
+    <div class="nav-rail">
+        <ul class="rail-items">
+            @foreach (var group in NavCatalog.Groups)
+            {
+                var isSelected = group.Name == _selectedGroup;
+                var holdsActive = GroupHoldsActivePage(group);
+
+                <li @key="group.Name">
+                    <button type="button"
+                            class="rail-btn @(isSelected ? "selected" : "") @(holdsActive ? "has-active" : "")"
+                            title="@group.Name"
+                            aria-label="@group.Name"
+                            aria-pressed="@isSelected"
+                            @onclick="() => SelectGroup(group.Name)">
+                        <span class="rail-icon">@((MarkupString)group.IconSvg)</span>
+                    </button>
+                </li>
+            }
+        </ul>
     </div>
 
-    <div class="nav-content">
-        @foreach (var group in NavGroups)
-        {
-            var isCollapsed = IsGroupCollapsed(group.Name);
-            <div class="nav-group @(isCollapsed ? "collapsed" : "")" data-group="@group.Name">
-                <button type="button"
-                        class="nav-group-label"
-                        @onclick="() => ToggleGroupAsync(group.Name)"
-                        aria-expanded="@(!isCollapsed)">
-                    <span class="nav-group-label-text">@group.Name</span>
-                    <svg class="nav-group-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m3.5 5 2.5 2.5L8.5 5" />
-                    </svg>
-                </button>
+    <div class="nav-panel">
+        @* @key on the group name remounts the list when the category changes, which
+           restarts the entry animation instead of silently swapping the text. *@
+        <div class="panel-body" @key="_selectedGroup">
+            <div class="panel-title">@_selectedGroup</div>
+            <ul class="panel-list">
+                @foreach (var entry in SelectedPages)
+                {
+                    <li @key="entry.Route">
+                        <a href="@entry.Route" class="panel-link @GetActiveClass(entry.Route)">
+                            <span class="nav-icon-wrap">@((MarkupString)entry.IconSvg)</span>
+                            <span class="panel-label">@entry.Label</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
 
-                <ul class="nav-menu">
-                    @foreach (var item in group.Items)
-                    {
-                        <li class="nav-item">
-                            @* No `title` here — we render a themed tooltip via JS in rail mode (see navbar.js / .rail-tooltip).
-                               The native OS tooltip would compete with our custom one. The .nav-link-label span below
-                               provides the source text. *@
-                            <a href="@item.Href" class="nav-link @GetActiveClass(item.Href)">
-                                <span class="nav-icon-wrap">
-                                    @((MarkupString)item.IconSvg)
-                                </span>
-                                <span class="nav-link-label">@item.Label</span>
-                            </a>
-                        </li>
-                    }
-                </ul>
-            </div>
-        }
+    </div>
+
+    @* Its own section at the foot, laid out like the status block in the admin panel:
+       a rule, a dot + state on top, muted meta underneath. Parenthesise the version —
+       "v@UpdateService..." parses as literal text, which is how it rendered wrong once. *@
+    <div class="nav-status">
+        <div class="nav-status-line" title="@LicenseTooltip">
+            <span class="nav-status-dot @LicenseDotClass"></span>
+            <span class="nav-status-label">@LicenseLabel</span>
+        </div>
+        <div class="nav-status-meta">@($"v{UpdateService.CurrentVersionLabel}")</div>
     </div>
 
     @* Drag-to-resize. The pointerdown listener is attached directly to the DOM
        node via JS after first render (see OnAfterRenderAsync below), bypassing
        Blazor's event indirection entirely — that turned out to be the difference
        between events firing and not firing under WebView2. *@
-    <div class="sidebar-resize-handle"
-         title="Drag to resize"
-         @ref="_resizeHandleRef"></div>
+    <div class="sidebar-resize-handle" title="Drag to resize" @ref="_resizeHandleRef">
+        <span class="resize-grip"></span>
+    </div>
 </nav>
 
 @code {
     private ElementReference _navRef;
     private ElementReference _resizeHandleRef;
     private DotNetObjectReference<SharedNavbar>? _dotNetRef;
-    private HashSet<string> _collapsedGroups = new(StringComparer.Ordinal);
-    private bool _initialStateLoaded;
     private bool _resizeHandleAttached;
 
-    private record NavItem(string Label, string Href, string IconSvg);
-    private record NavGroupDef(string Name, NavItem[] Items);
+    /// <summary>Category whose pages the panel is showing.</summary>
+    private string _selectedGroup = NavCatalog.Groups[0].Name;
 
-    // Single source of truth for the nav structure. To add a page, add an entry to the
-    // appropriate group below and (optionally) mirror it in GlobalSearch.razor's AllPages.
-    private static readonly NavGroupDef[] NavGroups = new[]
-    {
-        new NavGroupDef("Core", new[]
-        {
-            new NavItem("Home", "/home", IconHome),
-            new NavItem("Server", "/server", IconServer),
-            new NavItem("Game", "/game", IconGame),
-        }),
-        new NavGroupDef("ARK Tweaks", new[]
-        {
-            new NavItem("INI Changer", "/ini-changer", IconIni),
-            new NavItem("INI Builder", "/ini-builder", IconIniBuilder),
-            new NavItem("Vision Tools", "/vision", IconVision),
-            new NavItem("Gamma", "/gamma", IconGamma),
-            new NavItem("Launch Options", "/launch-options", IconLaunch),
-            new NavItem("Fonts", "/fonts", IconFonts),
-            new NavItem("Pixel Glitch", "/pixel", IconPixel),
-            new NavItem("Paintings", "/paintings", IconPaintings),
-        }),
-        new NavGroupDef("Custom ARK", new[]
-        {
-            new NavItem("Sky Changer", "/custom-lab", IconLab),
-            new NavItem("Loading Screen", "/loading-screen", IconLoadingScreen),
-            new NavItem("Char Manager", "/char-manager", IconCharManager),
-            new NavItem("Stretched Res", "/stretched-res", IconStretchedRes),
-        }),
-        new NavGroupDef("Automation", new[]
-        {
-            new NavItem("Scripts", "/scripts", IconScriptsHub),
-            new NavItem("Global Hotkeys", "/hotkeys", IconHotkeys),
-            new NavItem("Auto Clicker", "/autoclicker", IconClicker),
-            new NavItem("Macros", "/macros", IconMacros),
-            new NavItem("Fed Suit", "/fed-suit", IconFedSuit),
-            new NavItem("Auto Antidote", "/auto-antidote", IconAntidote),
-            new NavItem("HUD Overlay", "/hud-overlay", IconHud),
-            new NavItem("Notifier", "/notifier", IconNotifier),
-        }),
-        new NavGroupDef("Mods & Intel", new[]
-        {
-            new NavItem("Mutagen Prices", "/dino-prices", IconMutagen),
-            new NavItem("Line List", "/line-list", IconLineList),
-            new NavItem("OC BPs", "/oc-bps", IconBlueprint),
-            new NavItem("Bosses", "/bosses", IconBoss),
-            new NavItem("TP Locations", "/tp-locations", IconTpLocations),
-            new NavItem("Underwater Drops", "/underwater-drops", IconUnderwaterDrops),
-            new NavItem("Map Mods", "/map-mods", IconCaves),
-            new NavItem("Steam Mods", "/steam-mods", IconSteamMods),
-        }),
-        new NavGroupDef("Utilities", new[]
-        {
-            new NavItem("Building", "/building", IconBuilding),
-            new NavItem("Desync", "/desync", IconDesync),
-            new NavItem("File Modifier", "/file-modifier", IconFileMod),
-            new NavItem("Crosshair", "/crosshair", IconCrosshair),
-            new NavItem("Macro / AHK", "/crafting-scripts", IconScript),
-            new NavItem("Compact ARK", "/compact-ark", IconCompact),
-        }),
-        new NavGroupDef("Help & About", new[]
-        {
-            new NavItem("Troubleshoot", "/troubleshoot", IconTroubleshoot),
-            new NavItem("Feedback", "/feedback", IconFeedback),
-            new NavItem("Credits", "/credits", IconCredits),
-        }),
-    };
-
-    private const string IconHome = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 10 4l7 5.5"/><path d="M5.5 8.5V16h9V8.5"/><path d="M8.5 16v-3.5h3V16"/></svg>""";
-    private const string IconServer = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="5" rx="1.4"/><rect x="3" y="11" width="14" height="5" rx="1.4"/><path d="M12.5 6.5h1"/><path d="M15 6.5h.5"/><path d="M12.5 13.5h1"/><path d="M15 13.5h.5"/></svg>""";
-    private const string IconGame = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M7 8l3 2-3 2"/><path d="M11.5 12h3"/></svg>""";
-    private const string IconIni = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h12"/><path d="M4 10h12"/><path d="M4 14.5h12"/><circle cx="7" cy="5.5" r="1.25"/><circle cx="12.5" cy="10" r="1.25"/><circle cx="9" cy="14.5" r="1.25"/></svg>""";
-    private const string IconIniBuilder = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8"/><path d="M4 10h6"/><path d="M4 15h5"/><path d="M14.5 9v6"/><path d="M11.5 12h6"/></svg>""";
-    private const string IconGamma = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2"/><path d="M10 15.5v2"/><path d="M2.5 10h2"/><path d="M15.5 10h2"/><path d="M4.7 4.7l1.4 1.4"/><path d="M13.9 13.9l1.4 1.4"/><path d="M15.3 4.7l-1.4 1.4"/><path d="M6.1 13.9l-1.4 1.4"/></svg>""";
-    private const string IconCompact = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="4" rx="1.2"/><path d="M4.5 8v6.5A1.5 1.5 0 0 0 6 16h8a1.5 1.5 0 0 0 1.5-1.5V8"/><path d="M8.2 11.5h3.6"/></svg>""";
-    private const string IconLoadingScreen = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M5.5 4v12"/><path d="M14.5 4v12"/><path d="M8.5 8.2l3.4 1.8-3.4 1.8z"/></svg>""";
-    private const string IconLineList = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h8"/><path d="M8 10h8"/><path d="M8 15h8"/><circle cx="4.4" cy="5" r="0.9"/><circle cx="4.4" cy="10" r="0.9"/><circle cx="4.4" cy="15" r="0.9"/></svg>""";
-    private const string IconCharManager = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6.5" r="3.2"/><path d="M4.5 16.5c.9-3 3-4.7 5.5-4.7s4.6 1.7 5.5 4.7"/></svg>""";
-    private const string IconStretchedRes = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="9" rx="1.6"/><path d="M8 17h4"/><path d="M10 13.5V17"/><path d="M6.6 7.6 4.8 9l1.8 1.4"/><path d="M13.4 7.6 15.2 9l-1.8 1.4"/><path d="M6.5 9h7"/></svg>""";
-    private const string IconTpLocations = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s-5.5-4.6-5.5-8.5a5.5 5.5 0 0 1 11 0C15.5 12.4 10 17 10 17Z"/><circle cx="10" cy="8.5" r="2"/></svg>""";
-    private const string IconUnderwaterDrops = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.2c1.6 1.3 3.1 1.3 4.7 0 1.6-1.3 3-1.3 4.6 0 1.6 1.3 3.1 1.3 4.7 0"/><rect x="6" y="9.5" width="8" height="6.5" rx="1.2"/><path d="M6 12.2h8"/><path d="M10 9.5v6.5"/></svg>""";
-    private const string IconCaves = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5 10 4l7 12.5H3Z"/><path d="M7.6 16.5a2.4 2.4 0 0 1 4.8 0"/></svg>""";
-    private const string IconMacros = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="M8.4 7.6l4.2 2.4-4.2 2.4z"/></svg>""";
-    private const string IconFedSuit = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M7.5 8.5h5l-1.8-1.8"/><path d="M12.5 11.5h-5l1.8 1.8"/></svg>""";
-    private const string IconAntidote = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 4.5 5v4.5c0 3.6 2.3 6 5.5 7.5 3.2-1.5 5.5-3.9 5.5-7.5V5L10 3Z"/><path d="M10 7.5v4"/><path d="M8 9.5h4"/></svg>""";
-    private const string IconHud = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M5 7.5h4"/><path d="M5 10.5h2.5"/><path d="M12 13h3"/></svg>""";
-    private const string IconNotifier = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8a5 5 0 0 0-10 0c0 5.5-2.5 7-2.5 7h15S15 13.5 15 8"/><path d="M11.5 17.5a1.7 1.7 0 0 1-3 0"/></svg>""";
-    private const string IconVision ="""<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10Z"/><circle cx="10" cy="10" r="2.2"/></svg>""";
-    private const string IconLaunch = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16.5V3.5"/><path d="M5 4h8l-1.6 2.6L13 9H5"/></svg>""";
-    private const string IconFonts = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15 10 5l4 10"/><path d="M7.4 11.5h5.2"/></svg>""";
-    private const string IconPixel = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5 4 10h5l-.6 7.5L16 10h-5l-.5-7.5Z"/></svg>""";
-    private const string IconPaintings = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7"/><circle cx="7" cy="7.5" r="1"/></svg>""";
-    private const string IconLab = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v4.5L4.3 14a1.5 1.5 0 0 0 1.3 2.3h8.8A1.5 1.5 0 0 0 15.7 14L12 7.5V3"/><path d="M7 3h6"/><path d="M5.7 12.5h8.6"/></svg>""";
-    private const string IconMutagen = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3H6.5a2 2 0 0 0-2 2v4.5L11 16l5-5-6-8Z"/><circle cx="7.3" cy="7.3" r="1"/></svg>""";
-    private const string IconBlueprint = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3.5" width="11" height="13" rx="2"/><path d="M8 6h4"/><path d="M7 9.5h6"/><path d="M7 12.5h6"/></svg>""";
-    private const string IconBoss = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 5.8V10c0 3 1.7 5.3 5 6.8 3.3-1.5 5-3.8 5-6.8V5.8L10 3Z"/></svg>""";
-    private const string IconMap = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16s4.8-4.8 4.8-8A4.8 4.8 0 1 0 5.2 8c0 3.2 4.8 8 4.8 8Z"/><circle cx="10" cy="8" r="1.8"/></svg>""";
-    private const string IconSteamMods = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 4.5 6.7v6.6L10 16.5l5.5-3.2V6.7L10 3.5Z"/><path d="M10 10V16"/><path d="M4.5 6.7 10 10l5.5-3.3"/></svg>""";
-    private const string IconBuilding = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="4" height="4" rx="1"/><rect x="12" y="4" width="4" height="4" rx="1"/><rect x="8" y="12" width="4" height="4" rx="1"/></svg>""";
-    private const string IconClicker = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v3"/><path d="M7 5.5h6"/><path d="M10 8.5v8"/><path d="M10 16.5c3 0 4.8-1.8 4.8-4.3 0-1.8-1.1-3.2-2.9-3.7"/><path d="M10 16.5c-3 0-4.8-1.8-4.8-4.3 0-1.8 1.1-3.2 2.9-3.7"/></svg>""";
-    private const string IconScript = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="8.5" rx="2"/><path d="M5.5 9.5h1"/><path d="M8.5 9.5h1"/><path d="M11.5 9.5h1"/><path d="M14.5 9.5h0.5"/><path d="M5.5 12h5"/><path d="M12.5 12h2.5"/></svg>""";
-    private const string IconCrosshair = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M10 2v3"/><path d="M10 15v3"/><path d="M2 10h3"/><path d="M15 10h3"/><circle cx="10" cy="10" r="1.1" fill="currentColor"/></svg>""";
-    private const string IconTroubleshoot = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 16.5 15H3.5L10 3.5Z"/><path d="M10 7.2v4.3"/><path d="M10 13.6h.01"/></svg>""";
-    private const string IconCredits = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 8v4"/><path d="M10 6.3h.01"/></svg>""";
-    private const string IconScriptsHub = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="12" height="8.5" rx="2"/><path d="M10 4v3"/><circle cx="10" cy="3.4" r="1"/><circle cx="8" cy="11" r="1.05" fill="currentColor"/><circle cx="12" cy="11" r="1.05" fill="currentColor"/></svg>""";
-    private const string IconHotkeys = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="8" rx="1.5"/><path d="M5.5 9h0.01M8 9h0.01M10.5 9h0.01M13 9h0.01M6.8 11.6h6.4"/></svg>""";
-    private const string IconDesync = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a12 12 0 0 1 14 0"/><path d="M5.8 10.4a8 8 0 0 1 8.4 0"/><path d="M8.4 13.2a3.6 3.6 0 0 1 3.2 0"/><path d="M10 16h0.01"/><path d="M3.5 3.5l13 13"/></svg>""";
-    private const string IconFileMod = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h6l4 4V13"/><path d="M11 2.5V6.5h4"/><path d="M4.5 14.5l3.2-3.2a1.4 1.4 0 0 1 2 2l-3.2 3.2-2.6.6z"/></svg>""";
-    private const string IconFeedback = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H8l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 12V6A1.5 1.5 0 0 1 4 4.5Z"/><path d="M6.5 8.5h7"/><path d="M6.5 11h4"/></svg>""";
-    private const string IconLicense = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="3"/><path d="M11.5 8.5 2.5 17.5V20h2.5l1-1h2.5l1-1h2.5l2-2"/><circle cx="14.5" cy="5.5" r=".5" fill="currentColor"/></svg>""";
+    private IReadOnlyList<NavPage> SelectedPages =>
+        NavCatalog.Groups.FirstOrDefault(g => g.Name == _selectedGroup)?.Pages
+        ?? NavCatalog.Groups[0].Pages;
 
     protected override void OnInitialized()
     {
         LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
         Navigation.LocationChanged += HandleLocationChanged;
+        SyncPanelToCurrentPage();
     }
 
-    private void OnLicenseStateChangedHandler()
-    {
-        InvokeAsync(StateHasChanged);
-    }
+    private void OnLicenseStateChangedHandler() => InvokeAsync(StateHasChanged);
+
+    // ---- Foot status ------------------------------------------------------
+    // The one thing in the sidebar that changes on its own, so the one thing that
+    // earns a colour.
+
+    // Two states only. The plan name, expiry and countdown live in the Home
+    // page's license widget; this is just the at-a-glance tier.
+    private string LicenseLabel => LicenseService.IsPremium ? "Premium" : "Freemium";
+
+    private string LicenseDotClass => LicenseService.IsPremium ? "premium" : "freemium";
+
+    private string LicenseTooltip => LicenseService.IsPremium
+        ? "Premium — see Home for plan and expiry"
+        : "Freemium — see Home to activate a key";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -209,8 +155,7 @@
                 // JS may not yet be ready in some hosting scenarios; non-fatal.
             }
 
-            await LoadGroupStateAsync();
-            await AutoExpandActiveGroupAsync();
+            await RecordVisitAsync();
         }
 
         if (!_resizeHandleAttached)
@@ -231,102 +176,95 @@
         }
     }
 
-    private async Task LoadGroupStateAsync()
+    private void SelectGroup(string name) => _selectedGroup = name;
+
+    /// <summary>
+    /// Points the panel at whichever category owns the current page, so arriving from
+    /// a link or the command palette leaves the panel showing where you actually are.
+    /// Browsing another category by clicking the rail is left alone until you navigate.
+    /// </summary>
+    private void SyncPanelToCurrentPage()
     {
-        if (_initialStateLoaded) return;
-        _initialStateLoaded = true;
+        var group = NavCatalog.FindGroupName(NormalizedCurrentPath());
+        if (group is not null) _selectedGroup = group;
+    }
+
+    /// <summary>
+    /// Records the page in the recents list. Nothing in the sidebar shows it — the command
+    /// palette uses it to decide what to offer before you've typed anything.
+    /// </summary>
+    private async Task RecordVisitAsync()
+    {
+        // The root URL normalizes to "", and FindByRoute rejects an empty route outright, so
+        // guarding before the fallback meant Home bailed out here on every visit and never
+        // reached the palette's Recent list. Map onto the catalog key first, then guard.
+        var route = NormalizedCurrentPath();
+        if (route.Length == 0) route = "home";
+        if (NavCatalog.FindByRoute(route) is null) return;
 
         try
         {
-            foreach (var group in NavGroups)
-            {
-                var collapsed = await JS.InvokeAsync<bool>("razorReaperNavbar.isGroupCollapsed", group.Name);
-                if (collapsed)
-                {
-                    _collapsedGroups.Add(group.Name);
-                }
-            }
-            StateHasChanged();
+            await JS.InvokeVoidAsync("razorReaperNavbar.pushRecent", route);
         }
         catch
         {
-            // JS interop may fail in some hosting scenarios; default to all-expanded.
+            // Recents are a convenience; losing them is not worth surfacing.
         }
     }
 
-    private Task AutoExpandActiveGroupAsync()
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        var activeGroup = FindActiveGroup();
-        if (activeGroup is null) return Task.CompletedTask;
-
-        if (_collapsedGroups.Remove(activeGroup))
+        _ = InvokeAsync(async () =>
         {
-            // Persist the auto-expansion so the user sees their explicit collapse honored
-            // only until they navigate into that group.
-            _ = JS.InvokeVoidAsync("razorReaperNavbar.setGroupCollapsed", activeGroup, false);
+            SyncPanelToCurrentPage();
+            await RecordVisitAsync();
             StateHasChanged();
-        }
-        return Task.CompletedTask;
+        });
     }
 
-    private string? FindActiveGroup()
+    private async Task OpenSearch()
     {
-        var currentPath = NormalizedCurrentPath();
-        foreach (var group in NavGroups)
+        try
         {
-            foreach (var item in group.Items)
-            {
-                if (IsHrefActive(item.Href, currentPath))
-                {
-                    return group.Name;
-                }
-            }
+            await JS.InvokeVoidAsync("triggerGlobalSearch");
         }
-        return null;
+        catch
+        {
+            // Search palette JS not ready; ignore.
+        }
+    }
+
+    // ---- Active-route helpers ---------------------------------------------
+
+    private bool GroupHoldsActivePage(NavGroup group)
+    {
+        var current = NormalizedCurrentPath();
+        return group.Pages.Any(p => IsHrefActive(p.Route, current));
     }
 
     private string NormalizedCurrentPath()
+        => NavCatalog.Normalize(Navigation.ToBaseRelativePath(Navigation.Uri));
+
+    private string GetActiveClass(string href)
+        => IsHrefActive(href, NormalizedCurrentPath()) ? "active" : "";
+
+    private static bool IsHrefActive(string href, string normalizedCurrent)
     {
-        var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
-        currentPath = currentPath.Split('?', '#')[0];
-        return currentPath.Trim('/');
+        var normalizedHref = NavCatalog.Normalize(href);
+
+        if (string.IsNullOrEmpty(normalizedCurrent) && normalizedHref.Equals("home", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(normalizedCurrent, normalizedHref, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (normalizedCurrent.StartsWith(normalizedHref + "/", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
     }
 
-    private bool IsGroupCollapsed(string name) => _collapsedGroups.Contains(name);
-
-    private async Task ToggleGroupAsync(string name)
-    {
-        bool nowCollapsed;
-        if (_collapsedGroups.Contains(name))
-        {
-            _collapsedGroups.Remove(name);
-            nowCollapsed = false;
-        }
-        else
-        {
-            _collapsedGroups.Add(name);
-            nowCollapsed = true;
-        }
-
-        try
-        {
-            await JS.InvokeVoidAsync("razorReaperNavbar.setGroupCollapsed", name, nowCollapsed);
-        }
-        catch
-        {
-            // Non-critical if persistence fails.
-        }
-    }
-
-    [JSInvokable]
-    public Task OnExternalCollapseToggle()
-    {
-        // Fires when navbar.js toggles collapsed state (Ctrl+B shortcut or drag past
-        // the collapse threshold). The CSS handles the visual; we re-render so any
-        // bindings driven by collapsed state get a chance to refresh.
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
+    // ---- JS callbacks -----------------------------------------------------
 
     /// <summary>
     /// Bridge for the runtime test runner (wwwroot/_tests/test-runner.js).
@@ -353,48 +291,6 @@
             Serilog.Log.Warning(ex, "WriteDiagnostic failed");
         }
         return Task.CompletedTask;
-    }
-
-    private async Task OpenSearch()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("triggerGlobalSearch");
-        }
-        catch
-        {
-            // Search palette JS not ready; ignore.
-        }
-    }
-
-    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        _ = InvokeAsync(async () =>
-        {
-            await AutoExpandActiveGroupAsync();
-            StateHasChanged();
-        });
-    }
-
-    private string GetActiveClass(string href)
-    {
-        return IsHrefActive(href, NormalizedCurrentPath()) ? "active" : "";
-    }
-
-    private static bool IsHrefActive(string href, string normalizedCurrent)
-    {
-        var normalizedHref = href.Trim('/');
-
-        if (string.IsNullOrEmpty(normalizedCurrent) && normalizedHref.Equals("home", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (string.Equals(normalizedCurrent, normalizedHref, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (normalizedCurrent.StartsWith(normalizedHref + "/", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return false;
     }
 
     public async ValueTask DisposeAsync()

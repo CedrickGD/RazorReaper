@@ -20,11 +20,11 @@
 
 .hud-card {
     margin-bottom: 0 !important;
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
 }
 
 h3.hud-card-title {
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
     margin-bottom: var(--space-1) !important;
 }
@@ -80,13 +80,16 @@ h3.hud-card-title {
 
 /* ── Corner / segmented selectors ───────────────────────────────────────── */
 
+/* Three columns, because the options ARE the nine positions of the screen: laid out
+   3×3 in reading order the control is its own diagram. A tenth entry (Custom/Free)
+   wraps onto its own row underneath. Two columns turned that map into a list. */
 .hud-corner-seg {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 2px;
     padding: 2px;
-    width: 220px;
-    max-width: 220px;
+    width: 280px;
+    max-width: 280px;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-control);
@@ -124,7 +127,7 @@ h3.hud-card-title {
         cursor: default;
     }
 
-/* ── Numbers, units, sliders, select ────────────────────────────────────── */
+/* ── Numbers, units, sliders, dropdown ──────────────────────────────────── */
 
 input.hud-num {
     width: 96px;
@@ -146,41 +149,11 @@ input.hud-num {
     gap: var(--space-2);
 }
 
-input.hud-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 150px;
-    height: 4px;
-    padding: 0 !important;
-    border: none !important;
-    border-radius: var(--radius-round) !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: none !important;
-    cursor: pointer;
-}
-
-    input.hud-slider:focus {
-        border: none !important;
-        box-shadow: none !important;
-        background: rgba(255, 255, 255, 0.16) !important;
-    }
-
-    input.hud-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 14px;
-        height: 14px;
-        border-radius: var(--radius-round);
-        background: var(--accent-purple);
-        border: none;
-    }
-
-select.hud-select {
+/* .rr-dd shrinks to its content and the row's control column does not stretch it, so pin
+   the range — otherwise the monitor picker resizes with whichever display name is picked. */
+.hud-page .rr-dd {
     min-width: 200px;
     max-width: 240px;
-    padding: var(--space-2) var(--space-3) !important;
-    font-size: 0.85rem !important;
-    cursor: pointer;
 }
 
 /* ── Info note ──────────────────────────────────────────────────────────── */

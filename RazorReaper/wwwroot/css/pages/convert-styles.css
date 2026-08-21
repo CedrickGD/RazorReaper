@@ -1,0 +1,633 @@
+/* Convert page — file format conversion, ported from Convert-X.
+   Shared tokens and components only (StatusHeader, content-card, the two button designs). */
+
+.convert-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.convert-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .convert-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.convert-card {
+    margin-bottom: 0 !important;
+}
+
+.convert-card-desc {
+    margin: 0 0 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* ── Format picker ───────────────────────────────────────────────────────────
+   A wrapping grid rather than a select: there are up to 17 targets and seeing them
+   all at once is the point — you are usually hunting for one specific extension. */
+
+.convert-formats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 0.4rem;
+}
+
+.convert-format {
+    padding: 0.32rem 0.5rem;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    /* Without this the button inherits body's 1.6 and a 12px label sits in a 33px box,
+       which read as a gap inside the fill. */
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    text-align: center;
+    /* Colour is not transitioned at all: this is a discrete choice, and any crossfade
+       makes the button look like it is catching up with the click. Only the press
+       keeps a curve, so it still reads as a press. */
+    transition: transform 0.12s ease;
+}
+
+    /* :not(.active) matters. Plain :hover:not(:disabled) is (0,3,0) and outranks
+       .active at (0,2,0), so the selected button rendered grey until the pointer left
+       it — the click looked like it had not registered. */
+    .convert-format:not(.active):hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--border-hover);
+        color: var(--text-primary);
+    }
+
+    .convert-format:active:not(:disabled) {
+        transform: scale(0.97);
+    }
+
+    /* A solid fill, not a tint. At 0.14 alpha behind a 0.45 border the ring was three
+       times more opaque than what it enclosed, so the purple read as a frame around an
+       empty box. border-color rather than border: none keeps the 1px, so selecting a
+       format does not resize it and reflow the grid. */
+    .convert-format.active {
+        background: var(--accent-purple);
+        border-color: transparent;
+        color: #fff;
+    }
+
+    /* The format the file already is. Dashed rather than coloured — colour stays for the
+       selection — so picking it is possible but never accidental. */
+    .convert-format.current:not(.active) {
+        border-style: dashed;
+        border-color: var(--border-hover);
+    }
+
+    .convert-format:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
+    }
+
+    .convert-format:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+.convert-fact-format {
+    color: var(--text-primary) !important;
+    border-color: rgba(var(--accent-purple-rgb), 0.35) !important;
+}
+
+/* ── Quality + progress ──────────────────────────────────────────────────── */
+
+.convert-quality-value {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    min-width: 2.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Sits directly under the status header as its own band, not inside a card — it is
+   about the operation, not about any one of the panels below. */
+.convert-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.convert-progress-bar {
+    flex: 1;
+    height: 6px;
+    border-radius: var(--radius-round);
+    background: var(--surface-inset);
+    overflow: hidden;
+}
+
+.convert-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-round);
+    background: var(--accent-purple);
+    transition: width 0.3s ease;
+}
+
+.convert-progress-label {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    min-width: 2.6rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.convert-done {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.convert-done-name {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Footer note ─────────────────────────────────────────────────────────── */
+
+.convert-note {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(var(--accent-purple-rgb), 0.4);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.convert-note p {
+    margin: 0;
+}
+
+.convert-mono {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    color: var(--text-primary);
+}
+
+.convert-link {
+    color: var(--accent-purple-light);
+    text-decoration: none;
+}
+
+    .convert-link:hover {
+        text-decoration: underline;
+    }
+
+@media (prefers-reduced-motion: reduce) {
+    .convert-format:active:not(:disabled) {
+        transform: none;
+    }
+}
+
+/* ── Preview, details, destination, replace ──────────────────────────────────
+   Added once the page grew past "pick a format": you should be able to see what you
+   loaded and where it is going before committing to an encode. */
+
+.convert-preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.convert-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.convert-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.convert-thumb {
+    display: block;
+    max-width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+}
+
+.convert-thumb-placeholder {
+    padding: 2rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.convert-filename {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Facts read as chips rather than a table: they are glanceable, not comparable. */
+.convert-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.convert-fact {
+    padding: 0.16rem 0.45rem;
+    border-radius: var(--radius-chip);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.convert-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 2.5rem 1.5rem !important;
+    text-align: center;
+}
+
+.convert-empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.convert-empty-text {
+    margin: 0;
+    max-width: 44ch;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.convert-quality {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+}
+
+.convert-quality-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ── When it's done ──────────────────────────────────────────────────────────
+   Label left, control right, on one line. Replaced a grid of option cards and a whole
+   second "replace in ARK" block that duplicated the Loading Screen page's buttons — both
+   of those are choices, not actions, so they are selects and Convert carries them out. */
+
+.convert-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+}
+
+.convert-setting-label {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.convert-select {
+    flex: 1;
+    min-width: 0;
+    max-width: 60%;
+    padding: 0.35rem 0.55rem;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--border-color);
+    background: var(--surface-inset);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+    .convert-select:hover:not(:disabled) {
+        border-color: var(--border-hover);
+    }
+
+    .convert-select:focus-visible {
+        outline: none;
+        border-color: rgba(var(--accent-purple-rgb), 0.6);
+    }
+
+    .convert-select:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+/* Only shown once a movie is picked, so it never asks about something you are not doing. */
+.convert-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.3rem;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+    .convert-check input {
+        margin-top: 0.15rem;
+        flex-shrink: 0;
+        accent-color: var(--accent-purple);
+    }
+
+    .convert-check code {
+        font-family: var(--font-mono);
+        color: var(--text-primary);
+    }
+
+.convert-dest-path {
+    margin-top: 0.6rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-chip);
+    background: var(--surface-inset);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Result + ARK replace ────────────────────────────────────────────────── */
+
+.convert-result-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.convert-result-info {
+    min-width: 0;
+}
+
+.convert-result-name {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent-purple-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Playable preview ────────────────────────────────────────────────────── */
+
+.convert-player {
+    display: block;
+    width: 100%;
+    max-height: 300px;
+    background: #000;
+    border-radius: var(--radius-panel);
+    outline: none;
+}
+
+.convert-audio {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem;
+}
+
+.convert-audio-player {
+    width: 100%;
+    height: 34px;
+}
+
+
+/* ── Trim ────────────────────────────────────────────────────────────────────
+   Two range inputs sharing one track. Only the thumbs take pointer events, so where the
+   handles overlap each stays independently draggable instead of the top input swallowing
+   every press. The track itself is a plain div, drawn once. */
+
+.convert-trim {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.15rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.convert-trim-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    font-size: 0.76rem;
+}
+
+.convert-trim-title {
+    color: var(--text-secondary);
+}
+
+.convert-trim-range {
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.convert-trim-length {
+    margin-right: auto;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.convert-trim-reset {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent-purple-light);
+    font-size: 0.72rem;
+    cursor: pointer;
+}
+
+    .convert-trim-reset:hover:not(:disabled) {
+        text-decoration: underline;
+    }
+
+    .convert-trim-reset:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+.convert-trim-track {
+    position: relative;
+    height: 22px;
+}
+
+    /* The rail, drawn behind both inputs. */
+    .convert-trim-track::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 4px;
+        transform: translateY(-50%);
+        border-radius: var(--radius-round);
+        background: var(--surface-inset);
+    }
+
+.convert-trim-sel {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    transform: translateY(-50%);
+    border-radius: var(--radius-round);
+    background: var(--accent-purple);
+}
+
+.convert-trim-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 22px;
+    margin: 0;
+    padding: 0;
+    background: none !important;
+    border: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+    /* The input is a hit-test hole; only its thumb is grabbable, which is what lets the
+       second handle be reached when the two sit on top of each other. */
+    pointer-events: none;
+}
+
+    .convert-trim-handle::-webkit-slider-runnable-track {
+        background: transparent;
+        border: none;
+        height: 22px;
+    }
+
+    .convert-trim-handle::-webkit-slider-thumb {
+        appearance: none;
+        -webkit-appearance: none;
+        pointer-events: auto;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid var(--background-dark);
+        background: var(--accent-purple-light);
+        cursor: grab;
+    }
+
+    .convert-trim-handle:active::-webkit-slider-thumb {
+        cursor: grabbing;
+    }
+
+    .convert-trim-handle:disabled::-webkit-slider-thumb {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+.convert-trim-actions {
+    display: flex;
+    gap: 0.35rem;
+}
+
+    .convert-trim-actions .btn {
+        padding: 0.26rem 0.6rem;
+        font-size: 0.76rem;
+    }
+
+/* Label left, control right — the control column carries the dropdowns. */
+.convert-setting-control {
+    flex: 1;
+    min-width: 0;
+    max-width: 62%;
+    display: flex;
+}
+
+    /* Stretch, so both dropdowns are the same width and their edges line up rather than
+       each shrinking to whatever option happens to be selected. */
+    .convert-setting-control .rr-dd {
+        flex: 1;
+        min-width: 0;
+    }
+
+/* Says where the file went when Defender locked the chosen folder. Deliberately not red:
+   nothing failed, the destination just moved. */
+.convert-dest-note {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radius-chip);
+    background: var(--surface-inset);
+    border-left: 2px solid rgba(var(--accent-purple-rgb), 0.5);
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.convert-dest-actions {
+    display: flex;
+    gap: 0.35rem;
+}
+
+    .convert-dest-actions .btn {
+        padding: 0.26rem 0.7rem;
+        font-size: 0.76rem;
+    }
+
+.convert-dest-hint {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+
+    .convert-dest-hint code {
+        font-family: var(--font-mono);
+        color: var(--text-primary);
+    }

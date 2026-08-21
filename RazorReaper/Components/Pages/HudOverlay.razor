@@ -78,18 +78,14 @@
             <div class="hud-rows">
 
                 <SettingRow Title="Monitor" Description="Which display the overlay draws on.">
-                    <select class="hud-select" value="@_settings.MonitorDeviceName" @onchange="OnMonitorChanged">
-                        <option value="">Primary display</option>
-                        @foreach (var mon in _monitors)
-                        {
-                            <option value="@mon.DeviceName">@mon.FriendlyName@(mon.IsPrimary ? " · primary" : "")</option>
-                        }
-                    </select>
+                    <Dropdown Value="@_settings.MonitorDeviceName"
+                              ValueChanged="OnMonitorChanged"
+                              Options="MonitorOptions" />
                 </SettingRow>
 
-                <SettingRow Title="Corner" Description="Anchor the panel to a screen corner.">
+                <SettingRow Title="Placement" Description="Where the panel sits on the screen.">
                     <div class="hud-corner-seg">
-                        @foreach (var c in Corners)
+                        @foreach (var c in Placements)
                         {
                             <button class="hud-seg-btn @(_settings.Anchor == c.Anchor ? "active" : "")"
                                     @onclick="() => SetAnchor(c.Anchor)">@c.Label</button>
@@ -101,15 +97,43 @@
                     </div>
                 </SettingRow>
 
-                <SettingRow Title="Alert corner" Description="Where notifier alerts stack up.">
+                @* Alerts get the same nine placements as the panel plus their own free position:
+                   pinned to a corner they only ever grew inwards, so a centred alert ran off the
+                   screen and you saw half of it. *@
+                <SettingRow Title="Alert placement" Description="Where notifier alerts stack up. They grow away from the edge they sit on.">
                     <div class="hud-corner-seg">
-                        @foreach (var c in Corners)
+                        @foreach (var c in Placements)
                         {
                             <button class="hud-seg-btn @(_settings.AlertCorner == c.Anchor ? "active" : "")"
                                     @onclick="() => SetAlertCorner(c.Anchor)">@c.Label</button>
                         }
+                        <button class="hud-seg-btn custom @(_settings.AlertCorner == HudAnchor.Custom ? "active" : "")"
+                                @onclick="() => SetAlertCorner(HudAnchor.Custom)">Free</button>
                     </div>
                 </SettingRow>
+
+                @if (_settings.AlertCorner == HudAnchor.Custom)
+                {
+                    <SettingRow Title="Alert position" Description="Top-left of the alert stack, in pixels on the chosen monitor.">
+                        <input type="number" class="hud-num" min="0" max="10000" step="1"
+                               @bind="_settings.AlertX" @bind:after="Apply" />
+                        <span class="hud-unit">x</span>
+                        <input type="number" class="hud-num" min="0" max="10000" step="1"
+                               @bind="_settings.AlertY" @bind:after="Apply" />
+                        <span class="hud-unit">y</span>
+                    </SettingRow>
+                }
+                else
+                {
+                    <SettingRow Title="Alert margin" Description="Distance from the edge the alerts are anchored to.">
+                        <input type="number" class="hud-num" min="0" max="2000" step="1"
+                               @bind="_settings.AlertOffsetX" @bind:after="Apply" />
+                        <span class="hud-unit">x</span>
+                        <input type="number" class="hud-num" min="0" max="2000" step="1"
+                               @bind="_settings.AlertOffsetY" @bind:after="Apply" />
+                        <span class="hud-unit">y</span>
+                    </SettingRow>
+                }
 
                 <SettingRow Title="Offset X" Description="Horizontal margin from the corner." Disabled="@IsCustom">
                     <input type="number" class="hud-num" min="0" max="2000" step="1"
@@ -125,7 +149,7 @@
 
                 <SettingRow Title="Opacity" Description="Overall transparency of the overlay.">
                     <div class="hud-slider-wrap">
-                        <input type="range" class="hud-slider" min="20" max="100" step="5"
+                        <input type="range" class="hud-slider" min="20" max="100" step="1"
                                @bind="OpacityPercent" @bind:after="Apply" />
                         <span class="hud-unit">@OpacityPercent%</span>
                     </div>
@@ -133,7 +157,7 @@
 
                 <SettingRow Title="Scale" Description="Size of the panel and alert text.">
                     <div class="hud-slider-wrap">
-                        <input type="range" class="hud-slider" min="50" max="200" step="5"
+                        <input type="range" class="hud-slider" min="50" max="200" step="1"
                                @bind="ScalePercent" @bind:after="Apply" />
                         <span class="hud-unit">@ScalePercent%</span>
                     </div>
@@ -158,11 +182,18 @@
     private HudSettings _settings = new();
     private IReadOnlyList<MonitorInfo> _monitors = Array.Empty<MonitorInfo>();
 
-    private static readonly (HudAnchor Anchor, string Label)[] Corners =
+    // Reading order, three per row: the segmented control wraps, so this lays out as the
+    // nine positions of the screen rather than as a list of names.
+    private static readonly (HudAnchor Anchor, string Label)[] Placements =
     {
         (HudAnchor.TopLeft, "Top left"),
+        (HudAnchor.TopCenter, "Top"),
         (HudAnchor.TopRight, "Top right"),
+        (HudAnchor.MiddleLeft, "Left"),
+        (HudAnchor.Center, "Center"),
+        (HudAnchor.MiddleRight, "Right"),
         (HudAnchor.BottomLeft, "Bottom left"),
+        (HudAnchor.BottomCenter, "Bottom"),
         (HudAnchor.BottomRight, "Bottom right"),
     };
 
@@ -263,9 +294,17 @@
         Apply();
     }
 
-    private void OnMonitorChanged(ChangeEventArgs e)
+    // Empty device name means "whatever Windows calls the primary right now", so it stays
+    // correct when displays are re-arranged.
+    private IReadOnlyList<Dropdown.Option> MonitorOptions =>
+        new[] { new Dropdown.Option("", "Primary display") }
+            .Concat(_monitors.Select(m => new Dropdown.Option(
+                m.DeviceName, m.FriendlyName + (m.IsPrimary ? " · primary" : ""))))
+            .ToList();
+
+    private void OnMonitorChanged(string deviceName)
     {
-        _settings.MonitorDeviceName = e.Value?.ToString() ?? "";
+        _settings.MonitorDeviceName = deviceName;
         Apply();
     }
 

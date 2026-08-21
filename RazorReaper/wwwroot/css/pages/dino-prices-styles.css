@@ -55,7 +55,7 @@
 
 .card-header h3 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: var(--card-title-size);
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -302,7 +302,7 @@
 }
 
 .no-results h3 {
-    font-size: 1.25rem;
+    font-size: var(--card-title-size);
     color: var(--text-primary);
     margin: 0 0 0.5rem 0;
 }

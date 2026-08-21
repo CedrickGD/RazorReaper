@@ -50,7 +50,7 @@
     .inib-preset-card:hover {
         background: rgba(var(--accent-purple-rgb), 0.06);
         border-color: rgba(var(--accent-purple-rgb), 0.35);
-        transform: translateY(-3px);
+
         box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
     }
 

@@ -8,6 +8,12 @@ public sealed class FedSuitSettings
 {
     /// <summary>Key that opens the transmitter in game.</summary>
     public string OpenKey { get; set; } = "F";
+
+    /// <summary>
+    /// Typed into the inventory search after opening, to narrow what the transfer presses move
+    /// (e.g. "exo" for element on a Gen2 transmitter). Empty transfers whatever is already listed.
+    /// </summary>
+    public string SearchFilter { get; set; } = string.Empty;
     /// <summary>Key that closes the transmitter UI.</summary>
     public string ExitKey { get; set; } = "Esc";
     /// <summary>Key pressed repeatedly to transfer items between slots.</summary>
@@ -87,6 +93,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private readonly ICalibrationService _calibration;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
+    private readonly IUsageGateService _usageGate;
     private readonly ILogger<FedSuitMacro> _logger;
     private readonly IMacroRunner _runner;
     private readonly object _gate = new();
@@ -109,6 +116,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         ICalibrationService calibration,
         INotificationService notifications,
         IActivityService activity,
+        IUsageGateService usageGate,
         ILogger<FedSuitMacro> logger)
     {
         _engine = engine;
@@ -116,13 +124,13 @@ public sealed class FedSuitMacro : IFedSuitMacro
         _calibration = calibration;
         _notifications = notifications;
         _activity = activity;
+        _usageGate = usageGate;
         _logger = logger;
 
         _settings = LoadSettings();
         _runner = _engine.GetRunner(RunnerName);
         _runner.StepStarted += OnStepStarted;
         // First registration is quiet (log only) — the page surfaces registration state inline.
-        RegisterHotkeys(notifyFailures: false);
     }
 
     public FedSuitSettings Settings
@@ -169,7 +177,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         }
 
         SaveSettings(normalized);
-        if (rebind) RegisterHotkeys(notifyFailures: true);
         RaiseChanged();
     }
 
@@ -202,8 +209,28 @@ public sealed class FedSuitMacro : IFedSuitMacro
         catch { /* notifications are best-effort */ }
 
         _ = Task.Run(() => RunToCompletionAsync(sequence));
+        // Start() must stay synchronous (the global hotkey calls it), so the quota check runs
+        // right behind the start and stops the macro again if the month is used up. Stops
+        // themselves never count.
+        _ = Task.Run(EnforceQuotaAsync);
         RaiseChanged();
         return true;
+    }
+
+    private async Task EnforceQuotaAsync()
+    {
+        try
+        {
+            var gate = await _usageGate.TryConsumeAsync(UsageFeatures.FedSuit);
+            if (gate.Allowed) return;
+
+            Stop();
+            _notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} Fed-Suit starts). Resets next month — Premium is unlimited.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Fed-Suit quota check failed — failing open");
+        }
     }
 
     public void Stop()
@@ -319,6 +346,14 @@ public sealed class FedSuitMacro : IFedSuitMacro
             MacroStep.Delay(s.WaitAfterOpenMs)
         };
 
+        // Narrowing the target is either a typed filter or a click on a calibrated slot. Both
+        // used to be separate scripts; they are two ways of doing the same step.
+        if (!string.IsNullOrWhiteSpace(s.SearchFilter))
+        {
+            steps.Add(MacroStep.TypeText(s.SearchFilter.Trim()));
+            steps.Add(MacroStep.Delay(SlotClickSettleMs));
+        }
+
         if (s.ClickFirstSlot)
         {
             if (_calibration.TryGetPoint(FirstSlotPointName, out var slot))
@@ -430,7 +465,9 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 RepeatDelayMs = Preferences.Get("fedsuit.repeatdelay", defaults.RepeatDelayMs),
                 StartHotkey = Preferences.Get("fedsuit.starthotkey", defaults.StartHotkey),
                 StopHotkey = Preferences.Get("fedsuit.stophotkey", defaults.StopHotkey),
-                ClickFirstSlot = Preferences.Get("fedsuit.clickslot", defaults.ClickFirstSlot)
+                ClickFirstSlot = Preferences.Get("fedsuit.clickslot", defaults.ClickFirstSlot),
+                // Carried over from the old Exo Suit script, whose only distinct behaviour this was.
+                SearchFilter = Preferences.Get("fedsuit.searchfilter", Preferences.Get("exosuit.search", defaults.SearchFilter))
             });
         }
         catch (Exception ex)
@@ -454,6 +491,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
             Preferences.Set("fedsuit.starthotkey", s.StartHotkey);
             Preferences.Set("fedsuit.stophotkey", s.StopHotkey);
             Preferences.Set("fedsuit.clickslot", s.ClickFirstSlot);
+            Preferences.Set("fedsuit.searchfilter", s.SearchFilter ?? string.Empty);
         }
         catch (Exception ex)
         {

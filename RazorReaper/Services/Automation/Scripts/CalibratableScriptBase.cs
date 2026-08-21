@@ -17,7 +17,6 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     protected readonly ICalibrationService Calibration;
 
     private readonly string _regionKey;
-    private bool _hasReference;
 
     protected CalibratableScriptBase(
         string scriptKey,
@@ -37,8 +36,33 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
         _regionKey = $"{scriptKey}-region";
     }
 
+    /// <summary>Vision scripts are unquota'd — the shared input-script quota skips them.</summary>
+    public override bool UsesVision => true;
+
     public bool HasRegion => Calibration.HasRegion(_regionKey);
-    public bool HasReference => _hasReference && Sampler.HasReference(_regionKey);
+    /// <summary>
+    /// Asks the sampler outright rather than tracking a "captured this session" flag: the
+    /// snapshot is stored on disk now, so one taken yesterday is just as valid — and the flag
+    /// would have hidden it, leaving the page saying "not captured" over a perfectly good file.
+    /// </summary>
+    public bool HasReference => Sampler.HasReference(_regionKey);
+
+    /// <summary>Snapshot matching is the default; OCR scripts override this to false.</summary>
+    public virtual bool UsesReference => true;
+
+    public virtual string RegionTitle => "Button region";
+
+    /// <summary>"312 of 29,607 px" once the background has been masked out, empty before that.</summary>
+    public string MaskSummary
+    {
+        get
+        {
+            if (!HasReference) return "";
+            var (kept, total) = Sampler.ReferenceMaskInfo(_regionKey);
+            return kept == total ? "" : $"{kept:N0} of {total:N0} px compared";
+        }
+    }
+
     public string RegionSummary => Calibration.TryGetRegion(_regionKey, out Rectangle r)
         ? $"{r.Width}x{r.Height} px at {r.X}, {r.Y}"
         : "";
@@ -97,15 +121,39 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
             return false;
         }
         Sampler.CaptureReference(_regionKey, region);
-        _hasReference = true;
         Notifications.ShowSuccess("Reference snapshot captured.");
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// Second half of the reference capture: same element on screen, different background behind
+    /// it. Everything that moved is written off as background and stops being compared. Without
+    /// this a HUD element that floats over the live world can never be matched — the world alone
+    /// blows past any tolerance the moment the camera turns.
+    /// </summary>
+    public bool RefineReferenceMask()
+    {
+        if (!HasReference)
+        {
+            Notifications.ShowWarning("Capture a reference first.");
+            return false;
+        }
+        if (!Calibration.TryGetRegion(_regionKey, out Rectangle region)) return false;
+
+        if (!Sampler.RefineReferenceMask(_regionKey, region, out var kept))
+        {
+            Notifications.ShowWarning("Nothing stayed still — is the element still on screen?");
+            return false;
+        }
+
+        Notifications.ShowSuccess($"Background ignored — {kept:N0} px left to match on.");
         RaiseChanged();
         return true;
     }
 
     public void ClearReference()
     {
-        _hasReference = false;
         try { Sampler.ClearReference(_regionKey); }
         catch (Exception ex) { Logger.LogWarning(ex, "{Script} reference clear failed", DisplayName); }
         RaiseChanged();

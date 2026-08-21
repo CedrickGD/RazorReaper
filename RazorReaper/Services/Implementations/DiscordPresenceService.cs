@@ -36,52 +36,27 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     private const string FallbackLabel = "Browsing";
     private const string TrayLabel = "Idle in tray";
 
-    // Friendly tool names keyed by the first path segment. Mirrors SharedNavbar.NavGroups —
-    // keep in sync when routes are added/renamed. Sub-routes (e.g. "vision/scope",
+    // Friendly tool names keyed by the first path segment, derived from NavCatalog so a new
+    // page is labelled here the moment it's added to the nav. This used to be a hand-kept
+    // copy of the nav list and had already drifted — "feedback" was missing, so that page
+    // showed the generic "Browsing" label. Sub-routes (e.g. "vision/scope",
     // "custom-lab/settings") resolve via their first segment, so they need no extra entries.
-    private static readonly IReadOnlyDictionary<string, string> ToolLabels =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyDictionary<string, string> ToolLabels = BuildToolLabels();
+
+    private static IReadOnlyDictionary<string, string> BuildToolLabels()
+    {
+        var labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var page in Navigation.NavCatalog.Pages)
         {
-            ["home"] = DefaultLabel,
-            ["server"] = "Server",
-            ["game"] = "Game",
-            ["ini-changer"] = "INI Changer",
-            ["ini-builder"] = "INI Builder",
-            ["vision"] = "Vision Tools",
-            ["gamma"] = "Gamma",
-            ["launch-options"] = "Launch Options",
-            ["fonts"] = "Fonts",
-            ["pixel"] = "Pixel Glitch",
-            ["paintings"] = "Paintings",
-            ["custom-lab"] = "Sky Changer",
-            ["loading-screen"] = "Loading Screen",
-            ["char-manager"] = "Char Manager",
-            ["stretched-res"] = "Stretched Res",
-            ["dino-prices"] = "Mutagen Prices",
-            ["line-list"] = "Line List",
-            ["oc-bps"] = "OC BPs",
-            ["bosses"] = "Bosses",
-            ["tp-locations"] = "TP Locations",
-            ["underwater-drops"] = "Underwater Drops",
-            ["map-mods"] = "Map Mods",
-            ["steam-mods"] = "Steam Mods",
-            ["building"] = "Building",
-            ["scripts"] = "Scripts",
-            ["hotkeys"] = "Global Hotkeys",
-            ["autoclicker"] = "Auto Clicker",
-            ["macros"] = "Macros",
-            ["fed-suit"] = "Fed Suit",
-            ["auto-antidote"] = "Auto Antidote",
-            ["hud-overlay"] = "HUD Overlay",
-            ["notifier"] = "Notifier",
-            ["crosshair"] = "Crosshair",
-            ["crafting-scripts"] = "Macro / AHK",
-            ["desync"] = "Desync",
-            ["file-modifier"] = "File Modifier",
-            ["compact-ark"] = "Compact ARK",
-            ["troubleshoot"] = "Troubleshoot",
-            ["credits"] = "Credits",
-        };
+            labels[Navigation.NavCatalog.Normalize(page.Route)] = page.Label;
+        }
+
+        // Home reads better as the place you land than as a page name.
+        labels["home"] = DefaultLabel;
+
+        return labels;
+    }
 
     private static bool HasValidAppId =>
         ApplicationId.Length is >= 17 and <= 20 && ApplicationId.All(char.IsDigit);

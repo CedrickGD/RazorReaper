@@ -1,0 +1,46 @@
+{
+  "version": "rr.install.v1",
+  "install_id": "6f1d2c9a-9b2e-4a5d-8d77-2f4e1c0a9b13",
+  "private_key_pkcs8_base64": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgt7wIJN61ZpsxAsQSabBEDXGn2yabs77fHl7k8UZM1dGhRANCAARWLX0gFIEVG/noBd6PG2V/eJQRSqSFolxeG6FrUr2QO3yeyW9v8KtazWShU9Poc9jokRDxe7Gsx2UZQqNLjMC4",
+  "public_key_jwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "Vi19IBSBFRv56AXejxtlf3iUEUqkhaJcXhuha1K9kDs",
+    "y": "fJ7Jb2_wq1rNZKFT0-hz2OiREPF7sazHZRlCo0uMwLg"
+  },
+  "vectors": [
+    {
+      "name": "ingest-post",
+      "method": "POST",
+      "url": "https://backend.test/api/ingest",
+      "pathname": "/api/ingest",
+      "timestamp": "1787310000",
+      "body": "{\"source\":\"razorreaper\",\"service\":\"session_active\",\"timestamp\":\"2026-08-21T12:00:00.000Z\",\"status\":\"ok\",\"metrics\":{\"session_id\":\"s-1\",\"install_id\":\"6f1d2c9a-9b2e-4a5d-8d77-2f4e1c0a9b13\",\"event_id\":\"e-1\"}}",
+      "body_sha256": "50b94abd2bb9a5ff3cd835ee18c9f0c69e5e24ba1740ea788b6023c1e276d190",
+      "signing_string": "POST\n/api/ingest\n1787310000\n50b94abd2bb9a5ff3cd835ee18c9f0c69e5e24ba1740ea788b6023c1e276d190",
+      "signature": "Qr9X1Y_3lVAwRdU0Ep91Lr06-LmIL4Gg86iYY4YXGlHG9HvTLjyMLmVWRNf3GbH_pDnA3E8DsJN645e0e5935A"
+    },
+    {
+      "name": "usage-status-get-empty-body",
+      "method": "GET",
+      "url": "https://backend.test/api/usage/status?feature=desync",
+      "pathname": "/api/usage/status",
+      "timestamp": "1787310060",
+      "body": "",
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "signing_string": "GET\n/api/usage/status\n1787310060\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "signature": "b9JGBXW4Uj3Yt3LQB6W2yAk5pcg_4LXLEs4nH8NXOsa2V2hIzbk4lvLo0Lg06ADTHG8AH-foPpJsoy0iQ0Y7Kw"
+    },
+    {
+      "name": "feedback-post-unicode",
+      "method": "POST",
+      "url": "https://backend.test/api/feedback",
+      "pathname": "/api/feedback",
+      "timestamp": "1787310120",
+      "body": "{\"message\":\"Grüße – ✓ works\",\"rating\":5}",
+      "body_sha256": "d237694e436560dca5cb53c1bfda8c9cd9a9db76e76633a6aec7d8181f0384d7",
+      "signing_string": "POST\n/api/feedback\n1787310120\nd237694e436560dca5cb53c1bfda8c9cd9a9db76e76633a6aec7d8181f0384d7",
+      "signature": "v2a4wg-v1lqFrnIE3Is7RBOL8RkcmXhC6Ud8TnnIaASk73CNbI_TLcZEHiK3OontsvXbk2gx2hoDh9aucaTdrg"
+    }
+  ]
+}

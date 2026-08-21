@@ -29,12 +29,6 @@ internal static class TelemetryFormatting
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(settings.AppKey))
-        {
-            error = "Telemetry AppKey is missing.";
-            return false;
-        }
-
         error = string.Empty;
         return true;
     }

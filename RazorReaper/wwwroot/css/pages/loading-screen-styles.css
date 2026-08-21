@@ -45,7 +45,7 @@
 
 .loading-screen-page .ls-info-title h3 {
     margin: 0 !important;
-    font-size: 1.15rem !important;
+    font-size: var(--card-title-size) !important;
 }
 
 .loading-screen-page .ls-info-text {
@@ -170,30 +170,6 @@
     100% { margin-left: 100%; }
 }
 
-/* ── Movie groups ───────────────────────────────────────────────────────── */
-
-.loading-screen-page .ls-group {
-    margin-bottom: var(--space-5);
-}
-
-    .loading-screen-page .ls-group:last-child {
-        margin-bottom: 0;
-    }
-
-.loading-screen-page .ls-group-title {
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: var(--space-3);
-}
-
-.loading-screen-page .ls-rows {
-    display: grid;
-    gap: var(--space-2);
-}
-
 /* ── Replaced badge ─────────────────────────────────────────────────────── */
 
 .loading-screen-page .ls-badge {
@@ -271,4 +247,104 @@
     .loading-screen-page .setting-row-control {
         flex-wrap: wrap;
     }
+}
+
+
+/* Accent link out to the Convert page — the usual reason someone gets stuck here is a
+   source file ARK will not accept. */
+.ls-convert-link {
+    color: var(--accent-purple-light);
+    text-decoration: none;
+}
+
+    .ls-convert-link:hover {
+        text-decoration: underline;
+    }
+
+/* ── Movie list ──────────────────────────────────────────────────────────────
+   Two balanced columns. One full-width column per movie lined the buttons up but left a
+   canyon of dead space in the middle of every row and ran the list off the bottom of the
+   page; at two columns the same rows fill the card and fit without scrolling.
+
+   Size and actions are on fixed widths rather than intrinsic ones, so they land at the
+   same x down each column — that is what the earlier flex and card layouts got wrong. */
+
+.loading-screen-page .ls-list {
+    column-count: 2;
+    column-gap: 2.25rem;
+    font-size: 0.84rem;
+}
+
+@media (max-width: 1100px) {
+    .loading-screen-page .ls-list {
+        column-count: 1;
+    }
+}
+
+/* Keeps a heading attached to its rows when the browser balances the columns. */
+.loading-screen-page .ls-group {
+    break-inside: avoid;
+    margin-bottom: 0.9rem;
+}
+
+.loading-screen-page .ls-group-title {
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.loading-screen-page .ls-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.4rem 0.3rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    break-inside: avoid;
+}
+
+    .loading-screen-page .ls-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+.loading-screen-page .ls-row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.loading-screen-page .ls-row-size {
+    flex-shrink: 0;
+    width: 4.6rem;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Fixed, so a row with a Restore button does not push its size column out of line. */
+.loading-screen-page .ls-row-actions {
+    flex-shrink: 0;
+    width: 8.6rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.3rem;
+}
+
+    .loading-screen-page .ls-row-actions .btn {
+        padding: 0.24rem 0.6rem;
+        font-size: 0.76rem;
+    }
+
+/* A left edge rather than a full row tint, so the list still scans as one block. */
+.loading-screen-page .ls-row.replaced {
+    box-shadow: inset 2px 0 0 var(--accent-purple);
+    padding-left: 0.5rem;
 }

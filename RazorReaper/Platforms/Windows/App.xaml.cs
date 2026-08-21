@@ -6,6 +6,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using RazorReaper.Services;
+using RazorReaper.Services.Implementations;
 using WinRT.Interop;
 
 namespace RazorReaper.WinUI
@@ -13,16 +14,11 @@ namespace RazorReaper.WinUI
     public partial class App : MauiWinUIApplication
     {
         private static Mutex? _mutex;
+        private readonly string _showSignalName;
         private AppWindow? _mainAppWindow;
         private bool _wiredCrosshairTray;
         private EventWaitHandle? _showSignal;
         private Action? _requestShowMainWindow;
-
-        // Named event a duplicate launch signals so the running instance shows its window.
-        // Needed because Process.MainWindowHandle is IntPtr.Zero for a HIDDEN window, so the
-        // ShowWindow/SetForegroundWindow fallback below can't reach a tray-hidden or
-        // --waitforark instance.
-        private const string ShowSignalName = "RazorReaper_ShowWindow_Event";
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -34,11 +30,14 @@ namespace RazorReaper.WinUI
 
         public App()
         {
+            var arguments = Environment.GetCommandLineArgs();
+            _showSignalName = "RazorReaper_ShowWindow_Event";
+
             // An elevated relaunch (Restart as Administrator) starts a second process while the
             // old, non-elevated one is still exiting and still holds the single-instance mutex.
             // That handoff must NOT be treated as a duplicate launch — otherwise the new elevated
             // instance bails here (before MAUI even starts) and nothing comes back up.
-            var relaunchedElevated = Environment.GetCommandLineArgs()
+            var relaunchedElevated = arguments
                 .Contains(RazorReaper.Services.Elevation.IElevationService.RestartMarker, StringComparer.OrdinalIgnoreCase);
 
             _mutex = new Mutex(true, "RazorReaper_SingleInstance_Mutex", out bool isNewInstance);
@@ -159,7 +158,7 @@ namespace RazorReaper.WinUI
         {
             try
             {
-                _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowSignalName);
+                _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, _showSignalName);
                 var listener = new Thread(() =>
                 {
                     while (true)
@@ -192,11 +191,11 @@ namespace RazorReaper.WinUI
             }
         }
 
-        private static void SignalExistingInstanceToShow()
+        private void SignalExistingInstanceToShow()
         {
             try
             {
-                if (EventWaitHandle.TryOpenExisting(ShowSignalName, out var signal))
+                if (EventWaitHandle.TryOpenExisting(_showSignalName, out var signal))
                 {
                     using (signal)
                     {

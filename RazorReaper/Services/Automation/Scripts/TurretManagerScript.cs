@@ -68,7 +68,7 @@ public sealed class TurretManagerScript : CalibratableScriptBase
         try
         {
             MatchThresholdPercent = Preferences.Get($"{Key}.threshold", 90.0);
-            TransferKey = Preferences.Get($"{Key}.transfer", "T");
+            TransferKey = Preferences.Get($"{Key}.transfer", ArkKeyDefaults.For(ArkActions.TransferItem, "T"));
             TransferPresses = Preferences.Get($"{Key}.presses", 3);
             ScanIntervalMs = Preferences.Get($"{Key}.scaninterval", 500);
         }

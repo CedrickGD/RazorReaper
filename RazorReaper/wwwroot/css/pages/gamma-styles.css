@@ -4,27 +4,43 @@
    backgrounds); shared primitives (SettingRow, StatusHeader, Switch) are styled
    in css/shared/primitives.css. */
 
+/* Tighter, and no max-width: the page was capped at 1200px and gapped at 1.5rem, so it
+   scrolled on a normal window while leaving room unused on either side. */
 .gm-page {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
-    max-width: 1200px;
+    gap: var(--space-4);
 }
 
+/* Columns, not a grid. As a 2-col grid each row was as tall as its taller card, so the
+   short Live preview card left a ~270px dead band beneath it before the next row could
+   start. Columns let each card follow the one above it and the browser balance the two
+   sides, so there is no gap to explain. */
 .gm-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-5);
-    align-items: start;
+    column-count: 2;
+    column-gap: var(--space-4);
+}
+
+    .gm-grid > .gm-card {
+        /* A card must never be split down the middle across the column break. */
+        break-inside: avoid;
+        -webkit-column-break-inside: avoid;
+        margin-bottom: var(--space-4) !important;
+    }
+
+@media (max-width: 900px) {
+    .gm-grid {
+        column-count: 1;
+    }
 }
 
 .gm-card {
     margin-bottom: 0 !important;
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
 }
 
 h3.gm-card-title {
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
     margin-bottom: var(--space-1) !important;
 }
@@ -57,35 +73,6 @@ h3.gm-card-title {
     font-size: 0.8rem;
     color: var(--text-secondary);
 }
-
-input.gm-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 4px;
-    padding: 0 !important;
-    border: none !important;
-    border-radius: var(--radius-round) !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: none !important;
-    cursor: pointer;
-}
-
-    input.gm-slider:focus {
-        border: none !important;
-        box-shadow: none !important;
-        background: rgba(255, 255, 255, 0.16) !important;
-    }
-
-    input.gm-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 16px;
-        height: 16px;
-        border-radius: var(--radius-round);
-        background: var(--accent-purple);
-        border: none;
-    }
 
 .gm-slider-scale {
     display: flex;
@@ -285,6 +272,16 @@ input.gm-preset-val {
         background: var(--surface-inset-hover);
     }
 
+.gm-monitor-check {
+    display: flex;
+    flex-shrink: 0;
+}
+
+    /* The box's top margin aligns it to a label's first line; there is no label here. */
+    .gm-monitor-check .rr-check-box {
+        margin-top: 0;
+    }
+
 .gm-monitor-name {
     flex: 1;
     min-width: 0;
@@ -369,5 +366,83 @@ textarea.gm-lua-area {
 
     .gm-lua-head {
         flex-direction: column;
+    }
+}
+
+
+/* ── G HUB script window ─────────────────────────────────────────────────────
+   The script is read once and pasted into G HUB, so it does not earn permanent space
+   on the page. Lives in its own window instead. */
+
+.gm-lua-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.gm-modal-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    /* Centred on the content area, not the whole window — the sidebar is a fixed 226px
+       on the left, so inset:0 put the box visibly left of where the page's centre is.
+       Follows --sidebar-width, so dragging the sidebar re-centres it. */
+    left: var(--sidebar-width);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    animation: gmOverlayIn 0.14s var(--nav-ease);
+}
+
+.gm-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    width: min(760px, 100%);
+    /* A definite height, not max-height. flex:1 on the textarea has nothing to divide up
+       when the parent is sized by its content, so it collapsed to the default two rows —
+       and being readonly and scrolled, all you saw was the last line of the script. Both
+       values track the window, so a resize keeps it centred and proportional. */
+    height: min(72vh, 640px);
+    padding: var(--card-pad);
+    border-radius: var(--radius-card);
+    background: var(--background-sidebar);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    outline: none;
+    animation: gmModalIn var(--nav-base) var(--nav-ease);
+}
+
+.gm-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.gm-modal .gm-lua-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    resize: none;
+}
+
+@keyframes gmOverlayIn {
+    from { opacity: 0; }
+}
+
+@keyframes gmModalIn {
+    from { opacity: 0; transform: scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gm-modal-overlay,
+    .gm-modal {
+        animation: none;
     }
 }

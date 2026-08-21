@@ -223,7 +223,7 @@
     .ini-btn:hover:not(:disabled) {
         background: rgba(255, 255, 255, 0.09);
         border-color: rgba(255, 255, 255, 0.22);
-        transform: translateY(-1px);
+
     }
 
     .ini-btn:disabled {
@@ -318,7 +318,7 @@
     .preset-gallery-card:hover {
         background: rgba(var(--accent-purple-rgb), 0.06);
         border-color: rgba(var(--accent-purple-rgb), 0.35);
-        transform: translateY(-3px);
+
         box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
     }
 
@@ -788,7 +788,7 @@
         background: rgba(var(--accent-purple-rgb), 0.12);
         border-color: rgba(var(--accent-purple-rgb), 0.35);
         color: var(--text-primary);
-        transform: translateY(-1px);
+
     }
 
     .ini-overlay-ghost-btn:disabled {

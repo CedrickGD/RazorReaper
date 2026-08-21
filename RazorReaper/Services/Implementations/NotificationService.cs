@@ -50,6 +50,18 @@ public partial class NotificationService : INotificationService
         AddNotification(notification);
     }
 
+    public void ShowWarningWithCountdown(string message, int durationMs)
+    {
+        var notification = new NotificationMessage
+        {
+            Message = NormalizeMessage(message),
+            Type = NotificationType.Warning,
+            DurationMs = durationMs,
+            ShowCountdown = true
+        };
+        AddNotification(notification);
+    }
+
     public void ShowInfo(string message, int durationMs = DefaultInfoDurationMs)
     {
         var notification = new NotificationMessage

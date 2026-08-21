@@ -8,7 +8,7 @@
 
 .tp-page .tp-toolbar-card,
 .tp-page .tp-results-card {
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
     margin-bottom: 0 !important;
 }
 
@@ -271,7 +271,7 @@
 
 .tp-page .tp-empty h3 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: var(--card-title-size);
     font-weight: 600;
     color: var(--text-primary);
 }

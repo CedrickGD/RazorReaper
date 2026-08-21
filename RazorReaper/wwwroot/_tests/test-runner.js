@@ -125,53 +125,12 @@
         },
 
         // -------------------------------------------------------------
-        // navbar-drag-collapse : drag far left, verify rail mode triggers.
-        // -------------------------------------------------------------
-        'navbar-drag-collapse': async function () {
-            const handle = document.querySelector('.sidebar-resize-handle');
-            if (!handle) return { pass: false, reason: 'handle element not found' };
-
-            // Make sure we start expanded.
-            document.documentElement.removeAttribute('data-sidebar-collapsed');
-
-            const rect = handle.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
-
-            dispatchPointer(handle, 'pointerdown', cx, cy);
-            dispatchMouse(handle, 'mousedown', cx, cy, 0);
-
-            // Drag 200px to the LEFT — way past the collapse threshold.
-            await nextFrame();
-            dispatchPointer(document, 'pointermove', cx - 200, cy);
-            dispatchMouse(document, 'mousemove', cx - 200, cy);
-            await nextFrame();
-            await nextFrame();
-
-            const collapsedDuringDrag = document.documentElement.hasAttribute('data-sidebar-collapsed');
-
-            dispatchPointer(document, 'pointerup', cx - 200, cy);
-            dispatchMouse(document, 'mouseup', cx - 200, cy, 0);
-
-            const collapsedAfterDrag = document.documentElement.hasAttribute('data-sidebar-collapsed');
-
-            return {
-                pass: collapsedDuringDrag && collapsedAfterDrag,
-                reason: 'collapsedDuringDrag=' + collapsedDuringDrag +
-                        ' collapsedAfterDrag=' + collapsedAfterDrag
-            };
-        },
-
-        // -------------------------------------------------------------
         // navbar-dblclick-reset : drag the sidebar wider, then double-click
-        // the handle and verify the width resets to DEFAULT_WIDTH (240).
+        // the handle and verify the width resets to DEFAULT_WIDTH (226).
         // -------------------------------------------------------------
         'navbar-dblclick-reset': async function () {
             const handle = document.querySelector('.sidebar-resize-handle');
             if (!handle) return { pass: false, reason: 'handle element not found' };
-
-            // Start in expanded mode.
-            document.documentElement.removeAttribute('data-sidebar-collapsed');
 
             // First, drag it to a non-default width so the reset has something to undo.
             const rect = handle.getBoundingClientRect();
@@ -200,12 +159,10 @@
             await nextFrame();
 
             const widthAfter = getCssVarPx('--sidebar-width');
-            const collapsedAfter = document.documentElement.hasAttribute('data-sidebar-collapsed');
 
             return {
-                pass: widthBefore !== 240 && widthAfter === 240 && !collapsedAfter,
-                reason: 'widthBefore=' + widthBefore + ' widthAfter=' + widthAfter +
-                        ' collapsedAfter=' + collapsedAfter
+                pass: widthBefore !== 226 && widthAfter === 226,
+                reason: 'widthBefore=' + widthBefore + ' widthAfter=' + widthAfter
             };
         }
     };

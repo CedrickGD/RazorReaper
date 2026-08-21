@@ -20,11 +20,11 @@
 
 .aa-card {
     margin-bottom: 0 !important;
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
 }
 
 h3.aa-card-title {
-    font-size: 1.05rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
     margin-bottom: var(--space-1) !important;
 }
@@ -230,35 +230,6 @@ input.aa-num {
     color: var(--text-secondary);
     min-width: 2.2rem;
 }
-
-input.aa-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 150px;
-    height: 4px;
-    padding: 0 !important;
-    border: none !important;
-    border-radius: var(--radius-round) !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: none !important;
-    cursor: pointer;
-}
-
-    input.aa-slider:focus {
-        border: none !important;
-        box-shadow: none !important;
-        background: rgba(255, 255, 255, 0.16) !important;
-    }
-
-    input.aa-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 14px;
-        height: 14px;
-        border-radius: var(--radius-round);
-        background: var(--accent-purple);
-        border: none;
-    }
 
 /* ── Info note ──────────────────────────────────────────────────────────── */
 

@@ -90,8 +90,13 @@
     font-size: 0.8rem;
 }
 
-.steam-mods-input,
-.steam-mods-select {
+.steam-mods-input {
+    width: 100%;
+}
+
+/* .rr-dd is inline-flex, so without this the filter dropdowns collapse to their label width
+   and the grid columns no longer line up with the search box. */
+.steam-mods-filter-field .rr-dd {
     width: 100%;
 }
 
@@ -115,7 +120,7 @@
 
 .steam-mods-empty-card {
     text-align: center;
-    padding: 2rem !important;
+    padding: var(--card-pad) !important;
 }
 
 .steam-mods-empty-card h3 {
@@ -171,7 +176,7 @@
 
 .steam-mods-item-title-row h3 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: var(--card-title-size);
     color: var(--text-primary);
 }
 

@@ -38,14 +38,15 @@ namespace RazorReaper
             ConfigureServices(builder.Services);
 
             builder.Services.AddMauiBlazorWebView();
+            // Both clients carry the per-install request signature (rr.install.v1).
             builder.Services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
             {
                 client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
-            });
+            }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
             builder.Services.AddHttpClient("RazorReaperTelemetry", client => 
             {
                 client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
-            });
+            }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -99,7 +100,7 @@ namespace RazorReaper
                 // only be held by one process at a time, and during an elevate-relaunch the old
                 // instance's WebView2 processes may still hold the normal folder for a moment,
                 // which would otherwise crash the new elevated instance before it can render.
-                var webViewFolderName = IsProcessElevated() ? "WebView2-admin" : "WebView2";
+                var webViewFolderName = GetWebView2FolderName(IsProcessElevated());
                 var userDataFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "RazorReaper",
@@ -117,6 +118,9 @@ namespace RazorReaper
             }
 #endif
         }
+
+        internal static string GetWebView2FolderName(bool isElevated)
+            => isElevated ? "WebView2-admin" : "WebView2";
 
 #if WINDOWS
         private static void ResetWebView2ZoomPreference(string userDataFolder)
@@ -180,6 +184,9 @@ namespace RazorReaper
 
         private static void ConfigureLogging(MauiAppBuilder builder)
         {
+            var levelSwitch = new LoggingLevelSwitch();
+            LoggingControl.Initialize(levelSwitch);
+
             var logFolder = AppDiagnostics.GetLogFolder();
             var logPath = AppDiagnostics.GetLogFilePath();
 
@@ -204,8 +211,6 @@ namespace RazorReaper
                 }
             }
 
-            var levelSwitch = new LoggingLevelSwitch();
-            LoggingControl.Initialize(levelSwitch);
             LoggingControl.ApplySettings(
                 AppDiagnostics.GetLoggingEnabled(),
                 AppDiagnostics.GetVerboseLoggingEnabled());
@@ -255,23 +260,21 @@ namespace RazorReaper
         private static void ConfigureServices(IServiceCollection services)
         {
             // Register application services
+            services.AddSingleton<IPreferencesStore, MauiPreferencesStore>();
+            services.AddSingleton<IRawHardwareIdentitySource, WindowsRawHardwareIdentitySource>();
+            services.AddSingleton<IAppearanceService, AppearanceService>();
             services.AddSingleton<IArkPathProvider, ArkPathProvider>();
             services.AddSingleton<IFileSystemService, FileSystemService>();
             services.AddSingleton<IProcessService, ProcessService>();
             services.AddSingleton<IGameConsoleService, RazorReaper.Services.Implementations.Game.GameConsoleService>();
             services.AddSingleton<IArkLauncher, ArkLauncher>();
-            services.AddSingleton<IArkLinkService, ArkLinkService>();
             services.AddSingleton<IActivityService, ActivityService>();
             services.AddSingleton<IIniPresetService, IniPresetService>();
             services.AddSingleton<IGameIniService, GameIniService>();
             services.AddSingleton<INotificationService, NotificationService>();
-            services.AddSingleton<IUpdateService, UpdateService>();
-            services.AddSingleton<IAutoUpdateManager, AutoUpdateManager>();
-            services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();
-            services.AddSingleton<ITelemetryService, TelemetryService>();
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
             services.AddSingleton<IFeedbackService, FeedbackService>();
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
@@ -290,23 +293,32 @@ namespace RazorReaper
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();
             services.AddSingleton<RazorReaper.Services.Media.IFfmpegProvider, RazorReaper.Services.Media.FfmpegProvider>();
             services.AddSingleton<RazorReaper.Services.Media.IVideoConverter, RazorReaper.Services.Media.VideoConverter>();
+            // General-purpose conversion for the Convert page (ported from Convert-X).
+            services.AddSingleton<RazorReaper.Services.Media.IMediaConverter, RazorReaper.Services.Media.MediaConverter>();
+            services.AddSingleton<RazorReaper.Services.Media.IMediaProbe, RazorReaper.Services.Media.MediaProbe>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
             services.AddSingleton<IStretchedResService, StretchedResService>();
             services.AddSingleton<RazorReaper.Services.Gamma.IGammaService, RazorReaper.Services.Gamma.GammaService>();
 
             // Automation platform (input simulation, hotkeys, macros, calibration, screen sampling)
+            services.AddSingleton<RazorReaper.Services.Automation.IArkKeyBindingService, RazorReaper.Services.Automation.ArkKeyBindingService>();
             services.AddSingleton<RazorReaper.Services.Automation.IInputSimulator, RazorReaper.Services.Automation.InputSimulator>();
             services.AddSingleton<RazorReaper.Services.Automation.IAutomationHotkeyService, RazorReaper.Services.Automation.AutomationHotkeyService>();
+            services.AddSingleton<RazorReaper.Services.Automation.IAutoClickerRuntime, RazorReaper.Services.Automation.AutoClickerRuntime>();
+            services.AddSingleton<RazorReaper.Services.Automation.IAutoClickerHotkeyBinder, RazorReaper.Services.Automation.AutoClickerHotkeyBinder>();
             services.AddSingleton<RazorReaper.Services.Automation.IMacroEngine, RazorReaper.Services.Automation.MacroEngine>();
             services.AddSingleton<RazorReaper.Services.Automation.ICalibrationService, RazorReaper.Services.Automation.CalibrationService>();
             services.AddSingleton<RazorReaper.Services.Automation.IInputRecorderService, RazorReaper.Services.Automation.InputRecorderService>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenSampler, RazorReaper.Services.Automation.ScreenSampler>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenOcr, RazorReaper.Services.Automation.ScreenOcr>();
+            services.AddSingleton<RazorReaper.Services.Automation.DurabilityReader>();
             services.AddSingleton<RazorReaper.Services.Automation.IForegroundGate, RazorReaper.Services.Automation.ForegroundGate>();
             services.AddSingleton<RazorReaper.Services.Automation.IFastTransferMacro, RazorReaper.Services.Automation.FastTransferMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IFedSuitMacro, RazorReaper.Services.Automation.FedSuitMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IAutoAntidoteService, RazorReaper.Services.Automation.AutoAntidoteService>();
+            // Registered after the scripts below are enumerable as AutomationScriptBase.
+            services.AddSingleton<RazorReaper.Services.Automation.IHotkeyRegistry, RazorReaper.Services.Automation.HotkeyRegistry>();
 
             // ATS3-parity automation scripts (each derives from AutomationScriptBase)
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.YutyScript>();
@@ -320,11 +332,12 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.NoglinScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.InvSizeScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.AntiAfkScript>();
-            services.AddSingleton<RazorReaper.Services.Automation.Scripts.ExoSuitScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.TurretManagerScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.FlakScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.DinoReadyScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.CraftingScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.AutoAntidoteScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.FedSuitScript>();
 
             // Expose every script as AutomationScriptBase so the Scripts hub + Global Hotkeys page
             // enumerate them uniformly (registration order = display order). Add new scripts here too.
@@ -339,24 +352,50 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.NoglinScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.InvSizeScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AntiAfkScript>());
-            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.ExoSuitScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.TurretManagerScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FlakScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.DinoReadyScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.CraftingScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AutoAntidoteScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FedSuitScript>());
 
             services.AddSingleton<RazorReaper.Services.Desync.IDesyncService, RazorReaper.Services.Desync.DesyncService>();
             services.AddSingleton<RazorReaper.Services.FileModifier.IFileModifierService, RazorReaper.Services.FileModifier.FileModifierService>();
 
             // Overlay platform (HUD overlay window + notifier client + session auto-detect)
-            services.AddSingleton<RazorReaper.Services.Overlay.IHudOverlayService, RazorReaper.Services.Overlay.HudOverlayService>();
             services.AddSingleton<RazorReaper.Services.Overlay.INotifierClientService, RazorReaper.Services.Overlay.NotifierClientService>();
-            services.AddSingleton<RazorReaper.Services.Overlay.ISessionHudService, RazorReaper.Services.Overlay.SessionHudService>();
             
             services.AddSingleton<RazorReaper.Services.Elevation.IElevationService, RazorReaper.Services.Elevation.ElevationService>();
+
+            // Command palette: turns the services above into runnable rows in Ctrl+K.
+            // Registered after them so every dependency is already known to the container.
             services.AddSingleton<IHwidService, HwidService>();
+
+            services.AddSingleton<IClientIdentityService, ClientIdentityService>();
+            services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<ISecureValueStore, MauiSecureValueStore>();
+            services.AddSingleton<IInstallIdentityService, InstallIdentityService>();
+            // The handler resolves the identity service lazily: the identity service depends on
+            // ILicenseService, which owns an HttpClient that carries this very handler.
+            services.AddTransient(sp => new RazorReaper.Services.Http.SignedRequestHandler(
+                () => sp.GetRequiredService<IInstallIdentityService>(),
+                sp.GetRequiredService<TimeProvider>(),
+                RazorReaper.Services.Http.SignedRequestHandler.AllowedHostsFrom(
+                    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppConfiguration>>().Value),
+                sp.GetRequiredService<ILogger<RazorReaper.Services.Http.SignedRequestHandler>>()));
+            services.AddSingleton<ITelemetryService, TelemetryService>();
+            services.AddSingleton<IUsageGateService, UsageGateService>();
+            services.AddSingleton<IUpdateService, UpdateService>();
+            services.AddSingleton<IAutoUpdateManager, AutoUpdateManager>();
+            services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
             services.AddSingleton<ILicenseService, LicenseService>();
             services.AddSingleton<IAccessGateService, AccessGateService>();
+            services.AddSingleton<IArkLinkService, ArkLinkService>();
+            services.AddSingleton<RazorReaper.Navigation.IPaletteCommandProvider, RazorReaper.Navigation.PaletteCommandProvider>();
+            services.AddSingleton<RazorReaper.Services.Overlay.IHudOverlayService, RazorReaper.Services.Overlay.HudOverlayService>();
+            services.AddSingleton<RazorReaper.Services.Overlay.ISessionHudService, RazorReaper.Services.Overlay.SessionHudService>();
+            services.AddSingleton<IGameIniService, GameIniService>();
+            services.AddSingleton<ILineListService, LineListService>();
         }
     }
 }

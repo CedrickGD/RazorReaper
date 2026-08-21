@@ -6,13 +6,50 @@
     z-index: 9999;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    /* No gap: a slot collapsed to 0fr still consumes its gap slot, so the row would
+       leave an 8px hole behind. The spacing lives on .notification-slot instead, where
+       it can collapse along with the height. */
     max-width: min(420px, calc(100vw - 40px));
     width: min(420px, calc(100vw - 40px));
     pointer-events: none;
 }
 
+/* Animates the row's real height. grid-template-rows 1fr -> 0fr is the only way to
+   transition to a content-derived height; max-height would need a magic number and would
+   ease wrongly for any toast shorter than it. Delayed so the slide-out plays first. */
+.notification-slot {
+    display: grid;
+    grid-template-rows: 1fr;
+    /* Load-bearing. The container is a column flex box, so this slot is a flex item with
+       min-height: auto — which floors it at its content height and pins the row open no
+       matter what grid-template-rows says. Without this the collapse silently does
+       nothing (verified: even an inline 0fr left the row at full height). */
+    min-height: 0;
+    margin-bottom: 8px;
+    transition: grid-template-rows 140ms var(--nav-ease) 200ms,
+                margin-bottom 140ms var(--nav-ease) 200ms;
+}
+
+    /* Unpadded and unbordered on purpose — see NotificationContainer.razor. overflow is
+       what makes the 0fr row actually clip instead of just overflowing it. */
+    .notification-clip {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .notification-slot.leaving {
+        grid-template-rows: 0fr;
+        margin-bottom: 0;
+    }
+
+        .notification-slot.leaving .notification {
+            animation: slideOutRight 0.2s var(--nav-ease) forwards;
+            pointer-events: none;
+        }
+
 .notification {
+    /* Anchors .notification-countdown to the toast's bottom edge. */
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: 14px;
@@ -31,7 +68,7 @@
 }
 
 .notification:hover {
-    transform: translateX(-4px);
+
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
@@ -44,6 +81,73 @@
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* Leaves along the edge it arrived from. Toasts used to slide in and then simply
+   vanish, so the way out contradicted the way in. Faster than the 0.3s entry —
+   a dismissal should feel decisive, not replayed backwards. The slide is applied via
+   .notification-slot.leaving above; NotificationContainer.razor holds the row for
+   LeaveAnimationMs (slide + collapse) before dropping it. */
+
+@keyframes slideOutRight {
+    to {
+        transform: translateX(340px);
+        opacity: 0;
+    }
+}
+
+/* Keep the fade so the row still doesn't teleport, drop the travel. The countdown is
+   deliberately NOT disabled here — it reports how long is left before the app closes
+   itself, which is information the user needs regardless of motion preference. */
+@media (prefers-reduced-motion: reduce) {
+    .notification {
+        animation: none !important;
+    }
+
+    .notification-slot.leaving .notification {
+        animation: fadeOutToast 0.2s linear forwards !important;
+    }
+
+    @keyframes fadeOutToast {
+        to { opacity: 0; }
+    }
+}
+
+/* ── Countdown line ──────────────────────────────────────────────────────────
+   Opt-in per message (NotificationMessage.ShowCountdown), used only by the update
+   handoff. There the toast is the sole warning that the app is about to close itself,
+   so "how long have I got" is the message rather than decoration — which is also why
+   the 4s duration sits outside the usual sub-300ms UI budget and why the reduced-motion
+   block above leaves it alone. animation-duration is set inline from DurationMs so the
+   line empties exactly as the toast expires. */
+
+.notification-countdown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    border-bottom-left-radius: var(--radius-control);
+    border-bottom-right-radius: var(--radius-control);
+    background: var(--text-secondary);
+    transform-origin: left center;
+    animation-name: toastCountdown;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    pointer-events: none;
+}
+
+.notification-warning .notification-countdown {
+    background: var(--accent-orange);
+}
+
+.notification-error .notification-countdown {
+    background: var(--accent-red);
+}
+
+@keyframes toastCountdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
 }
 
 .notification-icon {

@@ -20,7 +20,7 @@
 .crafting-page-shell .content-card,
 .crafting-scripts-layout .content-card {
     margin-bottom: 0 !important;
-    padding: clamp(1rem, 1.8vw, 1.5rem) !important;
+    padding: var(--card-pad) !important;
 }
 
 .crafting-scripts-main,
@@ -146,7 +146,7 @@
 
 .crafting-action-btn:hover,
 .crafting-copy-btn:hover {
-    transform: translateY(-1px);
+
     border-color: rgba(var(--crafting-accent-rgb), 0.32);
     background: rgba(var(--crafting-accent-rgb), 0.11);
 }

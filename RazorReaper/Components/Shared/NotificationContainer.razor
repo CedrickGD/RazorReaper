@@ -8,7 +8,16 @@
 <div class="notification-container">
     @foreach (var notification in notifications)
     {
-        <div class="notification notification-@notification.Type.ToString().ToLower()" @key="notification.Id">
+        @* The slot exists purely to animate the row's height. A toast that slides out while
+           still occupying its full height makes the stack below snap upward the instant the
+           row is dropped; collapsing the slot gives that reflow somewhere to go. *@
+        <div class="notification-slot @(_leaving.Contains(notification.Id) ? "leaving" : "")" @key="notification.Id">
+        @* The clip layer carries no padding or border of its own, so it can be squeezed to
+           zero. The toast itself can't: its 14px padding and 1px border are part of its
+           border box, and no min-height:0 takes a box below that — the row floored at 30px
+           until this went in. *@
+        <div class="notification-clip">
+        <div class="notification notification-@notification.Type.ToString().ToLower()">
             <div class="notification-icon">
                 @if (notification.Type == NotificationType.Success)
                 {
@@ -43,13 +52,34 @@
                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                 </svg>
             </button>
+
+            @* Duration comes from the message, so the line always empties exactly when the
+               toast goes. Only the update handoff opts in — see NotificationMessage. *@
+            @if (notification.ShowCountdown)
+            {
+                <span class="notification-countdown" style="animation-duration: @(notification.DurationMs)ms"></span>
+            }
+        </div>
+        </div>
         </div>
     }
 </div>
 
 @code {
     private const int MaxNotifications = 4;
+
+    /// <summary>
+    /// Must cover the whole exit in notifications.css: the 200ms slide-out, then the 140ms
+    /// height collapse that starts once it finishes. Drop the row earlier and the stack
+    /// still jumps, which is the thing the collapse exists to prevent.
+    /// </summary>
+    private const int LeaveAnimationMs = 340;
+
     private List<NotificationMessage> notifications = new();
+
+    /// <summary>Ids currently playing their exit — still rendered, but on the way out.</summary>
+    private readonly HashSet<string> _leaving = new(StringComparer.Ordinal);
+
     private CancellationTokenSource? _autoRemoveCts;
 
     protected override void OnInitialized()
@@ -66,9 +96,12 @@
     {
         try
         {
-            if (notifications.Count >= MaxNotifications)
+            // Count only the live ones, and evict the oldest that isn't already exiting —
+            // targeting a leaving toast would be a no-op and the stack would keep growing.
+            var live = notifications.Where(n => !_leaving.Contains(n.Id)).ToList();
+            if (live.Count >= MaxNotifications)
             {
-                NotificationService.RemoveNotification(notifications[0].Id);
+                NotificationService.RemoveNotification(live[0].Id);
             }
 
             notifications.Add(notification);
@@ -111,11 +144,23 @@
         try
         {
             var notification = notifications.FirstOrDefault(n => n.Id == id);
-            if (notification != null)
-            {
-                notifications.Remove(notification);
-                await InvokeAsync(StateHasChanged);
-            }
+            if (notification is null) return;
+
+            // Already on its way out — the auto-remove timer and the close button can
+            // both land on the same toast, and running the exit twice makes it flicker.
+            if (!_leaving.Add(id)) return;
+
+            // Render the exit, let it play, then actually drop the row.
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(LeaveAnimationMs, _autoRemoveCts?.Token ?? CancellationToken.None);
+
+            notifications.Remove(notification);
+            _leaving.Remove(id);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposed mid-exit; the whole container is going away anyway.
         }
         catch (Exception ex)
         {

@@ -6,6 +6,7 @@
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using RazorReaper.Configuration
+@using RazorReaper.Services.Implementations
 @using Microsoft.Maui.ApplicationModel
 @using System.Diagnostics
 @using System.IO
@@ -17,11 +18,8 @@
 @inject IOptions<AppConfiguration> Configuration
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
-@inject IFontInstaller FontInstaller
 @inject IUpdateService UpdateService
 @inject IAutoUpdateManager AutoUpdateManager
-@inject IDiscordPresenceService DiscordPresence
-@inject IArkLinkService ArkLink
 @inject ILicenseService LicenseService
 @implements IAsyncDisposable
 
@@ -43,49 +41,21 @@
                     </div>
                     <div>
                         <h3>Update</h3>
-                        <p class="update-subtitle">Keep Razor Reaper current with the latest release.</p>
+                        <p class="update-subtitle">Updates install themselves and restart the app.</p>
                     </div>
                 </div>
-                <div class="update-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@AutoUpdateManager.IsAutoUpdateEnabled"
-                               @onchange="ToggleAutoUpdate" />
-                        <span>Auto-update</span>
-                    </label>
-                    <button class="btn-small" @onclick="() => CheckForUpdatesAsync(true)" disabled="@isCheckingForUpdates">
-                        @(isCheckingForUpdates ? "Checking..." : "Check")
-                    </button>
-                    @if (updateResult?.HasUpdate == true)
-                    {
-                        <button class="btn-small btn-small-primary"
-                                @onclick="OnUpdateNowAsync"
-                                disabled="@IsUpdateNowDisabled">
-                            @UpdateNowButtonLabel
-                        </button>
-                    }
-                </div>
+                @* No controls. Updates are mandatory and unattended — there is nothing here
+                   to switch off, and no check to run by hand. *@
             </div>
             <div class="update-status">
                 @if (ShowUpdateBadge)
                 {
                     <div class="@UpdateBadgeClass">@UpdateBadgeText</div>
                 }
-                <div class="update-meta">
-                    <div class="update-meta-item">
-                        <span class="update-meta-label">Current</span>
-                        <span class="update-meta-value">@UpdateService.CurrentVersionLabel</span>
-                    </div>
-                    <div class="update-meta-item">
-                        <span class="update-meta-label">Latest</span>
-                        <span class="update-meta-value">@LatestVersionLabel</span>
-                    </div>
-                    <div class="update-meta-item">
-                        <span class="update-meta-label">Checked</span>
-                        <span class="update-meta-value">@LastCheckedLabel</span>
-                    </div>
-                </div>
-
+                @* No version readout. Updates install themselves, so the numbers were
+                   nothing anyone acts on — and the sidebar foot already carries the running
+                   version. What's left is the one line that does change: what's happening
+                   right now. *@
                 @if (AutoUpdateManager.IsDownloading)
                 {
                     <div class="update-progress">
@@ -98,7 +68,7 @@
                 else if (AutoUpdateManager.IsInstallerReady)
                 {
                     <div class="update-ready-message">
-                        v@(AutoUpdateManager.PendingVersion) ready — will install silently when you close the app.
+                        Installing v@(AutoUpdateManager.PendingVersion) — the app will restart on its own.
                     </div>
                 }
                 else
@@ -109,91 +79,52 @@
                        looked like a double progress bar. *@
                     <div class="update-message">@UpdateStatusMessage</div>
                 }
-
-                @* Notes show whenever the manifest carries them, even when the user is already
-                   on the latest. Pre-update: they're the "what's new" preview the user asked
-                   for. Post-update: they double as a recap of what just got installed. The
-                   summary reads "What's new in v{LatestVersion}" either way. *@
-                @if (updateResult?.LatestVersion != null && updateResult.Notes.Count > 0)
-                {
-                    <details class="update-notes" open="@(updateResult.HasUpdate)">
-                        <summary>What's new in v@(updateResult.LatestVersion)</summary>
-                        <ul class="update-notes-list">
-                            @foreach (var note in updateResult.Notes)
-                            {
-                                <li>@note</li>
-                            }
-                        </ul>
-                    </details>
-                }
             </div>
         </div>
 
         <div class="dashboard-widgets">
-            <div class="content-card widget-card clock-widget">
-                <div class="widget-header">
-                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-                    </svg>
-                    <h3>Local Time</h3>
-                </div>
-                <div class="clock-display">
-                    <div class="clock-time">@currentTime.ToString("HH:mm:ss")</div>
-                    <div class="clock-date">@currentTime.ToString("dddd, MMMM dd, yyyy")</div>
-                    <div class="clock-details">
-                        <div class="clock-detail-item">
-                            <span class="detail-label">Timezone:</span>
-                            <span class="detail-value">@timeZoneInfo</span>
-                        </div>
-                        <div class="clock-detail-item">
-                            <span class="detail-label">UTC Offset:</span>
-                            <span class="detail-value">@utcOffset</span>
-                        </div>
-                        <div class="clock-detail-item">
-                            <span class="detail-label">Week:</span>
-                            <span class="detail-value">Week @weekNumber of @currentTime.Year</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="content-card widget-card uptime-widget">
+            @* Clock, Uptime and Network were three cards for four numbers, each padded out
+               with empty space while the clock card overflowed. One card, four stats on a
+               row that reflows — and the time moved to the title bar, where it stays
+               readable with the app behind ARK. *@
+            <div class="content-card widget-card status-widget">
                 <div class="widget-header">
                     <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
                         <path fill-rule="evenodd" d="M4 4a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V5a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                     </svg>
-                    <h3>Uptime</h3>
+                    <h3>Status</h3>
                 </div>
-                <div class="uptime-details">
+                <div class="status-grid">
                     <div class="system-item">
-                        <div class="system-label">System</div>
+                        <div class="system-label">System uptime</div>
                         <div class="system-value">@systemUptime</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">App Session</div>
+                        <div class="system-label">App session</div>
                         <div class="system-value">@appSessionDuration</div>
                     </div>
-                </div>
-            </div>
-
-            <div class="content-card widget-card system-info-widget">
-                <div class="widget-header">
-                    <svg fill="currentColor" viewBox="0 0 20 20" class="widget-icon">
-                        <path d="M2 7.5a13 13 0 0 1 16 0l-1.4 1.4a11 11 0 0 0-13.2 0L2 7.5z" />
-                        <path d="M4.9 10.4a8.5 8.5 0 0 1 10.2 0l-1.4 1.4a6.5 6.5 0 0 0-7.4 0l-1.4-1.4z" />
-                        <path d="M7.8 13.3a4 4 0 0 1 4.4 0l-1.4 1.4a2 2 0 0 0-1.6 0l-1.4-1.4z" />
-                        <circle cx="10" cy="17" r="1.2" />
-                    </svg>
-                    <h3>Network</h3>
-                </div>
-                <div class="system-info-list">
                     <div class="system-item">
-                        <div class="system-label">Connected Network</div>
+                        <div class="system-label">Network</div>
                         <div class="system-value">@wifiName</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">Signal Strength</div>
+                        <div class="system-label">Signal</div>
                         <div class="system-value">@wifiSignalStrength</div>
+                    </div>
+                    @* Came back from the old Local Time card. The clock itself is in the
+                       title bar now, but these three don't tick — they're reference, and
+                       reference belongs in the status block. *@
+                    <div class="system-item status-item-wide">
+                        <div class="system-label">Timezone</div>
+                        <div class="system-value">@timeZoneInfo</div>
+                    </div>
+                    <div class="system-item">
+                        <div class="system-label">UTC offset</div>
+                        <div class="system-value">@utcOffset</div>
+                    </div>
+                    <div class="system-item">
+                        <div class="system-label">Week</div>
+                        <div class="system-value">@weekNumber of @currentTime.Year</div>
                     </div>
                 </div>
             </div>
@@ -400,10 +331,9 @@
                     <p class="sound-settings-subtitle">Control UI click and notification audio.</p>
                 </div>
                 <div class="collapsible-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox" @bind="soundsEnabled" @bind:after="PersistSoundSettingsAsync" />
-                        <span>Enable UI sounds</span>
-                    </label>
+                    <span class="sound-toggle sound-toggle-master">
+                        <CheckBox Value="soundsEnabled" ValueChanged="SetSoundsEnabledAsync">Enable UI sounds</CheckBox>
+                    </span>
                     <button type="button"
                             class="collapsible-toggle"
                             @onclick="ToggleSoundSettings"
@@ -421,10 +351,9 @@
                     <div class="sound-setting">
                         <div class="sound-setting-header">
                             <span class="sound-setting-title">Notification Sound</span>
-                            <label class="sound-toggle sound-toggle-inline">
-                                <input type="checkbox" @bind="notificationSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
-                                <span>Enabled</span>
-                            </label>
+                            <span class="sound-toggle sound-toggle-inline">
+                                <CheckBox Value="notificationSoundEnabled" ValueChanged="SetNotificationSoundEnabledAsync">Enabled</CheckBox>
+                            </span>
                         </div>
                         <div class="sound-setting-body">
                             <div class="sound-source">
@@ -446,10 +375,9 @@
                     <div class="sound-setting">
                         <div class="sound-setting-header">
                             <span class="sound-setting-title">Click Sound</span>
-                            <label class="sound-toggle sound-toggle-inline">
-                                <input type="checkbox" @bind="clickSoundEnabled" @bind:after="PersistSoundSettingsAsync" />
-                                <span>Enabled</span>
-                            </label>
+                            <span class="sound-toggle sound-toggle-inline">
+                                <CheckBox Value="clickSoundEnabled" ValueChanged="SetClickSoundEnabledAsync">Enabled</CheckBox>
+                            </span>
                         </div>
                         <div class="sound-setting-body">
                             <div class="sound-source">
@@ -476,219 +404,6 @@
                     <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">Open Folder</button>
                 </div>
                 <div class="sound-folder-note">Supports MP3, WAV, OGG, M4A, AAC. Keep files under @MaxSoundFileMb MB for fast playback.</div>
-            </div>
-        </div>
-
-        <div class="content-card font-settings-card collapsible-card">
-            <div class="font-settings-header">
-                <div>
-                    <h3>Interface Font</h3>
-                    <p class="font-settings-subtitle">Switch the UI font preset. Fonts auto-install in the background.</p>
-                </div>
-                <div class="collapsible-actions">
-                    <div class="font-current">
-                        <span class="font-current-label">Active</span>
-                        <span class="font-current-value">@GetFontPresetName(selectedFontPresetId)</span>
-                    </div>
-                    <button type="button"
-                            class="collapsible-toggle"
-                            @onclick="ToggleFontSettings"
-                            aria-expanded="@isFontSettingsOpen"
-                            aria-controls="font-settings-content">
-                        <span class="collapsible-toggle-label">@(isFontSettingsOpen ? "Collapse" : "Expand")</span>
-                        <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div id="font-settings-content" class="collapsible-content" hidden="@(!isFontSettingsOpen)">
-                <div class="font-preset-grid">
-                    @foreach (var preset in FontPresets)
-                    {
-                        var isActive = selectedFontPresetId == preset.Id;
-                        var statusLabel = GetFontPresetStatus(preset);
-                        <button class="font-preset-card @(isActive ? "active" : "")"
-                                @onclick="@(() => SelectFontPresetAsync(preset))"
-                                disabled="@IsFontPresetInstalling(preset)">
-                            <div class="font-preset-top">
-                                <span class="font-preset-name">@preset.Name</span>
-                                <span class="font-preset-status">@statusLabel</span>
-                            </div>
-                            <div class="font-preset-description">@preset.Description</div>
-                            <div class="font-preset-preview" style="font-family: @preset.UiStack">
-                                The quick brown fox jumps over the lazy dog 0123456789.
-                            </div>
-                        </button>
-                    }
-                </div>
-                <div class="font-manual-install">
-                    <div class="font-manual-title">Manual install (if auto-install fails)</div>
-                    <ol class="font-manual-steps">
-                        <li>Download the font from the official link below.</li>
-                        <li>If you get a zip, extract it.</li>
-                        <li>Right-click the .ttf file and choose <strong>Install</strong> (or double-click and install).</li>
-                        <li>Return here and select the preset again. Switching updates the UI instantly.</li>
-                    </ol>
-                    <div class="font-manual-links">
-                        @foreach (var preset in FontPresets)
-                        {
-                            if (string.IsNullOrWhiteSpace(preset.DownloadUrl))
-                            {
-                                continue;
-                            }
-
-                            <button class="font-manual-link" @onclick="@(() => CopyFontDownloadLinkAsync(preset))" data-sound-skip="true">
-                                <span class="font-manual-link-name">@preset.Name</span>
-                                <span class="font-manual-link-url">@preset.DownloadUrl</span>
-                            </button>
-                        }
-                    </div>
-                </div>
-                <div class="font-settings-note">Fonts install per-user in the background. Switching updates the UI instantly.</div>
-            </div>
-        </div>
-
-        <div class="content-card theme-settings-card collapsible-card">
-            <div class="theme-settings-header">
-                <div>
-                    <h3>Accent Color</h3>
-                    <p class="theme-settings-subtitle">Recolor the whole app. Pick any color and every purple accent updates instantly — your choice is saved until you change it.</p>
-                </div>
-                <div class="collapsible-actions">
-                    <div class="theme-current">
-                        <span class="theme-current-label">Active</span>
-                        <span class="theme-current-swatch" style="background:@selectedAccentColor" title="@selectedAccentColor"></span>
-                    </div>
-                    <button type="button"
-                            class="collapsible-toggle"
-                            @onclick="ToggleThemeSettings"
-                            aria-expanded="@isThemeSettingsOpen"
-                            aria-controls="theme-settings-content">
-                        <span class="collapsible-toggle-label">@(isThemeSettingsOpen ? "Collapse" : "Expand")</span>
-                        <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            <div id="theme-settings-content" class="collapsible-content" hidden="@(!isThemeSettingsOpen)">
-                <div class="theme-picker">
-                    <div class="theme-sv-box"
-                         @ref="_svEl"
-                         style="background-color: hsl(@FormatNum(_pickerHue), 100%, 50%);"
-                         @onpointerdown="OnSvPointerDown">
-                        <span class="theme-sv-handle"
-                              @ref="_svHandleEl"
-                              style="left: @FormatPct(_pickerSat); top: @FormatPct(1 - _pickerVal); background: @selectedAccentColor;"></span>
-                    </div>
-                    <input type="range" class="theme-hue-slider" min="0" max="360" step="1"
-                           value="@FormatNum(_pickerHue)"
-                           @oninput="OnHueInput" @onchange="OnHueChange"
-                           aria-label="Hue" />
-                    <div class="theme-picker-controls">
-                        <span class="theme-live-swatch" style="background:@selectedAccentColor" title="@selectedAccentColor"></span>
-                        <input type="text" class="theme-hex-input" spellcheck="false" maxlength="7"
-                               value="@selectedAccentColor" @onchange="OnHexInputChange" aria-label="Hex color" />
-                        <button class="btn btn-secondary theme-reset-btn" @onclick="ResetThemeAsync" disabled="@IsThemeDefault" title="Reset to default purple">
-                            <svg fill="currentColor" viewBox="0 0 20 20" style="width:15px;height:15px;">
-                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-                            </svg>
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
-                <button type="button"
-                        class="theme-advanced-toggle"
-                        @onclick="ToggleThemeAdvanced"
-                        aria-expanded="@isThemeAdvancedOpen">
-                    <svg class="theme-advanced-icon" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
-                    </svg>
-                    <span>Advanced — override individual shades</span>
-                </button>
-
-                @if (isThemeAdvancedOpen)
-                {
-                    <div class="theme-advanced-grid">
-                        @foreach (var shade in AdvancedShades)
-                        {
-                            var auto = IsShadeAuto(shade.Key);
-                            var shadeVal = GetShadeValue(shade.Key);
-                            <div class="theme-shade-field">
-                                <div class="theme-shade-head">
-                                    <span class="theme-shade-name">@shade.Label</span>
-                                    <span class="theme-shade-state @(auto ? "auto" : "custom")">@(auto ? "Auto" : "Custom")</span>
-                                </div>
-                                <div class="theme-shade-desc">@shade.Description</div>
-                                <div class="theme-shade-pick">
-                                    <input type="color" class="theme-shade-native" value="@shadeVal"
-                                           @onchange="@(e => OnAdvancedShadeChanged(shade.Key, e.Value?.ToString() ?? string.Empty))" />
-                                    <input type="text" class="theme-shade-hex" spellcheck="false" maxlength="7" value="@shadeVal"
-                                           @onchange="@(e => OnAdvancedShadeChanged(shade.Key, e.Value?.ToString() ?? string.Empty))" aria-label="@(shade.Label) hex" />
-                                </div>
-                                <button class="theme-shade-auto" @onclick="@(() => ClearAdvancedShadeAsync(shade.Key))" disabled="@auto">Reset to auto</button>
-                            </div>
-                        }
-                    </div>
-                    <p class="theme-advanced-note">Each shade left on <strong>Auto</strong> is derived from the accent color. Pin a shade to lock it; "Reset to auto" hands it back to the accent.</p>
-                }
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        <svg fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20.317 4.369a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.249-1.844-.276-3.68-.276-5.486 0-.164-.393-.405-.874-.617-1.249a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.291.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.009c.12.099.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3>Discord Rich Presence</h3>
-                        <p class="update-subtitle">Let friends see you're using RazorReaper — your current tool and version show on your Discord profile.</p>
-                    </div>
-                </div>
-                <div class="update-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@DiscordPresence.IsEnabled"
-                               @onchange="ToggleDiscordRpc" />
-                        <span>Enabled</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5z" />
-                            <path d="M7.414 15.414a2 2 0 01-2.828-2.828l3-3a2 2 0 012.828 0 1 1 0 001.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3>Start &amp; Close with ARK</h3>
-                        <p class="update-subtitle">Start: a lightweight background watcher launches RazorReaper as soon as ARK starts. Close: exits RazorReaper when ARK closes.</p>
-                    </div>
-                </div>
-                <div class="update-actions">
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@ArkLink.StartWithArk"
-                               @onchange="ToggleArkLinkStart" />
-                        <span>Start with ARK</span>
-                    </label>
-                    <label class="sound-toggle sound-toggle-master">
-                        <input type="checkbox"
-                               checked="@ArkLink.CloseWithArk"
-                               @onchange="ToggleArkLinkClose" />
-                        <span>Close with ARK</span>
-                    </label>
-                </div>
             </div>
         </div>
 
@@ -837,17 +552,45 @@
 
                     <div class="license-key-value">@DisplayedLicenseKey</div>
 
-                    @if (!string.IsNullOrWhiteSpace(LicenseService.LicenseType) || !string.IsNullOrWhiteSpace(LicenseService.ExpiresAt))
+                    @* The sidebar only says "Premium"; the plan, the date and how long is
+                       left all live here so there's one detailed place to look. *@
+                    <div class="license-key-facts">
+                        <span class="license-fact">
+                            <span class="license-fact-label">Plan</span>
+                            @LicensePlanLabel
+                        </span>
+
+                        <span class="license-fact">
+                            <span class="license-fact-label">Expires</span>
+                            @(LicenseIsPerpetual ? "Never" : FormatLicenseExpiry(LicenseService.ExpiresAt))
+                        </span>
+
+                        @* Skipped on a lifetime key — "Expires: Never" already said it. *@
+                        @if (!LicenseIsPerpetual)
+                        {
+                            <span class="license-fact @LicenseRemainingClass">
+                                <span class="license-fact-label">Time left</span>
+                                @LicenseRemainingLabel
+                            </span>
+                        }
+
+                        <span class="license-fact">
+                            <span class="license-fact-label">Device</span>
+                            Bound to this PC
+                        </span>
+                    </div>
+
+                    @if (LicenseExpiresSoon)
                     {
-                        <div class="license-key-facts">
-                            @if (!string.IsNullOrWhiteSpace(LicenseService.LicenseType))
-                            {
-                                <span class="license-fact"><span class="license-fact-label">Plan</span>@LicenseService.LicenseType</span>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(LicenseService.ExpiresAt))
-                            {
-                                <span class="license-fact"><span class="license-fact-label">Expires</span>@FormatLicenseExpiry(LicenseService.ExpiresAt)</span>
-                            }
+                        <div class="license-expiry-warning">
+                            @* The label above is a bare chip ("3 days", "Expired") so the facts row
+                               can reuse it, which leaves the sentence to supply its own grammar.
+                               A negative span still counts as expiring soon, so the past-tense
+                               branch is reachable and "runs out Expired." was a real render. *@
+                            @(LicenseRemaining <= TimeSpan.Zero
+                                ? "Your license has expired."
+                                : $"Your license runs out in {LicenseRemainingLabel}.")
+                            <a href="https://rr.sellhub.cx" target="_blank" rel="noopener">Renew</a>
                         </div>
                     }
                 </div>
@@ -885,7 +628,6 @@
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
     private UpdateCheckResult? updateResult;
-    private bool isCheckingForUpdates = false;
 
     private string licenseKeyInput = "";
     private bool isActivating = false;
@@ -982,6 +724,79 @@
         return new string(chars);
     }
 
+    // ---- License expiry detail --------------------------------------------
+    // A lifetime key simply carries no expiry date, so "no date" means perpetual
+    // rather than unknown.
+
+    private static bool TryGetExpiry(string? raw, out DateTimeOffset when)
+    {
+        when = default;
+        return !string.IsNullOrWhiteSpace(raw)
+            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out when);
+    }
+
+    private bool LicenseIsPerpetual => string.IsNullOrWhiteSpace(LicenseService.ExpiresAt);
+
+    /// <summary>The store sends plan names lowercase ("lifetime", "3-months"); the other facts aren't.</summary>
+    private string LicensePlanLabel
+    {
+        get
+        {
+            var plan = LicenseService.LicenseType;
+            if (string.IsNullOrWhiteSpace(plan)) return "Premium";
+            switch (plan.ToLowerInvariant())
+            {
+                case "lifetime": return "Lifetime";
+                case "1-month": return "1 Month";
+                case "3-months": return "3 Months";
+                case "6-months": return "6 Months";
+                case "12-months": return "12 Months";
+            }
+            // Plan names arrive as ASCII from the store, so the current culture has no say here —
+            // under tr-TR "invite" would come back capitalised as 'İ'.
+            return char.ToUpperInvariant(plan[0]) + plan[1..];
+        }
+    }
+
+    private TimeSpan? LicenseRemaining =>
+        TryGetExpiry(LicenseService.ExpiresAt, out var when)
+            ? when - DateTimeOffset.UtcNow
+            : null;
+
+    private string LicenseRemainingLabel
+    {
+        get
+        {
+            if (LicenseIsPerpetual) return "Lifetime";
+
+            var left = LicenseRemaining;
+            if (left is null) return "—";
+            if (left.Value <= TimeSpan.Zero) return "Expired";
+
+            var d = left.Value;
+            if (d.TotalDays >= 60) return $"{(int)(d.TotalDays / 30)} months";
+            if (d.TotalDays >= 2) return $"{(int)d.TotalDays} days";
+            if (d.TotalHours >= 2) return $"{(int)d.TotalHours} hours";
+            return $"{Math.Max(1, (int)d.TotalMinutes)} minutes";
+        }
+    }
+
+    /// <summary>Under a week left, or already gone — worth colouring.</summary>
+    private bool LicenseExpiresSoon
+        => LicenseRemaining is { } left && left < TimeSpan.FromDays(7);
+
+    private string LicenseRemainingClass
+    {
+        get
+        {
+            var left = LicenseRemaining;
+            if (left is null) return "";
+            if (left.Value <= TimeSpan.Zero) return "is-expired";
+            return left.Value < TimeSpan.FromDays(7) ? "is-soon" : "";
+        }
+    }
+
     private static string FormatLicenseExpiry(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -1064,30 +879,6 @@
     private const string CustomPathPreferenceKey = "CustomArkInstallPath";
 
     private bool isSoundSettingsOpen = false;
-    private bool isFontSettingsOpen = false;
-    private bool isThemeSettingsOpen = false;
-    private bool isThemeAdvancedOpen = false;
-
-    // Accent color customization. selectedAccentColor drives the whole UI tint;
-    // the *Override fields let power users pin individual shades (empty = auto-derive
-    // from the accent). Persisted via JS interop (getThemeSettings/updateThemeSettings
-    // in wwwroot/index.html) to localStorage, so the theme survives restarts.
-    private const string DefaultAccentColor = "#8B5CF6";
-    private string selectedAccentColor = DefaultAccentColor;
-    private string accentLightOverride = "";
-    private string accentDarkOverride = "";
-    private string accentDarkerOverride = "";
-    private string accentSoftOverride = "";
-
-    // Inline saturation/value picker state. _pickerHue/Sat/Val are the HSV the SV box +
-    // hue slider edit; selectedAccentColor is derived from them (and they re-sync from it
-    // when a preset/hex/system pick changes the accent). Defaults to purple's HSV.
-    private ElementReference _svEl;
-    private ElementReference _svHandleEl;
-    private DotNetObjectReference<Home>? _themeRef;
-    private double _pickerHue = 258;
-    private double _pickerSat = 0.63;
-    private double _pickerVal = 0.96;
 
     private bool soundsEnabled = true;
     private bool notificationSoundEnabled = true;
@@ -1117,80 +908,19 @@
         ".aac"
     };
 
-    private const string FontDefaultPresetId = "system";
-    private const string DefaultUiStack = "\"Segoe UI Variable\", \"Segoe UI\", \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif";
-    private const string DefaultMonoStack = "\"Cascadia Code\", \"JetBrainsMono Nerd Font\", \"FiraCode Nerd Font\", Consolas, \"Courier New\", monospace";
-    private string selectedFontPresetId = FontDefaultPresetId;
-    private readonly HashSet<string> installingFontPresets = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, bool> fontInstallStatus = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly IReadOnlyList<FontPreset> FontPresets = new List<FontPreset>
-    {
-        new()
-        {
-            Id = "system",
-            Name = "System UI",
-            Description = "Windows UI stack with a clean sans look.",
-            UiStack = DefaultUiStack,
-            MonoStack = DefaultMonoStack
-        },
-        new()
-        {
-            Id = "space-grotesk",
-            Name = "Space Grotesk",
-            Description = "Wide, modern sans with a tech edge.",
-            UiStack = $"\"Space Grotesk\", \"SpaceGrotesk\", {DefaultUiStack}",
-            MonoStack = DefaultMonoStack,
-            InstallerId = "space-grotesk",
-            DownloadUrl = "https://fonts.google.com/specimen/Space+Grotesk"
-        },
-        new()
-        {
-            Id = "manrope",
-            Name = "Manrope",
-            Description = "Smooth sans with balanced geometry.",
-            UiStack = $"\"Manrope\", {DefaultUiStack}",
-            MonoStack = DefaultMonoStack,
-            InstallerId = "manrope",
-            DownloadUrl = "https://fonts.google.com/specimen/Manrope"
-        },
-        new()
-        {
-            Id = "jetbrains-mono-nerd",
-            Name = "JetBrains Mono Nerd",
-            Description = "Compact mono with nerd glyphs.",
-            UiStack = "\"JetBrainsMono Nerd Font\", \"JetBrainsMono Nerd Font Mono\", \"JetBrains Mono\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
-            MonoStack = "\"JetBrainsMono Nerd Font\", \"JetBrainsMono Nerd Font Mono\", \"JetBrains Mono\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
-            InstallerId = "jetbrains-mono-nerd",
-            DownloadUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
-        },
-        new()
-        {
-            Id = "fira-code-nerd",
-            Name = "Fira Code Nerd",
-            Description = "Ligature-friendly mono with nerd glyphs.",
-            UiStack = "\"FiraCode Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
-            MonoStack = "\"FiraCode Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
-            InstallerId = "fira-code-nerd",
-            DownloadUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip"
-        }
-    };
-
     private bool _isDisposed = false;
     private bool _hasInitialized = false;
 
     protected override Task OnInitializedAsync()
     {
         LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
-        
+
         // Keep initial render lightweight to reduce navigation lag.
         userName = Environment.UserName;
 
         UpdateTimeZoneInfo();
         UpdateUptimeInfo();
 
-        // Seed the picker's HSV from the (default) accent so the handle is exact even
-        // before LoadThemeSettingsAsync runs / if theme interop fails.
-        SyncPickerFromAccent();
 
         return Task.CompletedTask;
     }
@@ -1210,9 +940,6 @@
         LoadArkPaths();
         ResolveCustomSoundFolder();
         await LoadSoundSettingsAsync();
-        await LoadFontSettingsAsync();
-        await LoadThemeSettingsAsync();
-        await RefreshFontInstallStatusAsync();
 
         if (_isDisposed)
             return;
@@ -1265,465 +992,6 @@
         isSoundSettingsOpen = !isSoundSettingsOpen;
     }
 
-    private void ToggleFontSettings()
-    {
-        isFontSettingsOpen = !isFontSettingsOpen;
-    }
-
-    private void ToggleDiscordRpc(ChangeEventArgs e)
-        => DiscordPresence.IsEnabled = e.Value is bool b && b;
-
-    private void ToggleArkLinkStart(ChangeEventArgs e)
-        => ArkLink.StartWithArk = e.Value is bool b && b;
-
-    private void ToggleArkLinkClose(ChangeEventArgs e)
-        => ArkLink.CloseWithArk = e.Value is bool b && b;
-
-    private void ToggleThemeSettings()
-    {
-        isThemeSettingsOpen = !isThemeSettingsOpen;
-    }
-
-    private void ToggleThemeAdvanced()
-    {
-        isThemeAdvancedOpen = !isThemeAdvancedOpen;
-    }
-
-    private sealed record AdvancedShade(string Key, string Label, string Description);
-
-    private static readonly IReadOnlyList<AdvancedShade> AdvancedShades = new List<AdvancedShade>
-    {
-        new("light", "Light", "Hover / highlight accents"),
-        new("dark", "Dark", "Gradient end, pressed states"),
-        new("darker", "Darker", "Deep gradient / shadow tone"),
-        new("soft", "Soft", "Subtle tinted text"),
-    };
-
-    private bool IsThemeDefault =>
-        string.Equals(selectedAccentColor, DefaultAccentColor, StringComparison.OrdinalIgnoreCase)
-        && string.IsNullOrEmpty(accentLightOverride)
-        && string.IsNullOrEmpty(accentDarkOverride)
-        && string.IsNullOrEmpty(accentDarkerOverride)
-        && string.IsNullOrEmpty(accentSoftOverride);
-
-    private async Task LoadThemeSettingsAsync()
-    {
-        try
-        {
-            var settings = await JSRuntime.InvokeAsync<ThemeSettings>("getThemeSettings");
-            if (settings != null)
-            {
-                selectedAccentColor = string.IsNullOrWhiteSpace(settings.Accent)
-                    ? DefaultAccentColor
-                    : settings.Accent.ToUpperInvariant();
-                accentLightOverride = settings.Light ?? "";
-                accentDarkOverride = settings.Dark ?? "";
-                accentDarkerOverride = settings.Darker ?? "";
-                accentSoftOverride = settings.Soft ?? "";
-                SyncPickerFromAccent();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not load theme settings");
-        }
-    }
-
-    private async Task PersistThemeAsync()
-    {
-        try
-        {
-            var settings = new ThemeSettings
-            {
-                Accent = selectedAccentColor,
-                Light = accentLightOverride,
-                Dark = accentDarkOverride,
-                Darker = accentDarkerOverride,
-                Soft = accentSoftOverride
-            };
-
-            await JSRuntime.InvokeVoidAsync("updateThemeSettings", settings);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not save theme settings");
-        }
-    }
-
-    // ---- Inline saturation/value box (drag) ----------------------------------------
-    // The drag runs entirely in JS (rrColorBoxBegin) to avoid a JS<->.NET round-trip and
-    // a full component re-render on every pointer move. JS positions the handle and previews
-    // the color live, then reports the final hex once on release via OnSvCommitted.
-    private async Task OnSvPointerDown(PointerEventArgs e)
-    {
-        _themeRef ??= DotNetObjectReference.Create(this);
-        var opts = new
-        {
-            hue = _pickerHue,
-            light = accentLightOverride,
-            dark = accentDarkOverride,
-            darker = accentDarkerOverride,
-            soft = accentSoftOverride
-        };
-
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("rrColorBoxBegin", _svEl, _svHandleEl, opts, _themeRef, (long)e.PointerId, e.ClientX, e.ClientY);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Color box drag could not start");
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnSvCommitted(string hex)
-    {
-        if (!TryNormalizeHex(hex, out var norm))
-        {
-            return;
-        }
-
-        selectedAccentColor = norm;
-        SyncPickerFromAccent();
-        await PersistThemeAsync();
-        StateHasChanged();
-    }
-
-    // ---- Hue slider ----------------------------------------------------------------
-    private async Task OnHueInput(ChangeEventArgs e)
-    {
-        if (TryParseHue(e.Value?.ToString()))
-        {
-            selectedAccentColor = HsvToHex(_pickerHue, _pickerSat, _pickerVal);
-            await PreviewThemeAsync();
-        }
-    }
-
-    private async Task OnHueChange(ChangeEventArgs e)
-    {
-        TryParseHue(e.Value?.ToString());
-        selectedAccentColor = HsvToHex(_pickerHue, _pickerSat, _pickerVal);
-        await PersistThemeAsync();
-    }
-
-    private bool TryParseHue(string? raw)
-    {
-        if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var h))
-        {
-            _pickerHue = ((h % 360) + 360) % 360;
-            return true;
-        }
-        return false;
-    }
-
-    // ---- Hex + system color inputs -------------------------------------------------
-    private async Task OnHexInputChange(ChangeEventArgs e)
-    {
-        if (TryNormalizeHex(e.Value?.ToString(), out var hex))
-        {
-            selectedAccentColor = hex;
-            SyncPickerFromAccent();
-            await PersistThemeAsync();
-        }
-    }
-
-    // Re-derive the picker's HSV from the current accent (after a hex pick or reset).
-    // Hue is preserved when the color is greyscale so the slider doesn't jump.
-    private void SyncPickerFromAccent()
-    {
-        var rgb = ParseHexColor(selectedAccentColor);
-        if (rgb == null)
-        {
-            return;
-        }
-
-        var (h, s, v) = RgbToHsv(rgb.Value.r, rgb.Value.g, rgb.Value.b);
-        if (s > 0.0001)
-        {
-            _pickerHue = h;
-        }
-        _pickerSat = s;
-        _pickerVal = v;
-    }
-
-    // Apply the current theme live without persisting — used while dragging/sliding so
-    // the whole UI updates in real time; the final value is saved on release/commit.
-    private async Task PreviewThemeAsync()
-    {
-        try
-        {
-            var settings = new ThemeSettings
-            {
-                Accent = selectedAccentColor,
-                Light = accentLightOverride,
-                Dark = accentDarkOverride,
-                Darker = accentDarkerOverride,
-                Soft = accentSoftOverride
-            };
-
-            await JSRuntime.InvokeVoidAsync("previewThemeAccent", settings);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not preview theme");
-        }
-    }
-
-    private static string FormatNum(double v) =>
-        Math.Round(v).ToString(CultureInfo.InvariantCulture);
-
-    private static string FormatPct(double fraction) =>
-        (Math.Clamp(fraction, 0, 1) * 100).ToString("0.###", CultureInfo.InvariantCulture) + "%";
-
-    private string GetShadeOverride(string key) => key switch
-    {
-        "light" => accentLightOverride,
-        "dark" => accentDarkOverride,
-        "darker" => accentDarkerOverride,
-        "soft" => accentSoftOverride,
-        _ => ""
-    };
-
-    private bool IsShadeAuto(string key) => string.IsNullOrEmpty(GetShadeOverride(key));
-
-    // Color shown in a shade's picker: the override if pinned, otherwise the shade
-    // derived from the accent — mirrors themeDeriveRamp() in wwwroot/index.html so the
-    // picker always reflects what's actually on screen.
-    private string GetShadeValue(string key)
-    {
-        var ov = GetShadeOverride(key);
-        return string.IsNullOrEmpty(ov) ? DeriveShade(selectedAccentColor, key) : ov;
-    }
-
-    private void SetShadeOverride(string key, string value)
-    {
-        switch (key)
-        {
-            case "light": accentLightOverride = value; break;
-            case "dark": accentDarkOverride = value; break;
-            case "darker": accentDarkerOverride = value; break;
-            case "soft": accentSoftOverride = value; break;
-        }
-    }
-
-    private async Task OnAdvancedShadeChanged(string key, string value)
-    {
-        // Blank clears the override back to Auto; otherwise require a valid hex so we never
-        // persist junk (which would silently break the CSS variable and desync the swatch).
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            SetShadeOverride(key, "");
-        }
-        else if (TryNormalizeHex(value, out var hex))
-        {
-            SetShadeOverride(key, hex);
-        }
-        else
-        {
-            return;
-        }
-
-        await PersistThemeAsync();
-    }
-
-    private async Task ClearAdvancedShadeAsync(string key)
-    {
-        SetShadeOverride(key, "");
-        await PersistThemeAsync();
-    }
-
-    private async Task ResetThemeAsync()
-    {
-        selectedAccentColor = DefaultAccentColor;
-        accentLightOverride = "";
-        accentDarkOverride = "";
-        accentDarkerOverride = "";
-        accentSoftOverride = "";
-        SyncPickerFromAccent();
-
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("resetThemeSettings");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not reset theme settings");
-        }
-
-        ActivityService.AddActivity("Accent color reset to purple", "info");
-    }
-
-    // ---- Shade derivation (mirror of themeDeriveRamp in wwwroot/index.html) ---------
-    private static string DeriveShade(string accent, string key)
-    {
-        var parsed = ParseHexColor(accent) ?? ParseHexColor(DefaultAccentColor)!.Value;
-        var (h, s, l) = RgbToHsl(parsed.r, parsed.g, parsed.b);
-        var baseHex = HslToHex(h, s, l);
-
-        if (string.Equals(baseHex, DefaultAccentColor, StringComparison.OrdinalIgnoreCase))
-        {
-            // Return the hand-tuned originals for the default purple.
-            return key switch
-            {
-                "light" => "#A78BFA",
-                "dark" => "#6D28D9",
-                "darker" => "#5B21B6",
-                "soft" => "#C4B5FD",
-                _ => DefaultAccentColor
-            };
-        }
-
-        return key switch
-        {
-            "light" => HslToHex(h, s, l + 10),
-            "dark" => HslToHex(h, s, l - 16),
-            "darker" => HslToHex(h, s, l - 24),
-            "soft" => HslToHex(h, Math.Min(s, 96), l + 19),
-            _ => baseHex
-        };
-    }
-
-    private static (int r, int g, int b)? ParseHexColor(string? hex)
-    {
-        if (string.IsNullOrWhiteSpace(hex))
-        {
-            return null;
-        }
-
-        var h = hex.Trim().TrimStart('#');
-        if (h.Length == 3)
-        {
-            h = $"{h[0]}{h[0]}{h[1]}{h[1]}{h[2]}{h[2]}";
-        }
-        if (h.Length == 8)
-        {
-            h = h.Substring(0, 6);
-        }
-        if (h.Length != 6)
-        {
-            return null;
-        }
-        foreach (var c in h)
-        {
-            if (!Uri.IsHexDigit(c))
-            {
-                return null;
-            }
-        }
-
-        return (
-            Convert.ToInt32(h.Substring(0, 2), 16),
-            Convert.ToInt32(h.Substring(2, 2), 16),
-            Convert.ToInt32(h.Substring(4, 2), 16)
-        );
-    }
-
-    private static (double h, double s, double l) RgbToHsl(int r8, int g8, int b8)
-    {
-        double r = r8 / 255.0, g = g8 / 255.0, b = b8 / 255.0;
-        double max = Math.Max(r, Math.Max(g, b));
-        double min = Math.Min(r, Math.Min(g, b));
-        double h = 0, s = 0, l = (max + min) / 2.0;
-
-        if (max != min)
-        {
-            double d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            if (max == r)
-            {
-                h = (g - b) / d + (g < b ? 6 : 0);
-            }
-            else if (max == g)
-            {
-                h = (b - r) / d + 2;
-            }
-            else
-            {
-                h = (r - g) / d + 4;
-            }
-            h /= 6;
-        }
-
-        return (h * 360, s * 100, l * 100);
-    }
-
-    private static string HslToHex(double h, double s, double l)
-    {
-        h = ((h % 360) + 360) % 360;
-        s = Math.Clamp(s, 0, 100) / 100.0;
-        l = Math.Clamp(l, 0, 100) / 100.0;
-        double c = (1 - Math.Abs(2 * l - 1)) * s;
-        double x = c * (1 - Math.Abs((h / 60.0 % 2) - 1));
-        double m = l - c / 2;
-        double r = 0, g = 0, b = 0;
-
-        if (h < 60) { r = c; g = x; }
-        else if (h < 120) { r = x; g = c; }
-        else if (h < 180) { g = c; b = x; }
-        else if (h < 240) { g = x; b = c; }
-        else if (h < 300) { r = x; b = c; }
-        else { r = c; b = x; }
-
-        int To(double v) => Math.Clamp((int)Math.Round((v + m) * 255), 0, 255);
-        return $"#{To(r):X2}{To(g):X2}{To(b):X2}";
-    }
-
-    // ---- HSV (used by the inline picker; verified to round-trip in JS/C#) -----------
-    private static (double h, double s, double v) RgbToHsv(int r8, int g8, int b8)
-    {
-        double r = r8 / 255.0, g = g8 / 255.0, b = b8 / 255.0;
-        double max = Math.Max(r, Math.Max(g, b));
-        double min = Math.Min(r, Math.Min(g, b));
-        double d = max - min;
-        double h = 0;
-        double s = max == 0 ? 0 : d / max;
-        double v = max;
-
-        if (d != 0)
-        {
-            if (max == r) h = 60 * (((g - b) / d) % 6);
-            else if (max == g) h = 60 * ((b - r) / d + 2);
-            else h = 60 * ((r - g) / d + 4);
-            if (h < 0) h += 360;
-        }
-
-        return (h, s, v);
-    }
-
-    private static string HsvToHex(double h, double s, double v)
-    {
-        h = ((h % 360) + 360) % 360;
-        s = Math.Clamp(s, 0, 1);
-        v = Math.Clamp(v, 0, 1);
-        double c = v * s;
-        double x = c * (1 - Math.Abs((h / 60.0 % 2) - 1));
-        double m = v - c;
-        double r = 0, g = 0, b = 0;
-
-        if (h < 60) { r = c; g = x; }
-        else if (h < 120) { r = x; g = c; }
-        else if (h < 180) { g = c; b = x; }
-        else if (h < 240) { g = x; b = c; }
-        else if (h < 300) { r = x; b = c; }
-        else { r = c; b = x; }
-
-        int To(double t) => Math.Clamp((int)Math.Round((t + m) * 255), 0, 255);
-        return $"#{To(r):X2}{To(g):X2}{To(b):X2}";
-    }
-
-    private static bool TryNormalizeHex(string? raw, out string hex)
-    {
-        hex = "";
-        var rgb = ParseHexColor(raw);
-        if (rgb == null)
-        {
-            return false;
-        }
-        hex = $"#{rgb.Value.r:X2}{rgb.Value.g:X2}{rgb.Value.b:X2}";
-        return true;
-    }
-
     private async Task LoadSoundSettingsAsync()
     {
         try
@@ -1735,6 +1003,24 @@
         {
             Logger.LogDebug(ex, "Could not load sound settings");
         }
+    }
+
+    private async Task SetSoundsEnabledAsync(bool value)
+    {
+        soundsEnabled = value;
+        await PersistSoundSettingsAsync();
+    }
+
+    private async Task SetNotificationSoundEnabledAsync(bool value)
+    {
+        notificationSoundEnabled = value;
+        await PersistSoundSettingsAsync();
+    }
+
+    private async Task SetClickSoundEnabledAsync(bool value)
+    {
+        clickSoundEnabled = value;
+        await PersistSoundSettingsAsync();
     }
 
     private async Task PersistSoundSettingsAsync()
@@ -1795,215 +1081,6 @@
         }
 
         return isCustom ? "Custom" : fallback;
-    }
-
-    private async Task LoadFontSettingsAsync()
-    {
-        try
-        {
-            var settings = await JSRuntime.InvokeAsync<FontSettings>("getFontSettings");
-            var preset = ResolveFontPreset(settings?.PresetId);
-            selectedFontPresetId = preset.Id;
-
-            if (string.IsNullOrWhiteSpace(settings?.UiStack) || string.IsNullOrWhiteSpace(settings?.MonoStack))
-            {
-                await PersistFontSettingsAsync(preset);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not load font settings");
-        }
-    }
-
-    private async Task SelectFontPresetAsync(FontPreset preset)
-    {
-        selectedFontPresetId = preset.Id;
-        await PersistFontSettingsAsync(preset);
-
-        ActivityService.AddActivity($"UI font set: {preset.Name}", "info");
-        Logger.LogInformation("UI font preset selected: {PresetId}", preset.Id);
-
-        _ = EnsureFontPresetInstalledAsync(preset);
-    }
-
-    private async Task PersistFontSettingsAsync(FontPreset preset)
-    {
-        try
-        {
-            var settings = new FontSettings
-            {
-                PresetId = preset.Id,
-                UiStack = preset.UiStack,
-                MonoStack = preset.MonoStack
-            };
-
-            await JSRuntime.InvokeVoidAsync("updateFontSettings", settings);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not save font settings");
-        }
-    }
-
-    private async Task EnsureFontPresetInstalledAsync(FontPreset preset)
-    {
-        if (string.IsNullOrWhiteSpace(preset.InstallerId))
-        {
-            fontInstallStatus[preset.Id] = true;
-            return;
-        }
-
-        if (IsFontPresetInstalled(preset))
-        {
-            return;
-        }
-
-        if (!installingFontPresets.Add(preset.Id))
-        {
-            return;
-        }
-
-        await InvokeAsync(StateHasChanged);
-
-        NotificationService.ShowInfo($"Installing {preset.Name}...");
-
-        try
-        {
-            await FontInstaller.EnsureFontInstalledAsync(preset.InstallerId);
-            var installed = FontInstaller.IsFontInstalled(preset.InstallerId);
-            fontInstallStatus[preset.Id] = installed;
-
-            if (installed)
-            {
-                NotificationService.ShowSuccess($"{preset.Name} installed.");
-                await PersistFontSettingsAsync(preset);
-            }
-            else
-            {
-                NotificationService.ShowWarning($"{preset.Name} installation pending. Try the preset again in a few seconds.");
-            }
-        }
-        catch (InvalidDataException ex)
-        {
-            Logger.LogError(ex, "Invalid font package for preset {PresetId}", preset.Id);
-            NotificationService.ShowError("Font package is invalid or blocked. Use the manual install links below.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            Logger.LogError(ex, "Font files could not be installed for preset {PresetId}", preset.Id);
-            NotificationService.ShowError("Font files are in use. Close other apps using the font and try again.");
-        }
-        catch (System.Net.Http.HttpRequestException ex)
-        {
-            Logger.LogError(ex, "Font download failed for preset {PresetId}", preset.Id);
-            NotificationService.ShowError("Font download failed. Check your network or add the font zip to wwwroot/assets/fonts.");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error installing font preset {PresetId}", preset.Id);
-            NotificationService.ShowError($"Font installation failed: {ex.Message}");
-        }
-        finally
-        {
-            installingFontPresets.Remove(preset.Id);
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task RefreshFontInstallStatusAsync()
-    {
-        try
-        {
-            foreach (var preset in FontPresets)
-            {
-                if (string.IsNullOrWhiteSpace(preset.InstallerId))
-                {
-                    fontInstallStatus[preset.Id] = true;
-                    continue;
-                }
-
-                fontInstallStatus[preset.Id] = FontInstaller.IsFontInstalled(preset.InstallerId);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Could not refresh font installation status");
-        }
-
-        if (!_isDisposed)
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private bool IsFontPresetInstalled(FontPreset preset)
-    {
-        if (string.IsNullOrWhiteSpace(preset.InstallerId))
-        {
-            return true;
-        }
-
-        return fontInstallStatus.TryGetValue(preset.Id, out var installed) && installed;
-    }
-
-    private string GetFontPresetStatus(FontPreset preset)
-    {
-        if (string.IsNullOrWhiteSpace(preset.InstallerId))
-        {
-            return "System";
-        }
-
-        if (IsFontPresetInstalling(preset))
-        {
-            return "Installing";
-        }
-
-        return IsFontPresetInstalled(preset) ? "Installed" : "Auto-install";
-    }
-
-    private string GetFontPresetName(string presetId)
-    {
-        return ResolveFontPreset(presetId).Name;
-    }
-
-    private bool IsFontPresetInstalling(FontPreset preset)
-    {
-        return installingFontPresets.Contains(preset.Id);
-    }
-
-    private async Task CopyFontDownloadLinkAsync(FontPreset preset)
-    {
-        if (string.IsNullOrWhiteSpace(preset.DownloadUrl))
-        {
-            return;
-        }
-
-        try
-        {
-            await Clipboard.Default.SetTextAsync(preset.DownloadUrl);
-            NotificationService.ShowSuccess($"Copied download link for {preset.Name}");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error copying font download link for {PresetId}", preset.Id);
-            NotificationService.ShowError("Failed to copy download link.");
-        }
-    }
-
-    private FontPreset ResolveFontPreset(string? presetId)
-    {
-        if (!string.IsNullOrWhiteSpace(presetId))
-        {
-            var match = FontPresets.FirstOrDefault(preset =>
-                string.Equals(preset.Id, presetId, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-            {
-                return match;
-            }
-        }
-
-        return FontPresets[0];
     }
 
     private void ResolveCustomSoundFolder()
@@ -2181,17 +1258,11 @@
         await JSRuntime.InvokeVoidAsync("playClickSound");
     }
 
-    private string LatestVersionLabel => updateResult?.LatestVersion?.ToString() ?? "N/A";
-
-    private string LastCheckedLabel => updateResult == null
-        ? "N/A"
-        : updateResult.CheckedAt.LocalDateTime.ToString("MMM dd, HH:mm");
-
     private string UpdateBadgeClass
     {
         get
         {
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return "update-badge update-badge-checking";
 
             if (updateResult == null)
@@ -2210,7 +1281,7 @@
     {
         get
         {
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return "Checking...";
 
             if (updateResult == null)
@@ -2231,23 +1302,19 @@
                 return $"Downloading update... {AutoUpdateManager.DownloadProgressPercent ?? 0}%";
 
             if (AutoUpdateManager.IsInstallerReady)
-                return $"v{AutoUpdateManager.PendingVersion} ready — will install on close.";
+                return $"Installing v{AutoUpdateManager.PendingVersion} — restarting...";
 
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return "Checking for updates...";
 
             if (updateResult == null)
-                return "Run a check to see if a new version is available.";
+                return "Checking for updates...";
 
             if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
                 return updateResult.ErrorMessage;
 
             if (updateResult.HasUpdate)
-            {
-                return AutoUpdateManager.IsAutoUpdateEnabled
-                    ? $"Version {updateResult.LatestVersion} detected — download will start automatically."
-                    : $"Version {updateResult.LatestVersion} available — enable auto-update or visit GitHub.";
-            }
+                return $"Version {updateResult.LatestVersion} found — downloading now.";
 
             return "You're on the latest version.";
         }
@@ -2257,7 +1324,7 @@
     {
         get
         {
-            if (isCheckingForUpdates)
+            if (AutoUpdateManager.IsChecking)
                 return true;
 
             if (updateResult == null)
@@ -2267,137 +1334,6 @@
                 return true;
 
             return updateResult.HasUpdate;
-        }
-    }
-
-    private async Task CheckForUpdatesAsync(bool showToast)
-    {
-        if (isCheckingForUpdates || _isDisposed)
-            return;
-
-        isCheckingForUpdates = true;
-        if (!_isDisposed)
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-
-        UpdateCheckResult result;
-        try
-        {
-            result = await UpdateService.CheckForUpdatesAsync();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Update check failed");
-            result = new UpdateCheckResult
-            {
-                CurrentVersion = UpdateService.CurrentVersion,
-                ErrorMessage = "Update check failed.",
-                CheckedAt = DateTimeOffset.UtcNow
-            };
-        }
-
-        updateResult = result;
-        isCheckingForUpdates = false;
-
-        if (showToast && !_isDisposed)
-        {
-            if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
-            {
-                NotificationService.ShowError(result.ErrorMessage);
-            }
-            else if (result.HasUpdate)
-            {
-                var latestLabel = result.LatestVersion?.ToString() ?? "new version";
-                NotificationService.ShowWarning($"Update available: v{latestLabel}");
-            }
-            else
-            {
-                NotificationService.ShowSuccess("You're up to date.");
-            }
-        }
-
-        if (!_isDisposed)
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private bool isUpdateNowInFlight;
-
-    private bool IsUpdateNowDisabled =>
-        isUpdateNowInFlight
-        || AutoUpdateManager.IsDownloading
-        || isCheckingForUpdates;
-
-    private string UpdateNowButtonLabel
-    {
-        get
-        {
-            if (AutoUpdateManager.IsDownloading)
-                return "Downloading…";
-            if (AutoUpdateManager.IsInstallerReady)
-                return "Install & Restart";
-            return "Update Now";
-        }
-    }
-
-    private async Task OnUpdateNowAsync()
-    {
-        if (isUpdateNowInFlight) return;
-        isUpdateNowInFlight = true;
-        StateHasChanged();
-
-        try
-        {
-            // Force a download if the auto-update toggle was off — Update Now is an explicit
-            // user gesture and must work even without the background-download path enabled.
-            if (!AutoUpdateManager.IsInstallerReady)
-            {
-                await AutoUpdateManager.PrepareInstallerOnDemandAsync();
-            }
-
-            if (!AutoUpdateManager.IsInstallerReady)
-            {
-                NotificationService.ShowError(
-                    string.IsNullOrWhiteSpace(AutoUpdateManager.StatusMessage)
-                        ? "Could not prepare the installer."
-                        : AutoUpdateManager.StatusMessage);
-                return;
-            }
-
-            if (!AutoUpdateManager.LaunchPendingInstaller())
-            {
-                NotificationService.ShowError("Could not launch the installer.");
-                return;
-            }
-
-            // Hand off to the installer. With /VERYSILENT it overwrites files and the .iss
-            // [Run] PostInstall entry relaunches RazorReaper.exe. We exit hard so file locks
-            // are released before the installer's file-replace step runs — ProcessExit still
-            // fires (telemetry flush stays bounded).
-            Environment.Exit(0);
-        }
-        finally
-        {
-            isUpdateNowInFlight = false;
-            if (!_isDisposed)
-            {
-                StateHasChanged();
-            }
-        }
-    }
-
-    private void ToggleAutoUpdate(ChangeEventArgs e)
-    {
-        var enabled = (bool)(e.Value ?? false);
-        AutoUpdateManager.IsAutoUpdateEnabled = enabled;
-
-        if (enabled && updateResult?.HasUpdate == true
-            && !AutoUpdateManager.IsInstallerReady
-            && !AutoUpdateManager.IsDownloading)
-        {
-            _ = Task.Run(() => AutoUpdateManager.RunStartupCheckAsync());
         }
     }
 
@@ -2460,35 +1396,6 @@
         public string? ClickLabel { get; set; }
         public bool NotificationCustom { get; set; }
         public bool ClickCustom { get; set; }
-    }
-
-    private sealed class FontSettings
-    {
-        public string? PresetId { get; set; }
-        public string? UiStack { get; set; }
-        public string? MonoStack { get; set; }
-    }
-
-    // Mirrors the JS theme settings object in wwwroot/index.html. Accent is the base
-    // color; the per-shade fields are optional overrides (null/empty = auto-derive).
-    private sealed class ThemeSettings
-    {
-        public string? Accent { get; set; }
-        public string? Light { get; set; }
-        public string? Dark { get; set; }
-        public string? Darker { get; set; }
-        public string? Soft { get; set; }
-    }
-
-    private sealed class FontPreset
-    {
-        public string Id { get; set; } = "";
-        public string Name { get; set; } = "";
-        public string Description { get; set; } = "";
-        public string UiStack { get; set; } = "";
-        public string MonoStack { get; set; } = "";
-        public string? InstallerId { get; set; }
-        public string? DownloadUrl { get; set; }
     }
 
     private class DriveUsageInfo
@@ -3416,7 +2323,6 @@
         _isDisposed = true;
         LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
         AutoUpdateManager.StateChanged -= OnAutoUpdateStateChanged;
-        _themeRef?.Dispose();
 
         updateTimer?.Stop();
         updateTimer?.Dispose();

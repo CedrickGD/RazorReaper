@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 
@@ -41,6 +42,9 @@ public abstract class AutomationScriptBase : IDisposable
     private string? _registeredHotkeyText;
     private bool _disposed;
 
+    /// <summary>Last logged gate state, so the scan loop only reports transitions.</summary>
+    private bool? _lastGateOpen;
+
     protected AutomationScriptBase(
         string scriptKey,
         string displayName,
@@ -70,6 +74,13 @@ public abstract class AutomationScriptBase : IDisposable
     public string DisplayName => _displayName;
     public string ScriptKey => _scriptKey;
 
+    /// <summary>
+    /// True for the screen-reading scripts (they override via <c>CalibratableScriptBase</c>).
+    /// Only the input-only scripts draw from the shared monthly free quota — the vision ones
+    /// are unquota'd (and unadvertised) until they are proven live.
+    /// </summary>
+    public virtual bool UsesVision => false;
+
     /// <summary>Raised whenever state or a script-specific stat changes. May fire on a background thread.</summary>
     public event Action? Changed;
 
@@ -98,8 +109,33 @@ public abstract class AutomationScriptBase : IDisposable
 
         Notifications.ShowSuccess($"{_displayName} started.");
         TryActivity($"{_displayName} started", "success");
+        // Start() must stay synchronous (the global hotkey calls it through Toggle), so the
+        // quota check trails the start and stops the script again if the month is used up.
+        // Vision scripts and stops never count.
+        if (!UsesVision) _ = Task.Run(EnforceInputQuotaAsync);
         RaiseChanged();
         return true;
+    }
+
+    private async Task EnforceInputQuotaAsync()
+    {
+        try
+        {
+            // Resolved late, not via ctor: the base ctor signature is mirrored by 16 scripts,
+            // and the headless test harnesses construct them without a MAUI application at all.
+            var gate = IPlatformApplication.Current?.Services?.GetService<IUsageGateService>();
+            if (gate is null) return;
+
+            var result = await gate.TryConsumeAsync(UsageFeatures.InputScripts);
+            if (result.Allowed) return;
+
+            Stop();
+            Notifications.ShowWarning($"Free monthly limit reached ({result.Limit} input-script starts across all scripts). Resets next month — Premium is unlimited.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "{Script} quota check failed — failing open", _displayName);
+        }
     }
 
     public void Stop() => StopCore(notify: true);
@@ -178,11 +214,24 @@ public abstract class AutomationScriptBase : IDisposable
     protected async Task RunLoopAsync(int intervalMs, Func<CancellationToken, Task> tickAsync, bool foregroundOnly, CancellationToken ct)
     {
         intervalMs = Math.Clamp(intervalMs, 10, 60000);
+        _lastGateOpen = null;   // report the state once per run, whatever it is
         while (!ct.IsCancellationRequested)
         {
             try
             {
-                if (!foregroundOnly || Foreground.IsGameForeground())
+                var gateOpen = !foregroundOnly || Foreground.IsGameForeground();
+
+                // Only on a change. "Is the gate open?" is the first question whenever a script
+                // runs but does nothing (it was shut for everyone once, see ForegroundGate), so
+                // the answer has to be in the log — but per tick it would be ~100 lines a second
+                // at the Auto Clicker's 10ms floor.
+                if (gateOpen != _lastGateOpen)
+                {
+                    _lastGateOpen = gateOpen;
+                    Logger.LogDebug("{Script} loop: gate={Gate}", _displayName, gateOpen);
+                }
+
+                if (gateOpen)
                     await tickAsync(ct);
             }
             catch (OperationCanceledException) { throw; }

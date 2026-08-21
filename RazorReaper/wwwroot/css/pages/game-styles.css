@@ -1,378 +1,88 @@
-/* Content cards inherit from global theme.css */
+/* Almost nothing is this page's own any more: the cards and their h3 come from theme.css,
+   the status banner from StatusHeader, both button rows from .btn, and the console key
+   field from .hotkey-field. What is left below is the layout that genuinely only exists
+   here.
 
+   Gone with the rework: a hand-built status card that said "the game is not running" four
+   times over (pill, dot, status line, two labelled boxes) and .game-action-btn with its
+   own height, radius, gradient, hover sheen and press scale. That is why the page read as
+   a blown-up version of the app — it never used the shared scale, so every earlier attempt
+   to shrink it turned into another !important on top. */
+
+/* Capped, because there are three short blocks here and nothing more. Left to fill a
+   1400px window they turn into wide bars with a strip of text along the top edge; at this
+   width the page reads as a small, finished panel instead of an unfinished big one. */
 .game-page-container {
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
+    gap: 1rem;
+    max-width: 1040px;
 }
 
-.game-page-container .page-header {
-    margin-bottom: 3rem !important;
-    padding-bottom: 1.5rem !important;
-}
-
-.game-page-container .page-title {
-    font-size: 2.5rem !important;
-}
-
-.game-page-container .page-subtitle {
-    font-size: 1.1rem !important;
-    color: var(--text-secondary) !important;
-}
-
+/* .content-card carries a hover lift and a bottom margin meant for stacked lists; here
+   the container's gap does the spacing and nothing on the page is clickable as a card. */
 .game-page-container .content-card {
     margin-bottom: 0 !important;
-    padding: 2rem !important;
     transition: none !important;
     cursor: default;
 }
 
-
-.game-hero-grid {
+/* Two cards side by side, so the page is not three full-width bars with air in them.
+   Stretched, not start-aligned: unequal card heights left a ragged bottom edge for no
+   reason, and the shorter card has enough in it to carry the extra centimetre. */
+.game-grid {
     display: grid;
-    grid-template-columns: minmax(280px, 1.05fr) minmax(320px, 1.4fr);
-    gap: 1.5rem;
-    align-items: stretch;
-}
-
-.game-details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-}
-
-.game-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.25rem;
+    grid-template-columns: minmax(0, 1.3fr) minmax(240px, 1fr);
     gap: 1rem;
 }
 
-.game-card-header h3 {
-    margin: 0 !important;
-    font-size: 1.15rem !important;
-}
-
-.game-card-subtitle {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.game-status {
-    display: flex;
-    align-items: center;
-    gap: 1.1rem;
-    padding: 0.4rem 0 1rem;
-}
-
-.game-page-container .status-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.game-page-container .status-dot.online {
-    background: var(--accent-purple);
-    color: var(--accent-purple);
-    box-shadow: 0 0 18px rgba(var(--accent-purple-rgb), 0.45);
-}
-
-.game-page-container .status-dot.offline {
-    background: var(--accent-red);
-    color: var(--accent-red);
-    box-shadow: 0 0 18px rgba(var(--accent-red-rgb), 0.45);
-}
-
-.game-page-container .status-dot::after {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: -6px;
-    right: -6px;
-    bottom: -6px;
-    border-radius: 50%;
-    border: 2px solid currentColor;
-    opacity: 0;
-    animation: pulse 2s infinite;
-}
-
-.status-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-
-.status-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.status-text {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.game-status-pill {
-    padding: 0.35rem 0.85rem;
-    border-radius: var(--radius-round);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    border: 1px solid transparent;
-}
-
-.game-status-pill.online {
-    background: rgba(var(--accent-purple-rgb), 0.18);
-    color: var(--accent-purple);
-    border-color: rgba(var(--accent-purple-rgb), 0.45);
-}
-
-.game-status-pill.offline {
-    background: rgba(var(--accent-red-rgb), 0.18);
-    color: var(--accent-red);
-    border-color: rgba(var(--accent-red-rgb), 0.45);
-}
-
-.game-kv-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1.1rem;
-}
-
-.game-kv {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: var(--radius-panel);
-    padding: 0.75rem 0.9rem;
-}
-
-.game-kv-label {
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    display: block;
-    margin-bottom: 0.35rem;
-}
-
-.game-kv-value {
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    font-weight: 600;
-    word-break: break-word;
-}
-
+/* Flex, not a stretched grid. Equal columns made every button as wide as the longest
+   label and parked its text in the middle of all that space. */
 .game-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 0.9rem;
-}
-
-.game-action-btn {
     display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.9rem 1rem;
-    border-radius: var(--radius-control);
-    border: 1px solid rgba(var(--game-tone-rgb), 0.4);
-    background: linear-gradient(135deg, rgba(var(--game-tone-rgb), 0.18), rgba(0, 0, 0, 0.12));
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-    position: relative;
-    overflow: hidden;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
-.game-action-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(120deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
-    transform: translateX(-120%);
-    transition: transform 0.6s ease;
-}
-
-.game-action-btn:hover::before {
-    transform: translateX(120%);
-}
-
-.game-action-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    border-color: rgba(var(--game-tone-rgb), 0.7);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), 0 0 18px rgba(var(--game-tone-rgb), 0.2);
-}
-
-.game-action-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-.game-action-btn svg {
-    width: 18px;
-    height: 18px;
-    color: var(--game-tone);
+.game-actions .btn svg {
+    width: 15px;
+    height: 15px;
     flex-shrink: 0;
+    color: var(--accent-purple-light);
 }
 
-.game-action-btn span {
-    flex: 1;
+.game-actions .btn:disabled svg {
+    color: inherit;
 }
 
-.tone-launch,
-.tone-close,
-.tone-reconnect,
-.tone-disconnect,
-.tone-clean,
-.tone-debug {
-    --game-tone: var(--accent-purple);
-    --game-tone-rgb: var(--accent-purple-rgb);
-}
-
-.game-actions-note {
-    margin-top: 0.9rem;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.game-info-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+.game-keybind {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    align-items: flex-start;
+    gap: 0.5rem;
 }
 
-.game-info-item {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: var(--radius-panel);
-    padding: 0.75rem 0.9rem;
+/* An input sizes itself from its size attribute, not its content, so the field came out
+   the width of ~20 characters to hold "TAB". */
+.game-keybind .hotkey-field {
+    width: 140px;
+    min-width: 0;
 }
 
-.game-info-title {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    margin-bottom: 0.25rem;
-}
-
-.game-info-text {
+.game-note {
+    margin: 0 0 0.75rem;
     color: var(--text-secondary);
     font-size: 0.85rem;
     line-height: 1.5;
 }
 
-.game-keybind-card {
-    grid-column: 1 / -1;
-}
-
-.game-keybind-grid {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(240px, 1fr);
-    gap: 1.5rem;
-    align-items: center;
-}
-
-.game-keybind-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-}
-
-.game-keybind-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--radius-round);
-    background: rgba(var(--accent-purple-rgb), 0.16);
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.45);
-    width: fit-content;
-}
-
-.game-keybind-pill-label {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-}
-
-.game-keybind-pill-value {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.game-keybind-text {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-.game-keybind-control {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-}
-
-.game-keybind-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-}
-
-.game-keybind-input {
-    max-width: 280px;
-}
-
-.game-keybind-current {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.game-keybind-current span {
-    color: var(--text-primary);
-    font-weight: 600;
-}
+    /* Under the field rather than above the grid, so it is the last line of the card. */
+    .game-keybind .game-note {
+        margin: 0;
+    }
 
 @media (max-width: 1024px) {
-    .game-hero-grid {
+    .game-grid {
         grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .game-page-container .page-title {
-        font-size: 2rem !important;
-    }
-
-    .game-actions {
-        grid-template-columns: 1fr;
-    }
-
-    .game-keybind-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .game-keybind-input {
-        max-width: 100%;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .game-action-btn::before {
-        display: none;
     }
 }

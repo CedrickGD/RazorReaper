@@ -19,7 +19,7 @@
     }
 
     .crosshair-layout .content-card {
-        padding: 1.1rem 1.25rem !important;
+        padding: var(--card-pad) !important;
         margin-bottom: 0 !important;
         border-radius: var(--radius-panel) !important;
     }
@@ -379,13 +379,19 @@
         border-left: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    /* ── Select ──────────────────────────────────────────────────────────── */
+    /* ── Dropdown ────────────────────────────────────────────────────────── */
 
-    .crosshair-layout .rr-select {
+    /* The primitive shrinks to its content, but a picker in a `.field` owns the full row. */
+    .crosshair-layout .field .rr-dd {
         width: 100%;
-        font-size: 0.85rem !important;
-        padding: 0.55rem 0.85rem !important;
     }
+
+        /* Sized like the number steppers next to it, which are taller than the base trigger. */
+        .crosshair-layout .field .rr-dd-trigger {
+            height: 36px;
+            padding: 0 0.55rem 0 0.85rem;
+            font-size: 0.85rem;
+        }
 
     .crosshair-layout .rr-input {
         flex: 1;
@@ -513,7 +519,7 @@
     }
 
         .rr-color-swatch:hover {
-            transform: translateY(-1px);
+
             border-color: rgba(255, 255, 255, 0.45);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
@@ -591,7 +597,7 @@
     }
 
         .rr-color-pop-preset:hover {
-            transform: translateY(-1px);
+
             border-color: rgba(255, 255, 255, 0.4);
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
         }
@@ -808,7 +814,7 @@
         .crosshair-layout .preset-card:hover {
             background: rgba(var(--accent-purple-rgb), 0.1);
             border-color: var(--accent-purple);
-            transform: translateY(-1px);
+
         }
 
     .crosshair-layout .preset-name {
@@ -904,7 +910,7 @@
 
         .crosshair-layout .library-item:hover {
             border-color: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
+
         }
 
         .crosshair-layout .library-item.selected {

@@ -1,20 +1,21 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.Extensions.DependencyInjection
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services
+@using RazorReaper.Services.Implementations
 @using RazorReaper.Services.Overlay
 @inject NavigationManager Navigation
+@inject IServiceProvider Services
 @inject IAutoUpdateManager AutoUpdateManager
 @inject INotificationService NotificationService
 @inject IUpdateService UpdateService
 @inject IDiscordPresenceService DiscordPresence
-@inject IHudOverlayService HudOverlay
-@* Resolved here so server auto-detection for the HUD runs without any page being open. *@
-@inject ISessionHudService SessionHud
-@inject RazorReaper.Services.Elevation.IElevationService Elevation
 @inject ILicenseService LicenseService
 @inject IAccessGateService AccessGate
+@inject IAppearanceService Appearance
+@inject IJSRuntime JS
 
 <NotificationContainer />
 <GlobalSearch />
@@ -43,31 +44,86 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        ResolveHudAndSession();
+        DetectVersionUpgrade();
+        await ValidateLicenseAsync();
+
+        // If we were just relaunched elevated, jump straight back to the page the user was on
+        // instead of landing on Home.
+        var elevation = Services.GetRequiredService<RazorReaper.Services.Elevation.IElevationService>();
+        var returnRoute = elevation.ConsumePendingReturnRoute();
+        if (!string.IsNullOrWhiteSpace(returnRoute))
+        {
+            Navigation.NavigateTo(returnRoute);
+        }
+
+        SubscribeAccess();
+        ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
+        SubscribeNavigation();
+    }
+
+    private IHudOverlayService? _hudOverlay;
+    private bool _accessSubscribed;
+    private bool _navigationSubscribed;
+
+    private void ResolveHudAndSession()
+    {
+        _hudOverlay = Services.GetRequiredService<IHudOverlayService>();
+        // Resolved only in normal mode so server auto-detection can run without a page open.
+        _ = Services.GetRequiredService<ISessionHudService>();
+    }
+
+    private void DetectVersionUpgrade()
+    {
         var previousVersion = AutoUpdateManager.DetectVersionUpgrade();
         if (previousVersion != null)
         {
             var current = UpdateService.CurrentVersionLabel;
             NotificationService.ShowSuccess($"Successfully updated to v{current}.");
         }
+    }
 
-        var result = await LicenseService.ValidateLicenseAsync();
+    private async Task ValidateLicenseAsync()
+    {
+        _ = await LicenseService.ValidateLicenseAsync();
+    }
 
-        // If we were just relaunched elevated, jump straight back to the page the user was on
-        // instead of landing on Home.
-        var returnRoute = Elevation.ConsumePendingReturnRoute();
-        if (!string.IsNullOrWhiteSpace(returnRoute))
-        {
-            Navigation.NavigateTo(returnRoute);
-        }
-
+    private void SubscribeAccess()
+    {
         // Re-render the layout whenever the access gate flips so the full-screen block
         // appears/disappears live (a mid-session suspend, or an admin lift, both land here).
         AccessGate.OnAccessStateChanged += HandleAccessChanged;
+        _accessSubscribed = true;
+    }
 
-        // Reflect the current page in Discord Rich Presence and the HUD tool module,
-        // then keep both synced on navigation.
-        ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
+    private void SubscribeNavigation()
+    {
         Navigation.LocationChanged += OnLocationChanged;
+        _navigationSubscribed = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Applied at the layout level so the scale covers every page, not just the
+        // settings page that set it. Re-applied whenever it changes.
+        Appearance.Changed += HandleAppearanceChanged;
+        await ApplyAppearanceAsync();
+    }
+
+    private void HandleAppearanceChanged() => _ = InvokeAsync(ApplyAppearanceAsync);
+
+    private async Task ApplyAppearanceAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("razorReaperTheme.apply", Appearance.UiScalePercent);
+        }
+        catch
+        {
+            // Cosmetic only — never block the layout on theming.
+        }
     }
 
     private void HandleAccessChanged() => InvokeAsync(StateHasChanged);
@@ -77,15 +133,31 @@
 
     private void ReflectPage(string relativePath)
     {
+        if (_hudOverlay is null)
+        {
+            return;
+        }
+
+        var label = DiscordPresence.ResolveToolLabel(relativePath);
+
         DiscordPresence.SetActivityForPath(relativePath);
         // The HUD tool module shows the current page (like Rich Presence) — far more useful
         // than "Idle" since the app is minimized while you're in the game.
-        HudOverlay.SetActiveTool(DiscordPresence.ResolveToolLabel(relativePath));
+        _hudOverlay.SetActiveTool(label);
     }
 
     public void Dispose()
     {
-        Navigation.LocationChanged -= OnLocationChanged;
-        AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+        if (_navigationSubscribed)
+        {
+            Navigation.LocationChanged -= OnLocationChanged;
+        }
+
+        if (_accessSubscribed)
+        {
+            AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+        }
+
+        Appearance.Changed -= HandleAppearanceChanged;
     }
 }

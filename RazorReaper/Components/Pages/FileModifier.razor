@@ -59,15 +59,22 @@
                     <div class="fm-sfc-list">
                         @foreach (var item in _seekFree.Items)
                         {
-                            <label class="fm-sfc-row @(item.Id == "core" ? "advanced" : "")" @key="item.Id">
-                                <input type="checkbox" checked="@_selected.Contains(item.Id)"
-                                       @onchange="e => ToggleSelected(item.Id, e)" disabled="@_busy" />
+                            @* The whole row is the hit target. The checkbox is a button, so its
+                               click would bubble up here and toggle a second time — hence the
+                               wrapper that swallows it. *@
+                            <div class="fm-sfc-row @(item.Id == "core" ? "advanced" : "")" @key="item.Id"
+                                 @onclick="() => ToggleSelected(item.Id, !_selected.Contains(item.Id))">
+                                <span class="fm-sfc-check" @onclick:stopPropagation="true">
+                                    <CheckBox Value="@_selected.Contains(item.Id)"
+                                              ValueChanged="@(v => ToggleSelected(item.Id, v))"
+                                              Disabled="@_busy" />
+                                </span>
                                 <span class="fm-sfc-main">
                                     <span class="fm-sfc-name">@item.Label</span>
                                     <span class="fm-sfc-cat">@item.Category</span>
                                 </span>
                                 <span class="fm-sfc-size">@FormatBytes(item.SizeBytes)</span>
-                            </label>
+                            </div>
                         }
                     </div>
 
@@ -173,9 +180,10 @@
         _ => $"{_modified.Count} files modified"
     };
 
-    private void ToggleSelected(string id, ChangeEventArgs e)
+    private void ToggleSelected(string id, bool on)
     {
-        var on = e.Value is bool b && b;
+        // The row itself is clickable, so it — unlike the checkbox — has no disabled state.
+        if (_busy) return;
         if (on) _selected.Add(id);
         else _selected.Remove(id);
         _confirmDelete = false;

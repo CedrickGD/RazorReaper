@@ -96,6 +96,31 @@ public interface IScreenSampler
     /// <summary>True when a reference snapshot exists for <paramref name="key"/>.</summary>
     bool HasReference(string key);
 
+    /// <summary>
+    /// Captures the region again and masks out every pixel that moved since the reference was
+    /// taken, so only the parts that stayed put are compared from then on.
+    ///
+    /// This is what makes a HUD element sitting on top of the live game world usable at all: the
+    /// armour icons on ARK's right edge never change, but the desert behind them does, and a
+    /// whole-region mean already exceeds any sane tolerance after a quarter-turn of the camera.
+    /// Call it with the same element visible but a different background behind it.
+    /// </summary>
+    /// <param name="kept">Pixels still compared after the call, whether or not it succeeded.</param>
+    /// <param name="tolerance">Per-channel difference above which a pixel counts as background.</param>
+    /// <returns>False when the refine was discarded (no reference, capture failed, nothing stayed still).</returns>
+    bool RefineReferenceMask(string key, Rectangle region, out int kept, byte tolerance = 12);
+
+    /// <summary>Pixels still compared for <paramref name="key"/>, and how many there are in total.</summary>
+    (int Kept, int Total) ReferenceMaskInfo(string key);
+
+    /// <summary>
+    /// How similar the region looks to its reference right now, 0–100. Null when there is no
+    /// reference or the capture failed. This is the same number <see cref="MatchesReference"/>
+    /// thresholds on — exposed so a page can show it live instead of leaving the user to guess
+    /// why a script does or does not fire.
+    /// </summary>
+    double? SimilarityPercent(string key, Rectangle region);
+
     /// <summary>Removes the reference snapshot stored under <paramref name="key"/>.</summary>
     void ClearReference(string key);
 
@@ -129,20 +154,49 @@ public interface IScreenSampler
 }
 
 /// <summary>Default <see cref="IScreenSampler"/> implementation.</summary>
-public sealed class ScreenSampler : IScreenSampler
+public sealed class ScreenSampler : IScreenSampler, IDisposable
 {
     private readonly ILogger<ScreenSampler> _logger;
     private readonly ConcurrentDictionary<string, ScreenCapture> _references = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Preferred capture path. GDI cannot see a game presenting in exclusive fullscreen — it
+    /// hands back the desktop instead, silently and with plausible-looking pixels — so the
+    /// duplication API goes first and GDI is only the fallback for machines where it fails.
+    /// </summary>
+    private readonly Lazy<DesktopDuplicator> _duplicator;
+
+    /// <summary>Per-reference pixel filter: false = moved between captures, so it is background.</summary>
+    private readonly ConcurrentDictionary<string, bool[]> _referenceMasks = new(StringComparer.OrdinalIgnoreCase);
+
     public ScreenSampler(ILogger<ScreenSampler> logger)
     {
         _logger = logger;
+        _duplicator = new Lazy<DesktopDuplicator>(() => new DesktopDuplicator(_logger));
+    }
+
+    /// <summary>Releases the D3D11 device and the duplication the sampler may have created.</summary>
+    public void Dispose()
+    {
+        if (_duplicator.IsValueCreated) _duplicator.Value.Dispose();
     }
 
     public ScreenCapture CaptureRegion(Rectangle region)
     {
         if (region.Width <= 0 || region.Height <= 0)
             return new ScreenCapture(0, 0, Array.Empty<byte>());
+
+        // Duplication first — see the field comment. It reports failure honestly, so the GDI
+        // path below stays the fallback rather than a silent second source of truth.
+        try
+        {
+            if (_duplicator.Value.TryCapture(region, out var duped))
+                return new ScreenCapture(region.Width, region.Height, duped);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Duplication capture threw — using GDI");
+        }
 
         // Per-monitor DPI awareness for the duration of the capture, restored afterwards, so
         // physical coordinates map 1:1 even when this runs on a thread with a different context.
@@ -227,38 +281,230 @@ public sealed class ScreenSampler : IScreenSampler
             return;
         }
         _references[key] = capture;
+        _referenceMasks.TryRemove(key, out _);
+        Persist(key);
     }
 
     public bool HasReference(string key)
-        => !string.IsNullOrWhiteSpace(key) && _references.ContainsKey(key);
-
-    public void ClearReference(string key)
-    {
-        if (string.IsNullOrWhiteSpace(key)) return;
-        _references.TryRemove(key, out _);
-    }
-
-    public bool MatchesReference(string key, Rectangle region, double tolerance)
     {
         if (string.IsNullOrWhiteSpace(key)) return false;
-        if (!_references.TryGetValue(key, out var reference)) return false;
+        if (_references.ContainsKey(key)) return true;
+        return TryLoad(key);
+    }
+
+    public bool RefineReferenceMask(string key, Rectangle region, out int kept, byte tolerance = 12)
+    {
+        kept = 0;
+        if (string.IsNullOrWhiteSpace(key)) return false;
+        if (!TryGetReference(key, out var reference)) return false;
 
         var current = CaptureRegion(region);
         if (current.IsEmpty) return false;
         if (current.Width != reference.Width || current.Height != reference.Height) return false;
 
+        var pixels = reference.Width * reference.Height;
+        // Start from the mask we already have, so refining twice narrows it further rather than
+        // starting over — two different backgrounds catch more of them than one.
+        _referenceMasks.TryGetValue(key, out var existing);
+        var mask = new bool[pixels];
+
+        var a = reference.Bgra;
+        var b = current.Bgra;
+        for (var p = 0; p < pixels; p++)
+        {
+            if (existing is not null && !existing[p]) continue; // already written off as background
+
+            var i = p * 4;
+            var stable = Math.Abs(a[i] - b[i]) <= tolerance
+                      && Math.Abs(a[i + 1] - b[i + 1]) <= tolerance
+                      && Math.Abs(a[i + 2] - b[i + 2]) <= tolerance;
+            mask[p] = stable;
+            if (stable) kept++;
+        }
+
+        // An all-background result would make every later comparison trivially true, which reads
+        // as "always matching" rather than as the failure it is. Keep the old mask, and say so —
+        // returning the old count as if it were fresh made the caller toast a success.
+        if (kept == 0)
+        {
+            _logger.LogWarning("Mask refine for '{Key}' kept no pixels — ignoring it", key);
+            kept = existing?.Count(m => m) ?? 0;
+            return false;
+        }
+
+        _referenceMasks[key] = mask;
+        Persist(key);
+        return true;
+    }
+
+    public (int Kept, int Total) ReferenceMaskInfo(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key) || !TryGetReference(key, out var reference))
+            return (0, 0);
+
+        var total = reference.Width * reference.Height;
+        return _referenceMasks.TryGetValue(key, out var mask)
+            ? (mask.Count(m => m), total)
+            : (total, total);
+    }
+
+    public void ClearReference(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+        _references.TryRemove(key, out _);
+        _referenceMasks.TryRemove(key, out _);
+        try { if (File.Exists(PathFor(key))) File.Delete(PathFor(key)); }
+        catch (Exception ex) { _logger.LogDebug(ex, "Could not delete the stored reference for '{Key}'", key); }
+    }
+
+    // ── Persistence ─────────────────────────────────────────────────────────────────────────
+    // A reference used to live only in memory, so every restart silently invalidated the
+    // calibration of every vision script: the page still said "Captured", the script still
+    // started, and it simply never matched. Snapshot and mask go to disk together — a mask
+    // without its snapshot is meaningless, and a snapshot whose mask went missing would
+    // compare the moving background again.
+
+    private static readonly string StoreDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RazorReaper", "automation-references");
+
+    /// <summary>Keys are script-defined ("flak-region"); keep the file name to what they can contain.</summary>
+    private static string PathFor(string key)
+    {
+        var safe = new string(key.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_').ToArray());
+        return Path.Combine(StoreDir, (safe.Length > 0 ? safe : "unnamed") + ".ref");
+    }
+
+    /// <summary>Reference snapshots this session has already looked for on disk, hit or miss.</summary>
+    private readonly ConcurrentDictionary<string, bool> _loadAttempted = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool TryGetReference(string key, out ScreenCapture capture)
+    {
+        if (_references.TryGetValue(key, out capture!)) return true;
+        if (TryLoad(key)) return _references.TryGetValue(key, out capture!);
+        capture = null!;
+        return false;
+    }
+
+    private void Persist(string key)
+    {
+        if (!_references.TryGetValue(key, out var reference)) return;
+
+        try
+        {
+            Directory.CreateDirectory(StoreDir);
+            _referenceMasks.TryGetValue(key, out var mask);
+
+            using var stream = File.Create(PathFor(key));
+            using var writer = new BinaryWriter(stream);
+            writer.Write(1);                    // format version
+            writer.Write(reference.Width);
+            writer.Write(reference.Height);
+            writer.Write(mask is not null);
+            writer.Write(reference.Bgra);
+            if (mask is not null)
+            {
+                // One byte per pixel: a bit-packed mask saves a few hundred KB and costs a
+                // fiddly reader, and these files are written once per calibration.
+                var bytes = new byte[mask.Length];
+                for (var i = 0; i < mask.Length; i++) bytes[i] = mask[i] ? (byte)1 : (byte)0;
+                writer.Write(bytes);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not store the reference for '{Key}'", key);
+        }
+    }
+
+    private bool TryLoad(string key)
+    {
+        // One attempt per key per run: a miss must not re-hit the disk on every scan tick.
+        if (!_loadAttempted.TryAdd(key, true)) return _references.ContainsKey(key);
+
+        try
+        {
+            var path = PathFor(key);
+            if (!File.Exists(path)) return false;
+
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream);
+            if (reader.ReadInt32() != 1) return false;
+
+            var width = reader.ReadInt32();
+            var height = reader.ReadInt32();
+            var hasMask = reader.ReadBoolean();
+            if (width <= 0 || height <= 0 || (long)width * height > 40_000_000) return false;
+
+            var pixels = width * height;
+            var bgra = reader.ReadBytes(pixels * 4);
+            if (bgra.Length != pixels * 4) return false;
+
+            _references[key] = new ScreenCapture(width, height, bgra);
+
+            if (hasMask)
+            {
+                var bytes = reader.ReadBytes(pixels);
+                if (bytes.Length == pixels)
+                {
+                    var mask = new bool[pixels];
+                    for (var i = 0; i < pixels; i++) mask[i] = bytes[i] != 0;
+                    _referenceMasks[key] = mask;
+                }
+            }
+
+            _logger.LogInformation("Restored the stored reference for '{Key}' ({W}x{H})", key, width, height);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read the stored reference for '{Key}'", key);
+            return false;
+        }
+    }
+
+    public bool MatchesReference(string key, Rectangle region, double tolerance)
+        => MeanDifference(key, region) is { } meanDiff && meanDiff <= tolerance;
+
+    public double? SimilarityPercent(string key, Rectangle region)
+        => MeanDifference(key, region) is { } meanDiff
+            ? Math.Clamp(100.0 - meanDiff / 255.0 * 100.0, 0, 100)
+            : null;
+
+    /// <summary>
+    /// Mean per-channel difference (0–255) between the region now and its reference, over the
+    /// unmasked pixels only. Null when there is no reference, the capture failed, or the region
+    /// changed size (a resolution change invalidates the snapshot).
+    /// </summary>
+    private double? MeanDifference(string key, Rectangle region)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return null;
+        if (!TryGetReference(key, out var reference)) return null;
+
+        var current = CaptureRegion(region);
+        if (current.IsEmpty) return null;
+        if (current.Width != reference.Width || current.Height != reference.Height) return null;
+
+        _referenceMasks.TryGetValue(key, out var mask);
+
         var a = reference.Bgra;
         var b = current.Bgra;
         long diffSum = 0;
         var pixels = current.Width * current.Height;
-        for (var i = 0; i < pixels * 4; i += 4)
+        var compared = 0;
+        for (var p = 0; p < pixels; p++)
         {
+            if (mask is not null && !mask[p]) continue;
+
+            var i = p * 4;
             diffSum += Math.Abs(a[i] - b[i]);         // B
             diffSum += Math.Abs(a[i + 1] - b[i + 1]); // G
             diffSum += Math.Abs(a[i + 2] - b[i + 2]); // R
+            compared++;
         }
-        var meanDiff = diffSum / (double)(pixels * 3);
-        return meanDiff <= tolerance;
+
+        if (compared == 0) return null;
+        return diffSum / (double)(compared * 3);
     }
 
     public Point? FindTemplate(Rectangle searchRegion, TemplateImage template, double threshold, out double score)

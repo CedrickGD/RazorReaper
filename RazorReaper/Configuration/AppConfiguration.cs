@@ -138,11 +138,6 @@ public class TelemetrySettings
     public string Endpoint { get; set; } = string.Empty;
 
     /// <summary>
-    /// Ingest credential sent as Bearer token (and legacy X-App-Key for compatibility).
-    /// </summary>
-    public string AppKey { get; set; } = string.Empty;
-
-    /// <summary>
     /// Logical application name shown in the dashboard.
     /// </summary>
     public string AppName { get; set; } = "razorreaper";

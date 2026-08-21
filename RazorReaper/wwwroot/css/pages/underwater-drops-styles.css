@@ -8,7 +8,7 @@
 
 .uw-page .content-card {
     margin-bottom: 0 !important;
-    padding: var(--space-5) !important;
+    padding: var(--card-pad) !important;
 }
 
 /* Controls */
@@ -273,7 +273,7 @@
 }
 
 .uw-page .uw-empty h3 {
-    font-size: 1.15rem !important;
+    font-size: var(--card-title-size) !important;
     font-weight: 600 !important;
     color: var(--text-primary);
     margin: 0 0 var(--space-2) 0 !important;

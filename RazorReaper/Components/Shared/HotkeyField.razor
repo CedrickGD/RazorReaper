@@ -1,19 +1,38 @@
+@inject IJSRuntime JS
+
 @* Shared hotkey capture field. Focus it and press a combination — modifiers + key are
    captured into a display string like "Ctrl + Alt + F" and pushed through ValueChanged.
-   Escape exits capture mode without changing the value; Backspace/Delete clears it.
-   Pure Blazor (KeyboardEventArgs), no JS. Two-way bind via @bind-Value.
+   Escape cancels: the value is left untouched and the field is blurred, so nothing is
+   bound by accident. Backspace/Delete clears the binding.
+   Capture itself is pure Blazor (KeyboardEventArgs); the only JS is the blur on Escape,
+   which Blazor can't do on its own. Two-way bind via @bind-Value.
    Styled in wwwroot/css/shared/primitives.css. *@
 
-<input class="hotkey-field @(_capturing ? "capturing" : "")"
-       type="text"
-       readonly
-       value="@DisplayValue"
-       placeholder="@(Placeholder ?? DefaultPlaceholder)"
-       spellcheck="false"
-       @onfocus="OnFocus"
-       @onblur="OnBlur"
-       @onkeydown="OnKeyDown"
-       @onkeydown:preventDefault="true" />
+<span class="hotkey-field-wrap">
+    <input @ref="_inputRef"
+           class="hotkey-field @(_capturing ? "capturing" : "") @(HasValue ? "has-value" : "")"
+           type="text"
+           readonly
+           value="@DisplayValue"
+           placeholder="@(Placeholder ?? DefaultPlaceholder)"
+           spellcheck="false"
+           @onfocus="OnFocus"
+           @onblur="OnBlur"
+           @onkeydown="OnKeyDown"
+           @onkeydown:preventDefault="true" />
+
+    @* onmousedown, not onclick: the field's blur fires first on a plain click and would
+       swallow the press before it ever reaches the button. *@
+    @if (HasValue)
+    {
+        <button type="button"
+                class="hotkey-clear"
+                title="Clear this hotkey"
+                aria-label="Clear this hotkey"
+                @onmousedown:preventDefault="true"
+                @onmousedown="ClearAsync">×</button>
+    }
+</span>
 
 @code {
     private const string DefaultPlaceholder = "Press a key…";
@@ -22,12 +41,25 @@
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public string? Placeholder { get; set; }
 
+    private ElementReference _inputRef;
     private bool _capturing;
     private bool _capturedThisSession;
 
     // While capturing (and nothing captured yet this focus session) the field is
     // empty so the placeholder prompts for a key; otherwise show the bound value.
     private string DisplayValue => _capturing && !_capturedThisSession ? "" : Value;
+
+    private bool HasValue => !string.IsNullOrWhiteSpace(Value);
+
+    /// <summary>Unbinds via the × button. Same effect as Backspace while capturing.</summary>
+    private async Task ClearAsync()
+    {
+        if (!HasValue) return;
+
+        Value = "";
+        _capturedThisSession = false;
+        await ValueChanged.InvokeAsync(Value);
+    }
 
     private void OnFocus()
     {
@@ -50,8 +82,19 @@
         switch (e.Key)
         {
             case "Escape":
-                // Exit capture mode without changing the value.
+                // Cancel: leave the binding exactly as it was. Blurring matters — without
+                // it the field keeps focus but stops capturing, so every later keypress is
+                // silently ignored until you click away and back.
                 _capturing = false;
+                _capturedThisSession = false;
+                try
+                {
+                    await JS.InvokeVoidAsync("razorReaperBlur", _inputRef);
+                }
+                catch
+                {
+                    // Blur is a nicety; cancelling already happened above.
+                }
                 return;
             case "Backspace":
             case "Delete":

@@ -1,0 +1,49 @@
+@using RazorReaper.Services
+@inject IUsageGateService UsageGate
+@implements IDisposable
+
+@* Free-tier quota pill: "3/5 left this month". Renders nothing for premium users (the
+   status endpoint answers unlimited), when the feature has no quota, or when the server
+   is unreachable — a missing chip must never look like a missing feature. *@
+@if (_usage is not null)
+{
+    @* Inline styles guard against host contexts: headings with gradient text-fill would make
+       the label invisible, and flex rows with stretch alignment would blow the pill up to
+       button height. Opacity marks an exhausted quota without inventing a new color. *@
+    <span class="ini-widget-pill"
+          style="-webkit-text-fill-color: var(--text-secondary); align-self: center; white-space: nowrap; @(Remaining == 0 ? "opacity: 0.55;" : null)"
+          title="Free monthly quota — resets each month. Premium is unlimited.">
+        @Remaining/@_usage.Limit left this month
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Feature { get; set; } = string.Empty;
+
+    private FeatureUsage? _usage;
+
+    private int Remaining => _usage is null ? 0 : Math.Max(0, _usage.Limit - _usage.Used);
+
+    protected override async Task OnInitializedAsync()
+    {
+        UsageGate.OnUsageChanged += HandleUsageChanged;
+        await RefreshAsync();
+    }
+
+    private void HandleUsageChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await RefreshAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshAsync()
+    {
+        var status = await UsageGate.GetStatusAsync();
+        _usage = status is not null && status.TryGetValue(Feature, out var usage) ? usage : null;
+    }
+
+    public void Dispose() => UsageGate.OnUsageChanged -= HandleUsageChanged;
+}

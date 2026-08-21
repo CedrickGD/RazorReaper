@@ -388,7 +388,11 @@ public sealed class HudOverlayService : IHudOverlayService
             Modules: _settings.Modules.ToList(),
             Compact: _settings.Compact,
             AlertCorner: _settings.AlertCorner,
-            DesyncSeconds: desyncSeconds);
+            DesyncSeconds: desyncSeconds,
+            AlertX: _settings.AlertX,
+            AlertY: _settings.AlertY,
+            AlertOffsetX: _settings.AlertOffsetX,
+            AlertOffsetY: _settings.AlertOffsetY);
     }
 
     // ─── Window plumbing ───────────────────────────────────────────────────────────────────

@@ -21,7 +21,7 @@
 
 .lab-card-header h3 {
     margin: 0 0 0.2rem 0;
-    font-size: 1.05rem;
+    font-size: var(--card-title-size);
     font-weight: 600;
     color: var(--text-primary);
     display: flex;

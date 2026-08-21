@@ -53,12 +53,15 @@
         border-color: rgba(var(--accent-orange-rgb), 0.3);
     }
 
-.file-modifier-page .fm-sfc-row input[type="checkbox"] {
-    accent-color: var(--accent-purple);
-    width: 16px;
-    height: 16px;
+.file-modifier-page .fm-sfc-check {
+    display: flex;
     flex-shrink: 0;
 }
+
+    /* The box's top margin aligns it to a label's first line; there is no label here. */
+    .file-modifier-page .fm-sfc-check .rr-check-box {
+        margin-top: 0;
+    }
 
 .file-modifier-page .fm-sfc-main {
     display: flex;

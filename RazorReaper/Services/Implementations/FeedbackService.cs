@@ -2,7 +2,6 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Maui.Storage;
 using RazorReaper.Configuration;
 using RazorReaper.Services;
 
@@ -15,25 +14,21 @@ namespace RazorReaper.Services.Implementations;
 /// </summary>
 public class FeedbackService : IFeedbackService
 {
-    // Matches TelemetryService.Identity's install-id preference key so feedback and telemetry
-    // report the same install_id for a given machine.
-    private const string InstallIdPreferenceKey = "rr.telemetry.install_id";
-
     private readonly HttpClient _httpClient;
-    private readonly IHwidService _hwidService;
+    private readonly IClientIdentityService _clientIdentityService;
     private readonly ILicenseService _licenseService;
     private readonly IOptions<AppConfiguration> _options;
     private readonly ILogger<FeedbackService> _logger;
 
     public FeedbackService(
         HttpClient httpClient,
-        IHwidService hwidService,
+        IClientIdentityService clientIdentityService,
         ILicenseService licenseService,
         IOptions<AppConfiguration> options,
         ILogger<FeedbackService> logger)
     {
         _httpClient = httpClient;
-        _hwidService = hwidService;
+        _clientIdentityService = clientIdentityService;
         _licenseService = licenseService;
         _options = options;
         _logger = logger;
@@ -55,12 +50,13 @@ public class FeedbackService : IFeedbackService
 
         try
         {
+            var identity = SafeGetIdentity();
             var payload = new
             {
                 message = message.Trim(),
                 contact = string.IsNullOrWhiteSpace(contact) ? null : contact.Trim(),
-                hwid = SafeGetHwid(),
-                install_id = SafeGetInstallId(),
+                hwid = identity?.HardwareId,
+                install_id = identity?.InstallId,
                 license_key = SafeGetLicenseKey(),
                 machine_name = Environment.MachineName,
                 app_version = SafeGetAppVersion(),
@@ -70,17 +66,11 @@ public class FeedbackService : IFeedbackService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(settings.RequestTimeoutSeconds, 3, 60)));
 
-            // The feedback endpoint is gated by the same app key telemetry already ships, so random
-            // internet POSTs can't spam it. Reuse the configured Telemetry.AppKey as x-app-key.
+            // Authenticated per install by SignedRequestHandler (rr.install.v1 signature headers).
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/feedback")
             {
                 Content = JsonContent.Create(payload)
             };
-            var appKey = _options.Value.Telemetry.AppKey;
-            if (!string.IsNullOrWhiteSpace(appKey))
-            {
-                request.Headers.TryAddWithoutValidation("x-app-key", appKey);
-            }
 
             var response = await _httpClient.SendAsync(request, cts.Token);
             var result = await response.Content.ReadFromJsonAsync<FeedbackApiResponse>(cts.Token);
@@ -103,9 +93,9 @@ public class FeedbackService : IFeedbackService
         }
     }
 
-    private string? SafeGetHwid()
+    private ClientIdentity? SafeGetIdentity()
     {
-        try { return _hwidService.GetHardwareId(); } catch { return null; }
+        try { return _clientIdentityService.GetIdentity(); } catch { return null; }
     }
 
     private string? SafeGetLicenseKey()
@@ -114,16 +104,6 @@ public class FeedbackService : IFeedbackService
         {
             var key = _licenseService.CurrentLicenseKey;
             return string.IsNullOrWhiteSpace(key) ? null : key;
-        }
-        catch { return null; }
-    }
-
-    private static string? SafeGetInstallId()
-    {
-        try
-        {
-            var value = Preferences.Get(InstallIdPreferenceKey, string.Empty);
-            return string.IsNullOrWhiteSpace(value) ? null : value;
         }
         catch { return null; }
     }

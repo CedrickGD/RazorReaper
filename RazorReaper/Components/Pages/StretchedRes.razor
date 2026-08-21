@@ -5,6 +5,7 @@
 @implements IDisposable
 @inject IStretchedResService Stretched
 @inject INotificationService NotificationService
+@inject IUsageGateService UsageGate
 @inject ILogger<StretchedRes> Logger
 
 <header class="page-header">
@@ -78,7 +79,7 @@
        PRESETS + CUSTOM — apply a temporary desktop resolution.
        ============================================================ *@
     <section class="content-card">
-        <h3>Stretched presets</h3>
+        <h3>Stretched presets <UsageChip Feature="@UsageFeatures.StretchedRes" /></h3>
         <p class="stretched-intro">Each applies the desktop resolution temporarily — you get 15 seconds to confirm before it reverts on its own.</p>
 
         <div class="stretched-preset-grid">
@@ -206,8 +207,9 @@
     private int? lastChosenHeight;
 
     private bool arkRunning;
+    private bool _applying;
 
-    private bool ApplyDisabled => Stretched.IsPendingConfirmation;
+    private bool ApplyDisabled => Stretched.IsPendingConfirmation || _applying;
 
     private bool CanWriteArk => lastChosenWidth.HasValue && lastChosenHeight.HasValue && !arkRunning;
 
@@ -323,28 +325,49 @@
         arkRunning = Stretched.IsArkRunning();
     }
 
-    private void Apply(int width, int height, bool isCustom)
+    private async Task Apply(int width, int height, bool isCustom)
     {
-        if (Stretched.IsPendingConfirmation)
+        if (Stretched.IsPendingConfirmation || _applying)
         {
             return;
         }
+        _applying = true; // set before any await — a double-click must not double-consume
 
-        customError = null;
-        var result = Stretched.ApplyResolution(width, height);
-        if (!result.Success)
+        try
         {
-            NotificationService.ShowError(result.Error ?? "Could not apply that resolution.");
-            return;
-        }
+            customError = null;
+            var result = Stretched.ApplyResolution(width, height);
+            if (!result.Success)
+            {
+                // Nothing changed on screen, so nothing is counted — a driver-rejected mode
+                // must not burn a monthly use.
+                NotificationService.ShowError(result.Error ?? "Could not apply that resolution.");
+                return;
+            }
 
-        Stretched.SaveLastChoice(width, height, isCustom);
-        lastChosenWidth = width;
-        lastChosenHeight = height;
-        RefreshCurrent();
+            // Counted only after the change actually took. If the month is used up, undo it
+            // right away — Keep, RevertNow and the 15s auto-revert themselves never count.
+            var gate = await UsageGate.TryConsumeAsync(UsageFeatures.StretchedRes);
+            if (!gate.Allowed)
+            {
+                Stretched.RevertNow();
+                RefreshCurrent();
+                NotificationService.ShowWarning($"Free monthly limit reached ({gate.Limit} resolution applies). Resets next month — Premium is unlimited.");
+                return;
+            }
+
+            Stretched.SaveLastChoice(width, height, isCustom);
+            lastChosenWidth = width;
+            lastChosenHeight = height;
+            RefreshCurrent();
+        }
+        finally
+        {
+            _applying = false;
+        }
     }
 
-    private void ApplyCustom()
+    private async Task ApplyCustom()
     {
         var validation = Stretched.ValidateResolution(customWidth, customHeight);
         if (!validation.Success)
@@ -353,7 +376,7 @@
             return;
         }
 
-        Apply(customWidth, customHeight, true);
+        await Apply(customWidth, customHeight, true);
     }
 
     private void Keep()

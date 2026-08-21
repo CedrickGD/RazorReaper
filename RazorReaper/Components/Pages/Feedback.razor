@@ -8,6 +8,7 @@
     <p class="page-subtitle">Tell us what's working, what's broken, or what you'd like to see next.</p>
 </header>
 
+<div class="feedback-layout">
 <div class="content-card feedback-card">
     <div class="feedback-field">
         <label class="feedback-label" for="feedback-message">Your feedback</label>
@@ -34,11 +35,6 @@
                disabled="@_submitting" />
     </div>
 
-    <p class="feedback-note">
-        Your machine name, hardware ID, license and app version are attached automatically so we can
-        follow up on issues.
-    </p>
-
     <div class="feedback-actions">
         <button class="btn btn-primary" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
             @if (_submitting)
@@ -52,6 +48,28 @@
             }
         </button>
     </div>
+</div>
+
+@* The note used to sit under the form as a grey paragraph; as a panel it fills the
+   right-hand half the form was leaving empty and reads as an answer to "what are you
+   sending about me?" rather than fine print. *@
+<aside class="content-card feedback-side">
+    <h3 class="feedback-side-title">Attached automatically</h3>
+    <ul class="feedback-side-list">
+        <li>Machine name</li>
+        <li>Hardware ID</li>
+        <li>License status</li>
+        <li>App version</li>
+    </ul>
+    <p class="feedback-note">
+        Sent with your message so we can reproduce the issue and reply on the right account.
+        Nothing else leaves the app.
+    </p>
+    <p class="feedback-note">
+        Leave a contact if you want an answer — reports without one are still read, we just
+        can't follow up.
+    </p>
+</aside>
 </div>
 
 @code {
@@ -87,80 +105,3 @@
         StateHasChanged();
     }
 }
-
-<style>
-    .feedback-card {
-        max-width: 640px;
-    }
-
-    .feedback-field {
-        margin-bottom: 20px;
-    }
-
-    .feedback-label {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 8px;
-    }
-
-    .feedback-textarea,
-    .feedback-input {
-        width: 100%;
-        background: var(--background-dark);
-        border: 1px solid var(--border-hover);
-        border-radius: 8px;
-        padding: 12px 14px;
-        color: var(--text-primary);
-        font-size: 0.95rem;
-        font-family: inherit;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        box-sizing: border-box;
-    }
-
-    .feedback-textarea {
-        resize: vertical;
-        min-height: 140px;
-        line-height: 1.55;
-    }
-
-    .feedback-textarea:focus,
-    .feedback-input:focus {
-        outline: none;
-        border-color: var(--accent-purple);
-        box-shadow: 0 0 0 3px rgba(var(--accent-purple-rgb), 0.2);
-    }
-
-    .feedback-counter {
-        margin-top: 6px;
-        text-align: right;
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-    }
-
-    .feedback-note {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        line-height: 1.5;
-        margin: 0 0 20px;
-    }
-
-    .feedback-actions {
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .feedback-spinner {
-        width: 15px;
-        height: 15px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: var(--text-primary);
-        animation: feedback-spin 1s ease-in-out infinite;
-    }
-
-    @@keyframes feedback-spin {
-        to { transform: rotate(360deg); }
-    }
-</style>

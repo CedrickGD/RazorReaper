@@ -1,0 +1,176 @@
+/* ── Button consolidation ────────────────────────────────────────────────────
+   Loaded LAST, after every page stylesheet, so it can fold the page-specific button
+   families onto the two shared designs defined in theme.css (.btn) and primitives.css
+   (.rr-pill-btn) without editing fifteen files.
+
+   Why aliasing instead of renaming the markup: the ask was two button *designs*, not two
+   class names. Renaming ~90 call sites across every page would be a large diff that
+   changes nothing on screen and risks missing one. Making them render identically gets
+   the whole benefit; the names can be retired later, or never.
+
+   Deliberately NOT folded here:
+     - icon-only buttons (.cs-icon-btn, .ll-icon-btn, .close-btn, .compact-ark-btn-icon,
+       .cave-image-btn, .rail-btn) — square, iconographic, a different shape entirely
+     - segmented controls (.seg-btn and friends) — a radio group, not a button; only its
+       gradient fill is normalised at the foot of this file
+     - .hotkey-btn — a capture field that happens to be a <button>                       */
+
+/* ── B: Quiet ─────────────────────────────────────────────────────────────── */
+
+.server-btn,
+.server-action-btn,
+.ini-btn,
+.ini-overlay-ghost-btn,
+.fonts-btn,
+.fov-btn-large,
+.lab-btn,
+.inib-small-btn,
+.cr-link-btn,
+.license-btn,
+.launch-options-steam-btn,
+.launch-options-code-btn,
+.launch-option-flag-btn,
+.steam-mods-refresh-btn,
+.ll-filter-btn,
+.cs-type-btn,
+.toggle-btn,
+.copy-btn,
+.tp-copy-btn,
+.cave-copy-btn,
+.aa-step-btn,
+.gm-capture-btn,
+.cr-discord-join {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.4rem !important;
+    padding: 0.45rem 0.8rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    border-radius: var(--radius-control) !important;
+    border: 1px solid var(--border-color) !important;
+    background: transparent !important;
+    background-image: none !important;
+    color: var(--text-secondary) !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease !important;
+}
+
+    .server-btn:hover:not(:disabled),
+    .server-action-btn:hover:not(:disabled),
+    .ini-btn:hover:not(:disabled),
+    .ini-overlay-ghost-btn:hover:not(:disabled),
+    .fonts-btn:hover:not(:disabled),
+    .fov-btn-large:hover:not(:disabled),
+    .lab-btn:hover:not(:disabled),
+    .inib-small-btn:hover:not(:disabled),
+    .cr-link-btn:hover:not(:disabled),
+    .license-btn:hover:not(:disabled),
+    .launch-options-steam-btn:hover:not(:disabled),
+    .launch-options-code-btn:hover:not(:disabled),
+    .launch-option-flag-btn:hover:not(:disabled),
+    .steam-mods-refresh-btn:hover:not(:disabled),
+    .ll-filter-btn:hover:not(:disabled),
+    .cs-type-btn:hover:not(:disabled),
+    .toggle-btn:hover:not(:disabled),
+    .copy-btn:hover:not(:disabled),
+    .tp-copy-btn:hover:not(:disabled),
+    .cave-copy-btn:hover:not(:disabled),
+    .aa-step-btn:hover:not(:disabled),
+    .gm-capture-btn:hover:not(:disabled),
+    .cr-discord-join:hover {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: var(--border-hover) !important;
+        color: var(--text-primary) !important;
+    }
+
+/* ── A: Action ────────────────────────────────────────────────────────────── */
+
+.ini-overlay-primary-btn,
+.ini-btn-accent,
+.inib-apply-btn,
+.ll-confirm-btn,
+.cs-add-server-btn,
+.premium-upgrade-btn,
+.server-btn.connect,
+.lab-btn.primary {
+    background: rgba(var(--accent-purple-rgb), 0.14) !important;
+    background-image: none !important;
+    border-color: rgba(var(--accent-purple-rgb), 0.45) !important;
+    color: var(--accent-purple-light) !important;
+    box-shadow: none !important;
+}
+
+    .ini-overlay-primary-btn:hover:not(:disabled),
+    .ini-btn-accent:hover:not(:disabled),
+    .inib-apply-btn:hover:not(:disabled),
+    .ll-confirm-btn:hover:not(:disabled),
+    .cs-add-server-btn:hover:not(:disabled),
+    .premium-upgrade-btn:hover:not(:disabled),
+    .server-btn.connect:hover:not(:disabled),
+    .lab-btn.primary:hover:not(:disabled) {
+        background: rgba(var(--accent-purple-rgb), 0.22) !important;
+        border-color: rgba(var(--accent-purple-rgb), 0.65) !important;
+        color: var(--accent-purple-light) !important;
+    }
+
+/* Destructive: the same shape, recoloured — not a third design. */
+.server-action-btn.remove,
+.server-btn.danger,
+.ll-filter-btn.danger {
+    background: rgba(var(--accent-red-rgb), 0.14) !important;
+    background-image: none !important;
+    border-color: rgba(var(--accent-red-rgb), 0.45) !important;
+    color: var(--accent-red-soft) !important;
+}
+
+/* ── Shared press + focus ─────────────────────────────────────────────────── */
+
+.server-btn:active:not(:disabled),
+.ini-btn:active:not(:disabled),
+.fonts-btn:active:not(:disabled),
+.fov-btn-large:active:not(:disabled),
+.lab-btn:active:not(:disabled),
+.game-action-btn:active:not(:disabled),
+.copy-btn:active:not(:disabled) {
+    transform: scale(0.97) !important;
+}
+
+/* ── Segmented controls ───────────────────────────────────────────────────── */
+/* Left as a control, not folded into a button — but the selected segment was a
+   saturated gradient, the same fill that made the Auto Clicker CTA shout. Flat tint. */
+
+/* .autoclicker-layout .seg-btn.active is 0,3,0 and !important, so a bare .seg-btn.active
+   loses to it however late this file loads — specificity decides before source order once
+   both sides are !important. Matched here rather than edited there, so every segmented
+   control stays described in one place. */
+.autoclicker-layout .seg-btn.active,
+.stretched-preset.active,
+.font-option-btn.active,
+.seg-btn.active,
+.hud-seg-btn.active,
+.aa-seg-btn.active,
+.inib-seg-btn.active,
+.gm-seg-btn.active {
+    background: rgba(var(--accent-purple-rgb), 0.18) !important;
+    background-image: none !important;
+    border-color: rgba(var(--accent-purple-rgb), 0.45) !important;
+    color: var(--accent-purple-light) !important;
+    box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .server-btn:active:not(:disabled),
+    .ini-btn:active:not(:disabled),
+    .fonts-btn:active:not(:disabled),
+    .fov-btn-large:active:not(:disabled),
+    .lab-btn:active:not(:disabled),
+    .game-action-btn:active:not(:disabled),
+    .copy-btn:active:not(:disabled) {
+        transform: none !important;
+    }
+}

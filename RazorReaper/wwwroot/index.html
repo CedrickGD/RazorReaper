@@ -15,6 +15,7 @@
     <link href="css/shared/lightbox.css" rel="stylesheet" />
     <link rel="icon" href="data:," />
     <!-- Page styles -->
+    <link href="css/pages/settings-styles.css" rel="stylesheet" />
     <link href="css/pages/home-styles.css" rel="stylesheet" />
     <link href="css/pages/server-styles.css" rel="stylesheet" />
     <link href="css/pages/game-styles.css" rel="stylesheet" />
@@ -53,6 +54,12 @@
     <link href="css/pages/loading-screen-styles.css" rel="stylesheet" />
     <link href="css/pages/char-manager-styles.css" rel="stylesheet" />
     <link href="css/pages/stretched-res-styles.css" rel="stylesheet" />
+    <link href="css/pages/convert-styles.css" rel="stylesheet" />
+    <link href="css/pages/feedback-styles.css" rel="stylesheet" />
+
+    <!-- Last on purpose: folds the page-specific button families onto the two shared
+         designs. Must outrank the page stylesheets above it. -->
+    <link href="css/shared/buttons.css" rel="stylesheet" />
 </head>
 
 <body>
@@ -62,7 +69,12 @@
 
     <!-- Load navbar runtime early so the saved sidebar width/collapsed state is applied
          before Blazor paints the first frame (avoids a 240px → user-width jump). -->
+    <!-- Loaded before the app renders so a custom accent is in place on the first
+         paint, rather than flashing the default purple first. -->
+    <script src="js/theme.js"></script>
     <script src="js/navbar.js"></script>
+    <script src="js/sliders.js"></script>
+    <script src="js/convert.js"></script>
 
     <div id="app">Loading...</div>
 
@@ -86,6 +98,16 @@
     <audio id="notify-audio" src="assets/sounds/notify.mp3" preload="metadata"></audio>
     <audio id="click-audio" preload="metadata"></audio>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
+
+    <script>
+        // F7 is Chromium's caret-browsing toggle, and WebView2 inherits it. Once it's on,
+        // every click paints a blinking text caret next to whatever label you hit, and the
+        // setting persists in the profile — so it stays on across restarts. It's also the
+        // Auto Clicker's default hotkey, which makes hitting it here entirely likely.
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'F7') { e.preventDefault(); e.stopPropagation(); }
+        }, true);
+    </script>
 
     <script>
         (function () {
@@ -798,14 +820,30 @@
                 }
                 _searchRef = null;
             };
+
+            // Blazor can focus an element but not blur one, and the hotkey capture field
+            // needs to let go on Escape so it stops swallowing keys.
+            window.razorReaperBlur = function (el) {
+                if (el && typeof el.blur === 'function') el.blur();
+            };
+
+            // Keeps the keyboard-selected row inside the scrollable result list.
+            // 'nearest' scrolls the minimum needed, so walking the list doesn't
+            // re-centre and jump on every keypress.
+            window.razorReaperSearch = {
+                scrollIntoView: function (elementId) {
+                    const el = document.getElementById(elementId);
+                    if (el) el.scrollIntoView({ block: 'nearest' });
+                }
+            };
         })();
     </script>
 
     <script>
-        // Decides whether the colour-picker popover should flip upward (open above the
-        // swatch instead of below) based on the available room. Pure layout query — no
-        // top/left math, since the popover is absolutely positioned relative to its
-        // swatch wrapper. Called by Components/Shared/ColorField.razor on every open.
+        // Decides whether a popover should flip upward (open above its trigger instead of
+        // below) based on the available room. Pure layout query — no top/left math, since
+        // the popover is absolutely positioned relative to its own wrapper. Called by
+        // Components/Shared/ColorField.razor and Components/Shared/Dropdown.razor on open.
         window.rrColorMeasureFlip = function (swatchEl, popHeight) {
             if (!swatchEl) return false;
             var rect = swatchEl.getBoundingClientRect();

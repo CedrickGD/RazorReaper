@@ -50,9 +50,22 @@
                 <span class="gm-preview-unit">gamma</span>
             </div>
 
+            @* step 0.01, and the drag is the apply — same as the interface-scale slider.
+               There is no separate commit: GammaService.Preview and ApplyValue are the
+               same call, so the old "Apply / test" button did nothing the drag hadn't
+               already done. *@
+            @* NOT @bind. @bind formats the double with the current culture, and this machine
+               runs de-DE, so it emitted value="1,30". A range input only accepts a dot
+               decimal, so Chromium threw the value away and fell back to the midpoint of
+               min/max — 1.30 for 0.10..2.50 — which is why the thumb sat still while the
+               readout moved. Invariant both ways. *@
             <input type="range" class="gm-slider"
-                   min="0.10" max="2.50" step="0.05"
-                   @bind="PreviewValue" @bind:event="oninput" @bind:after="OnPreviewChanged" />
+                   min="0.10" max="2.50" step="0.01"
+                   value="@PreviewValue.ToString("0.00", CultureInfo.InvariantCulture)"
+                   @oninput="OnSliderInput"
+                   @onpointerdown="() => _dragging = true"
+                   @onpointerup="EndDrag"
+                   @onpointercancel="EndDrag" />
 
             <div class="gm-slider-scale">
                 <span>0.10</span>
@@ -60,9 +73,6 @@
                 <span>2.50</span>
             </div>
 
-            <div class="gm-preview-actions">
-                <button class="btn btn-secondary" @onclick="() => GammaSvc.ApplyValue(PreviewValue)">Apply / test</button>
-            </div>
         </div>
 
         @* ── Presets ─────────────────────────────────────────────────────── *@
@@ -76,8 +86,11 @@
                     <div class="gm-preset-row">
                         <input class="gm-preset-name" type="text" spellcheck="false"
                                @bind="p.Name" @bind:after="() => GammaSvc.UpdatePreset(p.Id, name: p.Name)" />
+                        @* Same culture trap as the slider: type="number" is dot-only too,
+                           so @bind wrote "0,5" and the field could not be edited. *@
                         <input class="gm-preset-val" type="number" min="0.10" max="2.50" step="0.05"
-                               @bind="p.Value" @bind:after="() => GammaSvc.UpdatePreset(p.Id, value: p.Value)" />
+                               value="@p.Value.ToString("0.##", CultureInfo.InvariantCulture)"
+                               @onchange="@(e => OnPresetValueChanged(p, e))" />
                         <div class="gm-preset-cycle">
                             <Switch Value="p.InCycle" Compact="true"
                                     ValueChanged="@((bool v) => GammaSvc.UpdatePreset(p.Id, inCycle: v))" />
@@ -167,15 +180,20 @@
                         @foreach (var m in _monitors)
                         {
                             var selected = GammaSvc.SelectedMonitors.Contains(m.DeviceName);
-                            <label class="gm-monitor-row">
-                                <input type="checkbox" checked="@selected"
-                                       @onchange="e => ToggleMonitor(m.DeviceName, e)" />
+                            @* The whole row is the hit target. The checkbox is a button, so its
+                               click would bubble up here and toggle a second time — hence the
+                               wrapper that swallows it. *@
+                            <div class="gm-monitor-row" @onclick="() => ToggleMonitor(m.DeviceName, !selected)">
+                                <span class="gm-monitor-check" @onclick:stopPropagation="true">
+                                    <CheckBox Value="@selected"
+                                              ValueChanged="@(v => ToggleMonitor(m.DeviceName, v))" />
+                                </span>
                                 <span class="gm-monitor-name">@m.FriendlyName</span>
                                 @if (m.IsPrimary)
                                 {
                                     <span class="gm-monitor-tag">Primary</span>
                                 }
-                            </label>
+                            </div>
                         }
                     }
                 </div>
@@ -185,15 +203,19 @@
     </div>
 
     @* ── G HUB export ─────────────────────────────────────────────────────── *@
+    @* The script used to sit in a 12-row textarea that owned a third of the page for
+       something you read once and paste into G HUB. It opens in its own window now. *@
     <div class="content-card gm-card gm-lua-card">
         <div class="gm-lua-head">
             <div>
                 <h3 class="gm-card-title">Logitech G HUB script</h3>
                 <p class="gm-card-desc">Maps mouse buttons to the keyboard hotkeys above so a button press changes your gamma. Paste into a G HUB Lua script and keep listening on.</p>
             </div>
-            <button class="btn btn-secondary" @onclick="CopyLua">@_copyLabel</button>
+            <div class="gm-lua-actions">
+                <button class="btn btn-secondary" @onclick="() => _luaOpen = true">View script</button>
+                <button class="btn btn-primary" @onclick="CopyLua">@_copyLabel</button>
+            </div>
         </div>
-        <textarea class="gm-lua-area" readonly spellcheck="false" rows="12">@_lua</textarea>
     </div>
 
     <div class="gm-note">
@@ -202,6 +224,26 @@
 
 </div>
 
+@if (_luaOpen)
+{
+    @* Click the backdrop or press Escape to dismiss — @onkeydown needs the tabindex to
+       fire, and autofocus puts the key handler in reach without a click first. *@
+    <div class="gm-modal-overlay" @onclick="() => _luaOpen = false">
+        <div class="gm-modal" @onclick:stopPropagation="true"
+             tabindex="0" autofocus
+             @onkeydown="OnLuaKeyDown">
+            <div class="gm-modal-head">
+                <h3 class="gm-card-title">Logitech G HUB script</h3>
+                <div class="gm-lua-actions">
+                    <button class="btn btn-primary" @onclick="CopyLua">@_copyLabel</button>
+                    <button class="btn btn-secondary" @onclick="() => _luaOpen = false">Close</button>
+                </div>
+            </div>
+            <textarea class="gm-lua-area" readonly spellcheck="false">@_lua</textarea>
+        </div>
+    </div>
+}
+
 @code {
     private double PreviewValue { get; set; } = GammaPresets.Default;
     private IReadOnlyList<GammaMonitor> _monitors = Array.Empty<GammaMonitor>();
@@ -209,6 +251,12 @@
     private string _copyLabel = "Copy";
     private string? _capturingTarget;
     private bool _listenError;
+    private bool _luaOpen;
+
+    private void OnLuaKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _luaOpen = false;
+    }
 
     private string StatusDescription
     {
@@ -229,12 +277,39 @@
         _lua = GammaSvc.GenerateLua();
     }
 
+    /// <summary>
+    /// True while the thumb is held. Preview() raises StateChanged on every input event, so
+    /// without this the handler below wrote CurrentGamma straight back into the slider
+    /// mid-drag and the thumb fought the cursor — which is what made this feel broken.
+    /// </summary>
+    private bool _dragging;
+
     private void OnStateChanged()
     {
         _lua = GammaSvc.GenerateLua();
-        // CurrentGamma tracks previews/triggers; keep the slider in step (drag sets the same value).
-        PreviewValue = GammaSvc.CurrentGamma;
+
+        // Do NOT write the slider's own value back into it mid-drag. Preview() raises
+        // StateChanged on every input event, so this handler runs constantly while you
+        // drag; assigning PreviewValue here made the thumb fight the cursor. A hotkey or
+        // preset firing while you are not dragging should still move it, hence the guard
+        // rather than removing the assignment.
+        //
+        // Renders are NOT suppressed during the drag. An earlier attempt overrode
+        // ShouldRender to skip them, which desynced the readout, the thumb and the CSS
+        // fill from each other — the fill is painted by sliders.js from input events, so
+        // freezing renders left three different values on screen at once.
+        if (!_dragging)
+        {
+            PreviewValue = GammaSvc.CurrentGamma;
+        }
+
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void EndDrag()
+    {
+        _dragging = false;
+        PreviewValue = GammaSvc.CurrentGamma;
     }
 
     private void RefreshMonitors()
@@ -247,7 +322,30 @@
 
     // ── Preview ─────────────────────────────────────────────────────────────
 
-    private void OnPreviewChanged() => GammaSvc.Preview(PreviewValue);
+    /// <summary>
+    /// Parses invariant, because the element always reports a dot decimal regardless of the
+    /// user's locale. Applying is the whole interaction — there is no separate commit.
+    /// </summary>
+    private void OnSliderInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            PreviewValue = value;
+            GammaSvc.Preview(value);
+        }
+    }
+
+    /// <summary>
+    /// Presets is a defensive copy, so writing to the row would go nowhere — UpdatePreset
+    /// is what persists, and its StateChanged re-renders the row from the service.
+    /// </summary>
+    private void OnPresetValueChanged(PresetConfig preset, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            GammaSvc.UpdatePreset(preset.Id, value: value);
+        }
+    }
 
     // ── Listening / reset ───────────────────────────────────────────────────
 
@@ -317,9 +415,8 @@
 
     // ── Monitors ────────────────────────────────────────────────────────────
 
-    private void ToggleMonitor(string deviceName, ChangeEventArgs e)
+    private void ToggleMonitor(string deviceName, bool add)
     {
-        bool add = e.Value is bool b ? b : (e.Value?.ToString() == "true");
         var selected = GammaSvc.SelectedMonitors.ToList();
         if (add)
         {

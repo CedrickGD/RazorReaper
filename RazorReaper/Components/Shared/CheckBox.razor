@@ -1,0 +1,39 @@
+@* Custom checkbox.
+
+   Not <input type="checkbox">: the browser flips the native box the instant it is clicked, then
+   Blazor re-renders and writes `checked` back, and the two land a frame apart — which reads as
+   the box twitching. A button carrying its own state has nothing to fight with.
+
+   Named CheckBox rather than Checkbox purely to keep the type name distinct from the HTML one
+   when reading markup. *@
+
+<button type="button"
+        class="rr-check @(Value ? "on" : "")"
+        role="checkbox"
+        aria-checked="@Value.ToString().ToLowerInvariant()"
+        disabled="@Disabled"
+        @onclick="ToggleAsync">
+    <span class="rr-check-box">
+        <svg class="rr-check-tick" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+            <path d="M2.5 6.2 5 8.6l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+    </span>
+    @if (ChildContent is not null)
+    {
+        <span class="rr-check-label">@ChildContent</span>
+    }
+</button>
+
+@code {
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task ToggleAsync()
+    {
+        Value = !Value;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

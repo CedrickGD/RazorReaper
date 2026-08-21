@@ -495,15 +495,24 @@ internal sealed class HudOverlayWindow : IDisposable
         HudAnchor anchor, int offX, int offY, int custX, int custY)
     {
         float mx = offX * s, my = offY * s;
-        float x, y;
-        switch (anchor)
+
+        // Split into an x rule and a y rule instead of one case per placement: with edges and
+        // centres that would be nine near-identical branches, and every new placement another one.
+        float x = anchor switch
         {
-            case HudAnchor.TopLeft: x = mx; y = my; break;
-            case HudAnchor.TopRight: x = mon.Width - mx - size.Width; y = my; break;
-            case HudAnchor.BottomLeft: x = mx; y = mon.Height - my - size.Height; break;
-            case HudAnchor.BottomRight: x = mon.Width - mx - size.Width; y = mon.Height - my - size.Height; break;
-            default: x = custX; y = custY; break;
-        }
+            HudAnchor.Custom => custX,
+            _ when anchor.IsLeft() => mx,
+            _ when anchor.IsRight() => mon.Width - mx - size.Width,
+            _ => (mon.Width - size.Width) / 2f,          // TopCenter, BottomCenter, Center
+        };
+
+        float y = anchor switch
+        {
+            HudAnchor.Custom => custY,
+            _ when anchor.IsTop() => my,
+            _ when anchor.IsBottom() => mon.Height - my - size.Height,
+            _ => (mon.Height - size.Height) / 2f,        // MiddleLeft, MiddleRight, Center
+        };
         x = Math.Clamp(x, 0f, Math.Max(0f, mon.Width - size.Width));
         y = Math.Clamp(y, 0f, Math.Max(0f, mon.Height - size.Height));
         return new RectangleF(x, y, size.Width, size.Height);
@@ -764,7 +773,15 @@ internal sealed class HudOverlayWindow : IDisposable
                         var text = snap.Server.Name!;
                         if (snap.Server.Players.HasValue && snap.Server.MaxPlayers.HasValue)
                             text += $" {snap.Server.Players}/{snap.Server.MaxPlayers}";
+                        // The ping is the one number you actually watch while playing, and it was
+                        // the only thing the collapsed line dropped.
+                        if (snap.Server.PingMs.HasValue)
+                            text += $" · {snap.Server.PingMs}ms";
                         parts.Add(text);
+                    }
+                    else if (snap.Server.PingMs.HasValue)
+                    {
+                        parts.Add($"{snap.Server.PingMs}ms");
                     }
                     break;
                 case HudModuleKind.ToolStatus:
@@ -831,27 +848,45 @@ internal sealed class HudOverlayWindow : IDisposable
         using var font = new Font("Segoe UI", 12.5f * s, FontStyle.Regular, GraphicsUnit.Pixel);
         using var fmt = MakeLineFormat();
 
-        var corner = snap.AlertCorner == HudAnchor.Custom ? HudAnchor.BottomRight : snap.AlertCorner;
-        bool top = corner is HudAnchor.TopLeft or HudAnchor.TopRight;
-        bool left = corner is HudAnchor.TopLeft or HudAnchor.BottomLeft;
+        var corner = snap.AlertCorner;
+        bool custom = corner == HudAnchor.Custom;
+        // Everything that is not anchored to the bottom edge stacks downwards — including
+        // the vertically-centred placements, whose startY below already begins mid-screen
+        // or under the panel. Only a bottom anchor grows up, away from its edge.
+        bool downward = custom || !corner.IsBottom();
+        var growth = corner.GrowthOf();
 
-        float margin = 16f * s, gap = 6f * s;
+        float marginX = snap.AlertOffsetX * s, marginY = snap.AlertOffsetY * s, gap = 6f * s;
         float padX = 10f * s, padY = 7f * s, barW = 3f;
         float maxW = 340f * s;
         float lineH = font.GetHeight(g);
         float rowH = lineH + padY * 2f;
 
-        // If the alert stack shares the panel's corner, start past the panel so they never overlap.
+        // If the alert stack shares the panel's placement, start past the panel so they never
+        // overlap. Vertically centred placements stack downwards from the middle.
         float startY;
-        if (top)
+        if (custom)
         {
-            startY = margin;
+            // Monitor pixels, exactly like the panel's CustomX/CustomY in PlacePanel —
+            // scaling them would move the stack every time the render scale changes.
+            // Clamped like the panel too: a typed-in or hand-edited off-screen Y would
+            // otherwise trip the visibility guard below and silently hide every alert.
+            startY = Math.Clamp((float)snap.AlertY, 0f, Math.Max(0f, mon.Height - rowH));
+        }
+        else if (corner.IsTop())
+        {
+            startY = marginY;
             if (!panelRect.IsEmpty && corner == panelAnchor) startY = panelRect.Bottom + 10f * s;
+        }
+        else if (corner.IsBottom())
+        {
+            startY = mon.Height - marginY - rowH;
+            if (!panelRect.IsEmpty && corner == panelAnchor) startY = panelRect.Top - 10f * s - rowH;
         }
         else
         {
-            startY = mon.Height - margin - rowH;
-            if (!panelRect.IsEmpty && corner == panelAnchor) startY = panelRect.Top - 10f * s - rowH;
+            startY = (mon.Height - rowH) / 2f;
+            if (!panelRect.IsEmpty && corner == panelAnchor) startY = panelRect.Bottom + 10f * s;
         }
 
         float y = startY;
@@ -862,7 +897,19 @@ internal sealed class HudOverlayWindow : IDisposable
             var maxTextW = maxW - padX * 2f - barW;
             var textW = Math.Min(g.MeasureString(alert.Text, font, (int)maxTextW, fmt).Width + 2f, maxTextW);
             var w = textW + padX * 2f + barW;
-            var x = left ? margin : mon.Width - margin - w;
+
+            // Each row is only as wide as its text, so where its *fixed* edge sits decides which
+            // way the stack ragged-edges. Anchored right the boxes have to grow leftwards, or a
+            // long alert walks off the screen; centred, they grow from the middle both ways.
+            var x = custom
+                ? snap.AlertX
+                : growth switch
+                {
+                    HudGrowth.Right => marginX,
+                    HudGrowth.Left => mon.Width - marginX - w,
+                    _ => (mon.Width - w) / 2f,
+                };
+            x = Math.Clamp(x, 0f, Math.Max(0f, mon.Width - w));
             var rect = new RectangleF(x, y, w, rowH);
             var radius = 7f * s;
 
@@ -896,7 +943,7 @@ internal sealed class HudOverlayWindow : IDisposable
                     new RectangleF(rect.X + barW + padX - 2f, rect.Y + padY, maxTextW, lineH + 1f), fmt);
             }
 
-            y += top ? rowH + gap : -(rowH + gap);
+            y += downward ? rowH + gap : -(rowH + gap);
         }
     }
 

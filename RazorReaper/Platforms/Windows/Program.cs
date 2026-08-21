@@ -17,6 +17,15 @@ public static class Program
             return;
         }
 
+        // Headless self-test for the durability pipeline: runs the SHIPPING DurabilityReader
+        // against a saved region screenshot and exits. This is how the reader is verified
+        // against known ground truth without launching the game or the UI.
+        if (FlakTest.ShouldRun(args))
+        {
+            Environment.Exit(FlakTest.Run(args));
+            return;
+        }
+
         global::WinRT.ComWrappersSupport.InitializeComWrappers();
         global::Microsoft.UI.Xaml.Application.Start((p) =>
         {

@@ -78,7 +78,7 @@
 
     .settings-status-card h4 {
         color: var(--text-primary);
-        font-size: 1rem;
+        font-size: var(--card-title-size);
         margin-bottom: 1rem;
         font-weight: 600;
     }
@@ -224,7 +224,7 @@
     }
 
     .fov-btn-large:hover {
-        transform: translateY(-1px);
+
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
     }
 
@@ -361,7 +361,7 @@
 
     .info-header h4 {
         color: var(--accent-purple);
-        font-size: 1rem;
+        font-size: var(--card-title-size);
         font-weight: 600;
         margin: 0;
     }
@@ -393,7 +393,7 @@
     .feature-tag-fov:hover {
         background: rgba(255, 255, 255, 0.15);
         border-color: rgba(255, 255, 255, 0.25);
-        transform: translateY(-1px);
+
     }
 
 .guide-steps {
@@ -416,7 +416,7 @@
     .guide-step:hover {
         background: rgba(0, 0, 0, 0.2);
         border-color: rgba(255, 255, 255, 0.15);
-        transform: translateX(2px);
+
     }
 
 .step-icon {
@@ -534,7 +534,7 @@
     background: rgba(0, 0, 0, 0.5);
     border-color: rgba(var(--accent-purple-rgb), 0.4);
     box-shadow: 0 4px 12px rgba(var(--accent-purple-rgb), 0.2);
-    transform: translateY(-1px);
+
 }
 
 .suitfov-layout .path-display.clickable:active {
@@ -562,7 +562,7 @@
 
     .notice-header h4 {
         color: var(--accent-orange);
-        font-size: 1rem;
+        font-size: var(--card-title-size);
         font-weight: 600;
         margin: 0;
     }
@@ -868,7 +868,7 @@
     background: linear-gradient(135deg, rgba(var(--accent-purple-rgb), 0.3), rgba(var(--accent-purple-rgb), 0.18));
     border-color: var(--accent-purple);
     box-shadow: 0 8px 24px rgba(var(--accent-purple-rgb), 0.35);
-    transform: translateY(-1px);
+
 }
 
 .vision-tek-toggle.is-off {
@@ -881,7 +881,7 @@
     background: linear-gradient(135deg, rgba(var(--accent-red-rgb), 0.28), rgba(var(--accent-red-rgb), 0.16));
     border-color: var(--accent-red);
     box-shadow: 0 8px 24px rgba(var(--accent-red-rgb), 0.35);
-    transform: translateY(-1px);
+
 }
 
 /* --- TEK underlying-setting chips --- */
@@ -1056,42 +1056,6 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-}
-
-.vision-fov-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    flex: 1;
-    height: 6px !important;
-    padding: 0 !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    border: none !important;
-    border-radius: var(--radius-round) !important;
-    cursor: pointer;
-}
-
-.vision-fov-slider:focus {
-    box-shadow: none !important;
-    background: rgba(255, 255, 255, 0.18) !important;
-}
-
-.vision-fov-slider::-webkit-slider-runnable-track {
-    height: 6px;
-    border-radius: var(--radius-round);
-    background: transparent;
-}
-
-.vision-fov-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    margin-top: -6px;
-    border-radius: 50%;
-    background: var(--accent-purple);
-    border: 2px solid var(--text-primary);
-    box-shadow: 0 0 8px rgba(var(--accent-purple-rgb), 0.6);
-    cursor: pointer;
 }
 
 .vision-fov-number {

@@ -36,7 +36,7 @@
 
 .ocbps-intro h3 {
     margin: 0 0 0.4rem 0;
-    font-size: 1.15rem;
+    font-size: var(--card-title-size);
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -54,7 +54,7 @@
 }
 
 .ocbps-card {
-    padding: 1.5rem !important;
+    padding: var(--card-pad) !important;
     margin-bottom: 0 !important;
 }
 
@@ -140,7 +140,7 @@
 }
 
 .ocbps-tag:hover {
-    transform: translateY(-1px);
+
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
 }
 
