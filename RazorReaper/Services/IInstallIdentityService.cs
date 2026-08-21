@@ -44,4 +44,14 @@ public interface IInstallIdentityService
         byte[] body,
         DateTimeOffset now,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reports that the backend answered HTTP 401 to a request that carried
+    /// <paramref name="rejectedHeaders"/>. The install is then treated as unregistered again
+    /// (requests go unsigned until the backend acknowledges the key once more) and one
+    /// re-registration is scheduled, at most once per ten minutes per process. Reports for
+    /// signatures made before the current registration was acknowledged are ignored: the
+    /// request was in flight while the install re-registered.
+    /// </summary>
+    void ReportSignedRequestRejected(Uri uri, SignedRequestHeaders rejectedHeaders);
 }

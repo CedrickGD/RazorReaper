@@ -15,7 +15,9 @@ namespace RazorReaper.Services.Implementations;
 /// rr.install.v1 client side: one ECDSA P-256 keypair per install (private half in secure
 /// storage), one-time registration of the public half with the backend, and request signing.
 /// Registration is best-effort: it never throws, never blocks startup, and retries transient
-/// failures in the background with exponential backoff (max five attempts per process).
+/// failures in the background with exponential backoff (max five attempts per process). When
+/// the backend later rejects a signed request (install lost or revoked server-side) the install
+/// drops back to unsigned and re-registers, at most once per ten minutes.
 /// </summary>
 public sealed class InstallIdentityService : IInstallIdentityService, IDisposable
 {
@@ -26,6 +28,9 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
     internal const string HttpClientName = "RazorReaperTelemetry";
     private const int MinTimeoutSeconds = 3;
     private const int MaxTimeoutSeconds = 60;
+
+    /// <summary>Minimum spacing between re-registrations triggered by rejected signatures.</summary>
+    internal static readonly TimeSpan ReRegistrationWindow = TimeSpan.FromMinutes(10);
 
     private static readonly TimeSpan[] DefaultRetryDelays =
     [
@@ -47,12 +52,26 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
     private readonly SemaphoreSlim _keyGate = new(1, 1);
     private readonly SemaphoreSlim _registerGate = new(1, 1);
     private readonly object _signGate = new();
+    private readonly object _reRegisterGate = new();
     private readonly CancellationTokenSource _lifetime = new();
 
     private ECDsa? _key;
-    private bool _keyGeneratedThisProcess;
     private bool _keyUnavailable;
     private volatile bool _isRegistered;
+
+    /// <summary>
+    /// Set once the persisted marker can no longer vouch for the current key: a key generated or
+    /// rotated in this process, or a signature the backend rejected. Never cleared; from then on
+    /// only a registration response flips <see cref="_isRegistered"/> back on.
+    /// </summary>
+    private volatile bool _distrustRegistrationMarker;
+
+    /// <summary>Clock second at which the backend last acknowledged the key (0 = marker only). Guarded by <see cref="_signGate"/>.</summary>
+    private long _registeredAtUnixSeconds;
+
+    /// <summary>Guarded by <see cref="_reRegisterGate"/>.</summary>
+    private DateTimeOffset _nextReRegistrationAllowedAt = DateTimeOffset.MinValue;
+
     private int _retryScheduled;
     private int _retryIndex;
 
@@ -86,6 +105,9 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     /// <summary>The background retry loop, when one was scheduled. Exposed for tests.</summary>
     internal Task? RetryTask { get; private set; }
+
+    /// <summary>The last re-registration kicked off by a rejected signature. Exposed for tests.</summary>
+    internal Task? ReRegistrationTask { get; private set; }
 
     public async Task<InstallPublicKeyJwk?> GetPublicKeyAsync(CancellationToken cancellationToken = default)
     {
@@ -166,7 +188,7 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
                 }
 
                 var installId = _clientIdentity.GetIdentity().InstallId;
-                if (!_keyGeneratedThisProcess && IsMarkedRegistered(installId))
+                if (!_distrustRegistrationMarker && IsMarkedRegistered(installId))
                 {
                     _isRegistered = true;
                     return;
@@ -191,6 +213,43 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         {
             _logger.LogWarning(ex, "Install registration failed unexpectedly.");
         }
+    }
+
+    public void ReportSignedRequestRejected(Uri uri, SignedRequestHeaders rejectedHeaders)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(rejectedHeaders);
+
+        string installId;
+        lock (_signGate)
+        {
+            if (!_isRegistered)
+            {
+                // Already dropped by an earlier rejection (or never registered): nothing new.
+                return;
+            }
+
+            installId = _clientIdentity.GetIdentity().InstallId;
+            if (!string.Equals(rejectedHeaders.InstallId, installId, StringComparison.OrdinalIgnoreCase)
+                || !IsSignedAfterCurrentRegistration(rejectedHeaders.Timestamp))
+            {
+                // Signed under a previous identity or before the current registration was
+                // acknowledged: the request was in flight while the install re-registered.
+                // Ignoring is the safe side; a real rejection repeats on the next signed request.
+                return;
+            }
+
+            _isRegistered = false;
+            _distrustRegistrationMarker = true;
+        }
+
+        ClearRegistrationMarkers();
+        var scheduled = TryScheduleReRegistration();
+        _logger.LogWarning(
+            "Backend rejected the install signature of {InstallId} on {Path}; requests go out unsigned until the install re-registers ({Action}).",
+            installId,
+            uri.AbsolutePath,
+            scheduled ? "re-registering now" : "re-registration throttled");
     }
 
     public void Dispose()
@@ -254,7 +313,7 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
                     return null;
                 }
 
-                _keyGeneratedThisProcess = true;
+                _distrustRegistrationMarker = true;
             }
 
             Volatile.Write(ref _key, key);
@@ -372,7 +431,7 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
             }
 
             old?.Dispose();
-            _keyGeneratedThisProcess = true;
+            _distrustRegistrationMarker = true;
             _logger.LogInformation("Install identity rotated to {InstallId}.", rotated.InstallId);
         }
         finally
@@ -380,6 +439,11 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
             _keyGate.Release();
         }
 
+        ClearRegistrationMarkers();
+    }
+
+    private void ClearRegistrationMarkers()
+    {
         try
         {
             _preferences.Remove(RegisteredAtPreferenceKey);
@@ -387,7 +451,8 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         }
         catch
         {
-            // Preference storage unavailable; the next successful registration rewrites both.
+            // Preference storage unavailable; the marker is distrusted in memory anyway and the
+            // next successful registration rewrites both.
         }
     }
 
@@ -511,6 +576,12 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     private void ScheduleRetry()
     {
+        if (Volatile.Read(ref _retryIndex) >= RetryDelays.Length)
+        {
+            // Budget spent for this process: a new loop would only log "gave up" once more.
+            return;
+        }
+
         if (Interlocked.Exchange(ref _retryScheduled, 1) != 0)
         {
             return;
@@ -518,6 +589,39 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
         RetryTask = Task.Run(RunRetryLoopAsync);
     }
+
+    /// <summary>
+    /// Kicks off one re-registration for a rejected signature unless one was already kicked off
+    /// within <see cref="ReRegistrationWindow"/>. Transient failures inside it use the normal
+    /// retry budget; a throttled rejection simply leaves the install unsigned.
+    /// </summary>
+    private bool TryScheduleReRegistration()
+    {
+        var now = _timeProvider.GetUtcNow();
+        lock (_reRegisterGate)
+        {
+            if (now < _nextReRegistrationAllowedAt)
+            {
+                return false;
+            }
+
+            _nextReRegistrationAllowedAt = now + ReRegistrationWindow;
+        }
+
+        if (_lifetime.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        var token = _lifetime.Token;
+        ReRegistrationTask = Task.Run(() => EnsureRegisteredAsync(token));
+        return true;
+    }
+
+    /// <summary>Called under <see cref="_signGate"/>. A signature from the same second as the acknowledgement counts as "before" (see caller).</summary>
+    private bool IsSignedAfterCurrentRegistration(string timestamp)
+        => long.TryParse(timestamp, NumberStyles.None, CultureInfo.InvariantCulture, out var signedAt)
+           && signedAt > _registeredAtUnixSeconds;
 
     private async Task RunRetryLoopAsync()
     {
@@ -575,10 +679,16 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     private void MarkRegistered(string installId, string? registeredAt)
     {
-        _isRegistered = true;
+        var now = _timeProvider.GetUtcNow();
+        lock (_signGate)
+        {
+            _registeredAtUnixSeconds = now.ToUnixTimeSeconds();
+            _isRegistered = true;
+        }
+
         try
         {
-            _preferences.Set(RegisteredAtPreferenceKey, registeredAt ?? _timeProvider.GetUtcNow().ToString("O", CultureInfo.InvariantCulture));
+            _preferences.Set(RegisteredAtPreferenceKey, registeredAt ?? now.ToString("O", CultureInfo.InvariantCulture));
             _preferences.Set(RegisteredInstallIdPreferenceKey, installId);
         }
         catch (Exception ex)

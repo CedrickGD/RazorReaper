@@ -3,7 +3,14 @@ using System.Net;
 
 namespace RazorReaper.UnitTests.Infrastructure;
 
-public sealed record RecordedHttpRequest(HttpMethod Method, Uri? Uri, string? Body);
+public sealed record RecordedHttpRequest(
+    HttpMethod Method,
+    Uri? Uri,
+    string? Body,
+    IReadOnlyDictionary<string, string[]> Headers)
+{
+    public bool HasHeader(string name) => Headers.ContainsKey(name);
+}
 
 public sealed class RecordingHttpMessageHandler : HttpMessageHandler
 {
@@ -25,7 +32,11 @@ public sealed class RecordingHttpMessageHandler : HttpMessageHandler
             : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
         cancellationToken.ThrowIfCancellationRequested();
-        _requests.Enqueue(new RecordedHttpRequest(request.Method, request.RequestUri, body));
+        _requests.Enqueue(new RecordedHttpRequest(
+            request.Method,
+            request.RequestUri,
+            body,
+            request.Headers.ToDictionary(h => h.Key, h => h.Value.ToArray(), StringComparer.OrdinalIgnoreCase)));
 
         return await ResponseFactory(request, cancellationToken).ConfigureAwait(false);
     }

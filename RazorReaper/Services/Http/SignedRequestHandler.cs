@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Configuration;
 using RazorReaper.Services.Implementations;
@@ -7,7 +8,9 @@ namespace RazorReaper.Services.Http;
 /// <summary>
 /// Adds the rr.install.v1 signature headers to every request aimed at an allow-listed backend
 /// host, except the registration call itself. Requests stay unsigned (and are still sent) when
-/// no key is available, so legacy-tolerant routes keep working.
+/// no key is available, so legacy-tolerant routes keep working. A 401 to a request that did
+/// carry headers is reported back to the identity service so a lost or revoked server-side
+/// install can re-register.
 /// </summary>
 public sealed class SignedRequestHandler : DelegatingHandler
 {
@@ -56,12 +59,21 @@ public sealed class SignedRequestHandler : DelegatingHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        SignedRequestHeaders? signed = null;
         if (ShouldSign(request.RequestUri))
         {
-            await TrySignAsync(request, cancellationToken).ConfigureAwait(false);
+            signed = await TrySignAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
-        return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (signed is not null && response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            // Only a request that actually carried headers says anything about the registration:
+            // a 401 on an unsigned request is the route demanding a signature, not rejecting one.
+            ReportRejected(request.RequestUri!, signed);
+        }
+
+        return response;
     }
 
     private bool ShouldSign(Uri? uri)
@@ -74,7 +86,8 @@ public sealed class SignedRequestHandler : DelegatingHandler
         return !string.Equals(uri.AbsolutePath, InstallIdentityService.RegisterPath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task TrySignAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    /// <summary>Returns the headers attached to the request, or null when it goes out unsigned.</summary>
+    private async Task<SignedRequestHeaders?> TrySignAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         try
         {
@@ -84,12 +97,13 @@ public sealed class SignedRequestHandler : DelegatingHandler
                 .ConfigureAwait(false);
             if (headers is null)
             {
-                return;
+                return null;
             }
 
             SetHeader(request, SignedRequestHeaders.InstallHeaderName, headers.InstallId);
             SetHeader(request, SignedRequestHeaders.TimestampHeaderName, headers.Timestamp);
             SetHeader(request, SignedRequestHeaders.SignatureHeaderName, headers.Signature);
+            return headers;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -98,6 +112,19 @@ public sealed class SignedRequestHandler : DelegatingHandler
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Request signing failed for {Uri}; sending unsigned.", request.RequestUri);
+            return null;
+        }
+    }
+
+    private void ReportRejected(Uri uri, SignedRequestHeaders headers)
+    {
+        try
+        {
+            _identityAccessor().ReportSignedRequestRejected(uri, headers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not report the rejected install signature for {Uri}.", uri);
         }
     }
 

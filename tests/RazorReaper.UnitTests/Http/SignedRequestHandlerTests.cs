@@ -38,6 +38,7 @@ public sealed class SignedRequestHandlerTests
         var signingString = InstallRequestSigning.BuildSigningString(
             HttpMethod.Post, request.RequestUri!, timestamp, Encoding.UTF8.GetBytes(body));
         Assert.True(InstallRequestSigning.Verify(key, signingString, signature));
+        Assert.Empty(identity.ReportedRejections);
     }
 
     [Fact]
@@ -127,6 +128,68 @@ public sealed class SignedRequestHandlerTests
     }
 
     [Fact]
+    public async Task Reports401OnSignedRequestWithTheHeadersItAttached()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var identity = new KeyedIdentity(key);
+        using var harness = new Harness(identity, Now);
+        harness.Inner.Status = HttpStatusCode.Unauthorized;
+
+        using var response = await harness.Client.GetAsync("https://rr-admin-panel.pages.dev/api/usage/status?hwid=X");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var sent = Assert.Single(harness.Inner.Requests);
+        var (uri, headers) = Assert.Single(identity.ReportedRejections);
+        Assert.Equal(sent.Uri, uri);
+        Assert.Equal(Assert.Single(sent.Headers[SignedRequestHeaders.InstallHeaderName]), headers.InstallId);
+        Assert.Equal(Assert.Single(sent.Headers[SignedRequestHeaders.TimestampHeaderName]), headers.Timestamp);
+        Assert.Equal(Assert.Single(sent.Headers[SignedRequestHeaders.SignatureHeaderName]), headers.Signature);
+    }
+
+    [Fact]
+    public async Task DoesNotReport401OnUnsignedRequest()
+    {
+        var identity = new KeyedIdentity(null);
+        using var harness = new Harness(identity, Now);
+        harness.Inner.Status = HttpStatusCode.Unauthorized;
+
+        using var response = await harness.Client.GetAsync("https://rr-admin-panel.pages.dev/api/usage/status");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var sent = Assert.Single(harness.Inner.Requests);
+        Assert.DoesNotContain(SignedRequestHeaders.InstallHeaderName, sent.Headers.Keys);
+        Assert.Empty(identity.ReportedRejections);
+    }
+
+    [Fact]
+    public async Task DoesNotReportOtherStatusCodesOnSignedRequests()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var identity = new KeyedIdentity(key);
+        using var harness = new Harness(identity, Now);
+        harness.Inner.Status = HttpStatusCode.Forbidden;
+
+        using var response = await harness.Client.GetAsync("https://rr-admin-panel.pages.dev/api/usage/status");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(identity.ReportedRejections);
+    }
+
+    [Fact]
+    public async Task ReturnsTheResponseEvenWhenReportingThrows()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var identity = new KeyedIdentity(key) { ReportFailure = new InvalidOperationException("boom") };
+        using var harness = new Harness(identity, Now);
+        harness.Inner.Status = HttpStatusCode.Unauthorized;
+
+        using var response = await harness.Client.GetAsync("https://rr-admin-panel.pages.dev/api/usage/status");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Single(identity.ReportedRejections);
+    }
+
+    [Fact]
     public void AllowedHostsComeFromTelemetryEndpointAndAdminPanel()
     {
         var hosts = SignedRequestHandler.AllowedHostsFrom(new AppConfiguration
@@ -172,6 +235,8 @@ public sealed class SignedRequestHandlerTests
 
         public IReadOnlyList<SentRequest> Requests => _requests;
 
+        public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
@@ -182,16 +247,21 @@ public sealed class SignedRequestHandlerTests
                 request.Content?.Headers.ContentType?.MediaType,
                 request.Content?.Headers.ContentType?.CharSet,
                 request.Headers.ToDictionary(h => h.Key, h => h.Value.ToArray(), StringComparer.OrdinalIgnoreCase)));
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            return new HttpResponseMessage(Status) { Content = new StringContent("{}") };
         }
     }
 
     private sealed class KeyedIdentity(ECDsa? key) : IInstallIdentityService
     {
+        private readonly List<(Uri Uri, SignedRequestHeaders Headers)> _reported = [];
         private int _signCalls;
 
         public int SignCallCount => _signCalls;
         public bool IsRegistered => key is not null;
+        public IReadOnlyList<(Uri Uri, SignedRequestHeaders Headers)> ReportedRejections => _reported;
+
+        /// <summary>When set, <see cref="ReportSignedRequestRejected"/> records the call and then throws it.</summary>
+        public Exception? ReportFailure { get; init; }
 
         public Task<InstallPublicKeyJwk?> GetPublicKeyAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(key is null ? null : InstallRequestSigning.ToJwk(key));
@@ -212,6 +282,15 @@ public sealed class SignedRequestHandlerTests
             return Task.FromResult<SignedRequestHeaders?>(
                 new SignedRequestHeaders(InstallId, timestamp, InstallRequestSigning.Base64UrlEncode(signature)));
         }
+
+        public void ReportSignedRequestRejected(Uri uri, SignedRequestHeaders rejectedHeaders)
+        {
+            _reported.Add((uri, rejectedHeaders));
+            if (ReportFailure is not null)
+            {
+                throw ReportFailure;
+            }
+        }
     }
 
     private sealed class ThrowingIdentity : IInstallIdentityService
@@ -224,6 +303,9 @@ public sealed class SignedRequestHandlerTests
         public Task EnsureRegisteredAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task<SignedRequestHeaders?> SignAsync(HttpMethod method, Uri uri, byte[] body, DateTimeOffset now, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("boom");
+
+        public void ReportSignedRequestRejected(Uri uri, SignedRequestHeaders rejectedHeaders)
             => throw new InvalidOperationException("boom");
     }
 }

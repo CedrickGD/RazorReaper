@@ -17,7 +17,9 @@ public sealed class InstallIdentityServiceTests
     private const string InstallId = "d85b1407-351d-4694-9392-03acc5870eb1";
     private const string HardwareId = "5734B40BB3DF5517866D578B18438B61";
     private const string RegisterUrl = "https://backend.rr-admin-panel.workers.dev/api/install/register";
+    private const string UsageStatusUrl = "https://rr-admin-panel.pages.dev/api/usage/status";
     private static readonly DateTimeOffset Now = new(2026, 8, 21, 12, 0, 0, TimeSpan.Zero);
+    private static readonly string[] AllowedHosts = ["backend.rr-admin-panel.workers.dev", "rr-admin-panel.pages.dev"];
 
     [Fact]
     public async Task SignAsyncReturnsNullUntilTheBackendAcknowledgedTheKey()
@@ -321,6 +323,240 @@ public sealed class InstallIdentityServiceTests
         Assert.Empty(second.Http.Requests);
     }
 
+    [Fact]
+    public async Task RetryLoopDoesNotRestartOnceTheBudgetIsExhausted()
+    {
+        using var harness = new Harness();
+        harness.Service.RetryDelays = [TimeSpan.Zero, TimeSpan.Zero];
+        harness.Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.TooManyRequests, """{"ok":false}"""));
+
+        await harness.Service.EnsureRegisteredAsync();
+        var loop = harness.Service.RetryTask;
+        Assert.NotNull(loop);
+        await loop.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(3, harness.Http.Requests.Count);
+        Assert.Equal(1, harness.Logger.Count("gave up"));
+
+        await harness.Service.EnsureRegisteredAsync();
+
+        // The direct attempt is still made, but no second loop starts and nothing gives up twice.
+        Assert.Equal(4, harness.Http.Requests.Count);
+        Assert.Same(loop, harness.Service.RetryTask);
+        Assert.Equal(1, harness.Logger.Count("gave up"));
+        Assert.False(harness.Service.IsRegistered);
+    }
+
+    [Fact]
+    public async Task RejectedSignatureClearsRegistrationAndReRegistersExactlyOnce()
+    {
+        using var harness = new Harness();
+        await harness.RegisterAsync();
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        var releaseRegister = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Http.ResponseFactory = async (request, _) =>
+        {
+            if (!IsRegister(request))
+            {
+                return Json(HttpStatusCode.Unauthorized, """{"ok":false,"error":"Invalid install signature."}""");
+            }
+
+            await releaseRegister.Task;
+            return Json(HttpStatusCode.Created, """{"ok":true}""");
+        };
+
+        using var response = await harness.AppClient.GetAsync(UsageStatusUrl);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(harness.Http.Requests[1].HasHeader(SignedRequestHeaders.InstallHeaderName));
+        // Cleared synchronously: the very next request goes out unsigned while the re-registration runs.
+        Assert.False(harness.Service.IsRegistered);
+        Assert.Null(await harness.Service.SignAsync(HttpMethod.Get, new Uri(UsageStatusUrl), [], harness.Time.GetUtcNow()));
+        Assert.Null(harness.Preferences.Peek("rr.install.registered_id"));
+        Assert.NotNull(harness.Service.ReRegistrationTask);
+
+        releaseRegister.SetResult();
+        await harness.AwaitReRegistrationAsync();
+
+        Assert.True(harness.Service.IsRegistered);
+        Assert.Equal([RegisterUrl, UsageStatusUrl, RegisterUrl], harness.Http.Requests.Select(r => r.Uri!.ToString()));
+        Assert.Equal(InstallId, harness.Preferences.Peek("rr.install.registered_id"));
+        Assert.Equal(0, harness.Identity.RotationCount);
+        Assert.Equal(1, harness.Logger.Count("rejected the install signature"));
+    }
+
+    [Fact]
+    public async Task SuccessfulReRegistrationResumesSigning()
+    {
+        using var harness = new Harness();
+        await harness.RecoverFromRejectionAsync();
+        harness.Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.OK, "{}"));
+
+        using var response = await harness.AppClient.GetAsync(UsageStatusUrl);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sent = harness.Http.Requests[^1];
+        Assert.Equal(InstallId, Assert.Single(sent.Headers[SignedRequestHeaders.InstallHeaderName]));
+        Assert.True(sent.HasHeader(SignedRequestHeaders.SignatureHeaderName));
+    }
+
+    [Fact]
+    public async Task SecondRejectionWithinTenMinutesTriggersNoReRegistration()
+    {
+        using var harness = new Harness();
+        await harness.RecoverFromRejectionAsync();
+        var firstReRegistration = harness.Service.ReRegistrationTask;
+        var requestsBefore = harness.Http.Requests.Count;
+        harness.Time.Advance(TimeSpan.FromMinutes(5));
+        harness.Http.ResponseFactory = RegisterSucceedsOtherwise(HttpStatusCode.Unauthorized);
+
+        using var rejected = await harness.AppClient.GetAsync(UsageStatusUrl);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+        Assert.True(harness.Http.Requests[^1].HasHeader(SignedRequestHeaders.InstallHeaderName));
+        Assert.False(harness.Service.IsRegistered);
+        Assert.Same(firstReRegistration, harness.Service.ReRegistrationTask);
+        Assert.Null(harness.Service.RetryTask);
+        Assert.Equal(requestsBefore + 1, harness.Http.Requests.Count);
+        Assert.Equal(1, harness.Logger.Count("throttled"));
+
+        // From here on requests go out unsigned, and a 401 on an unsigned request changes nothing.
+        using var unsigned = await harness.AppClient.GetAsync(UsageStatusUrl);
+
+        Assert.False(harness.Http.Requests[^1].HasHeader(SignedRequestHeaders.InstallHeaderName));
+        Assert.Same(firstReRegistration, harness.Service.ReRegistrationTask);
+        Assert.Equal(requestsBefore + 2, harness.Http.Requests.Count);
+        // One rejection during recovery, one throttled — the unsigned 401 logged nothing.
+        Assert.Equal(2, harness.Logger.Count("rejected the install signature"));
+    }
+
+    [Fact]
+    public async Task RejectionAfterTenMinutesReRegistersAgain()
+    {
+        using var harness = new Harness();
+        await harness.RecoverFromRejectionAsync();
+        var firstReRegistration = harness.Service.ReRegistrationTask;
+        harness.Time.Advance(InstallIdentityService.ReRegistrationWindow);
+        harness.Http.ResponseFactory = RegisterSucceedsOtherwise(HttpStatusCode.Unauthorized);
+
+        using var rejected = await harness.AppClient.GetAsync(UsageStatusUrl);
+
+        Assert.NotSame(firstReRegistration, harness.Service.ReRegistrationTask);
+        await harness.AwaitReRegistrationAsync();
+        Assert.True(harness.Service.IsRegistered);
+        Assert.Equal(
+            [RegisterUrl, UsageStatusUrl, RegisterUrl, UsageStatusUrl, RegisterUrl],
+            harness.Http.Requests.Select(r => r.Uri!.ToString()));
+    }
+
+    [Fact]
+    public async Task RejectionOfUnsignedRequestIsIgnored()
+    {
+        using var harness = new Harness();
+        harness.Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.Unauthorized, """{"ok":false}"""));
+
+        using var response = await harness.AppClient.GetAsync(UsageStatusUrl);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var sent = Assert.Single(harness.Http.Requests);
+        Assert.False(sent.HasHeader(SignedRequestHeaders.InstallHeaderName));
+        Assert.False(harness.Service.IsRegistered);
+        Assert.Null(harness.Service.ReRegistrationTask);
+        Assert.Null(harness.Service.RetryTask);
+        Assert.Equal(0, harness.Logger.Count("rejected the install signature"));
+    }
+
+    [Fact]
+    public async Task RejectionSignedBeforeTheReRegistrationIsIgnored()
+    {
+        using var harness = new Harness();
+        await harness.RegisterAsync();
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        var uri = new Uri(UsageStatusUrl);
+        var first = await harness.Service.SignAsync(HttpMethod.Get, uri, [], harness.Time.GetUtcNow());
+        var inFlightTwin = await harness.Service.SignAsync(HttpMethod.Get, uri, [], harness.Time.GetUtcNow());
+        harness.Http.ResponseFactory = RegisterSucceedsOtherwise(HttpStatusCode.Unauthorized);
+
+        harness.Service.ReportSignedRequestRejected(uri, first!);
+        await harness.AwaitReRegistrationAsync();
+        Assert.True(harness.Service.IsRegistered);
+        var requestsAfterRecovery = harness.Http.Requests.Count;
+
+        // The twin was signed before the backend acknowledged the key again: its 401 is stale.
+        harness.Service.ReportSignedRequestRejected(uri, inFlightTwin!);
+
+        Assert.True(harness.Service.IsRegistered);
+        Assert.Equal(requestsAfterRecovery, harness.Http.Requests.Count);
+        Assert.Equal(1, harness.Logger.Count("rejected the install signature"));
+
+        // A signature made after the acknowledgement is a real rejection again.
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        var fresh = await harness.Service.SignAsync(HttpMethod.Get, uri, [], harness.Time.GetUtcNow());
+        harness.Service.ReportSignedRequestRejected(uri, fresh!);
+
+        Assert.False(harness.Service.IsRegistered);
+        Assert.Equal(2, harness.Logger.Count("rejected the install signature"));
+    }
+
+    [Fact]
+    public async Task ReRegistrationAfterRejectionFollowsTheRotatePathOn401()
+    {
+        using var harness = new Harness();
+        await harness.RegisterAsync();
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        var registerCalls = 0;
+        harness.Http.ResponseFactory = (request, _) => Task.FromResult(IsRegister(request)
+            ? ++registerCalls == 1
+                ? Json(HttpStatusCode.Unauthorized, """{"ok":false,"error":"revoked"}""")
+                : Json(HttpStatusCode.Created, """{"ok":true}""")
+            : Json(HttpStatusCode.Unauthorized, """{"ok":false}"""));
+
+        using var rejected = await harness.AppClient.GetAsync(UsageStatusUrl);
+        await harness.AwaitReRegistrationAsync();
+
+        Assert.True(harness.Service.IsRegistered);
+        Assert.Equal(1, harness.Identity.RotationCount);
+        var rotatedId = harness.Identity.GetIdentity().InstallId;
+        Assert.NotEqual(InstallId, rotatedId);
+        Assert.Equal([RegisterUrl, UsageStatusUrl, RegisterUrl, RegisterUrl], harness.Http.Requests.Select(r => r.Uri!.ToString()));
+
+        harness.Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.OK, "{}"));
+        using var resumed = await harness.AppClient.GetAsync(UsageStatusUrl);
+        Assert.Equal(rotatedId, Assert.Single(harness.Http.Requests[^1].Headers[SignedRequestHeaders.InstallHeaderName]));
+    }
+
+    [Fact]
+    public async Task ReRegistrationAfterRejectionUsesTheRetryBudgetOnTransientFailure()
+    {
+        using var harness = new Harness();
+        await harness.RegisterAsync();
+        harness.Time.Advance(TimeSpan.FromSeconds(1));
+        harness.Service.RetryDelays = [TimeSpan.Zero];
+        var registerCalls = 0;
+        harness.Http.ResponseFactory = (request, _) => Task.FromResult(IsRegister(request)
+            ? ++registerCalls == 1
+                ? Json(HttpStatusCode.ServiceUnavailable, "")
+                : Json(HttpStatusCode.Created, """{"ok":true}""")
+            : Json(HttpStatusCode.Unauthorized, """{"ok":false}"""));
+
+        using var rejected = await harness.AppClient.GetAsync(UsageStatusUrl);
+        await harness.AwaitReRegistrationAsync();
+        Assert.NotNull(harness.Service.RetryTask);
+        await harness.Service.RetryTask.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(harness.Service.IsRegistered);
+        Assert.Equal(0, harness.Identity.RotationCount);
+        Assert.Equal([RegisterUrl, UsageStatusUrl, RegisterUrl, RegisterUrl], harness.Http.Requests.Select(r => r.Uri!.ToString()));
+    }
+
+    private static bool IsRegister(HttpRequestMessage request)
+        => string.Equals(request.RequestUri?.AbsolutePath, InstallIdentityService.RegisterPath, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Register POSTs get a 201; every other request gets <paramref name="status"/>.</summary>
+    private static Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> RegisterSucceedsOtherwise(HttpStatusCode status)
+        => (request, _) => Task.FromResult(IsRegister(request)
+            ? Json(HttpStatusCode.Created, """{"ok":true}""")
+            : Json(status, """{"ok":false,"error":"Invalid install signature."}"""));
+
     private static HttpResponseMessage Json(HttpStatusCode status, string json)
         => new(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
 
@@ -337,6 +573,7 @@ public sealed class InstallIdentityServiceTests
             Factory = new FakeHttpClientFactory(Http);
             Identity = new RotatingClientIdentityService(InstallId, HardwareId);
             Time = new ManualTimeProvider(Now);
+            Logger = new RecordingLogger<InstallIdentityService>();
             Service = new InstallIdentityService(
                 Identity,
                 SecureStore,
@@ -354,7 +591,15 @@ public sealed class InstallIdentityServiceTests
                 }),
                 new StubLicenseService { CurrentLicenseKey = licenseKey },
                 Time,
-                NullLogger<InstallIdentityService>.Instance);
+                Logger);
+
+            // The app's side of the pipeline: requests run through the signing handler into the
+            // same recorder the registration client uses, exactly like the production HttpClients.
+            var signingHandler = new SignedRequestHandler(() => Service, Time, AllowedHosts, NullLogger<SignedRequestHandler>.Instance)
+            {
+                InnerHandler = Http
+            };
+            AppClient = new HttpClient(signingHandler, disposeHandler: false);
         }
 
         /// <summary>Registers with a 201 and returns the recorder to its caller's control.</summary>
@@ -367,16 +612,43 @@ public sealed class InstallIdentityServiceTests
             Assert.True(Service.IsRegistered);
         }
 
+        /// <summary>
+        /// Registers, has the backend reject one signed request a second later, and waits for the
+        /// resulting re-registration (201) to land. Leaves three recorded requests behind.
+        /// </summary>
+        public async Task RecoverFromRejectionAsync()
+        {
+            await RegisterAsync();
+            Time.Advance(TimeSpan.FromSeconds(1));
+            var previous = Http.ResponseFactory;
+            Http.ResponseFactory = RegisterSucceedsOtherwise(HttpStatusCode.Unauthorized);
+            using var response = await AppClient.GetAsync(UsageStatusUrl);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            await AwaitReRegistrationAsync();
+            Assert.True(Service.IsRegistered);
+            Http.ResponseFactory = previous;
+        }
+
+        public async Task AwaitReRegistrationAsync()
+        {
+            var task = Service.ReRegistrationTask;
+            Assert.NotNull(task);
+            await task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
         public FakeSecureValueStore SecureStore { get; }
         public FakePreferencesStore Preferences { get; }
         public RecordingHttpMessageHandler Http { get; }
         public FakeHttpClientFactory Factory { get; }
         public RotatingClientIdentityService Identity { get; }
         public ManualTimeProvider Time { get; }
+        public RecordingLogger<InstallIdentityService> Logger { get; }
         public InstallIdentityService Service { get; }
+        public HttpClient AppClient { get; }
 
         public void Dispose()
         {
+            AppClient.Dispose();
             Service.Dispose();
             Factory.Dispose();
             Http.Dispose();
