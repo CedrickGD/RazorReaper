@@ -288,9 +288,7 @@ public sealed class TelemetryService : ITelemetryService
             Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
         };
 
-        var credential = settings.AppKey.Trim();
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credential);
-        request.Headers.TryAddWithoutValidation("x-app-key", credential);
+        // Authentication is the per-install ECDSA signature added by SignedRequestHandler.
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var client = httpClientFactory.CreateClient("RazorReaperTelemetry");
@@ -324,7 +322,7 @@ public sealed class TelemetryService : ITelemetryService
         if (statusCode is 401 or 403)
         {
             logger.LogWarning(
-                "Telemetry push unauthorized ({StatusCode}) for service {Service}. Verify telemetry token matches backend ingest secret. Response: {Response}",
+                "Telemetry push unauthorized ({StatusCode}) for service {Service}. Install signature was rejected or the install is not registered. Response: {Response}",
                 statusCode,
                 normalizedEventName,
                 TelemetryFormatting.Truncate(responseText, 200));
@@ -358,6 +356,8 @@ public sealed class TelemetryService : ITelemetryService
         var metrics = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             ["app_name"] = source,
+            // Stable per-event id so a retried POST is idempotent server-side.
+            ["event_id"] = Guid.NewGuid().ToString("D"),
             ["install_id"] = identity.InstallId,
             ["hwid"] = identity.HardwareId,
             ["machine_name"] = Environment.MachineName,

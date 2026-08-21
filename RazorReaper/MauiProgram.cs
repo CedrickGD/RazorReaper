@@ -38,14 +38,15 @@ namespace RazorReaper
             ConfigureServices(builder.Services);
 
             builder.Services.AddMauiBlazorWebView();
+            // Both clients carry the per-install request signature (rr.install.v1).
             builder.Services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
             {
                 client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
-            });
+            }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
             builder.Services.AddHttpClient("RazorReaperTelemetry", client => 
             {
                 client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
-            });
+            }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -371,6 +372,17 @@ namespace RazorReaper
             services.AddSingleton<IHwidService, HwidService>();
 
             services.AddSingleton<IClientIdentityService, ClientIdentityService>();
+            services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<ISecureValueStore, MauiSecureValueStore>();
+            services.AddSingleton<IInstallIdentityService, InstallIdentityService>();
+            // The handler resolves the identity service lazily: the identity service depends on
+            // ILicenseService, which owns an HttpClient that carries this very handler.
+            services.AddTransient(sp => new RazorReaper.Services.Http.SignedRequestHandler(
+                () => sp.GetRequiredService<IInstallIdentityService>(),
+                sp.GetRequiredService<TimeProvider>(),
+                RazorReaper.Services.Http.SignedRequestHandler.AllowedHostsFrom(
+                    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppConfiguration>>().Value),
+                sp.GetRequiredService<ILogger<RazorReaper.Services.Http.SignedRequestHandler>>()));
             services.AddSingleton<ITelemetryService, TelemetryService>();
             services.AddSingleton<IUsageGateService, UsageGateService>();
             services.AddSingleton<IUpdateService, UpdateService>();

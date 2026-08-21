@@ -66,17 +66,11 @@ public class FeedbackService : IFeedbackService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(settings.RequestTimeoutSeconds, 3, 60)));
 
-            // The feedback endpoint is gated by the same app key telemetry already ships, so random
-            // internet POSTs can't spam it. Reuse the configured Telemetry.AppKey as x-app-key.
+            // Authenticated per install by SignedRequestHandler (rr.install.v1 signature headers).
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/feedback")
             {
                 Content = JsonContent.Create(payload)
             };
-            var appKey = _options.Value.Telemetry.AppKey;
-            if (!string.IsNullOrWhiteSpace(appKey))
-            {
-                request.Headers.TryAddWithoutValidation("x-app-key", appKey);
-            }
 
             var response = await _httpClient.SendAsync(request, cts.Token);
             var result = await response.Content.ReadFromJsonAsync<FeedbackApiResponse>(cts.Token);

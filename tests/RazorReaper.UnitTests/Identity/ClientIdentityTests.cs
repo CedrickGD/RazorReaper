@@ -348,5 +348,7 @@ public sealed class ClientIdentityTests
             Interlocked.Increment(ref _callCount);
             return identity;
         }
+
+        public ClientIdentity RotateInstallId() => identity;
     }
 }

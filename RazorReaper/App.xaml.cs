@@ -34,6 +34,7 @@ namespace RazorReaper
             // Resolved in the same order as the former constructor injection.
             var fontInstaller = services.GetRequiredService<IFontInstaller>();
             var scopeModeStartupService = services.GetRequiredService<IScopeModeStartupService>();
+            var installIdentity = services.GetRequiredService<IInstallIdentityService>();
             var telemetry = services.GetRequiredService<ITelemetryService>();
             var updateManager = services.GetRequiredService<IAutoUpdateManager>();
             var discord = services.GetRequiredService<IDiscordPresenceService>();
@@ -62,6 +63,10 @@ namespace RazorReaper
             RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
             RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
             RunStartupTask("update-check", () => updateManager.RunStartupCheckAsync());
+            // Registers the install's signing key before the first telemetry event goes out.
+            // Fire-and-forget like the rest: signing only needs the key, which exists at once;
+            // the backend acknowledgement may lag without holding anything up.
+            RunStartupTask("install-identity", () => installIdentity.EnsureRegisteredAsync());
             RunStartupTask("telemetry-start", () => telemetry.StartAsync());
             RunStartupTask("access-gate", () => access.StartAsync());
             RunStartupTask("discord-rpc", () =>

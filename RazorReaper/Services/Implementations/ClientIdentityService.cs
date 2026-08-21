@@ -48,6 +48,20 @@ internal sealed class ClientIdentityService : IClientIdentityService
         }
     }
 
+    public ClientIdentity RotateInstallId()
+    {
+        lock (_identityGate)
+        {
+            var created = Guid.NewGuid().ToString("D");
+            _preferences.Set(InstallIdPreferenceKey, created);
+            var hardwareId = _identity?.HardwareId
+                ?? HashHardwareIdentity(_rawHardwareIdentitySource.GetRawHardwareIdentity());
+            var rotated = new ClientIdentity(created, hardwareId);
+            Volatile.Write(ref _identity, rotated);
+            return rotated;
+        }
+    }
+
     private string ResolveInstallId()
     {
         var stored = _preferences.Get(InstallIdPreferenceKey, string.Empty);

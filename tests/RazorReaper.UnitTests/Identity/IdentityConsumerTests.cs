@@ -194,7 +194,6 @@ public sealed class IdentityConsumerTests
             {
                 Enabled = telemetryEnabled,
                 Endpoint = "https://example.invalid/telemetry",
-                AppKey = "test-app-key",
                 AppName = "razorreaper",
                 RequestTimeoutSeconds = 3,
             },
@@ -226,6 +225,8 @@ public sealed class IdentityConsumerTests
             Interlocked.Increment(ref _callCount);
             return identity;
         }
+
+        public ClientIdentity RotateInstallId() => identity;
     }
 
     private sealed class RecordingDeviceLocationService : IDeviceLocationService
