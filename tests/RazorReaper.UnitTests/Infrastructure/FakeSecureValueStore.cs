@@ -13,6 +13,9 @@ public sealed class FakeSecureValueStore : ISecureValueStore
     /// <summary>When set, every read/write throws it — simulates a broken DPAPI store.</summary>
     public Exception? Failure { get; set; }
 
+    /// <summary>When set, only writes throw it — reads still work (store readable, not writable).</summary>
+    public Exception? WriteFailure { get; set; }
+
     public Task<string?> GetAsync(string key)
     {
         lock (_gate)
@@ -35,6 +38,11 @@ public sealed class FakeSecureValueStore : ISecureValueStore
             if (Failure is not null)
             {
                 throw Failure;
+            }
+
+            if (WriteFailure is not null)
+            {
+                throw WriteFailure;
             }
 
             _values[key] = value;

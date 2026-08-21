@@ -20,9 +20,29 @@ public sealed class InstallIdentityServiceTests
     private static readonly DateTimeOffset Now = new(2026, 8, 21, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task SignAsyncReturnsNullUntilTheBackendAcknowledgedTheKey()
+    {
+        using var harness = new Harness();
+        var uri = new Uri("https://rr-admin-panel.pages.dev/api/license/validate");
+
+        var beforeRegistration = await harness.Service.SignAsync(HttpMethod.Post, uri, [], Now);
+
+        Assert.Null(beforeRegistration);
+        Assert.False(harness.Service.IsRegistered);
+        // The key itself exists already (generated on first use) — only the headers are held back.
+        Assert.NotNull(await harness.Service.GetPublicKeyAsync());
+
+        harness.Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.Created, """{"ok":true}"""));
+        await harness.Service.EnsureRegisteredAsync();
+
+        Assert.NotNull(await harness.Service.SignAsync(HttpMethod.Post, uri, [], Now));
+    }
+
+    [Fact]
     public async Task SignAsyncProducesVerifiableHeadersUsingSuppliedTimestamp()
     {
         using var harness = new Harness();
+        await harness.RegisterAsync();
         var body = Encoding.UTF8.GetBytes("""{"hello":"world"}""");
         var uri = new Uri("https://backend.rr-admin-panel.workers.dev/api/ingest?q=1");
 
@@ -225,15 +245,80 @@ public sealed class InstallIdentityServiceTests
     }
 
     [Fact]
-    public async Task BrokenSecureStoreStillSignsWithInMemoryKey()
+    public async Task RetryBudgetIsPerProcessNotPerEnsureCall()
+    {
+        using var harness = new Harness();
+        harness.Service.RetryDelays = [TimeSpan.Zero, TimeSpan.Zero];
+        harness.Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.TooManyRequests, """{"ok":false}"""));
+
+        await harness.Service.EnsureRegisteredAsync();
+        await harness.Service.RetryTask!.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(3, harness.Http.Requests.Count); // direct call + two scheduled retries
+
+        await harness.Service.EnsureRegisteredAsync();
+        if (harness.Service.RetryTask is { } second)
+        {
+            await second.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        // The second call may try once itself, but must not replay the whole backoff schedule.
+        Assert.Equal(4, harness.Http.Requests.Count);
+        Assert.False(harness.Service.IsRegistered);
+    }
+
+    [Fact]
+    public async Task BrokenSecureStoreDisablesSigningAndRegistration()
     {
         var secureStore = new FakeSecureValueStore { Failure = new InvalidOperationException("DPAPI down") };
         using var harness = new Harness(secureStore: secureStore);
 
+        await harness.Service.EnsureRegisteredAsync();
         var headers = await harness.Service.SignAsync(HttpMethod.Get, new Uri("https://rr-admin-panel.pages.dev/api/usage/status"), [], Now);
+
+        // An unpersisted key must never be registered: the next launch would 409 and rotate the
+        // install id on every start. Degrade to unsigned instead, once per process.
+        Assert.Null(headers);
+        Assert.Empty(harness.Http.Requests);
+        Assert.False(harness.Service.IsRegistered);
+        Assert.True(harness.Service.IsSigningUnavailable);
+        Assert.Null(await harness.Service.GetPublicKeyAsync());
+        Assert.Null(harness.Service.RetryTask);
+        // Only one probe of the store — the "no key" state is cached, not re-tried per request.
+        Assert.Equal(1, secureStore.GetCallCount);
+    }
+
+    [Fact]
+    public async Task UnwritableSecureStoreDisablesSigningWithoutKeepingAnEphemeralKey()
+    {
+        var secureStore = new FakeSecureValueStore { WriteFailure = new UnauthorizedAccessException("read-only") };
+        using var harness = new Harness(secureStore: secureStore);
+
+        await harness.Service.EnsureRegisteredAsync();
+
+        Assert.Empty(harness.Http.Requests);
+        Assert.Null(await harness.Service.GetPublicKeyAsync());
+        Assert.Null(await harness.Service.SignAsync(HttpMethod.Get, new Uri("https://rr-admin-panel.pages.dev/api/usage/status"), [], Now));
+        Assert.True(harness.Service.IsSigningUnavailable);
+        Assert.Null(secureStore.Peek("rr.install.key"));
+    }
+
+    [Fact]
+    public async Task PersistedKeyAndMarkerFromPreviousProcessSignImmediately()
+    {
+        var secureStore = new FakeSecureValueStore();
+        var preferences = new FakePreferencesStore();
+        using (var first = new Harness(secureStore: secureStore, preferences: preferences))
+        {
+            await first.RegisterAsync();
+        }
+
+        using var second = new Harness(secureStore: secureStore, preferences: preferences);
+        await second.Service.EnsureRegisteredAsync();
+        var headers = await second.Service.SignAsync(HttpMethod.Get, new Uri("https://rr-admin-panel.pages.dev/api/usage/status"), [], Now);
 
         Assert.NotNull(headers);
         Assert.Equal(InstallId, headers.InstallId);
+        Assert.Empty(second.Http.Requests);
     }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string json)
@@ -270,6 +355,16 @@ public sealed class InstallIdentityServiceTests
                 new StubLicenseService { CurrentLicenseKey = licenseKey },
                 Time,
                 NullLogger<InstallIdentityService>.Instance);
+        }
+
+        /// <summary>Registers with a 201 and returns the recorder to its caller's control.</summary>
+        public async Task RegisterAsync()
+        {
+            var previous = Http.ResponseFactory;
+            Http.ResponseFactory = (_, _) => Task.FromResult(Json(HttpStatusCode.Created, """{"ok":true}"""));
+            await Service.EnsureRegisteredAsync();
+            Http.ResponseFactory = previous;
+            Assert.True(Service.IsRegistered);
         }
 
         public FakeSecureValueStore SecureStore { get; }

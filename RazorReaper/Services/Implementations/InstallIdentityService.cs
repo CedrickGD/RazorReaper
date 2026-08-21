@@ -51,8 +51,10 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     private ECDsa? _key;
     private bool _keyGeneratedThisProcess;
+    private bool _keyUnavailable;
     private volatile bool _isRegistered;
     private int _retryScheduled;
+    private int _retryIndex;
 
     public InstallIdentityService(
         IClientIdentityService clientIdentity,
@@ -79,13 +81,24 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
     /// <summary>Backoff schedule for transient registration failures. Overridable for tests.</summary>
     internal TimeSpan[] RetryDelays { get; set; } = DefaultRetryDelays;
 
+    /// <summary>True once secure storage failed and signing was switched off for this process.</summary>
+    internal bool IsSigningUnavailable => Volatile.Read(ref _keyUnavailable);
+
     /// <summary>The background retry loop, when one was scheduled. Exposed for tests.</summary>
     internal Task? RetryTask { get; private set; }
 
     public async Task<InstallPublicKeyJwk?> GetPublicKeyAsync(CancellationToken cancellationToken = default)
     {
         var key = await GetOrCreateKeyAsync(cancellationToken).ConfigureAwait(false);
-        return key is null ? null : InstallRequestSigning.ToJwk(key);
+        return key is null ? null : ExportJwk(key);
+    }
+
+    private InstallPublicKeyJwk ExportJwk(ECDsa key)
+    {
+        lock (_signGate)
+        {
+            return InstallRequestSigning.ToJwk(key);
+        }
     }
 
     public async Task<SignedRequestHeaders?> SignAsync(
@@ -98,19 +111,36 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         ArgumentNullException.ThrowIfNull(method);
         ArgumentNullException.ThrowIfNull(uri);
 
-        var key = await GetOrCreateKeyAsync(cancellationToken).ConfigureAwait(false);
-        if (key is null)
+        // Headers only go out once the backend knows this key: a signed request from an
+        // unregistered install is a hard 401 on every route, whereas an unsigned one is still
+        // accepted by the legacy-tolerant routes (license, feedback, access).
+        if (!_isRegistered)
         {
             return null;
         }
 
-        var installId = _clientIdentity.GetIdentity().InstallId;
+        if (await GetOrCreateKeyAsync(cancellationToken).ConfigureAwait(false) is null)
+        {
+            return null;
+        }
+
         var timestamp = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         var signingString = InstallRequestSigning.BuildSigningString(method, uri, timestamp, body ?? []);
 
+        string installId;
         byte[] signature;
         lock (_signGate)
         {
+            // Identity + key are swapped together under this gate (RotateIdentityAsync) and the
+            // key is re-read here, so a signature never pairs a new install id with the old key
+            // (or a disposed one) or vice versa.
+            var key = _key;
+            if (!_isRegistered || key is null)
+            {
+                return null;
+            }
+
+            installId = _clientIdentity.GetIdentity().InstallId;
             signature = InstallRequestSigning.Sign(key, signingString);
         }
 
@@ -174,12 +204,23 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     // ---- key management ---------------------------------------------------------------------
 
+    /// <summary>
+    /// Loads the persisted key or generates and persists a new one. When secure storage cannot
+    /// be read or written the service degrades to "no key" for the rest of the process: an
+    /// unpersisted key must never be registered, or the next launch would 409 and rotate the
+    /// install id every time. Requests then go out unsigned.
+    /// </summary>
     private async Task<ECDsa?> GetOrCreateKeyAsync(CancellationToken cancellationToken)
     {
         var cached = Volatile.Read(ref _key);
         if (cached is not null)
         {
             return cached;
+        }
+
+        if (Volatile.Read(ref _keyUnavailable))
+        {
+            return null;
         }
 
         await _keyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -191,12 +232,29 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
                 return cached;
             }
 
-            var key = await TryLoadKeyAsync().ConfigureAwait(false);
+            if (_keyUnavailable)
+            {
+                return null;
+            }
+
+            var (key, storeBroken) = await TryLoadKeyAsync().ConfigureAwait(false);
+            if (storeBroken)
+            {
+                MarkKeyUnavailable("secure storage is unreadable");
+                return null;
+            }
+
             if (key is null)
             {
                 key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+                if (!await TryPersistKeyAsync(key).ConfigureAwait(false))
+                {
+                    key.Dispose();
+                    MarkKeyUnavailable("secure storage rejected the new key");
+                    return null;
+                }
+
                 _keyGeneratedThisProcess = true;
-                await TryPersistKeyAsync(key).ConfigureAwait(false);
             }
 
             Volatile.Write(ref _key, key);
@@ -205,6 +263,7 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Install signing key is unavailable; requests go out unsigned.");
+            MarkKeyUnavailable(ex.Message);
             return null;
         }
         finally
@@ -213,7 +272,25 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         }
     }
 
-    private async Task<ECDsa?> TryLoadKeyAsync()
+    /// <summary>Called under <see cref="_keyGate"/>. Logged once per process.</summary>
+    private void MarkKeyUnavailable(string reason)
+    {
+        if (_keyUnavailable)
+        {
+            return;
+        }
+
+        Volatile.Write(ref _keyUnavailable, true);
+        _logger.LogWarning(
+            "Install signing disabled for this session ({Reason}); requests go out unsigned and no registration is attempted.",
+            reason);
+    }
+
+    /// <summary>
+    /// (key, storeBroken): <c>storeBroken</c> means the secure store itself threw; a missing or
+    /// corrupt value returns (null, false) so a fresh key is generated and persisted over it.
+    /// </summary>
+    private async Task<(ECDsa? Key, bool StoreBroken)> TryLoadKeyAsync()
     {
         string? stored;
         try
@@ -223,12 +300,12 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not read the install signing key from secure storage.");
-            return null;
+            return (null, true);
         }
 
         if (string.IsNullOrWhiteSpace(stored))
         {
-            return null;
+            return (null, false);
         }
 
         ECDsa? key = null;
@@ -241,51 +318,68 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
                 throw new CryptographicException($"Unexpected install key size {key.KeySize}.");
             }
 
-            return key;
+            return (key, false);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Stored install signing key is unreadable; generating a new one.");
             key?.Dispose();
-            return null;
+            return (null, false);
         }
     }
 
-    private async Task TryPersistKeyAsync(ECDsa key)
+    private async Task<bool> TryPersistKeyAsync(ECDsa key)
     {
         try
         {
             var pkcs8 = Convert.ToBase64String(key.ExportPkcs8PrivateKey());
             await _secureStore.SetAsync(PrivateKeyStoreKey, pkcs8).ConfigureAwait(false);
+            return true;
         }
         catch (Exception ex)
         {
-            // The in-memory key still signs this session; next launch registers a fresh one.
             _logger.LogWarning(ex, "Could not persist the install signing key to secure storage.");
+            return false;
         }
     }
 
     /// <summary>Fresh install id + fresh keypair (409/401 from the backend).</summary>
     private async Task RotateIdentityAsync()
     {
-        var rotated = _clientIdentity.RotateInstallId();
-        _logger.LogInformation("Install identity rotated to {InstallId}.", rotated.InstallId);
-
         await _keyGate.WaitAsync(_lifetime.Token).ConfigureAwait(false);
         try
         {
             var fresh = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var old = Interlocked.Exchange(ref _key, fresh);
+            if (!await TryPersistKeyAsync(fresh).ConfigureAwait(false))
+            {
+                // Never run on an unpersisted key: keep the old (persisted) identity. The
+                // retried registration then conflicts again and gives up for this session.
+                fresh.Dispose();
+                _logger.LogWarning("Install identity rotation skipped: the new key could not be persisted.");
+                return;
+            }
+
+            ECDsa? old;
+            ClientIdentity rotated;
+            lock (_signGate)
+            {
+                // Swap id + key atomically w.r.t. SignAsync, which reads both under this gate,
+                // and only dispose the old key once no signer can still hold it.
+                _isRegistered = false;
+                rotated = _clientIdentity.RotateInstallId();
+                old = _key;
+                _key = fresh;
+            }
+
             old?.Dispose();
             _keyGeneratedThisProcess = true;
-            await TryPersistKeyAsync(fresh).ConfigureAwait(false);
+            _logger.LogInformation("Install identity rotated to {InstallId}.", rotated.InstallId);
         }
         finally
         {
             _keyGate.Release();
         }
 
-        _isRegistered = false;
         try
         {
             _preferences.Remove(RegisteredAtPreferenceKey);
@@ -342,7 +436,7 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         }
 
         var identity = _clientIdentity.GetIdentity();
-        var jwk = InstallRequestSigning.ToJwk(key);
+        var jwk = ExportJwk(key);
         var body = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["install_id"] = identity.InstallId,
@@ -430,9 +524,18 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
         var token = _lifetime.Token;
         try
         {
-            foreach (var delay in RetryDelays)
+            // _retryIndex is never reset, so the attempt budget holds per process even when
+            // EnsureRegisteredAsync schedules a second loop later on.
+            while (true)
             {
-                await Task.Delay(delay, _timeProvider, token).ConfigureAwait(false);
+                var attempt = _retryIndex;
+                if (attempt >= RetryDelays.Length)
+                {
+                    break;
+                }
+
+                _retryIndex = attempt + 1;
+                await Task.Delay(RetryDelays[attempt], _timeProvider, token).ConfigureAwait(false);
 
                 await _registerGate.WaitAsync(token).ConfigureAwait(false);
                 try

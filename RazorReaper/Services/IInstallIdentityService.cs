@@ -34,8 +34,9 @@ public interface IInstallIdentityService
     Task EnsureRegisteredAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Produces the signature headers for one request. Returns null when no key is available
-    /// (the request is then sent unsigned, which legacy-tolerant routes still accept).
+    /// Produces the signature headers for one request. Returns null until the backend has
+    /// acknowledged the key (<see cref="IsRegistered"/>) or when no key is available; the
+    /// request is then sent unsigned, which legacy-tolerant routes still accept.
     /// </summary>
     Task<SignedRequestHeaders?> SignAsync(
         HttpMethod method,

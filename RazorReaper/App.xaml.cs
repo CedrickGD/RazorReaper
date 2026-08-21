@@ -63,11 +63,15 @@ namespace RazorReaper
             RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
             RunStartupTask("scope-mode", () => scopeModeStartupService.ApplySavedScopeModeAsync());
             RunStartupTask("update-check", () => updateManager.RunStartupCheckAsync());
-            // Registers the install's signing key before the first telemetry event goes out.
-            // Fire-and-forget like the rest: signing only needs the key, which exists at once;
-            // the backend acknowledgement may lag without holding anything up.
-            RunStartupTask("install-identity", () => installIdentity.EnsureRegisteredAsync());
-            RunStartupTask("telemetry-start", () => telemetry.StartAsync());
+            // Telemetry starts only after the install's signing key is registered: requests are
+            // signed solely once the backend has acknowledged the key, and the first events
+            // (session_start) are not retried, so they must not race the registration. Still
+            // fire-and-forget — EnsureRegisteredAsync never throws and never blocks on retries.
+            RunStartupTask("telemetry-start", async () =>
+            {
+                await installIdentity.EnsureRegisteredAsync().ConfigureAwait(false);
+                await telemetry.StartAsync().ConfigureAwait(false);
+            });
             RunStartupTask("access-gate", () => access.StartAsync());
             RunStartupTask("discord-rpc", () =>
             {

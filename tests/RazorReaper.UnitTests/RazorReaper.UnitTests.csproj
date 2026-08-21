@@ -25,4 +25,9 @@
     <ProjectReference Include="..\..\RazorReaper\RazorReaper.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Server-generated rr.install.v1 vectors (RR-Admin-Panel/tests/install-auth/fixtures/vectors.json). -->
+    <None Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -90,6 +90,59 @@ public sealed class InstallRequestSigningTests
         Assert.Equal(bytes, InstallRequestSigning.Base64UrlDecode(encoded));
     }
 
+    public static TheoryData<string> ServerFixtureVectorNames()
+    {
+        var data = new TheoryData<string>();
+        foreach (var vector in ServerFixture.CachedVectors)
+        {
+            data.Add(vector.Name);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// The server test-suite's vectors (RR-Admin-Panel/tests/install-auth/fixtures/vectors.json,
+    /// copied to Fixtures/install-signing-vectors.json): same signing string, and the server's
+    /// signatures verify against the server's JWK through this implementation.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ServerFixtureVectorNames))]
+    public void ServerFixtureVectorsMatchThisImplementation(string name)
+    {
+        var fixture = ServerFixture.Load();
+        var vector = fixture.Vectors.Single(v => v.Name == name);
+        var bodyBytes = Encoding.UTF8.GetBytes(vector.Body);
+
+        Assert.Equal(vector.BodySha256, Convert.ToHexStringLower(SHA256.HashData(bodyBytes)));
+        var signingString = InstallRequestSigning.BuildSigningString(
+            new HttpMethod(vector.Method), new Uri(vector.Url), vector.Timestamp, bodyBytes);
+        Assert.Equal(vector.SigningString, signingString);
+
+        using var verifier = InstallRequestSigning.FromJwk(fixture.PublicKeyJwk);
+        var signature = InstallRequestSigning.Base64UrlDecode(vector.Signature);
+        Assert.Equal(64, signature.Length);
+        Assert.True(InstallRequestSigning.Verify(verifier, signingString, signature), $"fixture signature for '{name}' must verify");
+
+        // And a signature produced here from the fixture's private key verifies too.
+        using var signer = ECDsa.Create();
+        signer.ImportPkcs8PrivateKey(Convert.FromBase64String(fixture.PrivateKeyPkcs8Base64), out _);
+        Assert.True(InstallRequestSigning.Verify(verifier, signingString, InstallRequestSigning.Sign(signer, signingString)));
+    }
+
+    [Fact]
+    public void ServerFixturePrivateKeyDerivesTheFixtureJwk()
+    {
+        var fixture = ServerFixture.Load();
+
+        using var key = ECDsa.Create();
+        key.ImportPkcs8PrivateKey(Convert.FromBase64String(fixture.PrivateKeyPkcs8Base64), out _);
+
+        Assert.Equal(256, key.KeySize);
+        Assert.Equal(fixture.PublicKeyJwk, InstallRequestSigning.ToJwk(key));
+        Assert.True(Guid.TryParseExact(fixture.InstallId, "D", out _));
+    }
+
     /// <summary>
     /// Produces the cross-implementation vectors the server test-suite checks. With
     /// RR_EMIT_SIGNING_VECTORS=&lt;dir&gt; the vectors are written to &lt;dir&gt;/csharp-vectors.json;
@@ -153,5 +206,58 @@ public sealed class InstallRequestSigningTests
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         }));
         Assert.True(File.Exists(path));
+    }
+
+    private sealed record ServerFixtureVector(
+        string Name,
+        string Method,
+        string Url,
+        string Timestamp,
+        string Body,
+        string BodySha256,
+        string SigningString,
+        string Signature);
+
+    private sealed record ServerFixture(
+        string InstallId,
+        string PrivateKeyPkcs8Base64,
+        InstallPublicKeyJwk PublicKeyJwk,
+        IReadOnlyList<ServerFixtureVector> Vectors)
+    {
+        private static readonly Lazy<ServerFixture> Cached = new(Load);
+
+        public static IReadOnlyList<ServerFixtureVector> CachedVectors => Cached.Value.Vectors;
+
+        public static ServerFixture Load()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "install-signing-vectors.json");
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            Assert.Equal("rr.install.v1", root.GetProperty("version").GetString());
+
+            var jwk = root.GetProperty("public_key_jwk");
+            var vectors = root.GetProperty("vectors").EnumerateArray()
+                .Select(v => new ServerFixtureVector(
+                    v.GetProperty("name").GetString()!,
+                    v.GetProperty("method").GetString()!,
+                    v.GetProperty("url").GetString()!,
+                    v.GetProperty("timestamp").GetString()!,
+                    v.GetProperty("body").GetString()!,
+                    v.GetProperty("body_sha256").GetString()!,
+                    v.GetProperty("signing_string").GetString()!,
+                    v.GetProperty("signature").GetString()!))
+                .ToList();
+            Assert.NotEmpty(vectors);
+
+            return new ServerFixture(
+                root.GetProperty("install_id").GetString()!,
+                root.GetProperty("private_key_pkcs8_base64").GetString()!,
+                new InstallPublicKeyJwk(
+                    jwk.GetProperty("kty").GetString()!,
+                    jwk.GetProperty("crv").GetString()!,
+                    jwk.GetProperty("x").GetString()!,
+                    jwk.GetProperty("y").GetString()!),
+                vectors);
+        }
     }
 }
