@@ -62,6 +62,11 @@ jobs:
               echo "Nextcloud's stable target returned HTTP 423; $TAG_NAME was stored under a versioned filename instead." >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
+            if [[ "$fallback_code" == "423" ]]; then
+              echo "::warning title=Nextcloud mirror locked::Stable and versioned WebDAV targets returned HTTP 423. The verified GitHub release asset remains the canonical download."
+              echo "Nextcloud rejected both the stable and versioned targets with HTTP 423. The GitHub release asset remains available and authoritative." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
             echo "Versioned Nextcloud upload failed with HTTP $fallback_code." >&2
             exit 1
           fi
