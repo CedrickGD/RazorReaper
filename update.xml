@@ -1,20 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.4.9.0</version>
-    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.9/RazorReaper-Setup.exe</url>
-    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.9</changelog>
+    <version>1.4.10.0</version>
+    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.10/RazorReaper-Setup.exe</url>
+    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.10</changelog>
     <mandatory>false</mandatory>
     <args>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</args>
     <notes>
-- New navigation: reworked navbar with a global command palette (Ctrl+K) and deep links into every tool
-- New Settings page — appearance (accent, font, interface scale), audio and app behaviour moved out of Home
-- New Convert page (ported from Convert-X, ffmpeg bundled): trim, volume/strip audio, preview, ARK loading-screen replace
-- Scripts: Auto Antidote and Fed Suit are now scripts with live match value; Exo Suit folded into Fed Suit (search filter)
-- Scripts read your ARK Input.ini key bindings as defaults; a script's own key presses can no longer trigger another script's hotkey
-- Screen capture through DXGI (works with fullscreen ARK); calibration rejects empty regions and keeps reference snapshots across restarts
-- Auto Clicker hotkey is now system-wide and keeps running when you leave the page
-- Usage quotas for free users are counted server-side; remaining uses shown as chips
-- Security: every request to the backend is now signed with a key unique to your install (nothing shared across users ships in the app anymore); a flaky backend no longer wipes your activated license
-- Gamma slider fixed under comma-decimal locales; many button/dropdown/checkbox visuals unified; window title now "Razor Reaper — Ark QOL Tool"
+- Fixed the Discord Rich Presence download button so it uses https://dl.razorreaper.app/.
+- Removed the large update/download widget from the top of the Home page.
+- Suppressed harmless cancelled Discord pipe operations from background error telemetry.
     </notes>
 </item>
