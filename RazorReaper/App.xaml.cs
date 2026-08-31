@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
+using System.Net.Sockets;
 
 namespace RazorReaper
 {
@@ -272,14 +273,46 @@ namespace RazorReaper
         /// These come from third-party background plumbing (e.g. the Discord RPC pipe) and are
         /// expected during disconnects and shutdown; they are not app errors.
         /// </summary>
-        private static bool IsAbortedBackgroundIo(AggregateException exception)
+        internal static bool IsAbortedBackgroundIo(AggregateException exception)
         {
             const uint OperationAbortedHResult = 0x800703E3; // HRESULT_FROM_WIN32(ERROR_OPERATION_ABORTED)
+            const int OperationAbortedNativeError = 995;
 
             var leaves = exception.Flatten().InnerExceptions;
-            return leaves.Count > 0 && leaves.All(static ex =>
-                ex is OperationCanceledException
-                || (ex is IOException && (uint)ex.HResult == OperationAbortedHResult));
+            return leaves.Count > 0 && leaves.All(IsAbortedIoLeaf);
+
+            static bool IsAbortedIoLeaf(Exception exception)
+            {
+                if (exception is OperationCanceledException)
+                {
+                    return true;
+                }
+
+                if (exception is SocketException socketException)
+                {
+                    // SocketException keeps Win32/WinSock error 995 in NativeErrorCode while
+                    // exposing the generic 0x80004005 HResult, so the IOException HResult
+                    // check below cannot recognize this Discord IPC failure shape.
+                    return socketException.NativeErrorCode == OperationAbortedNativeError
+                        || socketException.SocketErrorCode == SocketError.OperationAborted;
+                }
+
+                if (exception is not IOException ioException)
+                {
+                    return false;
+                }
+
+                if ((uint)ioException.HResult == OperationAbortedHResult)
+                {
+                    return true;
+                }
+
+                // DiscordRichPresence may wrap the native SocketException in IOException.
+                // Follow only I/O wrappers so an unrelated exception that happens to contain
+                // an aborted socket is not hidden as benign background plumbing.
+                return ioException.InnerException is not null
+                    && IsAbortedIoLeaf(ioException.InnerException);
+            }
         }
 
         private void FlushTelemetryShutdown()
