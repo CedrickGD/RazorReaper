@@ -18,8 +18,6 @@
 @inject IOptions<AppConfiguration> Configuration
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
-@inject IUpdateService UpdateService
-@inject IAutoUpdateManager AutoUpdateManager
 @inject ILicenseService LicenseService
 @implements IAsyncDisposable
 
@@ -30,57 +28,6 @@
         </header>
 
         <AnnouncementBanner />
-
-        <div class="content-card update-card">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 14a1 1 0 011 1v1h12v-1a1 1 0 112 0v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 011-1zm7-12a1 1 0 011 1v7.586l2.293-2.293a1 1 0 111.414 1.414l-4.004 4.004a1 1 0 01-1.414 0L5.286 9.707a1 1 0 111.414-1.414L9 10.586V3a1 1 0 011-1z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3>Update</h3>
-                        <p class="update-subtitle">Updates install themselves and restart the app.</p>
-                    </div>
-                </div>
-                @* No controls. Updates are mandatory and unattended — there is nothing here
-                   to switch off, and no check to run by hand. *@
-            </div>
-            <div class="update-status">
-                @if (ShowUpdateBadge)
-                {
-                    <div class="@UpdateBadgeClass">@UpdateBadgeText</div>
-                }
-                @* No version readout. Updates install themselves, so the numbers were
-                   nothing anyone acts on — and the sidebar foot already carries the running
-                   version. What's left is the one line that does change: what's happening
-                   right now. *@
-                @if (AutoUpdateManager.IsDownloading)
-                {
-                    <div class="update-progress">
-                        <div class="update-progress-bar">
-                            <div class="update-progress-fill" style="width: @(AutoUpdateManager.DownloadProgressPercent ?? 0)%"></div>
-                        </div>
-                        <span class="update-progress-label">Downloading... @(AutoUpdateManager.DownloadProgressPercent ?? 0)%</span>
-                    </div>
-                }
-                else if (AutoUpdateManager.IsInstallerReady)
-                {
-                    <div class="update-ready-message">
-                        Installing v@(AutoUpdateManager.PendingVersion) — the app will restart on its own.
-                    </div>
-                }
-                else
-                {
-                    @* The progress bar above is self-labeled with its own percentage, so the
-                       generic status line is only useful when no bar is on screen. Rendering
-                       both during download produced two side-by-side percent readouts that
-                       looked like a double progress bar. *@
-                    <div class="update-message">@UpdateStatusMessage</div>
-                }
-            </div>
-        </div>
 
         <div class="dashboard-widgets">
             @* Clock, Uptime and Network were three cards for four numbers, each padded out
@@ -627,8 +574,6 @@
     private readonly DateTime appStartTime = DateTime.Now;
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
-    private UpdateCheckResult? updateResult;
-
     private string licenseKeyInput = "";
     private bool isActivating = false;
     private string activationError = "";
@@ -944,12 +889,6 @@
         if (_isDisposed)
             return;
 
-        if (AutoUpdateManager.LastCheckResult != null)
-        {
-            updateResult = AutoUpdateManager.LastCheckResult;
-        }
-        AutoUpdateManager.StateChanged += OnAutoUpdateStateChanged;
-
         // Start consolidated update timer (updates clock)
         // Set to 1 second for smooth clock updates without excessive overhead
         updateTimer = new System.Timers.Timer(1000);
@@ -1256,94 +1195,6 @@
     private async Task PlayClickPreview()
     {
         await JSRuntime.InvokeVoidAsync("playClickSound");
-    }
-
-    private string UpdateBadgeClass
-    {
-        get
-        {
-            if (AutoUpdateManager.IsChecking)
-                return "update-badge update-badge-checking";
-
-            if (updateResult == null)
-                return "update-badge update-badge-idle";
-
-            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
-                return "update-badge update-badge-error";
-
-            return updateResult.HasUpdate
-                ? "update-badge update-badge-available"
-                : "update-badge update-badge-current";
-        }
-    }
-
-    private string UpdateBadgeText
-    {
-        get
-        {
-            if (AutoUpdateManager.IsChecking)
-                return "Checking...";
-
-            if (updateResult == null)
-                return "Not checked";
-
-            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
-                return "Check failed";
-
-            return updateResult.HasUpdate ? "Update available" : "Up to date";
-        }
-    }
-
-    private string UpdateStatusMessage
-    {
-        get
-        {
-            if (AutoUpdateManager.IsDownloading)
-                return $"Downloading update... {AutoUpdateManager.DownloadProgressPercent ?? 0}%";
-
-            if (AutoUpdateManager.IsInstallerReady)
-                return $"Installing v{AutoUpdateManager.PendingVersion} — restarting...";
-
-            if (AutoUpdateManager.IsChecking)
-                return "Checking for updates...";
-
-            if (updateResult == null)
-                return "Checking for updates...";
-
-            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
-                return updateResult.ErrorMessage;
-
-            if (updateResult.HasUpdate)
-                return $"Version {updateResult.LatestVersion} found — downloading now.";
-
-            return "You're on the latest version.";
-        }
-    }
-
-    private bool ShowUpdateBadge
-    {
-        get
-        {
-            if (AutoUpdateManager.IsChecking)
-                return true;
-
-            if (updateResult == null)
-                return true;
-
-            if (!string.IsNullOrWhiteSpace(updateResult.ErrorMessage))
-                return true;
-
-            return updateResult.HasUpdate;
-        }
-    }
-
-    private void OnAutoUpdateStateChanged()
-    {
-        if (!_isDisposed)
-        {
-            updateResult = AutoUpdateManager.LastCheckResult ?? updateResult;
-            InvokeAsync(StateHasChanged);
-        }
     }
 
     [DllImport("kernel32.dll")]
@@ -2322,7 +2173,6 @@
 
         _isDisposed = true;
         LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
-        AutoUpdateManager.StateChanged -= OnAutoUpdateStateChanged;
 
         updateTimer?.Stop();
         updateTimer?.Dispose();
