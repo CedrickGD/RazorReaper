@@ -29,15 +29,42 @@ jobs:
           NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
           NEXTCLOUD_USERNAME: ${{ secrets.NEXTCLOUD_USERNAME }}
           NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag_name }}
         run: |
           echo "Uploading to Nextcloud..."
-          
-          # Use curl to PUT the file via WebDAV. 
-          # -u provides the basic auth credentials.
-          # -T specifies the file to upload.
-          # --fail ensures curl exits with a non-zero code on HTTP errors (e.g., 401 Unauthorized, 404 Not Found).
-          curl --fail -u "$NEXTCLOUD_USERNAME:$NEXTCLOUD_PASSWORD" \
-               -T RazorReaper-Setup.exe \
-               "$NEXTCLOUD_URL"
-               
-          echo "Upload complete!"
+
+          upload() {
+            local target_url="$1"
+            curl --silent --show-error \
+                 -u "$NEXTCLOUD_USERNAME:$NEXTCLOUD_PASSWORD" \
+                 -T RazorReaper-Setup.exe \
+                 --output nextcloud-response.txt \
+                 --write-out "%{http_code}" \
+                 "$target_url"
+          }
+
+          http_code="$(upload "$NEXTCLOUD_URL")"
+          if [[ "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+            echo "Upload complete."
+            exit 0
+          fi
+
+          # A stale Nextcloud lock must not discard the new release backup. Keep the stable file
+          # untouched and fall back to a versioned sibling that cannot collide with another run.
+          if [[ "$http_code" == "423" ]]; then
+            safe_tag="${TAG_NAME//[^A-Za-z0-9._-]/-}"
+            fallback_url="${NEXTCLOUD_URL%/*}/RazorReaper-Setup-${safe_tag}.exe"
+            echo "::add-mask::$fallback_url"
+            echo "Stable Nextcloud target is locked; uploading a versioned release backup."
+            fallback_code="$(upload "$fallback_url")"
+            if [[ "$fallback_code" =~ ^2[0-9][0-9]$ ]]; then
+              echo "Versioned backup upload complete."
+              echo "Nextcloud's stable target returned HTTP 423; $TAG_NAME was stored under a versioned filename instead." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Versioned Nextcloud upload failed with HTTP $fallback_code." >&2
+            exit 1
+          fi
+
+          echo "Nextcloud upload failed with HTTP $http_code." >&2
+          exit 1
