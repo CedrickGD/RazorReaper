@@ -27,6 +27,114 @@
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
 
+        <!-- License stays first: new customers can activate without scanning the dashboard. -->
+        <div class="content-card license-widget home-license-top @(LicenseService.IsPremium ? "premium-active" : "free-tier")">
+            <div class="update-card-header">
+                <div class="update-title">
+                    <div class="update-icon">
+                        @if (LicenseService.IsPremium)
+                        {
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                    </div>
+                    <div>
+                        <h3>
+                            RazorReaper
+                            @if (LicenseService.IsPremium)
+                            {
+                                <span class="premium-badge">Premium Active</span>
+                            }
+                        </h3>
+                        <p class="update-subtitle">
+                            @(LicenseService.IsPremium ? "Premium is active on this PC." : "Enter the key from your order to unlock Premium.")
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            @if (LicenseService.IsPremium)
+            {
+                <div class="license-key-panel">
+                    <div class="license-key-head">
+                        <span class="license-key-label">Your license key</span>
+                        <div class="license-key-actions">
+                            <button class="rr-pill-btn ghost sm" @onclick="ToggleLicenseKeyVisibility">
+                                @(licenseKeyHidden ? "Show" : "Hide")
+                            </button>
+                            <button class="rr-pill-btn ghost sm" @onclick="CopyLicenseKeyAsync">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="license-key-value">@DisplayedLicenseKey</div>
+                    <div class="license-key-facts">
+                        <span class="license-fact">
+                            <span class="license-fact-label">Plan</span>
+                            @LicensePlanLabel
+                        </span>
+                        <span class="license-fact">
+                            <span class="license-fact-label">Expires</span>
+                            @(LicenseIsPerpetual ? "Never" : FormatLicenseExpiry(LicenseService.ExpiresAt))
+                        </span>
+                        @if (!LicenseIsPerpetual)
+                        {
+                            <span class="license-fact @LicenseRemainingClass">
+                                <span class="license-fact-label">Time left</span>
+                                @LicenseRemainingLabel
+                            </span>
+                        }
+                        <span class="license-fact">
+                            <span class="license-fact-label">Device</span>
+                            Bound to this PC
+                        </span>
+                    </div>
+
+                    @if (LicenseExpiresSoon)
+                    {
+                        <div class="license-expiry-warning">
+                            @(LicenseRemaining <= TimeSpan.Zero
+                                ? "Your license has expired."
+                                : $"Your license runs out in {LicenseRemainingLabel}.")
+                            <a href="https://rr.sellhub.cx" target="_blank" rel="noopener">Renew</a>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="license-activation-area">
+                    <input class="license-key-input" type="text" @bind="licenseKeyInput" @bind:event="oninput"
+                           @onkeydown="HandleLicenseKeyDown"
+                           placeholder="Enter your key (XXXX-XXXX-XXXX-XXXX)" spellcheck="false" autocomplete="off" />
+                    <button class="btn btn-primary license-btn" @onclick="ActivateLicense" disabled="@isActivating">
+                        @(isActivating ? "Verifying…" : "Activate")
+                    </button>
+                    <a class="btn btn-secondary license-btn" href="https://rr.sellhub.cx" target="_blank" rel="noopener">
+                        Buy Premium
+                    </a>
+                </div>
+                @if (!string.IsNullOrEmpty(activationError))
+                {
+                    <div class="license-error">@activationError</div>
+                }
+            }
+        </div>
+
+        <div class="content-card home-support-prompt">
+            <div>
+                <strong>Something not working?</strong>
+                <span>Send a readable system and feature snapshot directly to support—no log hunting.</span>
+            </div>
+            <SendDiagnosticsButton SourceRoute="home" />
+        </div>
+
         <AnnouncementBanner />
 
         <div class="dashboard-widgets">
@@ -447,119 +555,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- License Widget -->
-        <div class="content-card license-widget @(LicenseService.IsPremium ? "premium-active" : "free-tier")">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        @if (LicenseService.IsPremium)
-                        {
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                        else
-                        {
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                    </div>
-                    <div>
-                        <h3>
-                            RazorReaper 
-                            @if (LicenseService.IsPremium)
-                            {
-                                <span class="premium-badge">Premium Active</span>
-                            }
-                        </h3>
-                        <p class="update-subtitle">
-                            @(LicenseService.IsPremium ? "Your hardware is securely bound to an active Premium license." : "You are currently on the Free tier. Upgrade to unlock all advanced features.")
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            @if (LicenseService.IsPremium)
-            {
-                @* The activated key, kept visible so nobody has to hunt for it again. Masked on
-                   demand for anyone recording or screen-sharing. *@
-                <div class="license-key-panel">
-                    <div class="license-key-head">
-                        <span class="license-key-label">Your license key</span>
-                        <div class="license-key-actions">
-                            <button class="rr-pill-btn ghost sm" @onclick="ToggleLicenseKeyVisibility">
-                                @(licenseKeyHidden ? "Show" : "Hide")
-                            </button>
-                            <button class="rr-pill-btn ghost sm" @onclick="CopyLicenseKeyAsync">Copy</button>
-                        </div>
-                    </div>
-
-                    <div class="license-key-value">@DisplayedLicenseKey</div>
-
-                    @* The sidebar only says "Premium"; the plan, the date and how long is
-                       left all live here so there's one detailed place to look. *@
-                    <div class="license-key-facts">
-                        <span class="license-fact">
-                            <span class="license-fact-label">Plan</span>
-                            @LicensePlanLabel
-                        </span>
-
-                        <span class="license-fact">
-                            <span class="license-fact-label">Expires</span>
-                            @(LicenseIsPerpetual ? "Never" : FormatLicenseExpiry(LicenseService.ExpiresAt))
-                        </span>
-
-                        @* Skipped on a lifetime key — "Expires: Never" already said it. *@
-                        @if (!LicenseIsPerpetual)
-                        {
-                            <span class="license-fact @LicenseRemainingClass">
-                                <span class="license-fact-label">Time left</span>
-                                @LicenseRemainingLabel
-                            </span>
-                        }
-
-                        <span class="license-fact">
-                            <span class="license-fact-label">Device</span>
-                            Bound to this PC
-                        </span>
-                    </div>
-
-                    @if (LicenseExpiresSoon)
-                    {
-                        <div class="license-expiry-warning">
-                            @* The label above is a bare chip ("3 days", "Expired") so the facts row
-                               can reuse it, which leaves the sentence to supply its own grammar.
-                               A negative span still counts as expiring soon, so the past-tense
-                               branch is reachable and "runs out Expired." was a real render. *@
-                            @(LicenseRemaining <= TimeSpan.Zero
-                                ? "Your license has expired."
-                                : $"Your license runs out in {LicenseRemainingLabel}.")
-                            <a href="https://rr.sellhub.cx" target="_blank" rel="noopener">Renew</a>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="license-activation-area">
-                    <input class="license-key-input" type="text" @bind="licenseKeyInput" @bind:event="oninput"
-                           @onkeydown="HandleLicenseKeyDown"
-                           placeholder="Enter your key (XXXX-XXXX-XXXX-XXXX)" spellcheck="false" autocomplete="off" />
-                    <button class="btn btn-primary license-btn" @onclick="ActivateLicense" disabled="@isActivating">
-                        @(isActivating ? "Verifying…" : "Activate")
-                    </button>
-                    <a class="btn btn-secondary license-btn" href="https://rr.sellhub.cx" target="_blank" rel="noopener">
-                        Buy Premium
-                    </a>
-                </div>
-                @if (!string.IsNullOrEmpty(activationError))
-                {
-                    <div class="license-error">@activationError</div>
-                }
-            }
         </div>
 
         <!-- End of Home Content -->

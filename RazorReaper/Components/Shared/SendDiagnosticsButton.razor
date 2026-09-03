@@ -1,0 +1,65 @@
+@using RazorReaper.Services
+@inject IFeedbackService FeedbackService
+@inject INotificationService NotificationService
+
+<div class="diagnostics-send-control">
+    <button type="button"
+            class="@ButtonClass"
+            @onclick="SendAsync"
+            disabled="@_sending">
+        @if (_sending)
+        {
+            <span class="feedback-spinner" aria-hidden="true"></span>
+            <span>Collecting…</span>
+        }
+        else
+        {
+            <span>@Label</span>
+        }
+    </button>
+    @if (!string.IsNullOrWhiteSpace(_reportId))
+    {
+        <span class="diagnostics-report-id" role="status">Report ID: @_reportId</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string SourceRoute { get; set; } = "unknown";
+
+    [Parameter]
+    public string Label { get; set; } = "Send diagnostics";
+
+    [Parameter]
+    public string ButtonClass { get; set; } = "btn btn-primary";
+
+    private bool _sending;
+    private string? _reportId;
+
+    private async Task SendAsync()
+    {
+        if (_sending) return;
+
+        _sending = true;
+        _reportId = null;
+        try
+        {
+            var result = await FeedbackService.SubmitDiagnosticsAsync(null, SourceRoute);
+            if (result.Success)
+            {
+                _reportId = result.ReportId;
+                NotificationService.ShowSuccess(result.ReportId is null
+                    ? result.Message
+                    : $"{result.Message} Report ID: {result.ReportId}");
+            }
+            else
+            {
+                NotificationService.ShowError(result.Message);
+            }
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+}

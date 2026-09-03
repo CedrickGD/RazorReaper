@@ -1,6 +1,9 @@
 @using RazorReaper.Models
 @using RazorReaper.Services
+@using RazorReaper.Configuration
+@using Microsoft.Extensions.Options
 @inject IAnnouncementService AnnouncementService
+@inject IOptions<AppConfiguration> Options
 @implements IDisposable
 
 @if (_visible.Count > 0)
@@ -37,28 +40,60 @@
 
 @code {
     // Dismissed announcement ids persist in Preferences so a dismissed banner stays gone
-    // across launches — until that specific announcement is edited/replaced (new id).
+    // across launches; newly created announcements receive new ids and remain visible.
     private const string DismissedPreferenceKey = "rr.announcements.dismissed";
 
     private List<Announcement> _visible = new();
     private HashSet<long> _dismissed = new();
     private CancellationTokenSource? _cts;
+    private Task? _refreshLoop;
 
     protected override async Task OnInitializedAsync()
     {
-        _cts = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
+        var cancellationToken = cts.Token;
+        _cts = cts;
         LoadDismissed();
-        await RefreshAsync();
+        await RefreshAsync(cancellationToken);
+        _refreshLoop = RunRefreshLoopAsync(cancellationToken);
     }
 
-    private async Task RefreshAsync()
+    private async Task RunRefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        var refreshMinutes = Math.Clamp(
+            Options.Value.AdminPanel.AnnouncementRefreshMinutes,
+            1,
+            24 * 60);
+
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(refreshMinutes));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync(cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Component disposed; stop polling quietly.
+        }
+    }
+
+    private async Task RefreshAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var token = _cts?.Token ?? CancellationToken.None;
-            var active = await AnnouncementService.GetActiveAsync(token);
-            _visible = active.Where(a => !_dismissed.Contains(a.Id)).ToList();
-            await InvokeAsync(StateHasChanged);
+            var result = await AnnouncementService.GetActiveAsync(cancellationToken);
+            if (!result.Succeeded)
+            {
+                return;
+            }
+
+            await InvokeAsync(() =>
+            {
+                _visible = result.Announcements.Where(a => !_dismissed.Contains(a.Id)).ToList();
+                StateHasChanged();
+            });
         }
         catch (OperationCanceledException)
         {
@@ -125,6 +160,7 @@
     {
         _cts?.Cancel();
         _cts?.Dispose();
+        _cts = null;
     }
 }
 

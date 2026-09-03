@@ -1,5 +1,5 @@
 #define MyAppName "RazorReaper"
-#define MyAppVersion "1.4.10"
+#define MyAppVersion "1.5.0"
 #define MyAppPublisher ".itssomeguy on discord - telemetry data is being collected for statistics"
 #define MyAppURL "rr.sellhub.cx"
 #define MyAppExeName "RazorReaper.exe"

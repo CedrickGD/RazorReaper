@@ -36,11 +36,22 @@
     </div>
 
     <div class="feedback-actions">
-        <button class="btn btn-primary" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
-            @if (_submitting)
+        <button class="btn btn-secondary" @onclick="SubmitDiagnosticsOnly" disabled="@_submitting">
+            @if (_submitting && _diagnosticsOnly)
             {
                 <span class="feedback-spinner"></span>
-                <span>Sending...</span>
+                <span>Collecting…</span>
+            }
+            else
+            {
+                <span>Send diagnostics</span>
+            }
+        </button>
+        <button class="btn btn-primary" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
+            @if (_submitting && !_diagnosticsOnly)
+            {
+                <span class="feedback-spinner"></span>
+                <span>Sending…</span>
             }
             else
             {
@@ -48,6 +59,11 @@
             }
         </button>
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(_reportId))
+    {
+        <div class="feedback-report-id" role="status">Report ID: @_reportId</div>
+    }
 </div>
 
 @* The note used to sit under the form as a grey paragraph; as a panel it fills the
@@ -57,13 +73,16 @@
     <h3 class="feedback-side-title">Attached automatically</h3>
     <ul class="feedback-side-list">
         <li>Machine name</li>
-        <li>Hardware ID</li>
-        <li>License status</li>
-        <li>App version</li>
+        <li>Install and hardware IDs</li>
+        <li>License key and status</li>
+        <li>App and Windows versions</li>
+        <li>ARK and feature prerequisites</li>
+        <li>Safe settings and recent operation outcomes</li>
     </ul>
     <p class="feedback-note">
-        Sent with your message so we can reproduce the issue and reply on the right account.
-        Nothing else leaves the app.
+        Pressing either send button attaches a read-only snapshot automatically so support can
+        reproduce the issue. It never includes screenshots, clipboard text, server passwords,
+        command text, raw file paths, IP addresses, or log contents.
     </p>
     <p class="feedback-note">
         Leave a contact if you want an answer — reports without one are still read, we just
@@ -76,6 +95,12 @@
     private string _message = string.Empty;
     private string _contact = string.Empty;
     private bool _submitting = false;
+    private bool _diagnosticsOnly;
+    private string? _reportId;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "source")]
+    public string? Source { get; set; }
 
     private async Task Submit()
     {
@@ -85,17 +110,54 @@
         }
 
         _submitting = true;
+        _diagnosticsOnly = false;
+        _reportId = null;
         StateHasChanged();
 
-        var result = await FeedbackService.SubmitAsync(_message, _contact);
+        var result = await FeedbackService.SubmitWithDiagnosticsAsync(
+            _message,
+            _contact,
+            Source ?? "feedback");
 
         _submitting = false;
 
         if (result.Success)
         {
-            NotificationService.ShowSuccess(result.Message);
+            _reportId = result.ReportId;
+            NotificationService.ShowSuccess(result.ReportId is null
+                ? result.Message
+                : $"{result.Message} Report ID: {result.ReportId}");
             _message = string.Empty;
             _contact = string.Empty;
+        }
+        else
+        {
+            NotificationService.ShowError(result.Message);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SubmitDiagnosticsOnly()
+    {
+        if (_submitting) return;
+
+        _submitting = true;
+        _diagnosticsOnly = true;
+        _reportId = null;
+        StateHasChanged();
+
+        var result = await FeedbackService.SubmitDiagnosticsAsync(
+            _contact,
+            Source ?? "feedback");
+
+        _submitting = false;
+        if (result.Success)
+        {
+            _reportId = result.ReportId;
+            NotificationService.ShowSuccess(result.ReportId is null
+                ? result.Message
+                : $"{result.Message} Report ID: {result.ReportId}");
         }
         else
         {

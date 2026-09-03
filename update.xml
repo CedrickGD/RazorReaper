@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.4.10.0</version>
-    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.4.10/RazorReaper-Setup.exe</url>
-    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.4.10</changelog>
+    <version>1.5.0.0</version>
+    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.5.0/RazorReaper-Setup.exe</url>
+    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.5.0</changelog>
     <mandatory>false</mandatory>
     <args>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</args>
     <notes>
-- Fixed the Discord Rich Presence download button so it uses https://dl.razorreaper.app/.
-- Removed the large update/download widget from the top of the Home page.
-- Suppressed harmless cancelled Discord pipe operations from background error telemetry.
+- General application updates.
+- Reliability and interface improvements.
     </notes>
 </item>

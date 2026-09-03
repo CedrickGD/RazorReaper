@@ -199,13 +199,13 @@ public static class NavCatalog
 
         new NavGroup("Help & About", NavIcons.CatHelp, new[]
         {
+            new NavPage("Report a Problem", "/feedback", "Help & About", NavIcons.Feedback,
+                "Send feedback, report a bug, or request a feature",
+                new[] { "feedback", "bug", "report", "suggestion", "feature", "request", "contact", "help", "diagnostics", "support" }),
+
             new NavPage("Troubleshoot", "/troubleshoot", "Help & About", NavIcons.Troubleshoot,
                 "Logging, diagnostics, and quick fixes",
                 new[] { "troubleshoot", "diagnostics", "logging", "error", "fix", "debug", "logs" }),
-
-            new NavPage("Feedback", "/feedback", "Help & About", NavIcons.Feedback,
-                "Send feedback, report a bug, or request a feature",
-                new[] { "feedback", "bug", "report", "suggestion", "feature", "request", "contact", "help" }),
 
             new NavPage("Credits", "/credits", "Help & About", NavIcons.Credits,
                 "Developer information & contact",

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using RazorReaper.Configuration;
 using RazorReaper.Diagnostics;
 using RazorReaper.Services;
+using RazorReaper.Services.Diagnostics;
 using RazorReaper.Services.Implementations;
 using Serilog;
 using Serilog.Core;
@@ -41,11 +42,11 @@ namespace RazorReaper
             // Both clients carry the per-install request signature (rr.install.v1).
             builder.Services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
             {
-                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
+                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.5.0 (Windows NT 10.0; Win64; x64)");
             }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
             builder.Services.AddHttpClient("RazorReaperTelemetry", client => 
             {
-                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.4.8 (Windows NT 10.0; Win64; x64)");
+                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.5.0 (Windows NT 10.0; Win64; x64)");
             }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
 
 #if DEBUG
@@ -277,6 +278,19 @@ namespace RazorReaper
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
             services.AddSingleton<IFeedbackService, FeedbackService>();
+            services.AddSingleton<IDiagnosticProvider, AppRuntimeDiagnosticProvider>();
+            services.AddSingleton<IDiagnosticProvider, WindowsHostDiagnosticProvider>();
+            services.AddSingleton<IDiagnosticProvider, IdentityLicenseDiagnosticProvider>();
+            services.AddSingleton<IDiagnosticProvider, ArkEnvironmentDiagnosticProvider>();
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "core_features", "Core"));
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "ark_tweaks", "ARK Tweaks"));
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "custom_ark", "Custom ARK"));
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "automation", "Automation", includeScripts: true));
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "mods_intel", "Mods & Intel"));
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "utilities", "Utilities"));
+            services.AddSingleton<IDiagnosticProvider>(sp => CreateFeatureDiagnosticProvider(sp, "help_support", "Help & About"));
+            services.AddSingleton<IDiagnosticProvider, SettingsOperationsDiagnosticProvider>();
+            services.AddSingleton<IDiagnosticSnapshotService, DiagnosticSnapshotService>();
             services.AddSingleton<ISteamWorkshopService, SteamWorkshopService>();
             services.AddSingleton<ICustomServerDataService, CustomServerDataService>();
             services.AddSingleton<IMediaCacheService, MediaCacheService>();
@@ -397,5 +411,29 @@ namespace RazorReaper
             services.AddSingleton<IGameIniService, GameIniService>();
             services.AddSingleton<ILineListService, LineListService>();
         }
+
+        private static FeatureCatalogDiagnosticProvider CreateFeatureDiagnosticProvider(
+            IServiceProvider services,
+            string providerId,
+            string category,
+            bool includeScripts = false)
+            => new(
+                providerId,
+                category,
+                includeScripts,
+                services.GetRequiredService<IPreferencesStore>(),
+                services.GetRequiredService<IActivityService>(),
+                services.GetRequiredService<IArkPathProvider>(),
+                services.GetRequiredService<IProcessService>(),
+                services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppConfiguration>>(),
+                providerId == "automation"
+                    ? services.GetRequiredService<RazorReaper.Services.Automation.IAutoClickerRuntime>()
+                    : null,
+                providerId is "custom_ark" or "utilities"
+                    ? services.GetRequiredService<IStretchedResService>()
+                    : null,
+                providerId is "custom_ark" or "utilities"
+                    ? services.GetRequiredService<RazorReaper.Services.Media.IFfmpegProvider>()
+                    : null);
     }
 }

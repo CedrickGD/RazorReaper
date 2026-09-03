@@ -15,7 +15,7 @@ public sealed class DiscordReleaseWorkflowTests
         var normalized = source.Replace("\r\n", "\n", StringComparison.Ordinal);
 
         Assert.Contains(
-            "  notify:\n    if: ${{ github.event_name != 'release' || github.event.release.tag_name != 'v1.4.10' }}\n    runs-on: ubuntu-latest",
+            "  notify:\n    if: ${{ github.event_name != 'release' || github.event.release.tag_name != 'v1.5.0' }}\n    runs-on: ubuntu-latest",
             normalized,
             StringComparison.Ordinal);
         Assert.Contains("      - published", normalized, StringComparison.Ordinal);

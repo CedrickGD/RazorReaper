@@ -10,8 +10,7 @@ namespace RazorReaper.Services.Implementations;
 
 /// <summary>
 /// Fetches active announcements from the admin panel's public endpoint for the Home banner.
-/// Failures are swallowed (empty list) — a missing/unreachable backend must never break the UI,
-/// matching how telemetry treats its own network errors.
+/// Failures are reported without throwing so the banner can retain its last-known good state.
 /// </summary>
 public class AnnouncementService : IAnnouncementService
 {
@@ -29,13 +28,13 @@ public class AnnouncementService : IAnnouncementService
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<Announcement>> GetActiveAsync(CancellationToken cancellationToken = default)
+    public async Task<AnnouncementFetchResult> GetActiveAsync(CancellationToken cancellationToken = default)
     {
         var settings = _options.Value.AdminPanel;
         var baseUrl = settings.BaseUrl?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            return Array.Empty<Announcement>();
+            return AnnouncementFetchResult.Failure;
         }
 
         try
@@ -48,16 +47,17 @@ public class AnnouncementService : IAnnouncementService
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Announcements fetch returned HTTP {Status}.", (int)response.StatusCode);
-                return Array.Empty<Announcement>();
+                return AnnouncementFetchResult.Failure;
             }
 
             var payload = await response.Content.ReadFromJsonAsync<AnnouncementsResponse>(cts.Token);
             if (payload is { Ok: true, Announcements: not null })
             {
-                return payload.Announcements;
+                return AnnouncementFetchResult.Success(payload.Announcements);
             }
 
-            return Array.Empty<Announcement>();
+            _logger.LogInformation("Announcements fetch returned an invalid response payload.");
+            return AnnouncementFetchResult.Failure;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -65,9 +65,9 @@ public class AnnouncementService : IAnnouncementService
         }
         catch (Exception ex)
         {
-            // Offline / DNS / timeout: banner just stays empty.
+            // Offline / DNS / timeout: preserve the banner's last-known good state.
             _logger.LogInformation(ex, "Failed to fetch announcements.");
-            return Array.Empty<Announcement>();
+            return AnnouncementFetchResult.Failure;
         }
     }
 

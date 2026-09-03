@@ -139,6 +139,7 @@ public sealed class IdentityConsumerTests
             new StubLicenseService(),
             CreateOptions(parameters[3].ParameterType, telemetryEnabled: false),
             CreateNoOpProxy(parameters[4].ParameterType),
+            CreateNoOpProxy(parameters[5].ParameterType),
         ]));
     }
 

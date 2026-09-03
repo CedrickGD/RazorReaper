@@ -238,7 +238,11 @@ public sealed class NotifierClientService : INotifierClientService
     {
         try
         {
-            _endpoint = Preferences.Get(EndpointKey, "") ?? "";
+            _endpoint = NotifierEndpointMigration.Migrate(Preferences.Get(EndpointKey, "") ?? "");
+            if (_endpoint != (Preferences.Get(EndpointKey, "") ?? ""))
+            {
+                try { Preferences.Set(EndpointKey, _endpoint); } catch { /* best effort */ }
+            }
 
             foreach (var def in TypeDefsStatic)
             {
@@ -344,7 +348,7 @@ public sealed class NotifierClientService : INotifierClientService
 
     public void SetEndpoint(string url)
     {
-        var trimmed = (url ?? "").Trim();
+        var trimmed = NotifierEndpointMigration.Migrate((url ?? "").Trim());
         lock (_gate)
         {
             if (_endpoint == trimmed) return;

@@ -107,6 +107,30 @@
 .feedback-actions {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.diagnostics-send-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+}
+
+.diagnostics-report-id,
+.feedback-report-id {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid rgba(var(--accent-green-rgb), 0.28);
+    border-radius: var(--radius-control);
+    background: rgba(var(--accent-green-rgb), 0.09);
+    color: var(--accent-green);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
 }
 
 .feedback-spinner {

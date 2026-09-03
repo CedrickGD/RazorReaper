@@ -4,6 +4,29 @@
     gap: 1.5rem;
 }
 
+.troubleshoot-send-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-bottom: 1rem !important;
+    border-color: rgba(var(--accent-purple-rgb), 0.32) !important;
+    background: linear-gradient(110deg, rgba(var(--accent-purple-rgb), 0.12), rgba(0, 0, 0, 0.16)) !important;
+}
+
+.troubleshoot-send-card h3 {
+    margin: 0 0 0.35rem;
+    color: var(--text-primary);
+}
+
+.troubleshoot-send-card p {
+    margin: 0;
+    max-width: 760px;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
 .troubleshoot-card-header {
     display: flex;
     flex-direction: column;
@@ -204,6 +227,11 @@
 }
 
 @media (max-width: 768px) {
+    .troubleshoot-send-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
     .troubleshoot-log-actions {
         flex-direction: column;
         align-items: stretch;

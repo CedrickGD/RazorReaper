@@ -139,12 +139,14 @@ public sealed class DesyncService : IDesyncService
         if (!IsAdministrator)
         {
             _notifications.ShowWarning("Desync needs RazorReaper to run as Administrator — restart it elevated.");
+            TryActivity("Desync failed: administrator required", "warning");
             return false;
         }
 
         if (!_process.IsProcessRunning(_config.Value.Ark.GameProcessName))
         {
             _notifications.ShowWarning("ARK isn't running — start the game first.");
+            TryActivity("Desync failed: ARK not running", "warning");
             return false;
         }
 
@@ -152,6 +154,7 @@ public sealed class DesyncService : IDesyncService
         if (string.IsNullOrWhiteSpace(exePath))
         {
             _notifications.ShowError("Could not locate ShooterGame.exe — check that ARK is installed where Steam reports it.");
+            TryActivity("Desync failed: executable unavailable", "warning");
             return false;
         }
 
@@ -167,6 +170,7 @@ public sealed class DesyncService : IDesyncService
             _notifications.ShowError(add.Output.Length > 0
                 ? $"Could not create the firewall rule: {add.Output}"
                 : "Could not create the firewall rule (needs Administrator).");
+            TryActivity("Desync failed: firewall rule creation", "warning");
             return false;
         }
 
@@ -178,6 +182,7 @@ public sealed class DesyncService : IDesyncService
         {
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
             _notifications.ShowWarning($"Free monthly limit reached ({quota.Limit} desync activations). Resets next month — Premium is unlimited.");
+            TryActivity("Desync failed: monthly usage limit", "warning");
             return false;
         }
 
@@ -215,7 +220,13 @@ public sealed class DesyncService : IDesyncService
 
         var del = await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
         if (!del.Success)
+        {
             _logger.LogWarning("Desync revert: netsh delete rule reported failure: {Output}", del.Output);
+            _notifications.ShowWarning("Could not remove the Desync firewall rule — traffic may still be blocked. Try again as Administrator.");
+            TryActivity("Desync failed: firewall rule removal", "warning");
+            RaiseChanged();
+            return;
+        }
         _notifications.ShowInfo("Desync reverted — traffic restored.");
         TryActivity("Desync reverted", "info");
         RaiseChanged();
@@ -238,6 +249,7 @@ public sealed class DesyncService : IDesyncService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Desync auto-revert failed — forcing rule removal");
+            TryActivity("Desync failed: automatic firewall revert", "warning");
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
             TryHud(null);
         }
