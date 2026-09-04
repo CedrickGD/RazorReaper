@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Services.Http;
 
 namespace RazorReaper.Services.Implementations;
@@ -759,16 +760,5 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
     }
 
     private static string SafeGetAppVersion()
-    {
-        try
-        {
-            var ver = AppInfo.Current.Version;
-            return ver.Build > 0 ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : $"{ver.Major}.{ver.Minor}";
-        }
-        catch
-        {
-            var fallback = typeof(InstallIdentityService).Assembly.GetName().Version;
-            return fallback is null ? "0.0.0" : $"{fallback.Major}.{fallback.Minor}.{fallback.Build}";
-        }
-    }
+        => AppVersionInfo.VersionString;
 }

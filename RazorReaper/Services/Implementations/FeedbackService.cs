@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Diagnostics;
 
@@ -200,14 +201,7 @@ public class FeedbackService : IFeedbackService
     }
 
     private static string? SafeGetAppVersion()
-    {
-        try
-        {
-            var ver = AppInfo.Current.Version;
-            return ver.Build > 0 ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : $"{ver.Major}.{ver.Minor}";
-        }
-        catch { return null; }
-    }
+        => AppVersionInfo.VersionString;
 
     private static string? SafeGetPlatform()
     {

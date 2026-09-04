@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Http;
 using RazorReaper.Services.Implementations;
@@ -110,7 +111,7 @@ public sealed class InstallIdentityServiceTests
         Assert.Equal("P-256", publicKey.GetProperty("crv").GetString());
         Assert.Equal(32, InstallRequestSigning.Base64UrlDecode(publicKey.GetProperty("x").GetString()!).Length);
         Assert.Equal(32, InstallRequestSigning.Base64UrlDecode(publicKey.GetProperty("y").GetString()!).Length);
-        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("app_version").GetString()));
+        Assert.Equal(AppVersionInfo.VersionString, root.GetProperty("app_version").GetString());
         Assert.False(root.TryGetProperty("license_key", out _));
         Assert.Equal("2026-08-21T12:00:00Z", harness.Preferences.Peek("rr.install.registered_at"));
         Assert.Equal(InstallId, harness.Preferences.Peek("rr.install.registered_id"));

@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -363,7 +364,9 @@ public sealed class TelemetryService : ITelemetryService
             ["machine_name"] = Environment.MachineName,
             ["user_label"] = Environment.MachineName,
             ["framework"] = $".NET {Environment.Version}",
-            ["process_id"] = Environment.ProcessId
+            ["process_id"] = Environment.ProcessId,
+            ["app_version"] = AppVersionInfo.VersionString,
+            ["app_build"] = AppVersionInfo.BuildString
         };
 
         if (!string.IsNullOrWhiteSpace(sessionId))
@@ -374,9 +377,6 @@ public sealed class TelemetryService : ITelemetryService
 
         try
         {
-            var ver = AppInfo.Current.Version;
-            metrics["app_version"] = ver.Build > 0 ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : $"{ver.Major}.{ver.Minor}";
-            metrics["app_build"] = AppInfo.Current.BuildString;
             metrics["platform"] = DeviceInfo.Platform.ToString().ToLowerInvariant();
             metrics["device_model"] = DeviceInfo.Model;
             metrics["os_version"] = DeviceInfo.VersionString;

@@ -2,6 +2,7 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
 using RazorReaper.UnitTests.Infrastructure;
@@ -65,6 +66,8 @@ public sealed class IdentityConsumerTests
         using var body = JsonDocument.Parse(Assert.IsType<string>(request.Body));
         var metrics = body.RootElement.GetProperty("metrics");
         Assert.Equal(SuppliedIdentity.InstallId, metrics.GetProperty("install_id").GetString());
+        Assert.Equal(AppVersionInfo.VersionString, metrics.GetProperty("app_version").GetString());
+        Assert.Equal(AppVersionInfo.BuildString, metrics.GetProperty("app_build").GetString());
         Assert.False(metrics.GetProperty("rpc_enabled").GetBoolean());
         Assert.Equal("preview-review-user", metrics.GetProperty("discord_user").GetString());
         Assert.Equal(1, identity.CallCount);

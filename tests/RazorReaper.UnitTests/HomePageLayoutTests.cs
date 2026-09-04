@@ -16,15 +16,18 @@ public sealed class HomePageLayoutTests
     }
 
     [Fact]
-    public void LicenseActivationIsBeforeAnnouncementsAndDashboardWidgets()
+    public void SupportPromptAndLicenseStayAheadOfDashboardContent()
     {
         var source = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "Components", "Pages", "Home.razor"));
 
+        var support = source.IndexOf("class=\"content-card home-support-prompt\"", StringComparison.Ordinal);
         var license = source.IndexOf("class=\"license-key-input\"", StringComparison.Ordinal);
         var announcements = source.IndexOf("<AnnouncementBanner />", StringComparison.Ordinal);
         var widgets = source.IndexOf("class=\"dashboard-widgets\"", StringComparison.Ordinal);
 
+        Assert.True(support > 0);
         Assert.True(license > 0);
+        Assert.True(support < license);
         Assert.True(license < announcements);
         Assert.True(license < widgets);
         Assert.Contains("Bound to this PC", source, StringComparison.Ordinal);

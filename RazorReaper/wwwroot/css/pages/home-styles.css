@@ -2228,8 +2228,8 @@
     border-left: 4px solid var(--accent-purple);
 }
 
-/* This is intentionally the first card on Home. Premium users keep a compact status panel;
-   free users get the activation field without scrolling past dashboard widgets. */
+/* Keep this near the top, directly below the compact support prompt. Premium users retain a
+   compact status panel; free users see activation before announcements and dashboard widgets. */
 .home-license-top {
     margin-bottom: var(--space-3);
 }

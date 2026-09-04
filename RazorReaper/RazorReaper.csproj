@@ -45,6 +45,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<!-- A stable build-number source for runtime telemetry. Unlike MAUI AppInfo metadata,
+		     normal SDK assembly metadata is regenerated when project properties change. -->
+		<AssemblyMetadata Include="RazorReaper.ApplicationVersion" Value="$(ApplicationVersion)" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\rrlogo.png" BaseSize="256,256" />
 
@@ -154,6 +160,29 @@
 		<Exec Command="powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\build\kill-stale-watcher.ps1&quot; -TargetDir &quot;$(TargetDir.TrimEnd('\'))&quot;"
 		      ContinueOnError="true"
 		      StandardOutputImportance="normal" />
+	</Target>
+
+	<!-- MAUI 10's incremental manifest target does not track ApplicationDisplayVersion or
+	     ApplicationVersion as inputs. Force the tiny generated manifest to be refreshed so
+	     AppInfo metadata can never survive a version bump from an older bin/obj tree. -->
+	<Target Name="InvalidateStaleMauiVersionManifest"
+	        BeforeTargets="MauiGeneratePackageAppxManifest"
+	        Condition="'$(_ResizetizerIsWindowsAppSdk)' == 'True'">
+		<Delete Files="$(_MauiManifestStampFile);$(_MauiIntermediateManifest)Package.appxmanifest" />
+	</Target>
+
+	<Target Name="ValidateGeneratedMauiVersionManifest"
+	        AfterTargets="MauiGeneratePackageAppxManifest"
+	        Condition="'$(_ResizetizerIsWindowsAppSdk)' == 'True' and Exists('$(_MauiIntermediateManifest)Package.appxmanifest')">
+		<XmlPeek
+			Namespaces="&lt;Namespace Prefix='ns' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10'/&gt;"
+			XmlInputPath="$(_MauiIntermediateManifest)Package.appxmanifest"
+			Query="/ns:Package/ns:Identity/@Version">
+			<Output TaskParameter="Result" ItemName="_RazorReaperGeneratedMauiVersion" />
+		</XmlPeek>
+		<Error
+			Condition="'@(_RazorReaperGeneratedMauiVersion)' != '$(ApplicationDisplayVersion).$(ApplicationVersion)'"
+			Text="Generated MAUI version '@(_RazorReaperGeneratedMauiVersion)' does not match '$(ApplicationDisplayVersion).$(ApplicationVersion)'. Delete bin/obj and rebuild." />
 	</Target>
 
   <!-- Bundled ffmpeg for the Convert page. Condition, not a hard reference: the binary is

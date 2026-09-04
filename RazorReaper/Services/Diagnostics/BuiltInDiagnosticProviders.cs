@@ -78,10 +78,7 @@ public sealed class AppRuntimeDiagnosticProvider(TimeProvider timeProvider) : ID
     }
 
     private static string SafeAppVersion()
-    {
-        try { return AppInfo.Current.VersionString; }
-        catch { return typeof(AppRuntimeDiagnosticProvider).Assembly.GetName().Version?.ToString(3) ?? "unknown"; }
-    }
+        => AppVersionInfo.VersionString;
 
     private static T? Safe<T>(Func<T?> action) where T : class
     {

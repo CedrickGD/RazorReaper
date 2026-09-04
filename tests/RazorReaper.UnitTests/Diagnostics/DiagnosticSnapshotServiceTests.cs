@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Models;
 using RazorReaper.Navigation;
 using RazorReaper.Services;
@@ -12,6 +13,17 @@ namespace RazorReaper.UnitTests.Diagnostics;
 
 public sealed class DiagnosticSnapshotServiceTests
 {
+    [Fact]
+    public async Task AppRuntimeProviderUsesCanonicalAssemblyVersion()
+    {
+        var provider = new AppRuntimeDiagnosticProvider(TimeProvider.System);
+
+        var report = await provider.CaptureAsync(new DiagnosticCaptureContext("home"));
+
+        var version = Assert.Single(report.Checks, check => check.Key == "app_version");
+        Assert.Equal(AppVersionInfo.VersionString, version.Value);
+    }
+
     [Fact]
     public async Task CaptureEmitsExactRequiredProviderSetAndIsolatesFailuresAndTimeouts()
     {

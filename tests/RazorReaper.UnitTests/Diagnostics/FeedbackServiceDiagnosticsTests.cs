@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Diagnostics;
 using RazorReaper.Services.Implementations;
@@ -32,7 +33,7 @@ public sealed class FeedbackServiceDiagnosticsTests
         Assert.Equal("6b591417-93ab-4411-b18e-e46080ef0025", root.GetProperty("install_id").GetString());
         Assert.Equal("RRRR-TEST-KEY", root.GetProperty("license_key").GetString());
         Assert.True(root.TryGetProperty("machine_name", out _));
-        Assert.True(root.TryGetProperty("app_version", out _));
+        Assert.Equal(AppVersionInfo.VersionString, root.GetProperty("app_version").GetString());
         Assert.True(root.TryGetProperty("platform", out _));
         Assert.Equal(1, root.GetProperty("diagnostics").GetProperty("schema_version").GetInt32());
         Assert.Equal(12, root.GetProperty("diagnostics").GetProperty("providers").GetArrayLength());

@@ -42,11 +42,11 @@ namespace RazorReaper
             // Both clients carry the per-install request signature (rr.install.v1).
             builder.Services.AddHttpClient(Microsoft.Extensions.Options.Options.DefaultName, client => 
             {
-                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.5.0 (Windows NT 10.0; Win64; x64)");
+                client.DefaultRequestHeaders.Add("User-Agent", AppVersionInfo.UserAgent);
             }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
             builder.Services.AddHttpClient("RazorReaperTelemetry", client => 
             {
-                client.DefaultRequestHeaders.Add("User-Agent", "RazorReaper/1.5.0 (Windows NT 10.0; Win64; x64)");
+                client.DefaultRequestHeaders.Add("User-Agent", AppVersionInfo.UserAgent);
             }).AddHttpMessageHandler<RazorReaper.Services.Http.SignedRequestHandler>();
 
 #if DEBUG

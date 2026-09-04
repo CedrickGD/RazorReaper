@@ -1,4 +1,7 @@
+using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using RazorReaper.Diagnostics;
 
 namespace RazorReaper.UnitTests;
 
@@ -19,6 +22,46 @@ public sealed class ReleaseReadinessTests
         Assert.Contains("/releases/download/v1.5.0/RazorReaper-Setup.exe", manifest, StringComparison.Ordinal);
         Assert.Contains("/releases/tag/v1.5.0", manifest, StringComparison.Ordinal);
         Assert.DoesNotContain("1.4.10", manifest, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CompiledVersionMetadataIsAlignedFor150()
+    {
+        var assembly = typeof(AppVersionInfo).Assembly;
+        var mauiVersion = assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .Single(attribute =>
+                string.Equals(
+                    attribute.Key,
+                    "Microsoft.Maui.ApplicationModel.AppInfo.Version",
+                    StringComparison.Ordinal))
+            .Value;
+        var informationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        var fileVersion = FileVersionInfo.GetVersionInfo(assembly.Location).FileVersion;
+
+        Assert.Equal("1.5.0.0", assembly.GetName().Version?.ToString());
+        Assert.Equal("1.5.0.0", fileVersion);
+        Assert.Equal("1.5.0", informationalVersion);
+        Assert.Equal("1.5.0", AppVersionInfo.VersionString);
+        Assert.Equal("14", AppVersionInfo.BuildString);
+        Assert.Equal("1.5.0.14", mauiVersion);
+        Assert.StartsWith("RazorReaper/1.5.0 ", AppVersionInfo.UserAgent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RuntimeCodeDoesNotReadVersionFromMauiAppInfo()
+    {
+        var sourceRoot = Path.Combine(RepositoryRoot(), "RazorReaper");
+        var offenders = Directory
+            .EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => File.ReadAllText(path).Contains("AppInfo.Current.Version", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Empty(offenders);
     }
 
     [Fact]

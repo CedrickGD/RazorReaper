@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
+using RazorReaper.Diagnostics;
 using RazorReaper.Models;
-using System.Reflection;
 using System.Xml.Linq;
 
 namespace RazorReaper.Services.Implementations;
@@ -23,7 +23,6 @@ public class UpdateService : IUpdateService
     /// failing outright, so it stays regardless.
     /// </summary>
     private const string FallbackManifestUrl = "https://raw.githubusercontent.com/CedrickGD/RazorReaper/master/update.xml";
-    private static readonly Version FallbackVersion = new Version(0, 0, 0, 0);
     private readonly HttpClient httpClient;
     private readonly ITelemetryService telemetryService;
     private readonly ILogger<UpdateService> logger;
@@ -206,9 +205,7 @@ public class UpdateService : IUpdateService
     }
 
     private static Version GetAssemblyVersion()
-    {
-        return Assembly.GetExecutingAssembly().GetName().Version ?? FallbackVersion;
-    }
+        => AppVersionInfo.Version;
 
     private static string FormatVersion(Version version)
     {

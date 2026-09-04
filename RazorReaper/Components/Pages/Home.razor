@@ -27,7 +27,15 @@
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
 
-        <!-- License stays first: new customers can activate without scanning the dashboard. -->
+        <div class="content-card home-support-prompt">
+            <div>
+                <strong>Something not working?</strong>
+                <span>Send a readable system and feature snapshot directly to support—no log hunting.</span>
+            </div>
+            <SendDiagnosticsButton SourceRoute="home" />
+        </div>
+
+        <!-- Keep activation near the top, directly below the compact support prompt. -->
         <div class="content-card license-widget home-license-top @(LicenseService.IsPremium ? "premium-active" : "free-tier")">
             <div class="update-card-header">
                 <div class="update-title">
@@ -125,14 +133,6 @@
                     <div class="license-error">@activationError</div>
                 }
             }
-        </div>
-
-        <div class="content-card home-support-prompt">
-            <div>
-                <strong>Something not working?</strong>
-                <span>Send a readable system and feature snapshot directly to support—no log hunting.</span>
-            </div>
-            <SendDiagnosticsButton SourceRoute="home" />
         </div>
 
         <AnnouncementBanner />
