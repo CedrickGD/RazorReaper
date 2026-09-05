@@ -6,6 +6,7 @@
 <header class="page-header">
     <h1 class="page-title">Feedback</h1>
     <p class="page-subtitle">Tell us what's working, what's broken, or what you'd like to see next.</p>
+    <a href="/inbox" class="btn btn-secondary">Open support inbox</a>
 </header>
 
 <div class="feedback-layout">
@@ -29,7 +30,7 @@
         <input id="feedback-contact"
                class="feedback-input"
                type="text"
-               placeholder="Discord or email — if you'd like a reply"
+               placeholder="Discord or email — an additional way to reach you"
                maxlength="256"
                @bind="_contact"
                @bind:event="oninput"
@@ -75,8 +76,8 @@
         command text, raw file paths, IP addresses, or log contents.
     </p>
     <p class="feedback-note">
-        Leave a contact if you want an answer — reports without one are still read, we just
-        can't follow up.
+        Answers appear privately in your Inbox. The number beside Inbox shows unread replies;
+        you don't need to leave a contact to receive an answer here.
     </p>
 </aside>
 </div>

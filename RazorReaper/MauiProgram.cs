@@ -278,6 +278,7 @@ namespace RazorReaper
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();
             services.AddSingleton<IAnnouncementService, AnnouncementService>();
             services.AddSingleton<IFeedbackService, FeedbackService>();
+            services.AddSingleton<ISupportInboxService, SupportInboxService>();
             services.AddSingleton<IDiagnosticProvider, AppRuntimeDiagnosticProvider>();
             services.AddSingleton<IDiagnosticProvider, WindowsHostDiagnosticProvider>();
             services.AddSingleton<IDiagnosticProvider, IdentityLicenseDiagnosticProvider>();

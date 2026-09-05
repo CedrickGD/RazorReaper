@@ -206,6 +206,8 @@ public static class NavCatalog
             new NavPage("Report a Problem", "/feedback", "Help & About", NavIcons.Feedback,
                 "Send feedback, report a bug, or request a feature",
                 new[] { "feedback", "bug", "report", "suggestion", "feature", "request", "contact", "help", "diagnostics", "support" }),
+            new NavPage("Support inbox", "/inbox", "Help & About", NavIcons.Feedback,
+                "Private replies to your reports", new[] { "inbox", "reply", "messages", "support" }),
 
             new NavPage("Troubleshoot", "/troubleshoot", "Help & About", NavIcons.Troubleshoot,
                 "Logging, diagnostics, and quick fixes",

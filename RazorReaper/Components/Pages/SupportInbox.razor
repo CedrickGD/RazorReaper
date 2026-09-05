@@ -1,0 +1,68 @@
+@page "/inbox"
+@using RazorReaper.Services
+@inject ISupportInboxService Inbox
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">Inbox</h1>
+    <p class="page-subtitle">Private answers from support, linked to your reports.</p>
+</header>
+<div class="support-inbox-actions"><a href="/feedback" class="btn btn-secondary">Report an issue</a></div>
+@if (Inbox.Error is not null)
+{
+    <p role="status" class="feedback-note">@Inbox.Error</p>
+}
+@if (!Inbox.HasLoaded && Inbox.Error is null)
+{
+    <p>Loading your inbox…</p>
+}
+else if (Inbox.HasLoaded && Inbox.Replies.Count == 0)
+{
+    <div class="content-card"><h3>No replies yet</h3><p>Your replies will appear here automatically. You'll see a number next to Inbox when support answers.</p></div>
+}
+<div class="support-replies">
+@foreach (var reply in Inbox.Replies)
+{
+    <article @key="reply.Id" class="content-card support-reply @(reply.ReadAt is null ? "is-unread" : "")">
+        <button type="button" class="support-reply-heading" aria-expanded="@_opened.Contains(reply.Id)" @onclick="() => OpenAsync(reply)">
+            <span><strong>Support replied</strong><span class="support-reply-meta">@reply.ReportId · @reply.CreatedAt.ToLocalTime().ToString("g")</span></span>
+            @if (reply.ReadAt is null) { <span class="support-unread">New</span> }
+            <span aria-hidden="true">@(_opened.Contains(reply.Id) ? "−" : "+")</span>
+        </button>
+        @if (_opened.Contains(reply.Id))
+        {
+            <div class="support-reply-content">
+                <p class="support-answer">@reply.Message</p>
+                <div class="support-original"><strong>Your report</strong><p>@reply.OriginalMessage</p></div>
+            </div>
+        }
+    </article>
+}
+</div>
+@if (Inbox.NextBefore is not null)
+{
+    <button class="btn btn-secondary" disabled="@_loadingOlder" @onclick="LoadOlderAsync">Earlier replies</button>
+}
+
+@code {
+    private readonly HashSet<long> _opened = [];
+    private bool _loadingOlder;
+    protected override async Task OnInitializedAsync()
+    {
+        Inbox.Changed += OnChanged;
+        await Inbox.RefreshAsync();
+    }
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private async Task OpenAsync(SupportReply reply)
+    {
+        if (!_opened.Add(reply.Id)) { _opened.Remove(reply.Id); return; }
+        if (reply.ReadAt is null) await Inbox.MarkReadAsync(reply.Id);
+    }
+    private async Task LoadOlderAsync()
+    {
+        _loadingOlder = true;
+        try { await Inbox.RefreshAsync(older: true); }
+        finally { _loadingOlder = false; }
+    }
+    public void Dispose() => Inbox.Changed -= OnChanged;
+}
