@@ -389,6 +389,7 @@ namespace RazorReaper
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton<ISecureValueStore, MauiSecureValueStore>();
             services.AddSingleton<IInstallIdentityService, InstallIdentityService>();
+            services.AddSingleton<ICustomerAccountService, CustomerAccountService>();
             // The handler resolves the identity service lazily: the identity service depends on
             // ILicenseService, which owns an HttpClient that carries this very handler.
             services.AddTransient(sp => new RazorReaper.Services.Http.SignedRequestHandler(

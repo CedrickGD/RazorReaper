@@ -1,0 +1,199 @@
+@page "/account"
+@using RazorReaper.Services
+@using RazorReaper.Services.Implementations
+@using Microsoft.AspNetCore.Components.Forms
+@inject ICustomerAccountService Accounts
+@inject INotificationService Notifications
+@inject ILicenseService License
+@inject IClientIdentityService Identity
+@inject IJSRuntime JS
+@implements IDisposable
+
+<header class="page-header">
+    <h1 class="page-title">My account</h1>
+    <p class="page-subtitle">Your profile, Discord and RazorReaper installations, together.</p>
+</header>
+<div class="account-page">
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="account-notice" role="alert">@_error</p>
+    }
+    @if (_loading)
+    {
+        <section class="content-card"><p>Loading your account…</p></section>
+    }
+    else if (Accounts.Profile is { } profile)
+    {
+        <section class="content-card account-profile-card">
+            <div class="account-photo">
+                @if (!string.IsNullOrEmpty(_avatar ?? profile.Avatar) && !_removeAvatar)
+                {
+                    <img src="@(_avatar ?? profile.Avatar)" alt="Your profile picture" />
+                }
+                else { <span>@profile.DisplayName[..1].ToUpperInvariant()</span> }
+            </div>
+            <div class="account-profile-fields">
+                <h3>Your profile</h3>
+                <p>Your chosen name and picture are saved to your account and appear in the support panel.</p>
+                <label for="account-name">Display name</label>
+                <input id="account-name" class="account-input" @bind="_name" maxlength="60" disabled="@_busy" />
+                <div class="account-actions">
+                    <label class="rr-pill-btn ghost account-file">Choose picture<InputFile OnChange="ChooseAvatar" accept="image/png,image/jpeg,image/webp" disabled="@_busy" /></label>
+                    <button class="rr-pill-btn ghost" @onclick="RemoveAvatar" disabled="@_busy">Use Discord picture</button>
+                    <button class="rr-pill-btn" @onclick="SaveProfile" disabled="@_busy">@(_busy ? "Saving…" : "Save profile")</button>
+                </div>
+                <p class="account-hint">PNG, JPG or WebP. The center is cropped into a square.</p>
+            </div>
+        </section>
+        <section class="content-card">
+            <h3>Connected accounts</h3>
+            <div class="account-row"><span>Discord</span><strong>@@@profile.DiscordUsername</strong><span>Connected</span></div>
+            <div class="account-row"><span>This installation</span><strong>RazorReaper</strong><span>Linked to your account</span></div>
+            <div class="account-row"><span>License on this device</span><strong>@(License.IsActivated ? "Active" : "Free")</strong><a class="rr-pill-btn ghost sm" href="/home">Manage license</a></div>
+            <p class="account-hint">Sign in with the same Discord account on another computer to use this profile there. License activation remains tied to the licensed device.</p>
+        </section>
+        <section class="content-card">
+            <h3>Your installations</h3>
+            @foreach (var device in Accounts.Devices)
+            {
+                <div class="account-row"><strong>@(device.InstallId == Identity.GetIdentity().InstallId ? "This computer" : "RazorReaper installation")</strong><span>Version @(device.AppVersion ?? "unknown")</span><span>@(device.SignedIn == 1 ? "Signed in" : "Signed out")</span></div>
+            }
+            @if (_confirmSignOut)
+            {
+                <div class="account-notice"><p>Sign out on this computer? Your saved profile and license will remain available.</p><div class="account-actions"><button class="rr-pill-btn ghost" @onclick="() => _confirmSignOut = false" disabled="@_busy">Stay signed in</button><button class="rr-pill-btn" @onclick="SignOut" disabled="@_busy">Sign out</button></div></div>
+            }
+            else { <button class="rr-pill-btn ghost" @onclick="() => _confirmSignOut = true" disabled="@_busy">Sign out</button> }
+        </section>
+    }
+    else
+    {
+        <section class="content-card account-signin">
+            <div class="account-welcome">
+                <img class="account-brand" src="images/RRlogo.png" alt="RazorReaper" />
+                <h2>One profile.<br />Every installation.</h2>
+                <p>Make RazorReaper yours. Connect Discord, choose your picture and keep your profile with you.</p>
+                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="OpenSignIn" disabled="@_busy">Create account with Discord</button><button class="rr-pill-btn" @onclick="OpenSignIn" disabled="@_busy">Sign in</button></div>
+            </div>
+            <div class="account-benefits">
+                <div><span aria-hidden="true">01</span><div><h3>Your identity</h3><p>Choose the name and picture people see in support.</p></div></div>
+                <div><span aria-hidden="true">02</span><div><h3>Connected to Discord</h3><p>Use your existing account. No extra password to remember.</p></div></div>
+                <div><span aria-hidden="true">03</span><div><h3>Across your computers</h3><p>Your profile follows you when you sign in on another installation.</p></div></div>
+            </div>
+        </section>
+    }
+</div>
+
+<dialog @ref="_dialog" class="account-auth-dialog" aria-labelledby="account-auth-title">
+    <button class="account-dialog-close" aria-label="Close sign-in" @onclick="CancelSignIn" disabled="@_busy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+    <div class="account-auth-brand"><img src="images/RRlogo.png" alt="RazorReaper" /><span aria-hidden="true">↔</span><strong>Discord</strong></div>
+    <h2 id="account-auth-title">@(_candidate is null ? "Connect your account" : "Is this you?")</h2>
+    @if (!string.IsNullOrEmpty(_error)) { <p class="account-notice" role="alert">@_error</p> }
+            @if (_candidate is { } candidate)
+            {
+                @if (!string.IsNullOrEmpty(candidate.Avatar)) { <img class="account-candidate-photo" src="@candidate.Avatar" alt="Discord profile picture" /> }
+                <h3>@candidate.DisplayName</h3><p>@@@candidate.DiscordUsername</p>
+                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="ConfirmSignIn" disabled="@_busy">Continue as @candidate.DisplayName</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn" disabled="@_busy">Cancel</button></div>
+            }
+            else if (_login is { } login)
+            {
+                <p>Check that this code matches the one in your browser:</p>
+                <strong class="account-code">@login.UserCode</strong>
+                <p class="account-waiting"><i aria-hidden="true"></i>Waiting for Discord authorization</p>
+                <p>Approve the connection in your browser, then return here to confirm your profile.</p>
+                <div class="account-actions"><button class="rr-pill-btn" @onclick="ReopenBrowser">Open Discord again</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn">Cancel</button></div>
+            }
+            else
+            {
+                <p>RazorReaper will connect to your Discord identity.</p>
+                <ul class="account-permissions"><li>Read your Discord name and profile picture</li><li>Save your chosen RazorReaper name and picture</li><li>Link this installation to your account</li></ul>
+                <p class="account-hint">Discord opens its official authorization in your browser. RazorReaper never sees your password.</p>
+                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="BeginSignIn" disabled="@_busy">@(_busy ? "Connecting…" : "Continue with Discord")</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn" disabled="@_busy">Cancel</button></div>
+            }
+</dialog>
+
+@code {
+    private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _poll;
+    private CustomerAccountLogin? _login;
+    private CustomerAccountProfile? _candidate;
+    private ElementReference _dialog;
+    private IJSObjectReference? _dialogModule;
+    private DotNetObjectReference<Account>? _dialogOwner;
+    private bool _authOpen;
+    private string _name = "";
+    private string? _avatar, _error;
+    private bool _loading = true, _busy, _removeAvatar, _confirmSignOut;
+    protected override async Task OnInitializedAsync()
+    {
+        await Execute(async () => { await Accounts.RefreshAsync(_lifetime.Token); LoadProfile(); });
+        _loading = false;
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_authOpen && _dialogModule is null) return;
+        _dialogModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/account-dialog.js");
+        _dialogOwner ??= DotNetObjectReference.Create(this);
+        await _dialogModule.InvokeVoidAsync("setOpen", _dialog, _authOpen, _dialogOwner);
+    }
+    private void OpenSignIn() { _error = null; _authOpen = true; }
+    [JSInvokable] public Task CloseAuthDialog() { if (!_busy) CancelSignIn(); return InvokeAsync(StateHasChanged); }
+    private Task ReopenBrowser() => Execute(async () => { if (_login is not null) await Launcher.Default.OpenAsync(_login.VerificationUrl); });
+    private void LoadProfile() { _name = Accounts.Profile?.DisplayName ?? ""; _avatar = null; _removeAvatar = false; }
+    private async Task Execute(Func<Task> operation)
+    {
+        if (_busy) return;
+        _busy = true; _error = null;
+        try { await operation(); }
+        catch (OperationCanceledException) { if (!_lifetime.IsCancellationRequested) _error = "The connection timed out. Please try again."; }
+        catch (Exception ex) { _error = ex is InvalidOperationException ? ex.Message : "The account service could not be reached. Please try again."; }
+        finally { _busy = false; }
+    }
+    private Task BeginSignIn() => Execute(async () => {
+        _login = await Accounts.BeginSignInAsync(_lifetime.Token);
+        var launched = await Launcher.Default.OpenAsync(_login.VerificationUrl);
+        if (!launched) { _login = null; throw new InvalidOperationException("Could not open your browser. Please try again."); }
+        _poll?.Cancel(); _poll?.Dispose();
+        _poll = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _ = Poll(_login, _poll.Token);
+    });
+    private async Task Poll(CustomerAccountLogin login, CancellationToken ct)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(login.ExpiresIn);
+        try
+        {
+            while (DateTimeOffset.UtcNow < deadline)
+            {
+                await Task.Delay(3000, ct);
+                var candidate = await Accounts.PollSignInAsync(login.RequestId, ct);
+                if (candidate is null) continue;
+                await InvokeAsync(() => { _candidate = candidate; StateHasChanged(); });
+                return;
+            }
+            await InvokeAsync(() => { _login = null; _error = "Sign-in expired. Please start again."; StateHasChanged(); });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception ex) { await InvokeAsync(() => { _login = null; _error = ex is InvalidOperationException ? ex.Message : "Sign-in was interrupted. Please start again."; StateHasChanged(); }); }
+    }
+    private void CancelSignIn() { _poll?.Cancel(); _candidate = null; _login = null; _authOpen = false; }
+    private Task ConfirmSignIn() => Execute(async () => {
+        if (_login is null) return;
+        await Accounts.ConfirmSignInAsync(_login.RequestId, _lifetime.Token);
+        CancelSignIn(); LoadProfile(); Notifications.ShowSuccess("Your account is connected.");
+    });
+    private Task ChooseAvatar(InputFileChangeEventArgs args) => Execute(async () => {
+        await using var stream = args.File.OpenReadStream(8 * 1024 * 1024, _lifetime.Token);
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory, _lifetime.Token);
+        _avatar = await Task.Run(() => AccountAvatar.Create(memory.ToArray()), _lifetime.Token);
+        _removeAvatar = false;
+    });
+    private void RemoveAvatar() { _avatar = null; _removeAvatar = true; }
+    private Task SaveProfile() => Execute(async () => {
+        // CDN URLs are never sent back as custom uploads; null restores the verified Discord picture.
+        var avatar = _removeAvatar ? null : _avatar ?? (Accounts.Profile?.Avatar?.StartsWith("data:image/", StringComparison.Ordinal) == true ? Accounts.Profile.Avatar : null);
+        await Accounts.SaveProfileAsync(_name, avatar, _lifetime.Token);
+        LoadProfile(); Notifications.ShowSuccess("Your profile has been saved.");
+    });
+    private Task SignOut() => Execute(async () => { await Accounts.SignOutAsync(_lifetime.Token); _confirmSignOut = false; });
+    public void Dispose() { _lifetime.Cancel(); _poll?.Cancel(); _poll?.Dispose(); _lifetime.Dispose(); _dialogOwner?.Dispose(); if (_dialogModule is not null) _ = _dialogModule.DisposeAsync(); }
+}

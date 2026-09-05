@@ -42,6 +42,10 @@ public static class NavCatalog
                 "Control and monitor ARK: Survival Evolved",
                 new[] { "game", "launch", "start", "ark", "monitor", "status", "running" }),
 
+            new NavPage("My account", "/account", "Core", NavIcons.CharManager,
+                "Your profile picture, Discord account and connected installations",
+                new[] { "account", "profile", "avatar", "picture", "discord", "login", "sign in", "register" }),
+
             new NavPage("Settings", "/settings", "Core", NavIcons.Settings,
                 "Appearance, audio and app behaviour",
                 new[] { "settings", "preferences", "options", "config", "appearance", "theme", "accent", "colour", "color", "font", "scale", "audio", "sound", "discord", "app" }),

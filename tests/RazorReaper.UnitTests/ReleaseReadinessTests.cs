@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 using RazorReaper.Diagnostics;
 
 namespace RazorReaper.UnitTests;
@@ -8,24 +9,25 @@ namespace RazorReaper.UnitTests;
 public sealed class ReleaseReadinessTests
 {
     [Fact]
-    public void VersionMetadataIsAlignedFor150()
+    public void InstallerMatchesTheBuildAndPublishedManifestIsConsistent()
     {
         var root = RepositoryRoot();
         var project = File.ReadAllText(Path.Combine(root, "RazorReaper", "RazorReaper.csproj"));
         var installer = File.ReadAllText(Path.Combine(root, "installer", "RazorReaper.iss"));
         var manifest = File.ReadAllText(Path.Combine(root, "update.xml"));
 
-        Assert.Contains("<ApplicationDisplayVersion>1.5.0</ApplicationDisplayVersion>", project, StringComparison.Ordinal);
-        Assert.Contains("<ApplicationVersion>14</ApplicationVersion>", project, StringComparison.Ordinal);
-        Assert.Contains("#define MyAppVersion \"1.5.0\"", installer, StringComparison.Ordinal);
-        Assert.Contains("<version>1.5.0.0</version>", manifest, StringComparison.Ordinal);
-        Assert.Contains("/releases/download/v1.5.0/RazorReaper-Setup.exe", manifest, StringComparison.Ordinal);
-        Assert.Contains("/releases/tag/v1.5.0", manifest, StringComparison.Ordinal);
-        Assert.DoesNotContain("1.4.10", manifest, StringComparison.Ordinal);
+        var displayVersion = XDocument.Parse(project).Descendants("ApplicationDisplayVersion").Single().Value;
+        Assert.Contains($"#define MyAppVersion \"{displayVersion}\"", installer, StringComparison.Ordinal);
+        // The updater stays on the published release until its installer is available.
+        var published = Version.Parse(XDocument.Parse(manifest).Descendants("version").Single().Value);
+        Assert.True(published <= Version.Parse(displayVersion + ".0"));
+        var tag = $"v{published.Major}.{published.Minor}.{published.Build}";
+        Assert.Contains($"/releases/download/{tag}/RazorReaper-Setup.exe", manifest, StringComparison.Ordinal);
+        Assert.Contains($"/releases/tag/{tag}", manifest, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void CompiledVersionMetadataIsAlignedFor150()
+    public void CompiledVersionMetadataMatchesTheProject()
     {
         var assembly = typeof(AppVersionInfo).Assembly;
         var mauiVersion = assembly
@@ -40,14 +42,17 @@ public sealed class ReleaseReadinessTests
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
         var fileVersion = FileVersionInfo.GetVersionInfo(assembly.Location).FileVersion;
+        var project = XDocument.Load(Path.Combine(RepositoryRoot(), "RazorReaper", "RazorReaper.csproj"));
+        var version = project.Descendants("ApplicationDisplayVersion").Single().Value;
+        var build = project.Descendants("ApplicationVersion").Single().Value;
 
-        Assert.Equal("1.5.0.0", assembly.GetName().Version?.ToString());
-        Assert.Equal("1.5.0.0", fileVersion);
-        Assert.Equal("1.5.0", informationalVersion);
-        Assert.Equal("1.5.0", AppVersionInfo.VersionString);
-        Assert.Equal("14", AppVersionInfo.BuildString);
-        Assert.Equal("1.5.0.14", mauiVersion);
-        Assert.StartsWith("RazorReaper/1.5.0 ", AppVersionInfo.UserAgent, StringComparison.Ordinal);
+        Assert.Equal(version + ".0", assembly.GetName().Version?.ToString());
+        Assert.Equal(version + ".0", fileVersion);
+        Assert.Equal(version, informationalVersion);
+        Assert.Equal(version, AppVersionInfo.VersionString);
+        Assert.Equal(build, AppVersionInfo.BuildString);
+        Assert.Equal(version + "." + build, mauiVersion);
+        Assert.StartsWith($"RazorReaper/{version} ", AppVersionInfo.UserAgent, StringComparison.Ordinal);
     }
 
     [Fact]
