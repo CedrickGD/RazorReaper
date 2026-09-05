@@ -24,11 +24,11 @@
 		<ApplicationId>com.companyname.razorreaper</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.5.1</ApplicationDisplayVersion>
-		<ApplicationVersion>15</ApplicationVersion>
-		<AssemblyVersion>1.5.1.0</AssemblyVersion>
-		<FileVersion>1.5.1.0</FileVersion>
-		<Version>1.5.1</Version>
+		<ApplicationDisplayVersion>1.5.2</ApplicationDisplayVersion>
+		<ApplicationVersion>16</ApplicationVersion>
+		<AssemblyVersion>1.5.2.0</AssemblyVersion>
+		<FileVersion>1.5.2.0</FileVersion>
+		<Version>1.5.2</Version>
 
 		<!-- Windows App Icon -->
 		<ApplicationIcon>Resources\AppIcon\rrlogo.ico</ApplicationIcon>
