@@ -40,18 +40,18 @@ public sealed class FeedbackServiceDiagnosticsTests
     }
 
     [Fact]
-    public async Task OneClickDiagnosticsUsesStableMessageAndNeedsNoTypedFeedback()
+    public async Task DiagnosticsIncludesTheWrittenDescription()
     {
         using var handler = Handler("""{"ok":true,"message":"received","report_id":"FB-7"}""");
         using var client = new HttpClient(handler, disposeHandler: false);
         var service = CreateService(client, new SnapshotService());
 
-        var result = await service.SubmitDiagnosticsAsync(null, "troubleshoot");
+        var result = await service.SubmitDiagnosticsAsync("The game does not start", null, "troubleshoot");
 
         Assert.True(result.Success);
         Assert.Equal("FB-7", result.ReportId);
         using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
-        Assert.Equal(FeedbackService.DiagnosticsOnlyMessage, body.RootElement.GetProperty("message").GetString());
+        Assert.Equal("The game does not start", body.RootElement.GetProperty("message").GetString());
         Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("contact").ValueKind);
         Assert.True(body.RootElement.TryGetProperty("diagnostics", out _));
     }
@@ -63,10 +63,26 @@ public sealed class FeedbackServiceDiagnosticsTests
         using var client = new HttpClient(handler, disposeHandler: false);
         var service = CreateService(client, new ThrowingSnapshotService());
 
-        var result = await service.SubmitDiagnosticsAsync(null, "home");
+        var result = await service.SubmitDiagnosticsAsync("The game does not start", null, "home");
 
         Assert.False(result.Success);
         Assert.Contains("Nothing was sent", result.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  \t\r\n")]
+    public async Task EmptyDescriptionsNeverCollectOrSendData(string message)
+    {
+        using var handler = Handler("""{"ok":true}""");
+        using var client = new HttpClient(handler, disposeHandler: false);
+        var diagnostics = new CountingSnapshotService();
+        var service = CreateService(client, diagnostics);
+        Assert.False((await service.SubmitAsync(message, null)).Success);
+        Assert.False((await service.SubmitWithDiagnosticsAsync(message, null, "feedback")).Success);
+        Assert.False((await service.SubmitDiagnosticsAsync(message, null, "home")).Success);
+        Assert.Equal(0, diagnostics.CallCount);
         Assert.Empty(handler.Requests);
     }
 

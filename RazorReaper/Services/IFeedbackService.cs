@@ -22,10 +22,10 @@ public interface IFeedbackService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// One-click diagnostic report for users who do not have a written message. The established
-    /// required message field receives a stable technical description.
+    /// Sends diagnostics together with the user's required written description.
     /// </summary>
     Task<FeedbackSubmissionResult> SubmitDiagnosticsAsync(
+        string message,
         string? contact,
         string? sourceRoute,
         CancellationToken cancellationToken = default);

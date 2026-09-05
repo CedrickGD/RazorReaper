@@ -11,12 +11,13 @@
 <div class="feedback-layout">
 <div class="content-card feedback-card">
     <div class="feedback-field">
-        <label class="feedback-label" for="feedback-message">Your feedback</label>
+        <label class="feedback-label" for="feedback-message">Your feedback (required)</label>
         <textarea id="feedback-message"
                   class="feedback-textarea"
                   placeholder="Share a bug, an idea, or anything on your mind..."
                   maxlength="4000"
                   rows="7"
+                  required
                   @bind="_message"
                   @bind:event="oninput"
                   disabled="@_submitting"></textarea>
@@ -36,19 +37,8 @@
     </div>
 
     <div class="feedback-actions">
-        <button class="btn btn-secondary" @onclick="SubmitDiagnosticsOnly" disabled="@_submitting">
-            @if (_submitting && _diagnosticsOnly)
-            {
-                <span class="feedback-spinner"></span>
-                <span>Collecting…</span>
-            }
-            else
-            {
-                <span>Send diagnostics</span>
-            }
-        </button>
         <button class="btn btn-primary" @onclick="Submit" disabled="@(_submitting || string.IsNullOrWhiteSpace(_message))">
-            @if (_submitting && !_diagnosticsOnly)
+            @if (_submitting)
             {
                 <span class="feedback-spinner"></span>
                 <span>Sending…</span>
@@ -80,7 +70,7 @@
         <li>Safe settings and recent operation outcomes</li>
     </ul>
     <p class="feedback-note">
-        Pressing either send button attaches a read-only snapshot automatically so support can
+        Sending your feedback attaches a read-only snapshot automatically so support can
         reproduce the issue. It never includes screenshots, clipboard text, server passwords,
         command text, raw file paths, IP addresses, or log contents.
     </p>
@@ -95,7 +85,6 @@
     private string _message = string.Empty;
     private string _contact = string.Empty;
     private bool _submitting = false;
-    private bool _diagnosticsOnly;
     private string? _reportId;
 
     [Parameter]
@@ -110,7 +99,6 @@
         }
 
         _submitting = true;
-        _diagnosticsOnly = false;
         _reportId = null;
         StateHasChanged();
 
@@ -138,32 +126,4 @@
         StateHasChanged();
     }
 
-    private async Task SubmitDiagnosticsOnly()
-    {
-        if (_submitting) return;
-
-        _submitting = true;
-        _diagnosticsOnly = true;
-        _reportId = null;
-        StateHasChanged();
-
-        var result = await FeedbackService.SubmitDiagnosticsAsync(
-            _contact,
-            Source ?? "feedback");
-
-        _submitting = false;
-        if (result.Success)
-        {
-            _reportId = result.ReportId;
-            NotificationService.ShowSuccess(result.ReportId is null
-                ? result.Message
-                : $"{result.Message} Report ID: {result.ReportId}");
-        }
-        else
-        {
-            NotificationService.ShowError(result.Message);
-        }
-
-        StateHasChanged();
-    }
 }

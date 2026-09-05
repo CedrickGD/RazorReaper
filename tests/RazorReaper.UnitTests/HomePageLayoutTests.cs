@@ -49,8 +49,11 @@ public sealed class HomePageLayoutTests
         Assert.Equal(new[] { "Credits.razor", "Home.razor", "Troubleshoot.razor" }, pagesWithPrompt);
 
         var feedback = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "Components", "Pages", "Feedback.razor"));
-        Assert.Contains("@onclick=\"SubmitDiagnosticsOnly\"", feedback, StringComparison.Ordinal);
-        Assert.Contains("<span>Send diagnostics</span>", feedback, StringComparison.Ordinal);
+        Assert.DoesNotContain("SubmitDiagnosticsOnly", feedback, StringComparison.Ordinal);
+        Assert.Contains("string.IsNullOrWhiteSpace(_message)", feedback, StringComparison.Ordinal);
+        var prompt = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "Components", "Shared", "SendDiagnosticsButton.razor"));
+        Assert.Contains("/feedback?source=", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("IFeedbackService", prompt, StringComparison.Ordinal);
     }
 
     [Fact]

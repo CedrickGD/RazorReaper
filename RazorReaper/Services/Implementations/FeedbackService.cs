@@ -17,7 +17,6 @@ namespace RazorReaper.Services.Implementations;
 /// </summary>
 public class FeedbackService : IFeedbackService
 {
-    internal const string DiagnosticsOnlyMessage = "Automatic diagnostics report (no message supplied).";
     // The backend independently caps the optional diagnostics object at 12 KiB. Keep enough
     // headroom for the established 4,000-character message and identity fields so a valid report
     // is never compacted or discarded merely because the message contains multi-byte text.
@@ -66,10 +65,11 @@ public class FeedbackService : IFeedbackService
         => SubmitCoreAsync(message, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: false, cancellationToken);
 
     public Task<FeedbackSubmissionResult> SubmitDiagnosticsAsync(
+        string message,
         string? contact,
         string? sourceRoute,
         CancellationToken cancellationToken = default)
-        => SubmitCoreAsync(DiagnosticsOnlyMessage, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: true, cancellationToken);
+        => SubmitCoreAsync(message, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: true, cancellationToken);
 
     private async Task<FeedbackSubmissionResult> SubmitCoreAsync(
         string message,
