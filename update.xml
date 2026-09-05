@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <item>
-    <version>1.5.0.0</version>
-    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.5.0/RazorReaper-Setup.exe</url>
-    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.5.0</changelog>
+    <version>1.5.2.0</version>
+    <url>https://github.com/CedrickGD/RazorReaper/releases/download/v1.5.2/RazorReaper-Setup.exe</url>
+    <changelog>https://github.com/CedrickGD/RazorReaper/releases/tag/v1.5.2</changelog>
     <mandatory>false</mandatory>
     <args>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</args>
     <notes>
-- General application updates.
-- Reliability and interface improvements.
+- Receive private support replies in the new in-app Inbox, with an unread notification counter.
+- Connect your customer account with Discord and use your profile picture across the app and customer support.
+- Feedback and issue reports now require a written description before diagnostics can be sent.
+- Includes the latest application fixes and interface improvements.
     </notes>
 </item>
