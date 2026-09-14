@@ -896,7 +896,10 @@
 
     // Delete
     private string confirmMessage = "";
-    private Action? deleteAction;
+    // Func<Task>, not Action: every confirm body awaits CustomDataService.SaveAsync, and as an
+    // Action those lambdas were `async void` — a failed save would be rethrown on the renderer's
+    // dispatcher with no caller to catch it instead of surfacing on the click that caused it.
+    private Func<Task>? deleteAction;
 
     protected override async Task OnInitializedAsync()
     {
@@ -1261,10 +1264,19 @@
 
     private void CloseModal() => modalOpen = false;
 
-    private void ExecuteDelete()
+    private async Task ExecuteDelete()
     {
-        deleteAction?.Invoke();
+        // Closed before the await, so the dialog still disappears on the click rather than when the
+        // save completes. Awaiting the body is what gives the fault an owner: @onclick binds this
+        // Task-returning method as an EventCallback, so a failed save is reported through the
+        // renderer's own error path instead of being rethrown by an `async void`.
+        var action = deleteAction;
         CloseModal();
+
+        if (action is not null)
+        {
+            await action();
+        }
     }
 
     private enum ModalMode
