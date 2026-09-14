@@ -72,7 +72,7 @@ else
             if (percent != progressPercent)
             {
                 progressPercent = percent;
-                _ = InvokeAsync(StateHasChanged);
+                this.DispatchRender(() => InvokeAsync(StateHasChanged));
             }
         });
 

@@ -603,11 +603,19 @@
 
     private void UpdateMousePosition(object? sender, ElapsedEventArgs e)
     {
+        // Disposal stops this timer, but an in-flight tick can still land afterwards, and a dead
+        // renderer leaves it ticking 10 times a second for the rest of the session otherwise.
+        if (this.IsRenderStopped())
+        {
+            mouseTrackingTimer?.Stop();
+            return;
+        }
+
         if (GetCursorPos(out POINT point))
         {
             currentMouseX = point.X;
             currentMouseY = point.Y;
-            InvokeAsync(StateHasChanged);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
         }
     }
 
@@ -615,11 +623,11 @@
     {
         // Fired from the hotkey pump's thread pool callback — hop onto the renderer before
         // touching component state.
-        _ = InvokeAsync(async () =>
+        this.DispatchRender(() => InvokeAsync(async () =>
         {
             if (recordingKey || !hotkeyEnabled) return;
             await ToggleClicking();
-        });
+        }), Logger);
     }
 
     private void StartHotkeyRecording()
@@ -804,7 +812,7 @@
 
     private void StopClicking() => Runtime.Stop();
 
-    private void HandleRuntimeStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void HandleRuntimeStateChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
 
     private DotNetObjectReference<Autoclicker>? _dotNetRef;
 
@@ -847,13 +855,13 @@
             }
 
             // Set the picked location (these are absolute screen coordinates across all monitors)
-            InvokeAsync(() =>
+            this.DispatchRender(() => InvokeAsync(() =>
             {
                 fixedX = hookStruct.pt.X;
                 fixedY = hookStruct.pt.Y;
                 pickingLocation = false;
                 StateHasChanged();
-            });
+            }), Logger);
 
             // Don't pass the click through
             return (IntPtr)1;
@@ -887,7 +895,7 @@
         }
 
         pickingLocation = false;
-        InvokeAsync(StateHasChanged);
+        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
 
     private void ResetStats()
@@ -924,6 +932,8 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
+
         // Hand the editor state over before leaving, so a hotkey press from another page starts
         // with what is on screen right now.
         try { PushConfig(); } catch { /* never let teardown throw */ }

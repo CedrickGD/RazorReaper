@@ -126,7 +126,7 @@
         SyncPanelToCurrentPage();
     }
 
-    private void OnLicenseStateChangedHandler() => InvokeAsync(StateHasChanged);
+    private void OnLicenseStateChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     // ---- Foot status ------------------------------------------------------
     // The one thing in the sidebar that changes on its own, so the one thing that
@@ -215,12 +215,12 @@
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _ = InvokeAsync(async () =>
+        this.DispatchRender(() => InvokeAsync(async () =>
         {
             SyncPanelToCurrentPage();
             await RecordVisitAsync();
             StateHasChanged();
-        });
+        }));
     }
 
     private async Task OpenSearch()
@@ -296,6 +296,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        this.StopRenderDispatch();
         LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
         Navigation.LocationChanged -= HandleLocationChanged;
 

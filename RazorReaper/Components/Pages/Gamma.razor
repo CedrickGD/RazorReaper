@@ -303,7 +303,7 @@
             PreviewValue = GammaSvc.CurrentGamma;
         }
 
-        _ = InvokeAsync(StateHasChanged);
+        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
 
     private void EndDrag()
@@ -380,8 +380,8 @@
         StateHasChanged();
 
         GammaSvc.BeginCapture(
-            onCaptured: trigger => _ = InvokeAsync(() => OnTriggerCaptured(target, trigger)),
-            onCancelled: () => _ = InvokeAsync(() => OnCaptureCancelled(target)));
+            onCaptured: trigger => this.DispatchRender(() => InvokeAsync(() => OnTriggerCaptured(target, trigger)), Logger),
+            onCancelled: () => this.DispatchRender(() => InvokeAsync(() => OnCaptureCancelled(target)), Logger));
     }
 
     private void OnTriggerCaptured(string target, TriggerInput trigger)
@@ -453,6 +453,7 @@
     // running (and firing triggers) when the user navigates away.
     public void Dispose()
     {
+        this.StopRenderDispatch();
         GammaSvc.StateChanged -= OnStateChanged;
         if (_capturingTarget != null)
         {

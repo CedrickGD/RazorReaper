@@ -783,23 +783,23 @@
 
                 if (iniPath == null)
                 {
-                    InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry.")), Logger);
                     return;
                 }
 
                 if (!File.Exists(iniPath))
                 {
-                    InvokeAsync(() => NotificationService.ShowWarning("INI file does not exist at expected location."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning("INI file does not exist at expected location.")), Logger);
                     return;
                 }
 
                 currentIniContent = File.ReadAllText(iniPath, System.Text.Encoding.UTF8);
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess("INI file loaded successfully.");
                     ActivityService.AddActivity("INI file loaded successfully", "success");
                     StateHasChanged();
-                });
+                }), Logger);
                 Logger.LogInformation("INI file loaded from: {Path}", iniPath);
             });
         }
@@ -823,7 +823,7 @@
 
                 if (iniPath == null)
                 {
-                    InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry.")), Logger);
                     return;
                 }
 
@@ -831,14 +831,14 @@
                 currentIniContent = "";
                 File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
 
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     selectedPreset = "";
                     PresetService.SetLastAppliedPresetName(string.Empty);
                     NotificationService.ShowSuccess("INI file content cleared successfully.");
                     ActivityService.AddActivity("INI file cleared", "warning");
                     StateHasChanged();
-                });
+                }), Logger);
                 Logger.LogInformation("INI file cleared");
             });
         }
@@ -903,14 +903,14 @@
 
                 if (iniPath == null)
                 {
-                    InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry.")), Logger);
                     return;
                 }
 
                 var directory = Path.GetDirectoryName(iniPath);
                 if (string.IsNullOrEmpty(directory))
                 {
-                    InvokeAsync(() => NotificationService.ShowError("Invalid directory path"));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Invalid directory path")), Logger);
                     Logger.LogError("Directory path is null or empty for INI file: {Path}", iniPath);
                     return;
                 }
@@ -922,11 +922,11 @@
 
                 BackupLiveIni(iniPath);
                 File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess("INI file saved successfully.");
                     ActivityService.AddActivity($"INI file saved{(string.IsNullOrEmpty(selectedPreset) ? "" : $" (Preset: {selectedPreset})")}", "success");
-                });
+                }), Logger);
                 Logger.LogInformation("INI file saved to: {Path}", iniPath);
             });
         }
@@ -977,11 +977,11 @@
                     writer.Write(preset.Content ?? string.Empty);
                 }
 
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess($"Presets downloaded to {zipPath}");
                     ActivityService.AddActivity("INI presets downloaded", "success");
-                });
+                }), Logger);
             });
         }
         catch (Exception ex)
@@ -1031,13 +1031,13 @@
 
                 if (iniPath == null)
                 {
-                    InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry. Please ensure Steam is properly installed."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry. Please ensure Steam is properly installed.")), Logger);
                     return;
                 }
 
                 if (!File.Exists(iniPath))
                 {
-                    InvokeAsync(() => NotificationService.ShowWarning($"INI file not found at: {iniPath}"));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning($"INI file not found at: {iniPath}")), Logger);
                     Logger.LogWarning("INI file not found at: {Path}", iniPath);
                 }
                 else
@@ -1046,7 +1046,7 @@
                     var fileSize = fileInfo.Length;
                     var lastModified = fileInfo.LastWriteTime;
 
-                    InvokeAsync(() => NotificationService.ShowSuccess($"INI file found.\nPath: {iniPath}\nSize: {fileSize} bytes\nModified: {lastModified:yyyy-MM-dd HH:mm}"));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowSuccess($"INI file found.\nPath: {iniPath}\nSize: {fileSize} bytes\nModified: {lastModified:yyyy-MM-dd HH:mm}")), Logger);
                     Logger.LogInformation("INI file found at: {Path}, Size: {Size} bytes", iniPath, fileSize);
                 }
             });
@@ -1071,7 +1071,7 @@
 
                 if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
                 {
-                    InvokeAsync(() => NotificationService.ShowError("ARK installation not found. Please ensure ARK is properly installed."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("ARK installation not found. Please ensure ARK is properly installed.")), Logger);
                     return;
                 }
 
@@ -1079,7 +1079,7 @@
 
                 if (!Directory.Exists(waterFilesPath))
                 {
-                    InvokeAsync(() => NotificationService.ShowWarning($"Water files directory not found at: {waterFilesPath}"));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning($"Water files directory not found at: {waterFilesPath}")), Logger);
                     return;
                 }
 
@@ -1097,29 +1097,29 @@
 
                 if (existingFiles.Count == waterFiles.Length)
                 {
-                    InvokeAsync(() =>
+                    this.DispatchRender(() => InvokeAsync(() =>
                     {
                         NotificationService.ShowSuccess($"All water surface files found ({existingFiles.Count} files)\nPath: {waterFilesPath}");
                         ActivityService.AddActivity($"Water files check: All {existingFiles.Count} files found", "success");
-                    });
+                    }), Logger);
                     Logger.LogInformation("All water files found at: {Path}", waterFilesPath);
                 }
                 else if (existingFiles.Count > 0)
                 {
-                    InvokeAsync(() =>
+                    this.DispatchRender(() => InvokeAsync(() =>
                     {
                         NotificationService.ShowWarning($"Partial water files found ({existingFiles.Count}/{waterFiles.Length} files)\nPath: {waterFilesPath}");
                         ActivityService.AddActivity($"Water files check: {existingFiles.Count}/{waterFiles.Length} files found", "warning");
-                    });
+                    }), Logger);
                     Logger.LogWarning("Partial water files: {Count}/{Total} at {Path}", existingFiles.Count, waterFiles.Length, waterFilesPath);
                 }
                 else
                 {
-                    InvokeAsync(() =>
+                    this.DispatchRender(() => InvokeAsync(() =>
                     {
                         NotificationService.ShowInfo($"Water surface already removed (0/{waterFiles.Length} files found)\nPath: {waterFilesPath}");
                         ActivityService.AddActivity("Water files check: Already removed", "info");
-                    });
+                    }), Logger);
                     Logger.LogInformation("No water files found - already removed");
                 }
             });

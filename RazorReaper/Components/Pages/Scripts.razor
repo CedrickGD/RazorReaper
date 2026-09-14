@@ -521,7 +521,7 @@
             var progress = new Progress<RegionCaptureProgress>(pr =>
             {
                 _calStatus = $"Hover corner {pr.CornerIndex} — capturing in {pr.SecondsRemaining}s...";
-                InvokeAsync(StateHasChanged);
+                this.DispatchRender(() => InvokeAsync(StateHasChanged));
             });
 
             var ok = await a.Service.CaptureRegionAsync(progress);
@@ -777,7 +777,7 @@
         var progress = new Progress<RegionCaptureProgress>(p =>
         {
             _calStatus = $"Hover corner {p.CornerIndex} of the button — capturing in {p.SecondsRemaining}s…";
-            InvokeAsync(StateHasChanged);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged));
         });
         try { await cal.CalibrateRegionAsync(progress); }
         finally
@@ -802,6 +802,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         foreach (var s in _scripts) s.Changed -= OnScriptChanged;
     }
 }

@@ -312,11 +312,11 @@
 
     private void OnServiceStateChanged()
     {
-        _ = InvokeAsync(() =>
+        this.DispatchRender(() => InvokeAsync(() =>
         {
             RefreshCurrent();
             StateHasChanged();
-        });
+        }), Logger);
     }
 
     private void RefreshCurrent()
@@ -432,6 +432,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         // Unsubscribe only. A pending change is deliberately left to the service's
         // auto-revert so navigating away can never strand the display.
         Stretched.StateChanged -= OnServiceStateChanged;

@@ -180,7 +180,7 @@
         }
     }
 
-    private void HandleChanged() => InvokeAsync(StateHasChanged);
+    private void HandleChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
-    public void Dispose() => AccessGate.OnAccessStateChanged -= HandleChanged;
+    public void Dispose() { this.StopRenderDispatch(); AccessGate.OnAccessStateChanged -= HandleChanged; }
 }

@@ -413,7 +413,7 @@
         LicenseService.OnLicenseActivated += HandleActivated;
     }
 
-    private void HandleActivated() => _ = InvokeAsync(Show);
+    private void HandleActivated() => this.DispatchRender(() => InvokeAsync(Show));
 
     private void Show()
     {
@@ -450,6 +450,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         LicenseService.OnLicenseActivated -= HandleActivated;
     }
 }

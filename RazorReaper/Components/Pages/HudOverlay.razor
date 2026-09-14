@@ -210,11 +210,11 @@
         if (firstRender) await PushAccentAsync();
     }
 
-    private void OnServiceChanged() => _ = InvokeAsync(() =>
+    private void OnServiceChanged() => this.DispatchRender(() => InvokeAsync(() =>
     {
         _settings = Hud.Settings; // re-sync (covers move-mode drag persisting a Custom position)
         StateHasChanged();
-    });
+    }), Logger);
 
     // ── Status header ──────────────────────────────────────────────────────
 
@@ -367,6 +367,7 @@
     // an editing session in move mode never traps the cursor over the game.
     public void Dispose()
     {
+        this.StopRenderDispatch();
         Hud.Changed -= OnServiceChanged;
         if (Hud.IsMoveMode) Hud.SetMoveMode(false);
     }

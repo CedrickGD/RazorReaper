@@ -31,6 +31,6 @@
         }
         catch (OperationCanceledException) { }
     }
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
-    public void Dispose() { Inbox.Changed -= OnChanged; _stop.Cancel(); _stop.Dispose(); }
+    private void OnChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
+    public void Dispose() { this.StopRenderDispatch(); Inbox.Changed -= OnChanged; _stop.Cancel(); _stop.Dispose(); }
 }

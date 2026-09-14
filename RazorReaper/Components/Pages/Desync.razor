@@ -92,8 +92,8 @@
     private void OnChanged()
     {
         // Marshal to the UI thread; swallowing here keeps a render race from becoming an unhandled crash.
-        _ = InvokeAsync(StateHasChanged);
+        this.DispatchRender(() => InvokeAsync(StateHasChanged));
     }
 
-    public void Dispose() => DesyncService.Changed -= OnChanged;
+    public void Dispose() { this.StopRenderDispatch(); DesyncService.Changed -= OnChanged; }
 }

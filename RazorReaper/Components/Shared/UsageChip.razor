@@ -32,11 +32,11 @@
 
     private void HandleUsageChanged()
     {
-        _ = InvokeAsync(async () =>
+        this.DispatchRender(() => InvokeAsync(async () =>
         {
             await RefreshAsync();
             StateHasChanged();
-        });
+        }));
     }
 
     private async Task RefreshAsync()
@@ -45,5 +45,5 @@
         _usage = status is not null && status.TryGetValue(Feature, out var usage) ? usage : null;
     }
 
-    public void Dispose() => UsageGate.OnUsageChanged -= HandleUsageChanged;
+    public void Dispose() { this.StopRenderDispatch(); UsageGate.OnUsageChanged -= HandleUsageChanged; }
 }

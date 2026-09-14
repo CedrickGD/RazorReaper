@@ -777,7 +777,7 @@
 
     private void OnLicenseStateChangedHandler()
     {
-        InvokeAsync(StateHasChanged);
+        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
 
     private int driveCount = 0;
@@ -889,15 +889,19 @@
         updateTimer = new System.Timers.Timer(1000);
         updateTimer.Elapsed += (s, e) =>
         {
-            if (_isDisposed)
+            // Stop the timer rather than merely skip a tick: a component whose renderer is gone
+            // would otherwise keep ticking for the rest of the session for nothing.
+            if (_isDisposed || this.IsRenderStopped())
+            {
+                updateTimer?.Stop();
                 return;
+            }
 
             currentTime = DateTime.Now;
             UpdateTimeZoneInfo();
             UpdateUptimeInfo();
 
-            if (!_isDisposed)
-                InvokeAsync(StateHasChanged);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
         };
         updateTimer.Start();
 
@@ -910,12 +914,21 @@
         // Load WiFi and system information (run in background to avoid blocking)
         _ = Task.Run(() =>
         {
-            LoadWiFiInfo();
-            LoadSystemHardwareInfo();
-            LoadSystemComponentsInfo();
-            lastWifiRefreshUtc = DateTime.UtcNow;
-            lastStorageRefreshUtc = DateTime.UtcNow;
-            InvokeAsync(StateHasChanged);
+            // Nothing observes this task, so anything the probes throw has to be caught here.
+            try
+            {
+                LoadWiFiInfo();
+                LoadSystemHardwareInfo();
+                LoadSystemComponentsInfo();
+                lastWifiRefreshUtc = DateTime.UtcNow;
+                lastStorageRefreshUtc = DateTime.UtcNow;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading WiFi and system information");
+            }
+
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
         });
 
         await InvokeAsync(StateHasChanged);
@@ -1380,8 +1393,16 @@
 
     private void UpdateResources(object? sender, System.Timers.ElapsedEventArgs? e)
     {
-        // Don't update if initialization hasn't completed or component is disposed
-        if (!resourceMonitoringInitialized || _isDisposed)
+        // Stop the timer rather than merely skip a tick: a component whose renderer is gone
+        // would otherwise keep sampling counters for the rest of the session for nothing.
+        if (_isDisposed || this.IsRenderStopped())
+        {
+            resourceTimer?.Stop();
+            return;
+        }
+
+        // Don't update if initialization hasn't completed
+        if (!resourceMonitoringInitialized)
             return;
 
         if (System.Threading.Interlocked.Exchange(ref resourceUpdateInProgress, 1) == 1)
@@ -1525,8 +1546,7 @@
             Logger.LogTrace("Resource Update - CPU: {CPU}%, RAM: {RAM}% ({Used}/{Total} GB), GPU: {GPU}%, Process: {Process}MB",
                 cpuUsage, ramUsage, ramUsedGB, ramTotalGB, gpuUsage, processMemoryMB);
 
-            if (!_isDisposed)
-                InvokeAsync(StateHasChanged);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
         }
         catch (Exception ex)
         {
@@ -2167,6 +2187,7 @@
         Logger.LogDebug("Disposing Home component resources");
 
         _isDisposed = true;
+        this.StopRenderDispatch();
         LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
 
         updateTimer?.Stop();

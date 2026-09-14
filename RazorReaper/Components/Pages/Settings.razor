@@ -126,7 +126,7 @@
         }
     }
 
-    private void OnAppearanceChanged() => InvokeAsync(StateHasChanged);
+    private void OnAppearanceChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     // ---- Appearance -------------------------------------------------------
 
@@ -185,6 +185,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         Appearance.Changed -= OnAppearanceChanged;
         DiscordPresence.StateChanged -= OnAppearanceChanged;
     }

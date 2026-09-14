@@ -52,7 +52,7 @@ else if (Inbox.HasLoaded && Inbox.Replies.Count == 0)
         Inbox.Changed += OnChanged;
         await Inbox.RefreshAsync();
     }
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
     private async Task OpenAsync(SupportReply reply)
     {
         if (!_opened.Add(reply.Id)) { _opened.Remove(reply.Id); return; }
@@ -64,5 +64,5 @@ else if (Inbox.HasLoaded && Inbox.Replies.Count == 0)
         try { await Inbox.RefreshAsync(older: true); }
         finally { _loadingOlder = false; }
     }
-    public void Dispose() => Inbox.Changed -= OnChanged;
+    public void Dispose() { this.StopRenderDispatch(); Inbox.Changed -= OnChanged; }
 }

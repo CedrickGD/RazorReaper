@@ -505,24 +505,24 @@
 
     private void OnServiceChanged()
     {
-        _ = InvokeAsync(() =>
+        this.DispatchRender(() => InvokeAsync(() =>
         {
             ReadFromService();
             RefreshPreview();
             EnsureAnimTimer();
             StateHasChanged();
-        });
+        }), Logger);
     }
 
     private void OnLibraryChanged()
     {
         // Library updates are independent of profile changes — refresh just the list, no
         // preview re-render or timer churn.
-        _ = InvokeAsync(() =>
+        this.DispatchRender(() => InvokeAsync(() =>
         {
             RefreshLibrary();
             StateHasChanged();
-        });
+        }), Logger);
     }
 
     private void ReadFromService()
@@ -681,11 +681,19 @@
 
     private void AnimTick(object? sender, ElapsedEventArgs e)
     {
-        _ = InvokeAsync(() =>
+        // 20 Hz is the fastest render loop in the app, so a renderer that has gone away here is
+        // the most expensive one to keep feeding — stop the timer instead of skipping the tick.
+        if (this.IsRenderStopped())
+        {
+            _animTimer?.Stop();
+            return;
+        }
+
+        this.DispatchRender(() => InvokeAsync(() =>
         {
             RefreshPreview();
             StateHasChanged();
-        });
+        }), Logger);
     }
 
     private void SetType(CrosshairType t)
@@ -1115,6 +1123,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         CrosshairSvc.Changed -= OnServiceChanged;
         CrosshairSvc.LibraryChanged -= OnLibraryChanged;
         _animTimer?.Stop();

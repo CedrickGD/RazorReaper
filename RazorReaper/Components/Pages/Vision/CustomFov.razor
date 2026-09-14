@@ -254,7 +254,7 @@
                 }
                 else
                 {
-                    InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini.")));
                     return;
                 }
 

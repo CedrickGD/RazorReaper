@@ -408,7 +408,7 @@
 
                 if (!File.Exists(zipPath))
                 {
-                    InvokeAsync(() => NotificationService.ShowError("Global font package not found in app resources. Please ensure Global.zip exists in wwwroot/assets/fonts/"));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Global font package not found in app resources. Please ensure Global.zip exists in wwwroot/assets/fonts/")), Logger);
                     Logger.LogError("Global.zip not found at: {Path}", zipPath);
                     return;
                 }
@@ -427,11 +427,11 @@
 
                 ZipFile.ExtractToDirectory(zipPath, extractPath);
 
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess($"Global font downloaded to:\n{extractPath}\n\nZip file also saved as:\n{destZipPath}");
                     ActivityService.AddActivity("Global font downloaded", "success");
-                });
+                }), Logger);
 
                 Logger.LogInformation("Global font downloaded to: {Path}", extractPath);
             });
