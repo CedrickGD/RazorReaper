@@ -296,11 +296,15 @@ public sealed class RenderDispatchUsageTests
     {
         var project = Path.Combine(RepositoryRoot(), "RazorReaper");
 
-        return Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories)
+        var files = Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories)
             .Concat(Directory.EnumerateFiles(project, "*.razor", SearchOption.AllDirectories))
             .Where(path => !IsGenerated(path))
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
+
+        // A wrong root would make every scan above pass by finding nothing to scan.
+        Assert.NotEmpty(files);
+        return files;
     }
 
     private static bool IsGenerated(string path)
