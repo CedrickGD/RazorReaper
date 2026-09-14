@@ -163,14 +163,24 @@
         LoadConsoleKey();
         CheckGameStatus();
 
-        // Check game status every 10 seconds to reduce CPU usage
-        statusTimer = new Timer(async _ =>
-        {
-            var wasRunning = isGameRunning;
-            CheckGameStatus();
-            if (wasRunning != isGameRunning)
-                await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+        // Check game status every 10 seconds to reduce CPU usage.
+        //
+        // The callback stays `void`. TimerCallback returns void, so an `async _ => ...` body is an
+        // `async void` on a thread-pool thread: a faulted dispatch after the await has no caller to
+        // hold it and is rethrown as an unhandled exception, which kills the process rather than
+        // being reported. StatusTick does the same work with the dispatch observed by the gate.
+        statusTimer = new Timer(_ => StatusTick(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+    }
+
+    private void StatusTick()
+    {
+        if (this.IsRenderStopped())
+            return;
+
+        var wasRunning = isGameRunning;
+        CheckGameStatus();
+        if (wasRunning != isGameRunning)
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
 
     private void CheckGameStatus()
@@ -503,6 +513,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        this.StopRenderDispatch();
+
         if (statusTimer != null)
         {
             await statusTimer.DisposeAsync();
