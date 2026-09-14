@@ -21,11 +21,13 @@ internal static partial class BackgroundFaultFrames
 {
     internal const string NoOwnFrame = "(no RazorReaper frame)";
     internal const string Unavailable = "(unavailable)";
+    internal const string UnknownMember = "(unknown)";
     internal const string RedactedUserPath = "%USERPROFILE%";
     internal const string RedactedHost = @"\\%HOST%";
 
     private const string OwnNamespacePrefix = "RazorReaper.";
     private const int MaxFrameLength = 120;
+    private const int MaxMemberLength = 60;
     private const int MaxFrames = 3;
 
     public static BackgroundFaultOrigin Describe(Exception? exception)
@@ -69,6 +71,53 @@ internal static partial class BackgroundFaultFrames
             // allowed to fail louder than the fault it is describing.
             return new BackgroundFaultOrigin(Unavailable, Unavailable);
         }
+    }
+
+    /// <summary>
+    /// Where a faulted render dispatch came from.
+    ///
+    /// A dispatch that faults because its renderer is gone has no RazorReaper frame left on the
+    /// stack — the throw happens inside the framework's dispatcher — so <see cref="Describe"/>
+    /// alone would return <see cref="NoOwnFrame"/> for the whole family and the ~62k
+    /// NullReferenceException rows would stay exactly as unattributable as they are today. The
+    /// gate knows the two facts the stack lost: the owning component type and the dispatching
+    /// member. They stand in as the top own frame when there is no real one, and the real frames
+    /// win when there are.
+    /// </summary>
+    public static BackgroundFaultOrigin DescribeRenderDispatch(Exception? exception, string? owner, string? origin)
+    {
+        var member = DescribeDispatcher(owner, origin);
+        var described = Describe(exception);
+
+        return described.TopFrame is NoOwnFrame or Unavailable
+            ? new BackgroundFaultOrigin(member, member)
+            : new BackgroundFaultOrigin(described.TopFrame, $"{member} > {described.TopFrames}");
+    }
+
+    /// <summary>
+    /// <c>Owner.Origin</c> — but only when both are already member-shaped.
+    ///
+    /// Owner is a type name and origin a <c>[CallerMemberName]</c>, so neither can carry personal
+    /// data on the sanctioned path — except that <c>origin</c> is an ordinary optional parameter
+    /// any caller may pass by hand, and this string is transmitted. A value that is not a C#
+    /// member name is therefore dropped whole rather than scrubbed: salvaging the letters out of
+    /// <c>C:\Users\someone\…</c> would leave the user name behind, which is exactly what must
+    /// never travel.
+    /// </summary>
+    internal static string DescribeDispatcher(string? owner, string? origin)
+        => $"{Identifier(owner)}.{Identifier(origin)}";
+
+    /// <summary>One member name, or <see cref="UnknownMember"/> when the value is not one.</summary>
+    internal static string Identifier(string? value)
+    {
+        // Generic arity and the compiler's state-machine/lambda brackets are part of a member's
+        // written name; separators, spaces, quotes and everything else are not.
+        static bool IsMemberChar(char c)
+            => char.IsAsciiLetterOrDigit(c) || c is '_' or '<' or '>' or '`';
+
+        return string.IsNullOrEmpty(value) || value.Length > MaxMemberLength || !value.All(IsMemberChar)
+            ? UnknownMember
+            : value;
     }
 
     /// <summary>
