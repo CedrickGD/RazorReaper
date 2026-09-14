@@ -141,7 +141,7 @@
         {
             scopeActiveFileCount = 0;
             scopeDisabledFileCount = 0;
-            await InvokeAsync(StateHasChanged);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged));
             return;
         }
 
@@ -162,7 +162,9 @@
         finally
         {
             isScopeStatusLoading = false;
-            await InvokeAsync(StateHasChanged);
+            // This method is started with `_ = LoadScopeStateAsync()`, so a dispatch faulting
+            // here — the renderer gone while the file count ran — has no observer.
+            this.DispatchRender(() => InvokeAsync(StateHasChanged));
         }
     }
 

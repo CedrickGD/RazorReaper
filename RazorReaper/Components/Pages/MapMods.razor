@@ -656,7 +656,9 @@
             failedMedia.Add(url);
 
         pendingMedia.Remove(url);
-        await InvokeAsync(StateHasChanged);
+        // Started from render with `_ = LoadRemoteMediaAsync(...)`: navigating away during a slow
+        // fetch leaves this dispatch faulting with nobody to observe it.
+        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
 
     // ── Per-spot preview image / GIF ──

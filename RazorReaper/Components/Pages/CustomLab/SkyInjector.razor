@@ -665,7 +665,9 @@
             }
             catch (Exception ex) { Logger.LogDebug(ex, "Sky preview failed"); }
         }
-        await InvokeAsync(StateHasChanged);
+        // Two of the three call sites are `_ = UpdatePreview()`, so an awaited dispatch faulting
+        // here would have no observer.
+        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
 
     private void OnLabSettingsChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);

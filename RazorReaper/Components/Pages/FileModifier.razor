@@ -366,11 +366,18 @@
         return unit == 0 ? $"{size:0} {units[unit]}" : $"{size:0.0} {units[unit]}";
     }
 
-    private async void OnChanged() => await InvokeAsync(() =>
+    // `async void` is worse here than a dropped dispatch: FileMod.Changed is raised off the
+    // renderer's thread, so a fault has no SynchronizationContext to land on and is rethrown on
+    // the thread pool instead of becoming RR-E1003.
+    private void OnChanged() => this.DispatchRender(() => InvokeAsync(() =>
     {
         _modified = FileMod.GetModifiedFiles();
         StateHasChanged();
-    });
+    }));
 
-    public void Dispose() => FileMod.Changed -= OnChanged;
+    public void Dispose()
+    {
+        this.StopRenderDispatch();
+        FileMod.Changed -= OnChanged;
+    }
 }

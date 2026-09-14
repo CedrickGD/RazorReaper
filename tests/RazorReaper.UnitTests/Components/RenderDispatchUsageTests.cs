@@ -54,6 +54,31 @@ public sealed class RenderDispatchUsageTests
         Assert.Empty(offenders);
     }
 
+    /// <summary>
+    /// The dispatch scan above allows <c>await InvokeAsync(...)</c>, because in an awaited chain
+    /// the caller owns the fault. An <c>async void</c> method has no caller to own it: the fault
+    /// is rethrown on whatever thread raised the service event, which is worse than RR-E1003.
+    /// </summary>
+    [Fact]
+    public void NoComponentHandlesAServiceEventWithAsyncVoid()
+    {
+        var offenders = new List<string>();
+
+        foreach (var path in ComponentFiles())
+        {
+            var lines = File.ReadAllLines(path);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (!IsComment(lines[i]) && lines[i].Contains("async void", StringComparison.Ordinal))
+                {
+                    offenders.Add($"{Path.GetFileName(path)}:{i + 1}: {lines[i].Trim()}");
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
     [Fact]
     public void TheNotificationContainerNeverTouchesItsCollectionsOffTheDispatcher()
     {

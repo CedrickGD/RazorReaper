@@ -81,10 +81,17 @@ public sealed class NoglinScript : CalibratableScriptBase
         // Never leave the game stuck at 1 FPS if we stop while throttled.
         if (_throttled)
         {
-            try { _ = _console.SendCommandAsync($"t.maxfps {Math.Clamp(NormalFps, 30, 2000)}", false, default); }
-            catch (Exception ex) { Logger.LogWarning(ex, "Noglin FPS restore on stop failed"); }
+            // The try only ever saw the synchronous prefix: the discarded Task carried the real
+            // failure — the game window gone — to the finalizer instead.
+            _ = RestoreFpsAsync();
             _throttled = false;
         }
+    }
+
+    private async Task RestoreFpsAsync()
+    {
+        try { await _console.SendCommandAsync($"t.maxfps {Math.Clamp(NormalFps, 30, 2000)}", false, default); }
+        catch (Exception ex) { Logger.LogWarning(ex, "Noglin FPS restore on stop failed"); }
     }
 
     public void SaveSettings()

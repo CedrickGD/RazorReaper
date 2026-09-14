@@ -798,7 +798,9 @@
         if (_selected is ICalibratableScript cal) cal.RefineReferenceMask();
     }
 
-    private async void OnScriptChanged() => await InvokeAsync(StateHasChanged);
+    // Scripts raise Changed from their own worker threads, where an `async void` fault has no
+    // SynchronizationContext and is rethrown on the thread pool.
+    private void OnScriptChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     public void Dispose()
     {

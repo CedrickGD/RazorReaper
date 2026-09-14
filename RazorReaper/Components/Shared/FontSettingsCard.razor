@@ -263,7 +263,9 @@
             return;
         }
 
-        await InvokeAsync(StateHasChanged);
+        // Started with `_ = EnsureFontPresetInstalledAsync(...)`, so neither this dispatch nor the
+        // one in the finally below has an observer if the renderer goes away mid-install.
+        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
 
         NotificationService.ShowInfo($"Installing {preset.Name}...");
 
@@ -306,7 +308,7 @@
         finally
         {
             installingFontPresets.Remove(preset.Id);
-            await InvokeAsync(StateHasChanged);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
         }
     }
 

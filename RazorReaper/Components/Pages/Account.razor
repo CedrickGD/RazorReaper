@@ -152,7 +152,9 @@
         _login = await Accounts.BeginSignInAsync(_lifetime.Token);
         var launched = await Launcher.Default.OpenAsync(_login.VerificationUrl);
         if (!launched) { _login = null; throw new InvalidOperationException("Could not open your browser. Please try again."); }
-        _poll?.Cancel(); _poll?.Dispose();
+        // Cancel without disposing: the previous Poll may still hold this token, and a disposed
+        // source turns its next Task.Delay into an ObjectDisposedException nobody observes.
+        _poll?.Cancel();
         _poll = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _ = Poll(_login, _poll.Token);
     });
@@ -172,7 +174,14 @@
             await InvokeAsync(() => { _login = null; _error = "Sign-in expired. Please start again."; StateHasChanged(); });
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
-        catch (Exception ex) { await InvokeAsync(() => { _login = null; _error = ex is InvalidOperationException ? ex.Message : "Sign-in was interrupted. Please start again."; StateHasChanged(); }); }
+        // This loop is started with `_ = Poll(...)`, so the handler itself must not be able to
+        // fault — an awaited dispatch here is exactly the teardown case that would.
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            var message = ex is InvalidOperationException ? ex.Message : "Sign-in was interrupted. Please start again.";
+            this.DispatchRender(() => InvokeAsync(() => { _login = null; _error = message; StateHasChanged(); }));
+        }
     }
     private void CancelSignIn() { _poll?.Cancel(); _candidate = null; _login = null; _authOpen = false; }
     private Task ConfirmSignIn() => Execute(async () => {
@@ -195,5 +204,24 @@
         LoadProfile(); Notifications.ShowSuccess("Your profile has been saved.");
     });
     private Task SignOut() => Execute(async () => { await Accounts.SignOutAsync(_lifetime.Token); _confirmSignOut = false; });
-    public void Dispose() { _lifetime.Cancel(); _poll?.Cancel(); _poll?.Dispose(); _lifetime.Dispose(); _dialogOwner?.Dispose(); if (_dialogModule is not null) _ = _dialogModule.DisposeAsync(); }
+    public void Dispose()
+    {
+        this.StopRenderDispatch();
+        // Cancel but do not dispose — Poll may still be holding both tokens.
+        _lifetime.Cancel(); _poll?.Cancel();
+        _dialogOwner?.Dispose();
+        // Tearing down a JS module reference throws JSDisconnectedException once the WebView has
+        // gone, and a discarded ValueTask carries that straight to the finalizer.
+        if (_dialogModule is not null) _ = DisposeDialogModuleAsync(_dialogModule);
+        _dialogModule = null;
+    }
+
+    // Catches everything, so the discard above cannot become an unobserved fault.
+    private static async Task DisposeDialogModuleAsync(IJSObjectReference module)
+    {
+        try { await module.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex) { Serilog.Log.Debug(ex, "Account dialog module disposal failed"); }
+    }
 }
