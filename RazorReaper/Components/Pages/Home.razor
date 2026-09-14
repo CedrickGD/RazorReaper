@@ -1653,10 +1653,15 @@
             using var process = Process.Start(processInfo);
             if (process != null)
             {
-                var outputTask = process.StandardOutput.ReadToEndAsync();
-                var errorTask = process.StandardError.ReadToEndAsync();
+                // Both reads have to be finished before `process` is disposed. The old shape
+                // walked away from them — on the Kill path and on a Task.WhenAny race — and the
+                // closing handles then faulted the pending reads with nobody observing them.
+                using var readTimeout = new CancellationTokenSource();
+                var outputTask = process.StandardOutput.ReadToEndAsync(readTimeout.Token);
+                var errorTask = process.StandardError.ReadToEndAsync(readTimeout.Token);
 
-                if (!process.WaitForExit(2000))
+                var exited = process.WaitForExit(2000);
+                if (!exited)
                 {
                     try
                     {
@@ -1666,25 +1671,34 @@
                     {
                         // ignore kill failures
                     }
+                }
 
+                readTimeout.CancelAfter(TimeSpan.FromSeconds(2));
+
+                string output;
+                string error;
+                try
+                {
+                    // WhenAll observes both reads even when one of them fails.
+                    var read = await Task.WhenAll(outputTask, errorTask);
+                    output = read[0];
+                    error = read[1];
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug(ex, "WiFi detection output read did not complete");
+                    wifiName = "Timed Out";
+                    wifiSignalStrength = "N/A";
+                    return;
+                }
+
+                if (!exited)
+                {
                     Logger.LogDebug("WiFi detection timed out");
                     wifiName = "Timed Out";
                     wifiSignalStrength = "N/A";
                     return;
                 }
-
-                var readBoth = Task.WhenAll(outputTask, errorTask);
-                var readCompleted = await Task.WhenAny(readBoth, Task.Delay(2000));
-                if (readCompleted != readBoth)
-                {
-                    Logger.LogDebug("WiFi detection output read timed out");
-                    wifiName = "Timed Out";
-                    wifiSignalStrength = "N/A";
-                    return;
-                }
-
-                var output = await outputTask;
-                var error = await errorTask;
 
                 if (!string.IsNullOrWhiteSpace(error))
                 {
