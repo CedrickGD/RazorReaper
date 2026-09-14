@@ -167,19 +167,19 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
 
         if (config.Randomize)
         {
-            _ = Task.Run(() => RandomizedLoopAsync(config, token), CancellationToken.None);
+            _ = Task.Run(() => RunGuardedAsync(() => RandomizedLoopAsync(config, token)), CancellationToken.None);
         }
         else
         {
             var timer = new System.Timers.Timer(config.TotalMilliseconds) { AutoReset = true };
-            _handler = new ElapsedShim(async () =>
+            _handler = new ElapsedShim(() => RunGuardedAsync(async () =>
             {
                 // Drop an overlapping tick rather than queueing it — a backlog at high CPS is what
                 // turns a clicker into a thread storm.
                 if (!await _clickGate.WaitAsync(0)) return;
                 try { await PerformClickAsync(config, token); }
                 finally { _clickGate.Release(); }
-            });
+            }));
             timer.Elapsed += _handler.OnElapsed;
             _timer = timer;
             timer.Start();
@@ -227,6 +227,19 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
         NextClickTime = null;
         _activity.AddActivity($"Autoclicker stopped ({_clickCount} clicks performed)", "info");
         RaiseChanged();
+    }
+
+    /// <summary>
+    /// Both click drivers are started fire-and-forget, so there is no caller to catch a throw:
+    /// it would surface as an unobserved task exception (RR-E1003) instead of a log line. Stop()
+    /// racing an in-flight tick is the realistic one — the click gate is disposed first.
+    /// </summary>
+    private async Task RunGuardedAsync(Func<Task> work)
+    {
+        try { await work().ConfigureAwait(false); }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex) { _logger.LogError(ex, "Autoclicker click driver failed"); }
     }
 
     private async Task RandomizedLoopAsync(AutoClickerConfig config, CancellationToken token)

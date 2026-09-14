@@ -125,8 +125,9 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
         try
         {
             // Toggle the runtime, not a page: the whole point is that this works with the Auto
-            // Clicker page closed, or with no window focused at all.
-            _ = _runtime.ToggleAsync();
+            // Clicker page closed, or with no window focused at all. The catch below only sees
+            // the synchronous part, so the async part has to carry its own.
+            _ = ToggleRuntimeAsync();
             Toggled?.Invoke();
         }
         catch (Exception ex)
@@ -134,6 +135,12 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
             // A subscriber throwing must not kill the hotkey pump.
             _logger.LogError(ex, "Auto Clicker hotkey subscriber threw");
         }
+    }
+
+    private async Task ToggleRuntimeAsync()
+    {
+        try { await _runtime.ToggleAsync().ConfigureAwait(false); }
+        catch (Exception ex) { _logger.LogError(ex, "Auto Clicker hotkey toggle failed"); }
     }
 
     public void Dispose()
