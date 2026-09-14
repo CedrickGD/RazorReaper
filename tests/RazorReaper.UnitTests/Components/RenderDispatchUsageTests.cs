@@ -110,6 +110,21 @@ public sealed class RenderDispatchUsageTests
         }
     }
 
+    /// <summary>
+    /// The gate is only half a fix while its faults go nowhere but the local Serilog file. That
+    /// is what v1.4.10's Discord filter did to the socket family — silenced it and let eight
+    /// weeks of quiet read as a fix — and the NullReferenceException family the gate now catches
+    /// is 74 % of RR-E1003. Deleting either line below would silently reinstate that.
+    /// </summary>
+    [Fact]
+    public void AppCarriesTheGatesFaultsOutThroughTheDampenedReporter()
+    {
+        var app = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "App.xaml.cs"));
+
+        Assert.Contains("RenderDispatchReporting.UseSink(HandleRenderDispatchFault);", app, StringComparison.Ordinal);
+        Assert.Contains("backgroundFaults.RecordRenderDispatch(", app, StringComparison.Ordinal);
+    }
+
     private static IEnumerable<int> Occurrences(string line)
     {
         for (var index = line.IndexOf("InvokeAsync(", StringComparison.Ordinal);

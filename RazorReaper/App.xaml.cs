@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using RazorReaper.Components;
 using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Implementations;
@@ -34,6 +35,12 @@ namespace RazorReaper
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+
+            // The render gate catches the same faults one step earlier than the finalizer does.
+            // Without this line it would observe them and tell only the local log — which is how
+            // v1.4.10 turned a live socket family into eight weeks of silence that read as a fix.
+            // Set here, before any window exists, so no component can render before it is wired.
+            RenderDispatchReporting.UseSink(HandleRenderDispatchFault);
 
             backgroundFaultFlushTimer = new System.Threading.Timer(
                 _ => FlushBackgroundFaults(),
@@ -293,6 +300,40 @@ namespace RazorReaper
             }
         }
 
+        /// <summary>
+        /// The render gate's faults, folded into the same tracker as the finalizer's.
+        ///
+        /// Runs wherever the dispatch completed — the renderer's own thread for a fault raised
+        /// during a render, a timer or pool thread for one raised after — so it may not throw and
+        /// may not block. The gate already wrote the local log line; this is only the copy that
+        /// leaves the machine, and it goes through the tracker so a component faulting at 4/s
+        /// costs one row plus a count rather than 4 POSTs a second.
+        /// </summary>
+        private void HandleRenderDispatchFault(RenderDispatchFault fault)
+        {
+            try
+            {
+                var report = backgroundFaults.RecordRenderDispatch(
+                    fault.Exception,
+                    fault.Owner,
+                    fault.Origin,
+                    fault.Stopped);
+                if (report is null)
+                {
+                    return;
+                }
+
+                PublishBackgroundFault(report);
+            }
+            catch (Exception ex)
+            {
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.UnobservedTaskException,
+                    "Render dispatch fault reporting failed.",
+                    ex);
+            }
+        }
+
         private void PublishBackgroundFault(BackgroundFaultReport report)
         {
             _ = PublishBackgroundFaultAsync(report);
@@ -307,30 +348,68 @@ namespace RazorReaper
                 return Task.CompletedTask;
             }
 
-            // Every key below error_kind is additive and optional — the ingest contract caps
-            // metrics at 64 keys / 8 KB and this event carries roughly half that.
             return telemetry.TrackEventAsync(
                 "app_error",
                 TelemetryEventStatus.Down,
                 report.Message,
-                new Dictionary<string, object?>
-                {
-                    ["error_code"] = AppErrorCodes.UnobservedTaskException,
-                    ["error_kind"] = "background",
-                    ["exception_type"] = report.ExceptionType ?? "unknown",
-                    // AggregateException alone says nothing — surface the actual fault type.
-                    ["base_exception_type"] = report.BaseExceptionType,
-                    // The field whose absence made ~83k rows unattributable. Own namespace
-                    // only, file names without paths — see BackgroundFaultFrames.
-                    ["top_frame"] = report.TopFrame,
-                    ["top_frames"] = report.TopFrames,
-                    ["leaf_exception_count"] = report.LeafExceptionCount,
-                    // Faults this row stands for: sum it, do not count rows.
-                    ["occurrences"] = report.Occurrences,
-                    ["report_kind"] = ToReportKindText(report.Kind),
-                    ["suppressed_aborted_io"] = report.SuppressedAbortedIo
-                },
+                BuildBackgroundFaultMetrics(report),
                 cancellationToken);
+        }
+
+        /// <summary>
+        /// The app_error row for one background fault, from either observer.
+        ///
+        /// Every key below error_kind is additive and optional — the ingest contract caps metrics
+        /// at 64 keys / 8 KB (RR-Admin-Panel/shared/telemetry-contract.ts) and this event carries
+        /// well under half of each even once TelemetryService merges its base metrics in.
+        /// </summary>
+        internal static Dictionary<string, object?> BuildBackgroundFaultMetrics(BackgroundFaultReport report)
+        {
+            var metrics = new Dictionary<string, object?>
+            {
+                ["error_code"] = AppErrorCodes.UnobservedTaskException,
+                // Deliberately still "background" for both sources. Every panel KPI filters on
+                // != 'background' and the background-fault aggregate matches it exactly; a new
+                // value here would move the render population into the crash counts. The two
+                // populations are told apart by fault_source below.
+                ["error_kind"] = "background",
+                ["exception_type"] = report.ExceptionType ?? "unknown",
+                // AggregateException alone says nothing — surface the actual fault type.
+                ["base_exception_type"] = report.BaseExceptionType,
+                // The field whose absence made ~83k rows unattributable. Own namespace
+                // only, file names without paths — see BackgroundFaultFrames.
+                ["top_frame"] = report.TopFrame,
+                ["top_frames"] = report.TopFrames,
+                ["leaf_exception_count"] = report.LeafExceptionCount,
+                // Faults this row stands for: sum it, do not count rows.
+                ["occurrences"] = report.Occurrences,
+                ["report_kind"] = ToReportKindText(report.Kind),
+                ["suppressed_aborted_io"] = report.SuppressedAbortedIo,
+                // Which observer caught it. Absent on every pre-1.5.3 row, so the panel reads a
+                // missing value as "unobserved_task" and the series stays continuous.
+                ["fault_source"] = ToFaultSourceText(report.Source)
+            };
+
+            // Render-only keys, omitted rather than sent null, so an unobserved row is byte for
+            // byte what it was. These two are what the gate knows and a dead renderer's stack
+            // does not: which component, and which member dispatched.
+            if (report.Source == BackgroundFaultSource.RenderDispatch)
+            {
+                metrics["render_owner"] = report.Owner;
+                metrics["render_origin"] = report.Origin;
+                metrics["render_stopped"] = report.RenderStopped;
+            }
+
+            return metrics;
+        }
+
+        private static string ToFaultSourceText(BackgroundFaultSource source)
+        {
+            return source switch
+            {
+                BackgroundFaultSource.RenderDispatch => "render_dispatch",
+                _ => "unobserved_task"
+            };
         }
 
         private static string ToReportKindText(BackgroundFaultReportKind kind)
@@ -441,6 +520,11 @@ namespace RazorReaper
             {
                 return;
             }
+
+            // Every component is about to be torn down. Their dispatch faults are teardown by
+            // definition and the gate does not report those, but the sink is removed anyway so
+            // nothing can queue a POST behind the flush that is about to close the session.
+            RenderDispatchReporting.UseSink(null);
 
             try
             {
