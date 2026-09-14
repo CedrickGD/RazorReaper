@@ -1,5 +1,7 @@
+@using Microsoft.Extensions.Logging
 @using RazorReaper.Services
 @inject ISupportInboxService Inbox
+@inject ILogger<SupportInboxLink> Logger
 @implements IDisposable
 
 <a href="/inbox" class="support-inbox-link" aria-label="@($"Support inbox, {Inbox.UnreadCount} unread replies")">
@@ -21,6 +23,8 @@
         Inbox.Changed += OnChanged;
         _ = PollAsync(_stop.Token);
     }
+    // This loop is started with `_ = PollAsync(...)`, so nothing observes it: anything it lets
+    // escape becomes an unobserved task exception (RR-E1003) every 20s for the session's life.
     private async Task PollAsync(CancellationToken token)
     {
         try
@@ -30,7 +34,11 @@
             while (await timer.WaitForNextTickAsync(token)) await Inbox.RefreshAsync(cancellationToken: token);
         }
         catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex) { Logger.LogDebug(ex, "Support inbox poll stopped"); }
     }
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
-    public void Dispose() { Inbox.Changed -= OnChanged; _stop.Cancel(); _stop.Dispose(); }
+    // Cancel but do not dispose: the poll above may still hold this token, and registering on a
+    // disposed source throws — which is how a torn-down navbar took the poll loop with it.
+    public void Dispose() { Inbox.Changed -= OnChanged; _stop.Cancel(); }
 }

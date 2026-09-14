@@ -71,7 +71,7 @@ public sealed class SupportInboxService : ISupportInboxService, IDisposable
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch { if (generation == _generation) Error = "Inbox unavailable. We'll reconnect automatically."; }
-        finally { _requests.Release(); Changed?.Invoke(); }
+        finally { _requests.Release(); RaiseChanged(); }
     }
 
     public async Task MarkReadAsync(long replyId, CancellationToken cancellationToken = default)
@@ -89,7 +89,19 @@ public sealed class SupportInboxService : ISupportInboxService, IDisposable
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch { if (generation == _generation) Error = "Could not mark this answer as read. Open it again when connected."; }
-        finally { _requests.Release(); Changed?.Invoke(); }
+        finally { _requests.Release(); RaiseChanged(); }
+    }
+
+    /// <summary>
+    /// Every caller of Refresh/MarkRead fires and forgets, and this fan-out runs from a
+    /// <c>finally</c>. A subscriber that throws — a navbar whose renderer is gone, say — would
+    /// fault that discarded task and surface as an unobserved task exception (RR-E1003), so the
+    /// inbox swallows subscriber failures the way the HUD and the macros already do.
+    /// </summary>
+    private void RaiseChanged()
+    {
+        try { Changed?.Invoke(); }
+        catch { /* a subscriber must not break the inbox */ }
     }
 
     private string? _accountId;
@@ -100,7 +112,7 @@ public sealed class SupportInboxService : ISupportInboxService, IDisposable
         _accountId = accountId;
         Interlocked.Increment(ref _generation);
         _scope = null; Replies = []; UnreadCount = 0; NextBefore = null; HasLoaded = false; Error = null;
-        Changed?.Invoke();
+        RaiseChanged();
         _ = RefreshAsync();
     }
     public void Dispose() => _account.Changed -= AccountChanged;
