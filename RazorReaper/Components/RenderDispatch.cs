@@ -66,6 +66,7 @@ public sealed class RenderDispatchGate(string owner)
 
     private readonly string _owner = owner;
     private int _consecutiveFaults;
+    private int _warned;
     private int _stopped;
 
     public bool IsStopped => Volatile.Read(ref _stopped) != 0;
@@ -103,7 +104,7 @@ public sealed class RenderDispatchGate(string owner)
 
         if (task.IsCompletedSuccessfully)
         {
-            Volatile.Write(ref _consecutiveFaults, 0);
+            ResetFaults();
             return;
         }
 
@@ -128,7 +129,7 @@ public sealed class RenderDispatchGate(string owner)
 
             if (!completed.IsFaulted)
             {
-                Volatile.Write(ref _consecutiveFaults, 0);
+                ResetFaults();
                 return;
             }
 
@@ -146,14 +147,22 @@ public sealed class RenderDispatchGate(string owner)
         }
     }
 
+    private void ResetFaults()
+    {
+        Volatile.Write(ref _consecutiveFaults, 0);
+        Volatile.Write(ref _warned, 0);
+    }
+
     private void OnFault(Exception exception, ILogger? logger, string? origin)
     {
         var faults = Interlocked.Increment(ref _consecutiveFaults);
-        var rendererGone = IsRendererGone(exception);
-        var stopping = rendererGone || faults >= MaxConsecutiveFaults;
+        var stopping = IsRendererGone(exception) || faults >= MaxConsecutiveFaults;
 
-        // Teardown faults are expected noise; a first unexpected one is worth seeing once.
-        var level = IsTeardown(exception) || faults > 1 ? LogLevel.Debug : LogLevel.Warning;
+        // Teardown faults are expected noise. An unexpected one is worth seeing once per run of
+        // faults — a 2 Hz stream of them must not become a 2 Hz stream of warnings.
+        var level = IsTeardown(exception) || Interlocked.Exchange(ref _warned, 1) == 1
+            ? LogLevel.Debug
+            : LogLevel.Warning;
         Write(logger, level, exception, _owner, origin, faults);
 
         if (stopping && Stop())
