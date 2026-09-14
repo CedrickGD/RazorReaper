@@ -67,7 +67,7 @@
         foreach (var script in _scripts) script.Changed += OnOwnerChanged;
     }
 
-    private void OnOwnerChanged() => InvokeAsync(StateHasChanged);
+    private void OnOwnerChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     private void Apply(HotkeyBinding binding, string value)
     {
@@ -80,6 +80,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         foreach (var script in _scripts) script.Changed -= OnOwnerChanged;
     }
 }

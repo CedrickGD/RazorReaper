@@ -324,15 +324,15 @@
         NotifierClient.SetTribeTriggers(raw.Split('\n'));
     }
 
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     private void OnAlertReceived(NotifierAlert alert)
     {
-        _ = InvokeAsync(async () =>
+        this.DispatchRender(() => InvokeAsync(async () =>
         {
             await PlaySound(NotifierClient.GetTypeSound(alert.Type));
             StateHasChanged();
-        });
+        }));
     }
 
     // ── Status header ──────────────────────────────────────────────────────
@@ -418,6 +418,7 @@
     // Singleton client keeps running when the user navigates away; only detach handlers.
     public void Dispose()
     {
+        this.StopRenderDispatch();
         NotifierClient.Changed -= OnChanged;
         NotifierClient.AlertReceived -= OnAlertReceived;
     }

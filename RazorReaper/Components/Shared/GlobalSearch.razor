@@ -280,8 +280,8 @@
     public void ToggleSearch()
     {
         _isVisible = !_isVisible;
-        if (_isVisible) _ = InvokeAsync(OpenAsync);
-        else _ = InvokeAsync(StateHasChanged);
+        if (_isVisible) this.DispatchRender(() => InvokeAsync(OpenAsync));
+        else this.DispatchRender(() => InvokeAsync(StateHasChanged));
     }
 
     private async Task OpenAsync()
@@ -416,6 +416,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        this.StopRenderDispatch();
+
         try
         {
             await JS.InvokeVoidAsync("unregisterGlobalSearch");

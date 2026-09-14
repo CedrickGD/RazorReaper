@@ -112,7 +112,7 @@
         await ApplyAppearanceAsync();
     }
 
-    private void HandleAppearanceChanged() => _ = InvokeAsync(ApplyAppearanceAsync);
+    private void HandleAppearanceChanged() => this.DispatchRender(() => InvokeAsync(ApplyAppearanceAsync));
 
     private async Task ApplyAppearanceAsync()
     {
@@ -126,7 +126,7 @@
         }
     }
 
-    private void HandleAccessChanged() => InvokeAsync(StateHasChanged);
+    private void HandleAccessChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => ReflectPage(Navigation.ToBaseRelativePath(e.Location));
@@ -148,6 +148,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         if (_navigationSubscribed)
         {
             Navigation.LocationChanged -= OnLocationChanged;

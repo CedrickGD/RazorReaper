@@ -89,8 +89,16 @@
         NotificationService.OnNotificationRemoved += OnNotificationRemovedSync;
     }
 
-    private void OnNotificationAddedSync(NotificationMessage n) => _ = HandleNotificationAddedAsync(n);
-    private void OnNotificationRemovedSync(string id) => _ = HandleNotificationRemovedAsync(id);
+    // NotificationService raises these synchronously on whichever thread showed the toast — a
+    // script runner, the antidote scan loop, the hotkey pump. Without this hop the handler bodies
+    // ran there too, so `notifications` and `_leaving` were mutated while the renderer was
+    // enumerating them: that is where production's duplicate-@key and "Collection was modified"
+    // renderer exceptions come from. On the dispatcher the two are single-threaded again.
+    private void OnNotificationAddedSync(NotificationMessage n)
+        => this.DispatchRender(() => InvokeAsync(() => HandleNotificationAddedAsync(n)));
+
+    private void OnNotificationRemovedSync(string id)
+        => this.DispatchRender(() => InvokeAsync(() => HandleNotificationRemovedAsync(id)));
 
     private async Task HandleNotificationAddedAsync(NotificationMessage notification)
     {
@@ -154,9 +162,14 @@
             await InvokeAsync(StateHasChanged);
             await Task.Delay(LeaveAnimationMs, _autoRemoveCts?.Token ?? CancellationToken.None);
 
-            notifications.Remove(notification);
-            _leaving.Remove(id);
-            await InvokeAsync(StateHasChanged);
+            // Back through the dispatcher explicitly: the delay's continuation must not be the
+            // one place that decides which thread drops the row.
+            await InvokeAsync(() =>
+            {
+                notifications.Remove(notification);
+                _leaving.Remove(id);
+                StateHasChanged();
+            });
         }
         catch (OperationCanceledException)
         {
@@ -188,6 +201,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         _autoRemoveCts?.Cancel();
         _autoRemoveCts?.Dispose();
 

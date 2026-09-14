@@ -790,7 +790,7 @@
             var progress = new Progress<int>(p =>
             {
                 _progress = p;
-                _ = InvokeAsync(StateHasChanged);
+                this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
             });
 
             var wanted = ResolveOutputDirectory();
@@ -925,6 +925,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         try { _cts?.Cancel(); } catch { /* shutting down */ }
         _cts?.Dispose();
     }

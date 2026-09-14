@@ -172,7 +172,7 @@
             {
                 if (!File.Exists(gameUserSettingsPath))
                 {
-                    InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found.")));
                     return;
                 }
 
@@ -211,19 +211,19 @@
 
                 if (!modified)
                 {
-                    InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini.")));
                     return;
                 }
 
                 File.WriteAllText(gameUserSettingsPath, content);
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     bUseOldThirdPersonCameraTrace = true;
                     bUseOldThirdPersonCameraOffset = true;
                     NotificationService.ShowSuccess("Camera trace enabled.");
                     ActivityService.AddActivity("Camera trace enabled", "success");
                     StateHasChanged();
-                });
+                }));
             });
         }
         catch (Exception ex)
@@ -245,7 +245,7 @@
             {
                 if (!File.Exists(gameUserSettingsPath))
                 {
-                    InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found."));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found.")));
                     return;
                 }
 
@@ -254,14 +254,14 @@
                 content = Regex.Replace(content, @"bUseOldThirdPersonCameraOffset=\w+", "bUseOldThirdPersonCameraOffset=False", RegexOptions.IgnoreCase);
 
                 File.WriteAllText(gameUserSettingsPath, content);
-                InvokeAsync(() =>
+                this.DispatchRender(() => InvokeAsync(() =>
                 {
                     bUseOldThirdPersonCameraTrace = false;
                     bUseOldThirdPersonCameraOffset = false;
                     NotificationService.ShowWarning("Camera trace disabled.");
                     ActivityService.AddActivity("Camera trace disabled", "warning");
                     StateHasChanged();
-                });
+                }));
             });
         }
         catch (Exception ex)

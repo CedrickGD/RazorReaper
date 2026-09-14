@@ -37,8 +37,8 @@
         catch (ObjectDisposedException) { }
         catch (Exception ex) { Logger.LogDebug(ex, "Support inbox poll stopped"); }
     }
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     // Cancel but do not dispose: the poll above may still hold this token, and registering on a
     // disposed source throws — which is how a torn-down navbar took the poll loop with it.
-    public void Dispose() { Inbox.Changed -= OnChanged; _stop.Cancel(); }
+    public void Dispose() { this.StopRenderDispatch(); Inbox.Changed -= OnChanged; _stop.Cancel(); }
 }

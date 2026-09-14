@@ -324,7 +324,7 @@
             {
                 filesScanned = p.FilesScanned;
                 scannedLogicalBytes = p.LogicalBytes;
-                _ = InvokeAsync(StateHasChanged);
+                this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
             });
 
             var result = await CompactArkService.AnalyzeAsync(progress, analysisCts.Token);
@@ -416,7 +416,7 @@
                 opFilesDone = p.FilesProcessed;
                 opTotalFiles = p.TotalFiles;
                 opCurrentFile = p.CurrentFile;
-                _ = InvokeAsync(StateHasChanged);
+                this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
             });
 
             var result = compress
@@ -528,6 +528,7 @@
 
     public void Dispose()
     {
+        this.StopRenderDispatch();
         try
         {
             analysisCts?.Cancel();

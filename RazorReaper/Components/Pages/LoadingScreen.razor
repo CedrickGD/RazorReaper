@@ -327,7 +327,7 @@
                         ? "Preparing video converter…"
                         : "Downloading video converter…";
                     _progressPercent = p.Percent;
-                    _ = InvokeAsync(StateHasChanged);
+                    this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
                 });
 
                 var ready = await MovieService.EnsureConverterAsync(setupProgress);
@@ -355,7 +355,7 @@
             var convertProgress = new Progress<int>(p =>
             {
                 _progressPercent = p;
-                _ = InvokeAsync(StateHasChanged);
+                this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
             });
 
             var result = await MovieService.ConvertAndReplaceAsync(

@@ -668,7 +668,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void OnLabSettingsChanged() => InvokeAsync(StateHasChanged);
+    private void OnLabSettingsChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
 
     private void SetMode(SkyInjectionMode mode)
     {
@@ -882,7 +882,7 @@
 
     private void ClearLog() => _logLines.Clear();
 
-    public void Dispose() => LabSettings.Changed -= OnLabSettingsChanged;
+    public void Dispose() { this.StopRenderDispatch(); LabSettings.Changed -= OnLabSettingsChanged; }
 
     private record LogLine(string Text, string Kind, string? ActionLabel = null, string? ActionUrl = null);
 }
