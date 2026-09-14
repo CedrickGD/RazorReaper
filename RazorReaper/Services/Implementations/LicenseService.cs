@@ -39,7 +39,11 @@ public class LicenseService : ILicenseService
         _hwidService = hwidService;
         _preferences = preferences;
 
-        _validationTimer = new Timer(async _ => await BackgroundValidateAsync(), null, Timeout.Infinite, Timeout.Infinite);
+        // TimerCallback returns void: `async _ => await BackgroundValidateAsync()` is an `async void`
+        // on a thread-pool thread, so anything escaping the validate call after the first await —
+        // an OnLicenseStateChanged subscriber throwing, a preferences read failing — is rethrown as
+        // an unhandled exception and kills the process every 30s. The tick owns its own faults.
+        _validationTimer = new Timer(state => { _ = BackgroundValidateTickAsync(); }, null, Timeout.Infinite, Timeout.Infinite);
 
         // Offline grace: restore the last server-validated state so a valid license works
         // without a network round-trip at startup. The 30s poll still re-validates as soon as
@@ -102,6 +106,24 @@ public class LicenseService : ILicenseService
         if (IsActivated && !string.IsNullOrWhiteSpace(CurrentLicenseKey))
         {
             await ValidateLicenseAsync();
+        }
+    }
+
+    /// <summary>
+    /// One guarded poll tick. Started from a void timer callback that discards the Task, so it must
+    /// never throw — there is no caller to hold a fault and no dispatcher to rethrow it on.
+    /// </summary>
+    private async Task BackgroundValidateTickAsync()
+    {
+        try
+        {
+            await BackgroundValidateAsync();
+        }
+        catch (Exception ex)
+        {
+            // Keep the last-known licence state and keep polling, exactly as the network catch
+            // inside ValidateLicenseAsync does. A background tick must never de-activate a user.
+            Serilog.Log.Debug(ex, "Background licence validation tick failed");
         }
     }
 

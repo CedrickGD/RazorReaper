@@ -57,7 +57,29 @@ public sealed class AccessGateService : IAccessGateService
         await CheckNowAsync().ConfigureAwait(false);
 
         var interval = TimeSpan.FromSeconds(Math.Clamp(_options.Value.AdminPanel.AccessCheckIntervalSeconds, 15, 3600));
-        _timer = new Timer(async _ => await CheckNowAsync().ConfigureAwait(false), null, interval, interval);
+
+        // TimerCallback returns void, so `async _ => await ...` here would be an `async void` on a
+        // thread-pool thread: nothing owns a fault raised after the first await and the CLR rethrows
+        // it as an unhandled exception, taking the process down. CheckNowAsync is only *mostly*
+        // guarded — the semaphore wait, the options read and OnAccessStateChanged subscribers all
+        // sit outside its try — so the tick gets its own catch-all instead.
+        _timer = new Timer(state => { _ = PollAsync(); }, null, interval, interval);
+    }
+
+    /// <summary>
+    /// One guarded poll tick. Started from a void timer callback with no caller to hand a fault to,
+    /// so it must never throw: the discarded Task is only safe because of the catch below.
+    /// </summary>
+    private async Task PollAsync()
+    {
+        try
+        {
+            await CheckNowAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Access gate poll tick failed.");
+        }
     }
 
     public async Task<bool> CheckNowAsync()
