@@ -64,6 +64,9 @@ public sealed class RenderDispatchGate(string owner)
     /// </summary>
     internal const int MaxConsecutiveFaults = 10;
 
+    /// <summary>Stands in for <c>[CallerMemberName]</c> when a caller passed it explicitly as null.</summary>
+    internal const string UnknownOrigin = "(unknown)";
+
     private readonly string _owner = owner;
     private int _consecutiveFaults;
     private int _warned;
@@ -156,16 +159,19 @@ public sealed class RenderDispatchGate(string owner)
     private void OnFault(Exception exception, ILogger? logger, string? origin)
     {
         var faults = Interlocked.Increment(ref _consecutiveFaults);
-        var stopping = IsRendererGone(exception) || faults >= MaxConsecutiveFaults;
+        var breakerTripped = faults >= MaxConsecutiveFaults;
+        var stopping = IsRendererGone(exception) || breakerTripped;
 
         // Teardown faults are expected noise. An unexpected one is worth seeing once per run of
         // faults — a 2 Hz stream of them must not become a 2 Hz stream of warnings.
-        var level = IsTeardown(exception) || Interlocked.Exchange(ref _warned, 1) == 1
-            ? LogLevel.Debug
-            : LogLevel.Warning;
+        var unexpected = !IsTeardown(exception);
+        var level = unexpected && Interlocked.Exchange(ref _warned, 1) == 0
+            ? LogLevel.Warning
+            : LogLevel.Debug;
         Write(logger, level, exception, _owner, origin, faults);
 
-        if (stopping && Stop())
+        var stopped = stopping && Stop();
+        if (stopped)
         {
             Write(
                 logger,
@@ -175,6 +181,38 @@ public sealed class RenderDispatchGate(string owner)
                 origin,
                 faults,
                 stopped: true);
+        }
+
+        // The local file stays exactly as it was; this is the copy that leaves the machine.
+        // Unexpected faults are the RR-E1003 population and must be reported, and so must a
+        // breaker trip, because a component that has permanently stopped rendering is the most
+        // diagnostic thing this class can say — even when the ten faults that got it there all
+        // looked like ordinary teardown. Plain teardown is not reported: it would burn the
+        // tracker's 64 buckets on shutdown noise and crowd out the faults worth seeing.
+        if (unexpected || (stopped && breakerTripped))
+        {
+            Report(exception, origin, faults, stopped);
+        }
+    }
+
+    /// <summary>
+    /// Hands the fault to whatever App installed, on the thread that observed it. Wrapped here
+    /// as well as inside the sink: nothing on this path may throw back into the continuation.
+    /// </summary>
+    private void Report(Exception exception, string? origin, int faults, bool stopped)
+    {
+        try
+        {
+            RenderDispatchReporting.Report(new RenderDispatchFault(
+                exception,
+                _owner,
+                origin ?? UnknownOrigin,
+                faults,
+                stopped));
+        }
+        catch
+        {
+            // Same contract as Write: reporting a fault may never become one.
         }
     }
 
