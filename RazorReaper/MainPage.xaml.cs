@@ -38,12 +38,26 @@ namespace RazorReaper
                     Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
 
                 // Reset zoom factor to 1.0 on every launch (clears any persisted zoom).
-                webView2.CoreWebView2.NavigationCompleted += (_, _) =>
-                {
-                    _ = webView2.CoreWebView2.ExecuteScriptAsync(
-                        "document.addEventListener('wheel', function(e){ if(e.ctrlKey) e.preventDefault(); }, {passive:false});" +
-                        "document.addEventListener('keydown', function(e){ if(e.ctrlKey && (e.key==='+' || e.key==='-' || e.key==='=' || e.key==='0')) e.preventDefault(); });");
-                };
+                webView2.CoreWebView2.NavigationCompleted += (_, _) => { _ = InstallZoomGuardAsync(webView2); };
+            }
+        }
+
+        /// <summary>
+        /// Discarded by its caller, so it catches everything: a window torn down between
+        /// NavigationCompleted and the script running would otherwise leave a faulted task for
+        /// the finalizer to republish as RR-E1003.
+        /// </summary>
+        private static async Task InstallZoomGuardAsync(Microsoft.UI.Xaml.Controls.WebView2 webView2)
+        {
+            try
+            {
+                await webView2.CoreWebView2.ExecuteScriptAsync(
+                    "document.addEventListener('wheel', function(e){ if(e.ctrlKey) e.preventDefault(); }, {passive:false});" +
+                    "document.addEventListener('keydown', function(e){ if(e.ctrlKey && (e.key==='+' || e.key==='-' || e.key==='=' || e.key==='0')) e.preventDefault(); });");
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Debug(ex, "Installing the WebView zoom guard failed");
             }
         }
 #endif
