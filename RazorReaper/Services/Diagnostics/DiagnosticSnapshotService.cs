@@ -93,14 +93,22 @@ public sealed class DiagnosticSnapshotService : IDiagnosticSnapshotService
         }
 
         var stopwatch = Stopwatch.StartNew();
-        using var providerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var providerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         providerCts.CancelAfter(_providerTimeout);
+
+        // Task.Run isolates a provider that does synchronous work before its first await.
+        var captureTask = Task.Run(
+            () => provider.CaptureAsync(context, providerCts.Token),
+            CancellationToken.None);
+
+        // A collector that ignores its token outlives the wait below. Tie the linked source and
+        // the fault observation to the task instead of to this scope: disposing the source here
+        // would throw inside the straggler, and walking away from the task would leave its
+        // exception unobserved for the finalizer to republish as RR-E1003.
+        ReleaseWhenDone(captureTask, providerCts);
+
         try
         {
-            // Task.Run isolates a provider that does synchronous work before its first await.
-            var captureTask = Task.Run(
-                () => provider.CaptureAsync(context, providerCts.Token),
-                CancellationToken.None);
             var data = await captureTask
                 .WaitAsync(_providerTimeout, cancellationToken)
                 .ConfigureAwait(false);
@@ -140,6 +148,25 @@ public sealed class DiagnosticSnapshotService : IDiagnosticSnapshotService
                 Checks = [],
             };
         }
+    }
+
+    /// <summary>
+    /// Keeps <paramref name="cts"/> alive until <paramref name="task"/> really ends, and swallows
+    /// whatever it produced then. Abandoning a task leaves its fault with no observer, which is
+    /// how a stuck collector turned into a background RR-E1003 long after the report was sent.
+    /// </summary>
+    private static void ReleaseWhenDone(Task task, CancellationTokenSource cts)
+    {
+        _ = task.ContinueWith(
+            static (completed, state) =>
+            {
+                _ = completed.Exception;
+                ((CancellationTokenSource)state!).Dispose();
+            },
+            cts,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private static DiagnosticProviderReport Normalize(
