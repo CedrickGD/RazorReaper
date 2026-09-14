@@ -43,10 +43,21 @@ public sealed class ServerQueryService : IServerQueryService
     };
 
     private readonly ILogger<ServerQueryService> _logger;
+    private readonly int _queryTimeoutMs;
+    private readonly int _playerQueryTimeoutMs;
 
     public ServerQueryService(ILogger<ServerQueryService> logger)
+        : this(logger, QueryTimeoutMs, PlayerQueryTimeoutMs)
+    {
+    }
+
+    internal ServerQueryService(ILogger<ServerQueryService> logger, int queryTimeoutMs, int playerQueryTimeoutMs)
     {
         _logger = logger;
+        _queryTimeoutMs = queryTimeoutMs > 0 ? queryTimeoutMs : throw new ArgumentOutOfRangeException(nameof(queryTimeoutMs));
+        _playerQueryTimeoutMs = playerQueryTimeoutMs > 0
+            ? playerQueryTimeoutMs
+            : throw new ArgumentOutOfRangeException(nameof(playerQueryTimeoutMs));
     }
 
     public async Task<ServerQueryInfo?> QueryAsync(string ip, int queryPort, CancellationToken cancellationToken = default)
@@ -59,17 +70,11 @@ public sealed class ServerQueryService : IServerQueryService
             }
 
             using var client = new UdpClient();
-            client.Client.ReceiveTimeout = QueryTimeoutMs;
-            client.Client.SendTimeout = QueryTimeoutMs;
             var endpoint = new IPEndPoint(parsedAddress, queryPort);
 
             var stopwatch = Stopwatch.StartNew();
-            await client.SendAsync(InfoQuery, InfoQuery.Length, endpoint);
-            var response = await client.ReceiveAsync()
-                .WaitAsync(TimeSpan.FromMilliseconds(QueryTimeoutMs), cancellationToken);
+            var data = await ExchangeAsync(client, endpoint, InfoQuery, _queryTimeoutMs, cancellationToken);
             stopwatch.Stop();
-
-            var data = response.Buffer;
 
             // Modern servers answer with an S2C_CHALLENGE ('A') first; resend with the token.
             // Re-measure so the reported ping is one clean round trip, not two.
@@ -80,11 +85,8 @@ public sealed class ServerQueryService : IServerQueryService
                 Array.Copy(data, 5, challengeQuery, InfoQuery.Length, 4);
 
                 stopwatch.Restart();
-                await client.SendAsync(challengeQuery, challengeQuery.Length, endpoint);
-                response = await client.ReceiveAsync()
-                    .WaitAsync(TimeSpan.FromMilliseconds(QueryTimeoutMs), cancellationToken);
+                data = await ExchangeAsync(client, endpoint, challengeQuery, _queryTimeoutMs, cancellationToken);
                 stopwatch.Stop();
-                data = response.Buffer;
             }
 
             var info = ParseInfoResponse(data, (int)stopwatch.ElapsedMilliseconds);
@@ -98,19 +100,41 @@ public sealed class ServerQueryService : IServerQueryService
             var actual = await QueryPlayerCountAsync(client, endpoint, cancellationToken);
             return actual is { } count ? info with { Players = count } : info;
         }
-        catch (TimeoutException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogDebug("A2S query timed out for {IP}:{Port}", ip, queryPort);
+            throw;
         }
         catch (OperationCanceledException)
         {
-            throw;
+            _logger.LogDebug("A2S query timed out for {IP}:{Port}", ip, queryPort);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "A2S query error for {IP}:{Port}", ip, queryPort);
         }
         return null;
+    }
+
+    /// <summary>
+    /// One request/response round with a real deadline.
+    /// <para>
+    /// This used to be <c>ReceiveAsync().WaitAsync(timeout)</c>, which does not cancel the
+    /// receive — it abandons it. The enclosing <c>using</c> then closed the socket under the
+    /// still-pending overlapped read, which completed with WinSock 995 on a Task nobody held,
+    /// and the finalizer republished it as an unobserved task exception (RR-E1003; the whole
+    /// SocketException family in production). The cancellable overload tears the receive down
+    /// and hands the result back here, so nothing is ever left pending at disposal.
+    /// </para>
+    /// </summary>
+    private static async Task<byte[]> ExchangeAsync(
+        UdpClient client, IPEndPoint endpoint, byte[] request, int timeoutMs, CancellationToken cancellationToken)
+    {
+        using var round = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        round.CancelAfter(timeoutMs);
+
+        await client.SendAsync(request, endpoint, round.Token);
+        var response = await client.ReceiveAsync(round.Token);
+        return response.Buffer;
     }
 
     /// <summary>
@@ -130,21 +154,22 @@ public sealed class ServerQueryService : IServerQueryService
         try
         {
             // One shared budget across challenge + data receives, so the worst case stays
-            // ~1.2s rather than doubling whenever a challenge round is involved.
-            var deadline = Stopwatch.StartNew();
-            TimeSpan Remaining() =>
-                TimeSpan.FromMilliseconds(Math.Max(1, PlayerQueryTimeoutMs - deadline.ElapsedMilliseconds));
+            // ~1.2s rather than doubling whenever a challenge round is involved. Cancelling it
+            // really ends the pending receive, where the old per-call Remaining() timeout only
+            // stopped waiting for one — and its Math.Max(1, ...) floor spun under packet loss.
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            budget.CancelAfter(_playerQueryTimeoutMs);
 
             // 0x55 with a -1 challenge asks for the token; the server answers 'A' + 4 bytes.
             var request = new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF };
-            await client.SendAsync(request, request.Length, endpoint);
-            var data = (await client.ReceiveAsync().WaitAsync(Remaining(), ct)).Buffer;
+            await client.SendAsync(request, endpoint, budget.Token);
+            var data = (await client.ReceiveAsync(budget.Token)).Buffer;
 
             if (data.Length >= 9 && data[4] == 0x41)
             {
                 Array.Copy(data, 5, request, 5, 4);
-                await client.SendAsync(request, request.Length, endpoint);
-                data = (await client.ReceiveAsync().WaitAsync(Remaining(), ct)).Buffer;
+                await client.SendAsync(request, endpoint, budget.Token);
+                data = (await client.ReceiveAsync(budget.Token)).Buffer;
             }
 
             // Split response (FE FF FF FF): a full 70-player ARK list overflows one datagram,
@@ -152,7 +177,7 @@ public sealed class ServerQueryService : IServerQueryService
             // reassemble instead of bailing back to the inflated INFO figure.
             if (data.Length >= 4 && data[0] == 0xFE)
             {
-                data = await ReassembleSplitAsync(client, data, Remaining, ct) ?? Array.Empty<byte>();
+                data = await ReassembleSplitAsync(client, data, budget.Token) ?? Array.Empty<byte>();
             }
 
             if (data.Length < 6 || data[0] != 0xFF || data[4] != 0x44) return null;
@@ -176,8 +201,8 @@ public sealed class ServerQueryService : IServerQueryService
 
             return counted > 0 ? counted : header;
         }
-        catch (OperationCanceledException) { throw; }
-        catch (TimeoutException) { return null; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) { return null; }  // our own budget ran out
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "A2S_PLAYER query failed for {Endpoint}", endpoint);
@@ -192,7 +217,7 @@ public sealed class ServerQueryService : IServerQueryService
     /// before all fragments arrive.
     /// </summary>
     private static async Task<byte[]?> ReassembleSplitAsync(
-        UdpClient client, byte[] first, Func<TimeSpan> remaining, CancellationToken ct)
+        UdpClient client, byte[] first, CancellationToken ct)
     {
         // Split header: int32 -2, int32 id, byte total, byte number, int16 splitSize.
         const int HeaderLen = 12;
@@ -215,7 +240,7 @@ public sealed class ServerQueryService : IServerQueryService
         var have = 1;
         while (have < total)
         {
-            var next = (await client.ReceiveAsync().WaitAsync(remaining(), ct)).Buffer;
+            var next = (await client.ReceiveAsync(ct)).Buffer;
             if (next.Length < HeaderLen || next[0] != 0xFE) continue;   // stray datagram
             if (BitConverter.ToInt32(next, 4) != id) return null;      // different response
             Store(next);
