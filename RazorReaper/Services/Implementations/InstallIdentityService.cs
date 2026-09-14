@@ -255,8 +255,11 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     public void Dispose()
     {
+        // Cancel but do NOT dispose: the retry and re-registration loops still read this token
+        // and are started fire-and-forget, so a disposed source turned their next Token read
+        // into an ObjectDisposedException that nothing observed. Cancellation is enough; GC
+        // reclaims the source.
         _lifetime.Cancel();
-        _lifetime.Dispose();
         _key?.Dispose();
         _keyGate.Dispose();
         _registerGate.Dispose();
@@ -626,9 +629,9 @@ public sealed class InstallIdentityService : IInstallIdentityService, IDisposabl
 
     private async Task RunRetryLoopAsync()
     {
-        var token = _lifetime.Token;
         try
         {
+            var token = _lifetime.Token;
             // _retryIndex is never reset, so the attempt budget holds per process even when
             // EnsureRegisteredAsync schedules a second loop later on.
             while (true)
