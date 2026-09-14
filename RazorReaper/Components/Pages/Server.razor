@@ -466,43 +466,65 @@
     {
         // Auto-refresh servers every 60 seconds (reduced from 30 to minimize network lag)
         // Only refresh if page is active and there are servers
-        refreshTimer = new Timer(async _ =>
-        {
-            if (_isDisposed || !isPageActive || !servers.Any())
-                return;
-
-            // Limit refresh to max 10 servers to prevent lag
-            var serversToRefresh = servers.Take(10).ToList();
-
-            await InvokeAsync(async () =>
-            {
-                if (_isDisposed)
-                    return;
-
-                foreach (var server in serversToRefresh)
-                {
-                    try
-                    {
-                        await UpdateServerStatus(server);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log errors during auto-refresh
-                        Logger.LogWarning(ex, "Error refreshing server {ServerName}", server.Name);
-                    }
-                }
-
-                if (!_isDisposed)
-                    StateHasChanged();
-            });
+        //
+        // The callback must stay `void`: TimerCallback returns void, so `async _ => ...` here is an
+        // `async void` running on a thread-pool thread with no caller and no SynchronizationContext
+        // to hand the fault to — it is rethrown as an UNHANDLED exception and takes the process
+        // down, which does not even reach RR-E1003. RefreshVisibleServersAsync owns everything.
         // 20s, down from 60: the player count is the number this page exists for, and a
         // minute-old value on a wipe-day server is off by a lobby's worth of people.
-        }, null, TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(20));
+        refreshTimer = new Timer(
+            _ => RefreshVisibleServers(),
+            null,
+            TimeSpan.FromSeconds(20),
+            TimeSpan.FromSeconds(20));
+    }
+
+    /// <summary>
+    /// One tick of the auto-refresh. Everything happens on the dispatcher: <c>servers</c> is a
+    /// plain List the renderer mutates at Save/Remove/LoadServers, and reading it from the timer
+    /// thread is what produces "Collection was modified; enumeration operation may not execute."
+    /// </summary>
+    private void RefreshVisibleServers()
+    {
+        if (_isDisposed || !isPageActive || this.IsRenderStopped())
+            return;
+
+        this.DispatchRender(() => InvokeAsync(RefreshVisibleServersAsync), Logger);
+    }
+
+    private async Task RefreshVisibleServersAsync()
+    {
+        if (_isDisposed || !isPageActive || !servers.Any())
+            return;
+
+        // Limit refresh to max 10 servers to prevent lag. Snapshotted on the dispatcher.
+        var serversToRefresh = servers.Take(10).ToList();
+
+        foreach (var server in serversToRefresh)
+        {
+            if (_isDisposed)
+                return;
+
+            try
+            {
+                await UpdateServerStatus(server);
+            }
+            catch (Exception ex)
+            {
+                // Log errors during auto-refresh
+                Logger.LogWarning(ex, "Error refreshing server {ServerName}", server.Name);
+            }
+        }
+
+        if (!_isDisposed)
+            StateHasChanged();
     }
 
     public void Dispose()
     {
         _isDisposed = true;
+        this.StopRenderDispatch();
         CancelActiveQuery();
         refreshTimer?.Dispose();
     }
