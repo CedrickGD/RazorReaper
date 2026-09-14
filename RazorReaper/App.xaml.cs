@@ -9,11 +9,17 @@ namespace RazorReaper
     public partial class App : Application
     {
         private static readonly TimeSpan TelemetryShutdownTimeout = TimeSpan.FromSeconds(5);
+        // Affected sessions average 13 hours and some end with their last faults 0.4 s before
+        // session_end, so the rolled-up counts cannot wait for shutdown to be told.
+        private static readonly TimeSpan BackgroundFaultFlushInterval = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan BackgroundFaultShutdownTimeout = TimeSpan.FromSeconds(2);
+        private readonly BackgroundFaultTracker backgroundFaults = new();
         private readonly IServiceProvider services;
         private ITelemetryService? telemetryService;
         private IAutoUpdateManager? autoUpdateManager;
         private IDiscordPresenceService? discordPresence;
         private IAccessGateService? accessGate;
+        private readonly System.Threading.Timer backgroundFaultFlushTimer;
         private int telemetryShutdownStarted;
         private Task? telemetryShutdownTask;
 
@@ -28,6 +34,12 @@ namespace RazorReaper
             AppDomain.CurrentDomain.UnhandledException += HandleUnhandledException;
             AppDomain.CurrentDomain.ProcessExit += HandleProcessExit;
             TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+
+            backgroundFaultFlushTimer = new System.Threading.Timer(
+                _ => FlushBackgroundFaults(),
+                null,
+                BackgroundFaultFlushInterval,
+                BackgroundFaultFlushInterval);
         }
 
         private void QueueStartupTasks()
@@ -235,69 +247,158 @@ namespace RazorReaper
             // Observe first: nothing below may run before the exception is defused.
             e.SetObserved();
 
-            AppDiagnostics.RecordError(
-                AppErrorCodes.UnobservedTaskException,
-                "Background task exception was not observed.",
-                e.Exception);
-
-            // Known-benign noise, logged locally above but not worth an app_error event:
-            // the DiscordRichPresence library's named-pipe client abandons its pending
-            // BeginRead when the IPC pipe drops (Discord closed/restarted, RPC toggled off,
-            // shutdown). The orphaned ReadAsync task faults with IOException
-            // ERROR_OPERATION_ABORTED ("The I/O operation has been aborted because of either
-            // a thread exit or an application request.") and app code can never observe it.
-            if (IsAbortedBackgroundIo(e.Exception))
+            try
             {
-                return;
+                if (IsAbortedBackgroundIo(e.Exception))
+                {
+                    // Dropped, but no longer invisible. v1.4.10 silenced this shape without
+                    // telling anyone, the socket family went to exactly zero on 1.4.10/1.5.0/
+                    // 1.5.2, and the panel read eight weeks of silence as a fix. The count now
+                    // rides out on the next reported event; the first one still reaches the log.
+                    if (backgroundFaults.RecordSuppressed(e.Exception))
+                    {
+                        AppDiagnostics.RecordError(
+                            AppErrorCodes.UnobservedTaskException,
+                            "Aborted background I/O suppressed.",
+                            e.Exception);
+                    }
+
+                    return;
+                }
+
+                var report = backgroundFaults.Record(e.Exception);
+                if (report is null)
+                {
+                    // A repeat of a fault already reported in this session: same base type,
+                    // same frame, same message. It is now a number in the next rollup instead
+                    // of a row — one install once emitted 36,456 of these in 2.5 hours, and
+                    // the local RecordError below would have written Preferences for each.
+                    return;
+                }
+
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.UnobservedTaskException,
+                    "Background task exception was not observed.",
+                    e.Exception);
+
+                PublishBackgroundFault(report);
+            }
+            catch (Exception ex)
+            {
+                // This runs on the finalizer thread: anything escaping here kills the process.
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.UnobservedTaskException,
+                    "Background fault reporting failed.",
+                    ex);
+            }
+        }
+
+        private void PublishBackgroundFault(BackgroundFaultReport report)
+        {
+            _ = PublishBackgroundFaultAsync(report);
+        }
+
+        private Task PublishBackgroundFaultAsync(BackgroundFaultReport report, CancellationToken cancellationToken = default)
+        {
+            // Faults can arrive before the startup tasks have resolved the service.
+            var telemetry = telemetryService;
+            if (telemetry is null)
+            {
+                return Task.CompletedTask;
             }
 
+            // Every key below error_kind is additive and optional — the ingest contract caps
+            // metrics at 64 keys / 8 KB and this event carries roughly half that.
+            return telemetry.TrackEventAsync(
+                "app_error",
+                TelemetryEventStatus.Down,
+                report.Message,
+                new Dictionary<string, object?>
+                {
+                    ["error_code"] = AppErrorCodes.UnobservedTaskException,
+                    ["error_kind"] = "background",
+                    ["exception_type"] = report.ExceptionType ?? "unknown",
+                    // AggregateException alone says nothing — surface the actual fault type.
+                    ["base_exception_type"] = report.BaseExceptionType,
+                    // The field whose absence made ~83k rows unattributable. Own namespace
+                    // only, file names without paths — see BackgroundFaultFrames.
+                    ["top_frame"] = report.TopFrame,
+                    ["top_frames"] = report.TopFrames,
+                    ["leaf_exception_count"] = report.LeafExceptionCount,
+                    // Faults this row stands for: sum it, do not count rows.
+                    ["occurrences"] = report.Occurrences,
+                    ["report_kind"] = ToReportKindText(report.Kind),
+                    ["suppressed_aborted_io"] = report.SuppressedAbortedIo
+                },
+                cancellationToken);
+        }
+
+        private static string ToReportKindText(BackgroundFaultReportKind kind)
+        {
+            return kind switch
             {
-                        _ = telemetryService!.TrackEventAsync(
-                            "app_error",
-                            TelemetryEventStatus.Down,
-                            e.Exception.Message,
-                            new Dictionary<string, object?>
-                            {
-                                ["error_code"] = AppErrorCodes.UnobservedTaskException,
-                                ["error_kind"] = "background",
-                                ["exception_type"] = e.Exception.GetType().FullName ?? "unknown",
-                                // AggregateException alone says nothing — surface the actual fault type.
-                                ["base_exception_type"] = e.Exception.GetBaseException().GetType().FullName
-                            });
+                BackgroundFaultReportKind.First => "first",
+                BackgroundFaultReportKind.Rollup => "rollup",
+                _ => "suppressed"
+            };
+        }
+
+        private void FlushBackgroundFaults()
+        {
+            _ = FlushBackgroundFaultsAsync();
+        }
+
+        /// <summary>
+        /// Ships the counts accumulated since the last flush. Never faults: this task is
+        /// discarded, and a faulted discarded task is the very thing being reported.
+        /// </summary>
+        private async Task FlushBackgroundFaultsAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                foreach (var report in backgroundFaults.Flush())
+                {
+                    await PublishBackgroundFaultAsync(report, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.UnobservedTaskException,
+                    "Background fault rollup failed.",
+                    ex);
             }
         }
 
         /// <summary>
-        /// True when every leaf exception is canceled/aborted async I/O — overlapped reads or
-        /// writes killed by a handle close or thread exit (Win32 ERROR_OPERATION_ABORTED, 995).
-        /// These come from third-party background plumbing (e.g. the Discord RPC pipe) and are
-        /// expected during disconnects and shutdown; they are not app errors.
+        /// True for the Discord RPC pipe's abandoned read: an IOException carrying Win32
+        /// ERROR_OPERATION_ABORTED (995), directly or wrapped one I/O level deep. The library's
+        /// named-pipe client drops its pending BeginRead whenever the IPC pipe goes away
+        /// (Discord closed/restarted, RPC toggled off, shutdown) and app code can never observe
+        /// that task, so it is noise rather than an app error.
+        ///
+        /// Deliberately NOT matched: a bare aborted SocketException. That shape is our own UDP
+        /// server query orphaning a receive and then closing the socket — an app bug that this
+        /// predicate hid for the whole of 1.4.10, 1.5.0 and 1.5.2. Discord talks over
+        /// NamedPipeClientStream, whose aborted read is the IOException shape above, and the
+        /// production split (175 sessions with RPC on / 17 with it off, against an ~89 % on
+        /// baseline) shows the socket family never tracked Discord at all.
         /// </summary>
         internal static bool IsAbortedBackgroundIo(AggregateException exception)
         {
             const uint OperationAbortedHResult = 0x800703E3; // HRESULT_FROM_WIN32(ERROR_OPERATION_ABORTED)
             const int OperationAbortedNativeError = 995;
 
+            // Discord nests at most one wrapper; the bound stops a pathological chain from
+            // recursing the finalizer thread into a stack overflow.
+            const int MaxWrapperDepth = 4;
+
             var leaves = exception.Flatten().InnerExceptions;
-            return leaves.Count > 0 && leaves.All(IsAbortedIoLeaf);
+            return leaves.Count > 0 && leaves.All(leaf => IsAbortedPipeLeaf(leaf, 0));
 
-            static bool IsAbortedIoLeaf(Exception exception)
+            static bool IsAbortedPipeLeaf(Exception exception, int depth)
             {
-                if (exception is OperationCanceledException)
-                {
-                    return true;
-                }
-
-                if (exception is SocketException socketException)
-                {
-                    // SocketException keeps Win32/WinSock error 995 in NativeErrorCode while
-                    // exposing the generic 0x80004005 HResult, so the IOException HResult
-                    // check below cannot recognize this Discord IPC failure shape.
-                    return socketException.NativeErrorCode == OperationAbortedNativeError
-                        || socketException.SocketErrorCode == SocketError.OperationAborted;
-                }
-
-                if (exception is not IOException ioException)
+                if (depth > MaxWrapperDepth || exception is not IOException ioException)
                 {
                     return false;
                 }
@@ -307,16 +408,28 @@ namespace RazorReaper
                     return true;
                 }
 
-                // DiscordRichPresence may wrap the native SocketException in IOException.
-                // Follow only I/O wrappers so an unrelated exception that happens to contain
-                // an aborted socket is not hidden as benign background plumbing.
-                return ioException.InnerException is not null
-                    && IsAbortedIoLeaf(ioException.InnerException);
+                // DiscordRichPresence may wrap the native error in the IOException. Follow only
+                // I/O wrappers so an unrelated exception that happens to contain an aborted
+                // handle is not hidden as benign background plumbing.
+                return ioException.InnerException switch
+                {
+                    OperationCanceledException => true,
+                    // A wrapped aborted socket is still the pipe shape: SocketException keeps
+                    // WinSock 995 in NativeErrorCode while exposing the generic 0x80004005
+                    // HResult, so the HResult check above cannot recognize it.
+                    SocketException socketException =>
+                        socketException.NativeErrorCode == OperationAbortedNativeError
+                        || socketException.SocketErrorCode == SocketError.OperationAborted,
+                    IOException inner => IsAbortedPipeLeaf(inner, depth + 1),
+                    _ => false
+                };
             }
         }
 
         private void FlushTelemetryShutdown()
         {
+            backgroundFaultFlushTimer.Dispose();
+
             var telemetry = telemetryService;
             if (telemetry is null)
             {
@@ -333,7 +446,17 @@ namespace RazorReaper
             {
                 using var cts = new CancellationTokenSource(TelemetryShutdownTimeout);
                 // Run on a thread-pool thread to avoid deadlocks if invoked from the UI sync context.
-                Task.Run(async () => await telemetry.StopAsync(cts.Token).ConfigureAwait(false))
+                Task.Run(async () =>
+                    {
+                        // The session summary goes out before StopAsync, on a slice of the
+                        // shutdown budget, so the folded counts cannot be lost with the process
+                        // and cannot starve session_end either.
+                        using var rollupCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                        rollupCts.CancelAfter(BackgroundFaultShutdownTimeout);
+                        await FlushBackgroundFaultsAsync(rollupCts.Token).ConfigureAwait(false);
+
+                        await telemetry.StopAsync(cts.Token).ConfigureAwait(false);
+                    })
                     .Wait(TelemetryShutdownTimeout);
             }
             catch (OperationCanceledException)
