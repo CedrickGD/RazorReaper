@@ -15,12 +15,33 @@ internal enum BackgroundFaultReportKind
 }
 
 /// <summary>
+/// The component and member a render dispatch came from, already reduced to member names that
+/// cannot carry a path, a machine name or a user name. Never built from anything else.
+/// </summary>
+internal readonly record struct BackgroundFaultDispatcher(string Owner, string Origin);
+
+/// <summary>Which observer caught the fault. Both are RR-E1003; only one used to be reported.</summary>
+internal enum BackgroundFaultSource
+{
+    /// <summary>TaskScheduler.UnobservedTaskException — the finalizer republishing a dropped Task.</summary>
+    UnobservedTask,
+
+    /// <summary>
+    /// RenderDispatchGate — a faulted render dispatch, caught before the finalizer ever sees it.
+    /// These are the same faults, one step earlier; reporting them only to the local log would
+    /// make the family read as fixed the way v1.4.10's Discord filter did.
+    /// </summary>
+    RenderDispatch
+}
+
+/// <summary>
 /// One RR-E1003 row's worth of facts. <see cref="Occurrences"/> is the number of faults this row
 /// stands for, so summing it across rows reproduces the true fault count — the panel must switch
 /// from counting rows to summing this field.
 /// </summary>
 internal sealed record BackgroundFaultReport(
     BackgroundFaultReportKind Kind,
+    BackgroundFaultSource Source,
     string? ExceptionType,
     string? BaseExceptionType,
     string? TopFrame,
@@ -28,7 +49,10 @@ internal sealed record BackgroundFaultReport(
     int LeafExceptionCount,
     long Occurrences,
     long SuppressedAbortedIo,
-    string? Message);
+    string? Message,
+    string? Owner = null,
+    string? Origin = null,
+    bool RenderStopped = false);
 
 /// <summary>
 /// Folds the unobserved-task flood into a couple of rows per session without losing the count.
@@ -78,9 +102,60 @@ internal sealed class BackgroundFaultTracker
     public BackgroundFaultReport? Record(AggregateException exception)
     {
         var baseException = exception.GetBaseException();
-        var baseExceptionType = baseException.GetType().FullName ?? baseException.GetType().Name;
         var origin = BackgroundFaultFrames.Describe(baseException);
-        var bucket = GetOrAddBucket(baseExceptionType, origin, exception);
+        return Record(
+            BackgroundFaultSource.UnobservedTask,
+            exception,
+            baseException,
+            origin,
+            dispatcher: null,
+            stopped: false);
+    }
+
+    /// <summary>
+    /// Records a fault the render gate observed, keyed and dampened exactly like an unobserved
+    /// one — same buckets, same claim protocol, same <see cref="BackgroundFaultReport.Occurrences"/>
+    /// fold — with the owning component and dispatching member added to the key so one broken
+    /// component costs one row plus a count instead of a row per tick, and two broken components
+    /// are still told apart. Returns null for a repeat.
+    /// </summary>
+    public BackgroundFaultReport? RecordRenderDispatch(Exception exception, string? owner, string? origin, bool stopped)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        // The gate already unwrapped to the base exception; GetBaseException on a non-aggregate
+        // is the identity, so this is safe either way.
+        var baseException = exception.GetBaseException();
+
+        // Sanitized here, once, before anything keys or transmits them: owner is a type name and
+        // origin a [CallerMemberName], but origin is an ordinary parameter a caller may pass by
+        // hand and neither may carry a path, a machine name or a user name out of the process.
+        var dispatcher = new BackgroundFaultDispatcher(
+            BackgroundFaultFrames.Identifier(owner),
+            BackgroundFaultFrames.Identifier(origin));
+        var frames = BackgroundFaultFrames.DescribeRenderDispatch(baseException, owner, origin);
+
+        // A breaker trip gets its own bucket: a component permanently ending its own renders is a
+        // different event from the faults that led there, and folding it into them would lose it.
+        return Record(
+            BackgroundFaultSource.RenderDispatch,
+            exception,
+            baseException,
+            frames,
+            dispatcher,
+            stopped);
+    }
+
+    private BackgroundFaultReport? Record(
+        BackgroundFaultSource source,
+        Exception exception,
+        Exception baseException,
+        BackgroundFaultOrigin origin,
+        BackgroundFaultDispatcher? dispatcher,
+        bool stopped)
+    {
+        var baseExceptionType = baseException.GetType().FullName ?? baseException.GetType().Name;
+        var bucket = GetOrAddBucket(source, baseExceptionType, origin, dispatcher, stopped, exception);
 
         if (Interlocked.Increment(ref bucket.Count) != 1)
         {
@@ -126,6 +201,7 @@ internal sealed class BackgroundFaultTracker
 
         reports.Add(new BackgroundFaultReport(
             BackgroundFaultReportKind.Suppressed,
+            BackgroundFaultSource.UnobservedTask,
             ExceptionType: typeof(AggregateException).FullName,
             BaseExceptionType: Volatile.Read(ref suppressedBaseExceptionType),
             TopFrame: null,
@@ -138,9 +214,15 @@ internal sealed class BackgroundFaultTracker
         return reports;
     }
 
-    private FaultBucket GetOrAddBucket(string baseExceptionType, BackgroundFaultOrigin origin, AggregateException exception)
+    private FaultBucket GetOrAddBucket(
+        BackgroundFaultSource source,
+        string baseExceptionType,
+        BackgroundFaultOrigin origin,
+        BackgroundFaultDispatcher? dispatcher,
+        bool stopped,
+        Exception exception)
     {
-        var key = $"{baseExceptionType}|{origin.TopFrame}";
+        var key = BuildKey(source, baseExceptionType, origin.TopFrame, dispatcher, stopped);
         if (buckets.TryGetValue(key, out var existing))
         {
             return existing;
@@ -152,12 +234,30 @@ internal sealed class BackgroundFaultTracker
             // being counted, it just stops being told apart.
             return buckets.GetOrAdd(
                 OverflowFrame,
-                _ => new FaultBucket(baseExceptionType, OverflowFrame, OverflowFrame, exception));
+                _ => new FaultBucket(source, baseExceptionType, OverflowFrame, OverflowFrame, dispatcher, stopped, exception));
         }
 
         return buckets.GetOrAdd(
             key,
-            _ => new FaultBucket(baseExceptionType, origin.TopFrame, origin.TopFrames, exception));
+            _ => new FaultBucket(source, baseExceptionType, origin.TopFrame, origin.TopFrames, dispatcher, stopped, exception));
+    }
+
+    /// <summary>
+    /// The one place a fault's identity is decided, for both sources: base exception type plus
+    /// where it came from. Unobserved faults keep the exact key they had. A render fault adds the
+    /// owning component and member — the stack alone cannot tell two broken components apart once
+    /// their renderer is gone — and the breaker trip, so that event gets its own row.
+    /// </summary>
+    private static string BuildKey(
+        BackgroundFaultSource source,
+        string baseExceptionType,
+        string topFrame,
+        BackgroundFaultDispatcher? dispatcher,
+        bool stopped)
+    {
+        return source == BackgroundFaultSource.UnobservedTask
+            ? $"{baseExceptionType}|{topFrame}"
+            : $"render|{dispatcher?.Owner}.{dispatcher?.Origin}|{(stopped ? "stopped" : "faulted")}|{baseExceptionType}|{topFrame}";
     }
 
     private long DrainSuppressed()
@@ -165,11 +265,22 @@ internal sealed class BackgroundFaultTracker
         return Interlocked.Exchange(ref suppressedAbortedIo, 0);
     }
 
-    private sealed class FaultBucket(string baseExceptionType, string topFrame, string topFrames, AggregateException exception)
+    private sealed class FaultBucket(
+        BackgroundFaultSource source,
+        string baseExceptionType,
+        string topFrame,
+        string topFrames,
+        BackgroundFaultDispatcher? dispatcher,
+        bool stopped,
+        Exception exception)
     {
         private readonly string exceptionType = exception.GetType().FullName ?? nameof(AggregateException);
         private readonly string? message = BackgroundFaultFrames.Redact(exception.Message);
-        private readonly int leafExceptionCount = exception.Flatten().InnerExceptions.Count;
+
+        // An unobserved fault always arrives wrapped; a render fault is the leaf itself.
+        private readonly int leafExceptionCount = exception is AggregateException aggregate
+            ? aggregate.Flatten().InnerExceptions.Count
+            : 1;
 
         internal long Count;
         private long reported;
@@ -203,6 +314,7 @@ internal sealed class BackgroundFaultTracker
         {
             return new BackgroundFaultReport(
                 kind,
+                source,
                 exceptionType,
                 baseExceptionType,
                 topFrame,
@@ -210,7 +322,10 @@ internal sealed class BackgroundFaultTracker
                 leafExceptionCount,
                 occurrences,
                 suppressedAbortedIo,
-                message);
+                message,
+                dispatcher?.Owner,
+                dispatcher?.Origin,
+                stopped);
         }
     }
 }
