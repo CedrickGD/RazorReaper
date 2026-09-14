@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace RazorReaper.UnitTests.Components;
 
@@ -59,12 +60,16 @@ public sealed class RenderDispatchUsageTests
     /// the caller owns the fault. An <c>async void</c> method has no caller to own it: the fault
     /// is rethrown on whatever thread raised the service event, which is worse than RR-E1003.
     /// </summary>
+    /// <remarks>
+    /// Scans the whole app project, not just Components. The first version of this test read only
+    /// <c>RazorReaper/Components/**/*.razor</c>, which left the service layer unguarded.
+    /// </remarks>
     [Fact]
-    public void NoComponentHandlesAServiceEventWithAsyncVoid()
+    public void NothingInTheAppIsDeclaredAsyncVoid()
     {
         var offenders = new List<string>();
 
-        foreach (var path in ComponentFiles())
+        foreach (var path in ProjectFiles())
         {
             var lines = File.ReadAllLines(path);
             for (var i = 0; i < lines.Length; i++)
@@ -78,6 +83,107 @@ public sealed class RenderDispatchUsageTests
 
         Assert.Empty(offenders);
     }
+
+    /// <summary>
+    /// The declaration scan above only catches the spelling <c>async void</c>. An async
+    /// <i>lambda</i> handed to a void-returning delegate is the same thing with no keyword to grep
+    /// for: <c>TimerCallback</c>, <c>ElapsedEventHandler</c>, <c>EventHandler</c> and plain
+    /// <c>Action</c> all return void, so <c>new Timer(async _ =&gt; ...)</c> compiles into an
+    /// <c>async void</c> state machine on a thread-pool thread. That is strictly worse than the
+    /// dropped dispatches this file was written for: a dropped dispatch fault waits for the
+    /// finalizer and becomes an RR-E1003 row, while this one is rethrown on a pool thread as an
+    /// unhandled exception and takes the process down without ever being reported.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately an allowlist, like <see cref="SanctionedPrefixes"/> above: a blocklist of bad
+    /// shapes can only ever name the void delegates someone already thought of, and the four timer
+    /// callbacks this test was added for (Server's 20 s refresh, Game's 10 s status poll,
+    /// AccessGateService, LicenseService) all sailed through the <c>async void</c> grep above for
+    /// eighteen commits. An async lambda passes here only where the surrounding call is known to
+    /// take a <c>Func&lt;Task&gt;</c>, so a new one in an unrecognised position fails until it is
+    /// awaited, guarded, or listed in <see cref="SanctionedContexts"/>.
+    /// </remarks>
+    [Fact]
+    public void NoAsyncLambdaIsHandedToAVoidReturningDelegate()
+    {
+        var offenders = ProjectFiles()
+            .SelectMany(path => ScanForAsyncLambdas(path, WithoutCommentLines(File.ReadAllLines(path))))
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
+    /// The named regression: <c>System.Threading.Timer</c> and <c>System.Timers.Timer</c> both take
+    /// a void-returning callback, and every periodic refresh in the app goes through one. Spelled
+    /// out separately from the allowlist above so loosening that list can never quietly re-open it.
+    /// </summary>
+    [Fact]
+    public void TimerCallbacksAreNeverAsyncLambdas()
+    {
+        var offenders = ProjectFiles()
+            .SelectMany(path => ScanForAsyncTimerCallbacks(path, WithoutCommentLines(File.ReadAllLines(path))))
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
+    /// The two scans above are only worth having if they fail on the shapes they exist to stop, and
+    /// a guard that passes because its pattern never matches anything reads exactly like a guard
+    /// that passes because the tree is clean. These pin the difference.
+    /// </summary>
+    [Theory]
+    [InlineData("refreshTimer = new Timer(async _ => { await InvokeAsync(StateHasChanged); }, null, d, p);")]
+    [InlineData("statusTimer = new System.Threading.Timer(async _ => await PollAsync(), null, d, p);")]
+    [InlineData("timer.Elapsed += async (sender, e) => { await TickAsync(); };")]
+    [InlineData("webView.NavigationCompleted += async (_, _) => await InstallGuardAsync();")]
+    [InlineData("token.Register(async () => await StopAsync());")]
+    [InlineData("private Action? deleteAction;\n        deleteAction = async () => { await SaveAsync(); };")]
+    public void TheAsyncLambdaScanRejectsVoidReturningDelegates(string source)
+        => Assert.NotEmpty(ScanForAsyncLambdas("Sample.cs", source));
+
+    [Theory]
+    [InlineData("_ = Task.Run(async () => await WorkAsync());")]
+    [InlineData("this.DispatchRender(() => InvokeAsync(async () => await WorkAsync()), Logger);")]
+    [InlineData("RunStartupTask(\"telemetry-start\", async () => await StartAsync());")]
+    // Same lambda as the rejected case above; only the declared delegate type differs.
+    [InlineData("private Func<Task>? deleteAction;\n        deleteAction = async () => { await SaveAsync(); };")]
+    public void TheAsyncLambdaScanAcceptsTaskReturningDelegates(string source)
+        => Assert.Empty(ScanForAsyncLambdas("Sample.cs", source));
+
+    [Fact]
+    public void TheTimerScanRejectsAnAsyncCallbackAndAcceptsAGuardedOne()
+    {
+        Assert.NotEmpty(ScanForAsyncTimerCallbacks("Sample.cs", "_timer = new Timer(async _ => await PollAsync(), null, d, p);"));
+        Assert.Empty(ScanForAsyncTimerCallbacks("Sample.cs", "_timer = new Timer(state => { _ = PollAsync(); }, null, d, p);"));
+    }
+
+    private static List<string> ScanForAsyncLambdas(string path, string text)
+    {
+        var offenders = new List<string>();
+        var taskDelegates = TaskReturningDelegateNames(text);
+
+        foreach (Match lambda in AsyncLambda.Matches(text))
+        {
+            var before = text[..lambda.Index];
+
+            if (SanctionedContexts.Any(context => context.IsMatch(before))
+                || taskDelegates.Any(name => AssignmentTo(name).IsMatch(before)))
+            {
+                continue;
+            }
+
+            offenders.Add($"{Path.GetFileName(path)}:{LineOf(text, lambda.Index)}: {LineAt(text, lambda.Index)}");
+        }
+
+        return offenders;
+    }
+
+    private static List<string> ScanForAsyncTimerCallbacks(string path, string text)
+        => AsyncTimerCallback.Matches(text)
+            .Select(match => $"{Path.GetFileName(path)}:{LineOf(text, match.Index)}: {LineAt(text, match.Index)}")
+            .ToList();
 
     [Fact]
     public void TheNotificationContainerNeverTouchesItsCollectionsOffTheDispatcher()
@@ -110,6 +216,57 @@ public sealed class RenderDispatchUsageTests
         }
     }
 
+    /// <summary><c>async () =&gt;</c>, <c>async x =&gt;</c>, <c>async (a, b) =&gt;</c>, <c>async delegate</c>.</summary>
+    private static readonly Regex AsyncLambda = new(
+        @"\basync\s*(?:\(|delegate\b|[A-Za-z_]\w*\s*=>)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex AsyncTimerCallback = new(
+        @"new\s+(?:System\.(?:Threading|Timers)\.)?Timer\s*\(\s*async\b",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// The calls known to take a <c>Func&lt;Task&gt;</c>, matched against the text immediately
+    /// before the lambda. Anything else is assumed to be a void-returning delegate.
+    /// </summary>
+    private static readonly Regex[] SanctionedContexts =
+    [
+        new(@"Task\.Run\(\s*\z", RegexOptions.Compiled),          // the returned Task is the owner
+        new(@"InvokeAsync\(\s*\z", RegexOptions.Compiled),        // ComponentBase.InvokeAsync(Func<Task>)
+        new(@"\.Select\(\s*\z", RegexOptions.Compiled),           // materialised by WhenAll/ToList
+        new(@"RunGuardedAsync\(\s*\z", RegexOptions.Compiled),    // AutoClickerRuntime's own guard
+        new(@"RunLoopAsync\([^;\r\n]*,\s*\z", RegexOptions.Compiled),
+        new(@"RunStartupTask\([^;\r\n]*,\s*\z", RegexOptions.Compiled),
+        new(@"Execute\(\s*\z", RegexOptions.Compiled),            // Account.Execute(Func<Task>)
+        new("=\\s*\"@\\(\\s*\\z", RegexOptions.Compiled),         // @onclick="@(async ...)" — EventCallback
+    ];
+
+    /// <summary>
+    /// Names declared as <c>Func&lt;...Task&gt;</c> in this file. Assigning an async lambda to one
+    /// is fine — whoever invokes it gets the Task. Assigning one to an <c>Action</c> is the bug.
+    /// </summary>
+    private static string[] TaskReturningDelegateNames(string text)
+        => Regex.Matches(text, @"Func\s*<[^;=\r\n]*\bTask\b[^;=\r\n]*>\s*\??\s+(\w+)\s*[;=,)]")
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToArray();
+
+    private static Regex AssignmentTo(string name) => new($@"(?<!\w){Regex.Escape(name)}\s*=\s*\z");
+
+    /// <summary>Blanks whole-line comments so the scans above never trip over prose about them.</summary>
+    private static string WithoutCommentLines(string[] lines)
+        => string.Join('\n', lines.Select(line => IsComment(line) ? string.Empty : line));
+
+    private static int LineOf(string text, int index)
+        => text.Take(index).Count(c => c == '\n') + 1;
+
+    private static string LineAt(string text, int index)
+    {
+        var start = text.LastIndexOf('\n', Math.Max(0, index - 1)) + 1;
+        var end = text.IndexOf('\n', index);
+        return text[start..(end < 0 ? text.Length : end)].Trim();
+    }
+
     private static IEnumerable<int> Occurrences(string line)
     {
         for (var index = line.IndexOf("InvokeAsync(", StringComparison.Ordinal);
@@ -133,6 +290,25 @@ public sealed class RenderDispatchUsageTests
             Path.Combine(RepositoryRoot(), "RazorReaper", "Components"),
             "*.razor",
             SearchOption.AllDirectories);
+
+    /// <summary>Every hand-written source file in the shipping project — services included.</summary>
+    private static string[] ProjectFiles()
+    {
+        var project = Path.Combine(RepositoryRoot(), "RazorReaper");
+
+        return Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(project, "*.razor", SearchOption.AllDirectories))
+            .Where(path => !IsGenerated(path))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static bool IsGenerated(string path)
+    {
+        var relative = path[RepositoryRoot().Length..];
+        return relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
 
     private static string RepositoryRoot([CallerFilePath] string sourceFile = "")
     {
