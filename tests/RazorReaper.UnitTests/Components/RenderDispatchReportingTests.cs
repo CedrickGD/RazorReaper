@@ -207,7 +207,8 @@ public sealed class RenderDispatchReportingTests
         // The gate passes origin through verbatim; the tracker is where anything that is not a
         // member name is dropped, so that one sanitiser covers this sink and every future one.
         var report = new BackgroundFaultTracker()
-            .RecordRenderDispatch(fault.Exception, fault.Owner, fault.Origin, fault.Stopped);
+            .RecordRenderDispatch(fault.Exception, fault.Owner, fault.Origin, fault.Stopped)
+            ?.Describe();
 
         Assert.NotNull(report);
         Assert.Equal(BackgroundFaultFrames.UnknownMember, report!.Origin);

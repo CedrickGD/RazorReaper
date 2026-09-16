@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using RazorReaper.Diagnostics;
+using Xunit.Abstractions;
 
 namespace RazorReaper.UnitTests.Diagnostics;
 
@@ -7,14 +9,14 @@ namespace RazorReaper.UnitTests.Diagnostics;
 /// one fault goes missing — every row carries the number of faults it stands for, so summing
 /// Occurrences reproduces the true count.
 /// </summary>
-public sealed class BackgroundFaultTrackerTests
+public sealed class BackgroundFaultTrackerTests(ITestOutputHelper output)
 {
     [Fact]
     public void ReportsTheFirstOccurrenceInFull()
     {
         var tracker = new BackgroundFaultTracker();
 
-        var report = tracker.Record(Fault(new InvalidOperationException("boom")));
+        var report = Describe(tracker.Record(Fault(new InvalidOperationException("boom"))));
 
         Assert.NotNull(report);
         Assert.Equal(BackgroundFaultReportKind.First, report!.Kind);
@@ -30,7 +32,7 @@ public sealed class BackgroundFaultTrackerTests
     {
         var tracker = new BackgroundFaultTracker();
 
-        var first = tracker.Record(Fault(new InvalidOperationException("boom")));
+        var first = Describe(tracker.Record(Fault(new InvalidOperationException("boom"))));
         for (var i = 0; i < 36_455; i++)
         {
             Assert.Null(tracker.Record(Fault(new InvalidOperationException("boom"))));
@@ -59,8 +61,8 @@ public sealed class BackgroundFaultTrackerTests
         var tracker = new BackgroundFaultTracker();
 
         // Same exception type, two different throw sites: the whole point of carrying a frame.
-        var fromFirstSite = tracker.Record(Fault(ThrowFromFirstSite()));
-        var fromSecondSite = tracker.Record(Fault(ThrowFromSecondSite()));
+        var fromFirstSite = Describe(tracker.Record(Fault(ThrowFromFirstSite())));
+        var fromSecondSite = Describe(tracker.Record(Fault(ThrowFromSecondSite())));
 
         Assert.NotNull(fromFirstSite);
         Assert.NotNull(fromSecondSite);
@@ -99,7 +101,7 @@ public sealed class BackgroundFaultTrackerTests
             tracker.RecordSuppressed(Fault(new IOException("pipe")));
         }
 
-        var report = tracker.Record(Fault(new InvalidOperationException("boom")));
+        var report = Describe(tracker.Record(Fault(new InvalidOperationException("boom"))));
 
         Assert.Equal(7, report!.SuppressedAbortedIo);
     }
@@ -150,7 +152,7 @@ public sealed class BackgroundFaultTrackerTests
 
         foreach (var exception in DistinctExceptions(BackgroundFaultTracker.MaxTrackedFaults + 20))
         {
-            var report = tracker.Record(Fault(exception));
+            var report = Describe(tracker.Record(Fault(exception)));
             if (report is not null)
             {
                 reports.Add(report);
@@ -165,7 +167,7 @@ public sealed class BackgroundFaultTrackerTests
 
     /// <summary>
     /// The render key is far more granular than the unobserved one — owner, member and breaker
-    /// state on top of type and frame — so under a shared budget one page churning distinct
+    /// state on top of type and site — so under a shared budget one page churning distinct
     /// dispatchers spent every bucket, and every later finalizer fault, NullReferenceException
     /// included, collapsed into the overflow row and lost its frame: the exact field this work
     /// exists to add, lost in exactly the broken session where it is needed.
@@ -178,7 +180,7 @@ public sealed class BackgroundFaultTrackerTests
         var render = new List<BackgroundFaultReport>();
         for (var i = 0; i < BackgroundFaultTracker.MaxTrackedFaults + 20; i++)
         {
-            var report = tracker.RecordRenderDispatch(NoOwnFrames(), $"Component{i}", "OnTick", stopped: false);
+            var report = Describe(tracker.RecordRenderDispatch(NoOwnFrames(), $"Component{i}", "OnTick", stopped: false));
             if (report is not null)
             {
                 render.Add(report);
@@ -189,7 +191,7 @@ public sealed class BackgroundFaultTrackerTests
         Assert.Contains(render, report => report.TopFrame == BackgroundFaultTracker.OverflowFrame);
 
         // The finalizer's fault still gets its own row, with its own frame.
-        var unobserved = tracker.Record(Fault(ThrowFromFirstSite()));
+        var unobserved = Describe(tracker.Record(Fault(ThrowFromFirstSite())));
 
         Assert.NotNull(unobserved);
         Assert.NotEqual(BackgroundFaultTracker.OverflowFrame, unobserved!.TopFrame);
@@ -204,7 +206,7 @@ public sealed class BackgroundFaultTrackerTests
         var unobserved = new List<BackgroundFaultReport>();
         foreach (var exception in DistinctExceptions(BackgroundFaultTracker.MaxTrackedFaults + 20))
         {
-            var report = tracker.Record(Fault(exception));
+            var report = Describe(tracker.Record(Fault(exception)));
             if (report is not null)
             {
                 unobserved.Add(report);
@@ -214,7 +216,7 @@ public sealed class BackgroundFaultTrackerTests
         Assert.Contains(unobserved, report => report.TopFrame == BackgroundFaultTracker.OverflowFrame);
 
         // A component that breaks now is still told apart from everything else.
-        var render = tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false);
+        var render = Describe(tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false));
 
         Assert.NotNull(render);
         Assert.NotEqual(BackgroundFaultTracker.OverflowFrame, render!.TopFrame);
@@ -230,7 +232,7 @@ public sealed class BackgroundFaultTrackerTests
 
         foreach (var exception in DistinctExceptions(BackgroundFaultTracker.MaxTrackedFaults + 20))
         {
-            if (tracker.Record(Fault(exception)) is { } report)
+            if (Describe(tracker.Record(Fault(exception))) is { } report)
             {
                 reports.Add(report);
             }
@@ -238,7 +240,7 @@ public sealed class BackgroundFaultTrackerTests
 
         for (var i = 0; i < BackgroundFaultTracker.MaxTrackedFaults + 20; i++)
         {
-            if (tracker.RecordRenderDispatch(NoOwnFrames(), $"Component{i}", "OnTick", stopped: false) is { } report)
+            if (Describe(tracker.RecordRenderDispatch(NoOwnFrames(), $"Component{i}", "OnTick", stopped: false)) is { } report)
             {
                 reports.Add(report);
             }
@@ -283,7 +285,7 @@ public sealed class BackgroundFaultTrackerTests
         {
             for (var i = 0; i < perWriter; i++)
             {
-                var report = tracker.Record(Fault(new InvalidOperationException("boom")));
+                var report = Describe(tracker.Record(Fault(new InvalidOperationException("boom"))));
                 if (report is not null)
                 {
                     Interlocked.Add(ref reported, report.Occurrences);
@@ -299,17 +301,17 @@ public sealed class BackgroundFaultTrackerTests
     }
 
     /// <summary>
-    /// The render gate's faults go through the same buckets, the same claim protocol and the
-    /// same Occurrences fold as the finalizer's. A component faulting every tick — the
-    /// production shape is 4 a second for 2.5 hours — must cost one row plus a count, not a POST
-    /// per tick, and the panel must still be able to tell two broken components apart.
+    /// The render gate's faults go through the same claim protocol and the same Occurrences
+    /// fold as the finalizer's. A component faulting every tick — the production shape is 4 a
+    /// second for 2.5 hours — must cost one row plus a count, not a POST per tick, and the panel
+    /// must still be able to tell two broken components apart.
     /// </summary>
     [Fact]
     public void FoldsRepeatedRenderDispatchFaultsIntoACountLikeTheFinalizersAre()
     {
         var tracker = new BackgroundFaultTracker();
 
-        var first = tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: false);
+        var first = Describe(tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: false));
         for (var i = 0; i < 35_999; i++)
         {
             Assert.Null(tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: false));
@@ -331,9 +333,9 @@ public sealed class BackgroundFaultTrackerTests
         // A dispatch that faults because its renderer is gone throws inside the framework, so
         // both of these carry the same (absent) RazorReaper frame. Only the owner tells them
         // apart, which is the whole reason the gate's owner/origin is worth carrying.
-        var home = tracker.RecordRenderDispatch(NoOwnFrames(), "Home", "OnTick", stopped: false);
-        var account = tracker.RecordRenderDispatch(NoOwnFrames(), "Account", "OnTick", stopped: false);
-        var otherMember = tracker.RecordRenderDispatch(NoOwnFrames(), "Home", "OnPoll", stopped: false);
+        var home = Describe(tracker.RecordRenderDispatch(NoOwnFrames(), "Home", "OnTick", stopped: false));
+        var account = Describe(tracker.RecordRenderDispatch(NoOwnFrames(), "Account", "OnTick", stopped: false));
+        var otherMember = Describe(tracker.RecordRenderDispatch(NoOwnFrames(), "Home", "OnPoll", stopped: false));
 
         Assert.NotNull(home);
         Assert.NotNull(account);
@@ -364,7 +366,7 @@ public sealed class BackgroundFaultTrackerTests
 
         // The component has permanently stopped rendering. That is a different event from the
         // faults that got it there, so it must not be swallowed as their 3rd occurrence.
-        var stop = tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: true);
+        var stop = Describe(tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: true));
 
         Assert.NotNull(stop);
         Assert.True(stop!.RenderStopped);
@@ -375,7 +377,7 @@ public sealed class BackgroundFaultTrackerTests
     {
         var tracker = new BackgroundFaultTracker();
 
-        var report = tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false);
+        var report = Describe(tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false));
 
         Assert.NotNull(report);
         Assert.Equal("Home", report!.Owner);
@@ -394,7 +396,7 @@ public sealed class BackgroundFaultTrackerTests
     {
         var tracker = new BackgroundFaultTracker();
 
-        var report = tracker.RecordRenderDispatch(NoOwnFrames(), "Home", "OnTick", stopped: false);
+        var report = Describe(tracker.RecordRenderDispatch(NoOwnFrames(), "Home", "OnTick", stopped: false));
 
         // Otherwise the whole family reports as "(no RazorReaper frame)" and stays exactly as
         // unattributable as the ~62k NullReferenceException rows are today.
@@ -410,7 +412,7 @@ public sealed class BackgroundFaultTrackerTests
     {
         var tracker = new BackgroundFaultTracker();
 
-        var report = tracker.RecordRenderDispatch(NoOwnFrames(), "Home", origin, stopped: false);
+        var report = Describe(tracker.RecordRenderDispatch(NoOwnFrames(), "Home", origin, stopped: false));
 
         // Salvaging the letters would leave the user name or the host behind. Nothing that is not
         // already a C# member name may leave the process.
@@ -446,7 +448,7 @@ public sealed class BackgroundFaultTrackerTests
         {
             for (var i = 0; i < PerWriter; i++)
             {
-                var report = tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: false);
+                var report = Describe(tracker.RecordRenderDispatch(new NullReferenceException(), "Home", "OnTick", stopped: false));
                 if (report is not null)
                 {
                     Interlocked.Add(ref reported, report.Occurrences);
@@ -460,6 +462,108 @@ public sealed class BackgroundFaultTrackerTests
 
         Assert.Equal(Writers * PerWriter, Interlocked.Read(ref reported) + flushed);
     }
+
+    /// <summary>
+    /// Describing the frames is a PDB-backed stack walk, and the thread that observes a render
+    /// fault is the renderer's own dispatcher. So the observing thread decides everything cheap —
+    /// the bucket, the claim, the row's kind — and leaves the walk to whoever reports the row.
+    /// </summary>
+    [Fact]
+    public void DescribesTheFramesOnTheReportingPathNotWhereTheFaultWasObserved()
+    {
+        var tracker = new BackgroundFaultTracker();
+
+        var render = tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false);
+        var unobserved = tracker.Record(Fault(ThrowFromSecondSite()));
+
+        Assert.NotNull(render);
+        Assert.NotNull(unobserved);
+        Assert.False(render!.IsDescribed);
+        Assert.False(unobserved!.IsDescribed);
+
+        var renderReport = render.Describe();
+        var unobservedReport = unobserved.Describe();
+
+        // Nothing the panel expects is lost by waiting: the same frames, from the same exception.
+        Assert.True(render.IsDescribed);
+        Assert.Contains(nameof(ThrowFromFirstSite), renderReport.TopFrame, StringComparison.Ordinal);
+        Assert.Contains("Home.OnTick", renderReport.TopFrames, StringComparison.Ordinal);
+        Assert.Contains(nameof(ThrowFromSecondSite), unobservedReport.TopFrame, StringComparison.Ordinal);
+
+        // Idempotent: a second reporter gets the same row, not a second walk's worth of drift.
+        Assert.Equal(renderReport.TopFrame, render.Describe().TopFrame);
+    }
+
+    [Fact]
+    public void AFlushDescribesABucketNoReporterHasFinishedYet()
+    {
+        var tracker = new BackgroundFaultTracker();
+
+        // The first sighting's reporter has not run yet (or never will); the repeats still ship.
+        var sighting = tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false);
+        Assert.Null(tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false));
+
+        var rollup = Assert.Single(tracker.Flush());
+
+        Assert.Contains(nameof(ThrowFromFirstSite), rollup.TopFrame, StringComparison.Ordinal);
+        Assert.True(sighting!.IsDescribed);
+        Assert.Equal(rollup.TopFrame, sighting.Describe().TopFrame);
+    }
+
+    /// <summary>
+    /// Until this change every call to RecordRenderDispatch described the frames — before the
+    /// dedupe, on whichever thread observed the fault — so a component faulting at Crosshair's
+    /// 20 Hz paid a symbol lookup per tick on the thread that draws the UI. Now a repeat costs a
+    /// symbol-free site capture and an interlocked count. Measured here rather than asserted from
+    /// memory; the numbers print with the test output.
+    /// </summary>
+    [Fact]
+    public void ARepeatOnTheObservingThreadCostsLessThanOneFrameDescription()
+    {
+        var exception = ThrowFromFirstSite();
+        var tracker = new BackgroundFaultTracker();
+        tracker.RecordRenderDispatch(exception, "Home", "OnTick", stopped: false)!.Describe();
+
+        var describe = Measure(() => BackgroundFaultFrames.DescribeRenderDispatch(exception, "Home", "OnTick"));
+        var repeat = Measure(() => tracker.RecordRenderDispatch(exception, "Home", "OnTick", stopped: false));
+        var capture = Measure(() => BackgroundFaultFrames.CaptureSite(exception));
+
+        output.WriteLine($"describe (what every repeat used to cost): {describe:F2} us/op");
+        output.WriteLine($"repeat on the observing thread now:        {repeat:F2} us/op");
+        output.WriteLine($"of which the site capture:                 {capture:F2} us/op");
+
+        Assert.True(
+            repeat < describe,
+            $"a repeat ({repeat:F2} us) must cost the observing thread less than describing the frames ({describe:F2} us)");
+    }
+
+    private static double Measure(Func<object?> work)
+    {
+        const int Iterations = 2_000;
+        var best = double.MaxValue;
+
+        for (var run = 0; run < 5; run++)
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                work();
+            }
+
+            var watch = Stopwatch.StartNew();
+            for (var i = 0; i < Iterations; i++)
+            {
+                work();
+            }
+
+            watch.Stop();
+            best = Math.Min(best, watch.Elapsed.TotalMilliseconds * 1000 / Iterations);
+        }
+
+        return best;
+    }
+
+    /// <summary>What App does on the pool: finish the row. Null stays null so repeats read as before.</summary>
+    private static BackgroundFaultReport? Describe(PendingBackgroundFaultReport? sighting) => sighting?.Describe();
 
     private static AggregateException Fault(Exception exception) => new(exception);
 

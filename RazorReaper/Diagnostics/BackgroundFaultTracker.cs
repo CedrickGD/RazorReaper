@@ -55,6 +55,47 @@ internal sealed record BackgroundFaultReport(
     bool RenderStopped = false);
 
 /// <summary>
+/// A first sighting as the observing thread hands it over. Everything cheap is already decided —
+/// the bucket exists, this occurrence is claimed, the row will be a
+/// <see cref="BackgroundFaultReportKind.First"/> — but the frames are not yet described. That is
+/// a PDB-backed stack walk, and the thread that observed a render fault is the renderer's own
+/// dispatcher, so <see cref="Describe"/> is for the reporting path, off that thread.
+/// </summary>
+internal sealed class PendingBackgroundFaultReport
+{
+    private readonly BackgroundFaultTracker.FaultBucket bucket;
+    private readonly long occurrences;
+    private readonly long suppressedAbortedIo;
+
+    internal PendingBackgroundFaultReport(
+        BackgroundFaultTracker.FaultBucket bucket,
+        Exception exception,
+        long occurrences,
+        long suppressedAbortedIo)
+    {
+        this.bucket = bucket;
+        this.occurrences = occurrences;
+        this.suppressedAbortedIo = suppressedAbortedIo;
+        Exception = exception;
+    }
+
+    /// <summary>The fault as it was observed, for the local error record. Held here, not by the bucket.</summary>
+    public Exception Exception { get; }
+
+    public BackgroundFaultSource Source => bucket.Source;
+
+    /// <summary>True once the frames have been described. Pins that the observing thread never does it.</summary>
+    internal bool IsDescribed => bucket.IsDescribed;
+
+    /// <summary>
+    /// Finishes the row: describes the frames if no one has yet, and releases the exception the
+    /// bucket held for that. Safe from any thread, idempotent, and never throws.
+    /// </summary>
+    public BackgroundFaultReport Describe()
+        => bucket.ToReport(BackgroundFaultReportKind.First, occurrences, suppressedAbortedIo);
+}
+
+/// <summary>
 /// Folds the unobserved-task flood into a couple of rows per session without losing the count.
 ///
 /// Production: ~83k app_error rows since 2026-06-15, 36,456 of them from a single 2.5 hour
@@ -62,19 +103,21 @@ internal sealed record BackgroundFaultReport(
 /// same message — so only the first is reported in full and the rest become a number that ships
 /// with the periodic and shutdown rollups.
 ///
-/// Reached from the finalizer thread (TaskScheduler.UnobservedTaskException), the flush timer and
-/// the shutdown path at the same time, so every mutation here is interlocked and each occurrence
-/// is claimed exactly once by exactly one reporter.
+/// Reached from the finalizer thread (TaskScheduler.UnobservedTaskException), the renderer's
+/// dispatcher (RenderDispatchGate), the flush timer and the shutdown path at the same time, so
+/// every mutation here is interlocked and each occurrence is claimed exactly once by exactly one
+/// reporter. The observing thread does only what the fold needs — a cheap site capture and a
+/// count; describing the frames is deferred to whoever reports the row.
 /// </summary>
 internal sealed class BackgroundFaultTracker
 {
     /// <summary>
     /// Per source. A session with more distinct faults than this from one observer has a
     /// different problem. The budgets are separate because the render key is far more granular
-    /// than the unobserved one — owner, member and breaker state on top of type and frame — so
-    /// one component churning distinct dispatchers would otherwise spend every bucket and
-    /// collapse the finalizer's faults, the population this whole investigation is chasing, into
-    /// the overflow row with no frame.
+    /// than the unobserved one — owner, member and breaker state on top of type and site — so one
+    /// component churning distinct dispatchers would otherwise spend every bucket and collapse
+    /// the finalizer's faults, the population this whole investigation is chasing, into the
+    /// overflow row with no frame.
     /// </summary>
     internal const int MaxTrackedFaults = 64;
 
@@ -114,15 +157,14 @@ internal sealed class BackgroundFaultTracker
     /// Records a fault and returns the row to send, or null when it is a repeat of one already
     /// reported in this session.
     /// </summary>
-    public BackgroundFaultReport? Record(AggregateException exception)
+    public PendingBackgroundFaultReport? Record(AggregateException exception)
     {
         var baseException = exception.GetBaseException();
-        var origin = BackgroundFaultFrames.Describe(baseException);
         return Record(
             BackgroundFaultSource.UnobservedTask,
             exception,
             baseException,
-            origin,
+            BackgroundFaultFrames.CaptureSite(baseException),
             dispatcher: null,
             stopped: false);
     }
@@ -134,7 +176,7 @@ internal sealed class BackgroundFaultTracker
     /// broken component costs one row plus a count instead of a row per tick, and two broken
     /// components are still told apart. Returns null for a repeat.
     /// </summary>
-    public BackgroundFaultReport? RecordRenderDispatch(Exception exception, string? owner, string? origin, bool stopped)
+    public PendingBackgroundFaultReport? RecordRenderDispatch(Exception exception, string? owner, string? origin, bool stopped)
     {
         ArgumentNullException.ThrowIfNull(exception);
 
@@ -148,7 +190,6 @@ internal sealed class BackgroundFaultTracker
         var dispatcher = new BackgroundFaultDispatcher(
             BackgroundFaultFrames.Identifier(owner),
             BackgroundFaultFrames.Identifier(origin));
-        var frames = BackgroundFaultFrames.DescribeRenderDispatch(baseException, owner, origin);
 
         // A breaker trip gets its own bucket: a component permanently ending its own renders is a
         // different event from the faults that led there, and folding it into them would lose it.
@@ -156,21 +197,21 @@ internal sealed class BackgroundFaultTracker
             BackgroundFaultSource.RenderDispatch,
             exception,
             baseException,
-            frames,
+            BackgroundFaultFrames.CaptureSite(baseException),
             dispatcher,
             stopped);
     }
 
-    private BackgroundFaultReport? Record(
+    private PendingBackgroundFaultReport? Record(
         BackgroundFaultSource source,
         Exception exception,
         Exception baseException,
-        BackgroundFaultOrigin origin,
+        string site,
         BackgroundFaultDispatcher? dispatcher,
         bool stopped)
     {
         var baseExceptionType = baseException.GetType().FullName ?? baseException.GetType().Name;
-        var bucket = GetOrAddBucket(source, baseExceptionType, origin, dispatcher, stopped, exception);
+        var bucket = GetOrAddBucket(source, baseExceptionType, site, dispatcher, stopped, exception, baseException);
 
         if (Interlocked.Increment(ref bucket.Count) != 1)
         {
@@ -181,13 +222,15 @@ internal sealed class BackgroundFaultTracker
         var occurrences = bucket.ClaimUnreported();
         return occurrences <= 0
             ? null
-            : bucket.ToReport(BackgroundFaultReportKind.First, occurrences, DrainSuppressed());
+            : new PendingBackgroundFaultReport(bucket, exception, occurrences, DrainSuppressed());
     }
 
     /// <summary>
     /// Everything counted since the last flush: one row per fault that saw repeats, plus the
     /// suppression count — which rides along on the first row, or gets its own row when there is
     /// nothing else to say, so a quiet version can never again be mistaken for a fixed one.
+    /// Runs on the flush timer or the shutdown path, never on an observing thread, so this is
+    /// where a bucket nobody has described yet gets its frames.
     /// </summary>
     public IReadOnlyList<BackgroundFaultReport> Flush()
     {
@@ -232,14 +275,15 @@ internal sealed class BackgroundFaultTracker
     private FaultBucket GetOrAddBucket(
         BackgroundFaultSource source,
         string baseExceptionType,
-        BackgroundFaultOrigin origin,
+        string site,
         BackgroundFaultDispatcher? dispatcher,
         bool stopped,
-        Exception exception)
+        Exception exception,
+        Exception baseException)
     {
         var buckets = source == BackgroundFaultSource.RenderDispatch ? renderBuckets : unobservedBuckets;
 
-        var key = BuildKey(source, baseExceptionType, origin.TopFrame, dispatcher, stopped);
+        var key = BuildKey(source, baseExceptionType, site, dispatcher, stopped);
         if (buckets.TryGetValue(key, out var existing))
         {
             return existing;
@@ -249,34 +293,34 @@ internal sealed class BackgroundFaultTracker
         {
             // Bound the memory a pathological session can pin. Everything past the limit keeps
             // being counted, it just stops being told apart — and only within its own source:
-            // the other observer's budget is untouched, and this overflow row wears this
-            // source rather than whichever one happened to hit a shared limit first.
+            // the other observer's budget is untouched.
             return buckets.GetOrAdd(
                 OverflowFrame,
-                _ => new FaultBucket(source, baseExceptionType, OverflowFrame, OverflowFrame, dispatcher, stopped, exception));
+                _ => FaultBucket.Overflow(source, baseExceptionType, dispatcher, stopped, exception));
         }
 
         return buckets.GetOrAdd(
             key,
-            _ => new FaultBucket(source, baseExceptionType, origin.TopFrame, origin.TopFrames, dispatcher, stopped, exception));
+            _ => new FaultBucket(source, baseExceptionType, dispatcher, stopped, exception, baseException));
     }
 
     /// <summary>
     /// The one place a fault's identity is decided, for both sources: base exception type plus
-    /// where it came from. Unobserved faults keep the exact key they had. A render fault adds the
-    /// owning component and member — the stack alone cannot tell two broken components apart once
-    /// their renderer is gone — and the breaker trip, so that event gets its own row.
+    /// where it came from — the top own method and IL offset, which is as site-specific as the
+    /// file and line the described frame carries and costs no symbol lookup. A render fault
+    /// adds the owning component and member — the stack alone cannot tell two broken components
+    /// apart once their renderer is gone — and the breaker trip, so that event gets its own row.
     /// </summary>
     private static string BuildKey(
         BackgroundFaultSource source,
         string baseExceptionType,
-        string topFrame,
+        string site,
         BackgroundFaultDispatcher? dispatcher,
         bool stopped)
     {
         return source == BackgroundFaultSource.UnobservedTask
-            ? $"{baseExceptionType}|{topFrame}"
-            : $"render|{dispatcher?.Owner}.{dispatcher?.Origin}|{(stopped ? "stopped" : "faulted")}|{baseExceptionType}|{topFrame}";
+            ? $"{baseExceptionType}|{site}"
+            : $"render|{dispatcher?.Owner}.{dispatcher?.Origin}|{(stopped ? "stopped" : "faulted")}|{baseExceptionType}|{site}";
     }
 
     private long DrainSuppressed()
@@ -284,25 +328,69 @@ internal sealed class BackgroundFaultTracker
         return Interlocked.Exchange(ref suppressedAbortedIo, 0);
     }
 
-    private sealed class FaultBucket(
-        BackgroundFaultSource source,
-        string baseExceptionType,
-        string topFrame,
-        string topFrames,
-        BackgroundFaultDispatcher? dispatcher,
-        bool stopped,
-        Exception exception)
+    /// <summary>
+    /// One distinct fault. Holds strings and counters — plus, until someone reports it, the first
+    /// sighting's base exception, because describing its frames is the one expensive step and it
+    /// must not happen on the thread that observed the fault. The reference is dropped the moment
+    /// the frames exist.
+    /// </summary>
+    internal sealed class FaultBucket
     {
-        private readonly string exceptionType = exception.GetType().FullName ?? nameof(AggregateException);
-        private readonly string? message = BackgroundFaultFrames.Redact(exception.Message);
+        private readonly BackgroundFaultDispatcher? dispatcher;
+        private readonly bool stopped;
+        private readonly string baseExceptionType;
+        private readonly string exceptionType;
+        private readonly string? message;
 
         // An unobserved fault always arrives wrapped; a render fault is the leaf itself.
-        private readonly int leafExceptionCount = exception is AggregateException aggregate
-            ? aggregate.Flatten().InnerExceptions.Count
-            : 1;
+        private readonly int leafExceptionCount;
+
+        private readonly object describeGate = new();
+        private Exception? undescribed;
+        private string? topFrame;
+        private string? topFrames;
 
         internal long Count;
         private long reported;
+
+        internal FaultBucket(
+            BackgroundFaultSource source,
+            string baseExceptionType,
+            BackgroundFaultDispatcher? dispatcher,
+            bool stopped,
+            Exception exception,
+            Exception? baseException)
+        {
+            Source = source;
+            this.baseExceptionType = baseExceptionType;
+            this.dispatcher = dispatcher;
+            this.stopped = stopped;
+            exceptionType = exception.GetType().FullName ?? nameof(AggregateException);
+            message = BackgroundFaultFrames.Redact(exception.Message);
+            leafExceptionCount = exception is AggregateException aggregate
+                ? aggregate.Flatten().InnerExceptions.Count
+                : 1;
+            undescribed = baseException;
+        }
+
+        internal static FaultBucket Overflow(
+            BackgroundFaultSource source,
+            string baseExceptionType,
+            BackgroundFaultDispatcher? dispatcher,
+            bool stopped,
+            Exception exception)
+        {
+            // Nothing to describe: the overflow row says only that the limit was hit.
+            return new FaultBucket(source, baseExceptionType, dispatcher, stopped, exception, baseException: null)
+            {
+                topFrames = OverflowFrame,
+                topFrame = OverflowFrame
+            };
+        }
+
+        internal BackgroundFaultSource Source { get; }
+
+        internal bool IsDescribed => Volatile.Read(ref topFrame) is not null;
 
         /// <summary>
         /// Takes ownership of every occurrence counted but not yet sent. The CAS is what keeps a
@@ -331,9 +419,11 @@ internal sealed class BackgroundFaultTracker
             long occurrences,
             long suppressedAbortedIo)
         {
+            EnsureDescribed();
+
             return new BackgroundFaultReport(
                 kind,
-                source,
+                Source,
                 exceptionType,
                 baseExceptionType,
                 topFrame,
@@ -345,6 +435,38 @@ internal sealed class BackgroundFaultTracker
                 dispatcher?.Owner,
                 dispatcher?.Origin,
                 stopped);
+        }
+
+        /// <summary>
+        /// The PDB-backed walk, done once per bucket by the first reporter to need it — the
+        /// first-sighting hop or a flush, both on the pool — and never by an observing thread.
+        /// </summary>
+        private void EnsureDescribed()
+        {
+            if (IsDescribed)
+            {
+                return;
+            }
+
+            lock (describeGate)
+            {
+                if (topFrame is not null)
+                {
+                    return;
+                }
+
+                var exception = undescribed;
+                undescribed = null;
+
+                var origin = Source == BackgroundFaultSource.RenderDispatch
+                    ? BackgroundFaultFrames.DescribeRenderDispatch(exception, dispatcher?.Owner, dispatcher?.Origin)
+                    : BackgroundFaultFrames.Describe(exception);
+
+                // Published last, with release semantics, so a reader that sees the top frame
+                // through IsDescribed also sees the joined frames.
+                topFrames = origin.TopFrames;
+                Volatile.Write(ref topFrame, origin.TopFrame);
+            }
         }
     }
 }

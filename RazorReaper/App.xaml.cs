@@ -273,22 +273,19 @@ namespace RazorReaper
                     return;
                 }
 
-                var report = backgroundFaults.Record(e.Exception);
-                if (report is null)
+                var sighting = backgroundFaults.Record(e.Exception);
+                if (sighting is null)
                 {
                     // A repeat of a fault already reported in this session: same base type,
-                    // same frame, same message. It is now a number in the next rollup instead
+                    // same site, same message. It is now a number in the next rollup instead
                     // of a row — one install once emitted 36,456 of these in 2.5 hours, and
-                    // the local RecordError below would have written Preferences for each.
+                    // a local RecordError per fault would have written Preferences for each.
                     return;
                 }
 
-                AppDiagnostics.RecordError(
-                    AppErrorCodes.UnobservedTaskException,
-                    "Background task exception was not observed.",
-                    e.Exception);
-
-                PublishBackgroundFault(report);
+                // The finalizer thread has done all it should: a cheap site capture and a
+                // count. The local record, the frame description and the POST go to the pool.
+                ReportBackgroundFault(sighting, "Background task exception was not observed.");
             }
             catch (Exception ex)
             {
@@ -304,26 +301,34 @@ namespace RazorReaper
         /// The render gate's faults, folded into the same tracker as the finalizer's.
         ///
         /// Runs wherever the dispatch completed — the renderer's own thread for a fault raised
-        /// during a render, a timer or pool thread for one raised after — so it may not throw and
-        /// may not block. The gate already wrote the local log line; this is only the copy that
-        /// leaves the machine, and it goes through the tracker so a component faulting at 4/s
-        /// costs one row plus a count rather than 4 POSTs a second.
+        /// during a render, a timer or pool thread for one raised after — so it may not throw,
+        /// may not block, and must not walk a stack: on the renderer's thread that competes
+        /// with the UI, once per fault, and the first walk in a process loads the PDB from disk.
+        /// The tracker takes only a cheap site capture and a count here; the description and
+        /// the POST happen on the pool, and a component faulting at 4/s still costs one row plus
+        /// a count rather than 4 POSTs a second.
         /// </summary>
         private void HandleRenderDispatchFault(RenderDispatchFault fault)
         {
             try
             {
-                var report = backgroundFaults.RecordRenderDispatch(
+                var sighting = backgroundFaults.RecordRenderDispatch(
                     fault.Exception,
                     fault.Owner,
                     fault.Origin,
                     fault.Stopped);
-                if (report is null)
+                if (sighting is null)
                 {
                     return;
                 }
 
-                PublishBackgroundFault(report);
+                // Same local record the finalizer path writes, so a support bundle pulled from
+                // a session the gate was carrying shows what telemetry shows instead of
+                // reporting a healthy app. The gate's own log line stays exactly as it was.
+                var localMessage = fault.Stopped
+                    ? $"{fault.Owner}.{fault.Origin} stopped dispatching renders after {fault.ConsecutiveFaults} consecutive faults."
+                    : $"Render dispatch from {fault.Owner}.{fault.Origin} faulted.";
+                ReportBackgroundFault(sighting, localMessage);
             }
             catch (Exception ex)
             {
@@ -334,9 +339,42 @@ namespace RazorReaper
             }
         }
 
-        private void PublishBackgroundFault(BackgroundFaultReport report)
+        /// <summary>
+        /// Hands a first sighting to the pool. The thread that observed it — the finalizer for
+        /// an unobserved task, the renderer's dispatcher for a render fault — has already done
+        /// the only work the fold needs, and the rest costs more than that thread should pay:
+        /// the PDB-backed frame description, three Preferences writes plus a Serilog line for
+        /// the local record, and telemetry's synchronous prefix. A pool work item rather than a
+        /// Task, so there is no Task here that could go unobserved; the body is guarded whole
+        /// because a throw escaping a pool work item terminates the process.
+        /// </summary>
+        private void ReportBackgroundFault(PendingBackgroundFaultReport sighting, string localMessage)
         {
-            _ = PublishBackgroundFaultAsync(report);
+            ThreadPool.QueueUserWorkItem(
+                static state => state.app.ReportBackgroundFaultOnPool(state.sighting, state.localMessage),
+                (app: this, sighting, localMessage),
+                preferLocal: false);
+        }
+
+        private void ReportBackgroundFaultOnPool(PendingBackgroundFaultReport sighting, string localMessage)
+        {
+            try
+            {
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.UnobservedTaskException,
+                    localMessage,
+                    sighting.Exception);
+
+                // Describe() is the stack walk, on this thread and nowhere earlier.
+                _ = PublishBackgroundFaultAsync(sighting.Describe());
+            }
+            catch (Exception ex)
+            {
+                AppDiagnostics.RecordError(
+                    AppErrorCodes.UnobservedTaskException,
+                    "Background fault reporting failed.",
+                    ex);
+            }
         }
 
         private Task PublishBackgroundFaultAsync(BackgroundFaultReport report, CancellationToken cancellationToken = default)

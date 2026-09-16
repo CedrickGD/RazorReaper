@@ -30,6 +30,48 @@ internal static partial class BackgroundFaultFrames
     private const int MaxMemberLength = 60;
     private const int MaxFrames = 3;
 
+    /// <summary>
+    /// The cheap half of <see cref="Describe"/>: which own method, at which IL offset, the fault
+    /// came from — enough to tell two throw sites apart, and nothing that needs a symbol lookup.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Describe"/> is a PDB-backed stack walk, and the first one in a process loads
+    /// the symbols from disk (3.8 ms for the test assembly on the machine this was written on;
+    /// warm, about 8 µs). The tracker needs a key on the thread that observed the fault, which
+    /// for a render dispatch is the renderer's own dispatcher, so that thread must not pay for
+    /// the description. This is what it pays instead: a raw frame copy plus method resolution,
+    /// no file information — measured at about a sixth of a warm Describe and none of its cold
+    /// cost. The result is a key, never a row: the described frames are what leaves the machine.
+    /// </remarks>
+    public static string CaptureSite(Exception? exception)
+    {
+        if (exception is null)
+        {
+            return NoOwnFrame;
+        }
+
+        try
+        {
+            foreach (var frame in new StackTrace(exception, fNeedFileInfo: false).GetFrames())
+            {
+                var method = frame?.GetMethod();
+                if (method?.DeclaringType?.FullName is not { } typeName
+                    || !typeName.StartsWith(OwnNamespacePrefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                return $"{typeName}.{method.Name}@{frame!.GetILOffset()}";
+            }
+
+            return NoOwnFrame;
+        }
+        catch
+        {
+            return Unavailable;
+        }
+    }
+
     public static BackgroundFaultOrigin Describe(Exception? exception)
     {
         if (exception is null)
