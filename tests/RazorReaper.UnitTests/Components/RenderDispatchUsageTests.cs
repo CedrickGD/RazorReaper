@@ -231,6 +231,29 @@ public sealed partial class RenderDispatchUsageTests
         Assert.Contains("backgroundFaults.RecordRenderDispatch(", app, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The sink is installed before any window exists; it has to go before the app does, on
+    /// every shutdown path. It used to be removed after the <c>telemetry is null</c> early
+    /// return, so a shutdown on which telemetry was never resolved kept it installed while the
+    /// comment above it claimed the removal was unconditional.
+    /// </summary>
+    [Fact]
+    public void TheShutdownPathRemovesTheGatesSinkBeforeItCanReturnEarly()
+    {
+        var app = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "App.xaml.cs"));
+        var shutdown = app.IndexOf("private void FlushTelemetryShutdown()", StringComparison.Ordinal);
+        Assert.True(shutdown >= 0, "FlushTelemetryShutdown must still exist");
+
+        var body = app[shutdown..];
+        var removeSink = body.IndexOf("RenderDispatchReporting.UseSink(null);", StringComparison.Ordinal);
+        var firstReturn = body.IndexOf("return;", StringComparison.Ordinal);
+
+        Assert.True(removeSink >= 0, "the shutdown path must remove the gate's sink");
+        Assert.True(
+            removeSink < firstReturn,
+            "the sink is removed after an early return, so a shutdown with telemetry never resolved keeps it installed");
+    }
+
     /// <summary><c>async () =&gt;</c>, <c>async x =&gt;</c>, <c>async (a, b) =&gt;</c>, <c>async delegate</c>.</summary>
     private static readonly Regex AsyncLambda = new(
         @"\basync\s*(?:\(|delegate\b|[A-Za-z_]\w*\s*=>)",

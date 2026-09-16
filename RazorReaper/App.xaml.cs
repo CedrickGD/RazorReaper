@@ -509,6 +509,13 @@ namespace RazorReaper
         {
             backgroundFaultFlushTimer.Dispose();
 
+            // Every component is about to be torn down. Their dispatch faults are teardown by
+            // definition and the gate does not report those, but the sink is removed anyway so
+            // nothing can queue a POST behind the flush that is about to close the session.
+            // Unconditional, ahead of every early return below: a shutdown on which telemetry
+            // was never resolved still must not leave the sink installed.
+            RenderDispatchReporting.UseSink(null);
+
             var telemetry = telemetryService;
             if (telemetry is null)
             {
@@ -520,11 +527,6 @@ namespace RazorReaper
             {
                 return;
             }
-
-            // Every component is about to be torn down. Their dispatch faults are teardown by
-            // definition and the gate does not report those, but the sink is removed anyway so
-            // nothing can queue a POST behind the flush that is about to close the session.
-            RenderDispatchReporting.UseSink(null);
 
             try
             {
