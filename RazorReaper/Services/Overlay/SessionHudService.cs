@@ -106,7 +106,28 @@ public sealed class SessionHudService : ISessionHudService
         }
     }
 
+    /// <summary>
+    /// One poll tick. A <see cref="System.Threading.Timer"/> callback has no caller to hand a
+    /// fault to — anything escaping it is rethrown on the pool thread as an unhandled exception
+    /// and takes the process down — and the in-flight flag would be left set, so the HUD would
+    /// stop polling even if the process survived. Both are owned here.
+    /// </summary>
     private void OnTick(object? state)
+    {
+        try
+        {
+            PollTick();
+        }
+        catch (Exception ex)
+        {
+            // Releasing the in-flight flag is part of the guarantee: a tick that died holding it
+            // would stop the HUD polling for the rest of the session even if the process lived.
+            Interlocked.Exchange(ref _polling, 0);
+            _logger.LogWarning(ex, "Session HUD poll tick failed to start");
+        }
+    }
+
+    private void PollTick()
     {
         if (Interlocked.Exchange(ref _polling, 1) == 1) return;
 

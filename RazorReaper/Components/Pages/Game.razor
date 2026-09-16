@@ -172,7 +172,21 @@
         statusTimer = new Timer(_ => StatusTick(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
     }
 
+    // A TimerCallback has no caller to hand a fault to: anything escaping here is rethrown on the
+    // pool thread as an unhandled exception and takes the process down. The tick owns its faults.
     private void StatusTick()
+    {
+        try
+        {
+            StatusTickCore();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Game status tick failed");
+        }
+    }
+
+    private void StatusTickCore()
     {
         if (this.IsRenderStopped())
             return;

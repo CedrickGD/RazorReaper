@@ -487,6 +487,19 @@
     /// </summary>
     private void RefreshVisibleServers()
     {
+        // A TimerCallback has no caller to hand a fault to; see the note at the construction site.
+        try
+        {
+            RefreshVisibleServersTick();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Server auto-refresh tick failed");
+        }
+    }
+
+    private void RefreshVisibleServersTick()
+    {
         if (_isDisposed || !isPageActive || this.IsRenderStopped())
             return;
 

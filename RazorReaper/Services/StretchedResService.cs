@@ -508,7 +508,32 @@ namespace RazorReaper.Services
             }
         }
 
+        /// <summary>
+        /// One second of the confirmation countdown.
+        ///
+        /// A <see cref="System.Threading.Timer"/> callback has no caller and no
+        /// SynchronizationContext to hand a fault to: anything escaping this method is rethrown
+        /// on the pool thread as an UNHANDLED exception and takes the process down with it — the
+        /// user loses the app mid-session and the timer never ticks again, so the resolution they
+        /// were about to confirm is never reverted either. The body is not obviously safe: the
+        /// notification container and the activity log are both shared state written from the
+        /// dispatcher, and RaiseStateChanged invokes whatever subscribers a page installed. So the
+        /// whole tick owns its faults, exactly like HudOverlayService.OnTick and the guarded
+        /// AccessGate/License ticks do.
+        /// </summary>
         private void OnRevertTick(object? _)
+        {
+            try
+            {
+                RevertTick();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Stretched-res revert tick failed");
+            }
+        }
+
+        private void RevertTick()
         {
             bool fire = false;
             int remaining;

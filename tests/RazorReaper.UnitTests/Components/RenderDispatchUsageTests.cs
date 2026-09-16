@@ -7,7 +7,7 @@ namespace RazorReaper.UnitTests.Components;
 /// RR-E1003 came from ~60 dropped InvokeAsync dispatches, and the count sat flat across every
 /// released version because nothing stopped the 61st from being written. This is that stop.
 /// </summary>
-public sealed class RenderDispatchUsageTests
+public sealed partial class RenderDispatchUsageTests
 {
     /// <summary>The only ways a component may spell a render dispatch.</summary>
     private static readonly string[] SanctionedPrefixes =
