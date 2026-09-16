@@ -68,13 +68,28 @@ internal sealed record BackgroundFaultReport(
 /// </summary>
 internal sealed class BackgroundFaultTracker
 {
-    /// <summary>A session with more distinct faults than this has a different problem.</summary>
+    /// <summary>
+    /// Per source. A session with more distinct faults than this from one observer has a
+    /// different problem. The budgets are separate because the render key is far more granular
+    /// than the unobserved one — owner, member and breaker state on top of type and frame — so
+    /// one component churning distinct dispatchers would otherwise spend every bucket and
+    /// collapse the finalizer's faults, the population this whole investigation is chasing, into
+    /// the overflow row with no frame.
+    /// </summary>
     internal const int MaxTrackedFaults = 64;
+
+    /// <summary>Everything the tracker can pin: both sources at their cap, each with its overflow bucket.</summary>
+    internal const int MaxTrackedFaultsTotal = 2 * (MaxTrackedFaults + 1);
+
     internal const string OverflowFrame = "(fault key limit reached)";
 
-    private readonly ConcurrentDictionary<string, FaultBucket> buckets = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, FaultBucket> unobservedBuckets = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, FaultBucket> renderBuckets = new(StringComparer.Ordinal);
     private long suppressedAbortedIo;
     private string? suppressedBaseExceptionType;
+
+    /// <summary>Buckets held right now, both sources. For the tests that pin the bound.</summary>
+    internal int TrackedFaultCount => unobservedBuckets.Count + renderBuckets.Count;
 
     /// <summary>
     /// Counts a fault that <see cref="App.IsAbortedBackgroundIo"/> dropped. Returns true only for
@@ -114,10 +129,10 @@ internal sealed class BackgroundFaultTracker
 
     /// <summary>
     /// Records a fault the render gate observed, keyed and dampened exactly like an unobserved
-    /// one — same buckets, same claim protocol, same <see cref="BackgroundFaultReport.Occurrences"/>
-    /// fold — with the owning component and dispatching member added to the key so one broken
-    /// component costs one row plus a count instead of a row per tick, and two broken components
-    /// are still told apart. Returns null for a repeat.
+    /// one — same claim protocol, same <see cref="BackgroundFaultReport.Occurrences"/> fold, its
+    /// own budget — with the owning component and dispatching member added to the key so one
+    /// broken component costs one row plus a count instead of a row per tick, and two broken
+    /// components are still told apart. Returns null for a repeat.
     /// </summary>
     public BackgroundFaultReport? RecordRenderDispatch(Exception exception, string? owner, string? origin, bool stopped)
     {
@@ -178,7 +193,7 @@ internal sealed class BackgroundFaultTracker
     {
         var reports = new List<BackgroundFaultReport>();
 
-        foreach (var bucket in buckets.Values)
+        foreach (var bucket in unobservedBuckets.Values.Concat(renderBuckets.Values))
         {
             var occurrences = bucket.ClaimUnreported();
             if (occurrences > 0)
@@ -222,6 +237,8 @@ internal sealed class BackgroundFaultTracker
         bool stopped,
         Exception exception)
     {
+        var buckets = source == BackgroundFaultSource.RenderDispatch ? renderBuckets : unobservedBuckets;
+
         var key = BuildKey(source, baseExceptionType, origin.TopFrame, dispatcher, stopped);
         if (buckets.TryGetValue(key, out var existing))
         {
@@ -231,7 +248,9 @@ internal sealed class BackgroundFaultTracker
         if (buckets.Count >= MaxTrackedFaults)
         {
             // Bound the memory a pathological session can pin. Everything past the limit keeps
-            // being counted, it just stops being told apart.
+            // being counted, it just stops being told apart — and only within its own source:
+            // the other observer's budget is untouched, and this overflow row wears this
+            // source rather than whichever one happened to hit a shared limit first.
             return buckets.GetOrAdd(
                 OverflowFrame,
                 _ => new FaultBucket(source, baseExceptionType, OverflowFrame, OverflowFrame, dispatcher, stopped, exception));

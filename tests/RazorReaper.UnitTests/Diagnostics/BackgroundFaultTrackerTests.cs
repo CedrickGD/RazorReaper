@@ -163,6 +163,98 @@ public sealed class BackgroundFaultTrackerTests
         Assert.Contains(reports, report => report.TopFrame == BackgroundFaultTracker.OverflowFrame);
     }
 
+    /// <summary>
+    /// The render key is far more granular than the unobserved one — owner, member and breaker
+    /// state on top of type and frame — so under a shared budget one page churning distinct
+    /// dispatchers spent every bucket, and every later finalizer fault, NullReferenceException
+    /// included, collapsed into the overflow row and lost its frame: the exact field this work
+    /// exists to add, lost in exactly the broken session where it is needed.
+    /// </summary>
+    [Fact]
+    public void ARenderComponentChurningDistinctDispatchersCannotCrowdOutTheFinalizersFaults()
+    {
+        var tracker = new BackgroundFaultTracker();
+
+        var render = new List<BackgroundFaultReport>();
+        for (var i = 0; i < BackgroundFaultTracker.MaxTrackedFaults + 20; i++)
+        {
+            var report = tracker.RecordRenderDispatch(NoOwnFrames(), $"Component{i}", "OnTick", stopped: false);
+            if (report is not null)
+            {
+                render.Add(report);
+            }
+        }
+
+        // The render budget is spent.
+        Assert.Contains(render, report => report.TopFrame == BackgroundFaultTracker.OverflowFrame);
+
+        // The finalizer's fault still gets its own row, with its own frame.
+        var unobserved = tracker.Record(Fault(ThrowFromFirstSite()));
+
+        Assert.NotNull(unobserved);
+        Assert.NotEqual(BackgroundFaultTracker.OverflowFrame, unobserved!.TopFrame);
+        Assert.Contains(nameof(ThrowFromFirstSite), unobserved.TopFrame, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFinalizerFloodOfDistinctTypesCannotCrowdOutRenderFaults()
+    {
+        var tracker = new BackgroundFaultTracker();
+
+        var unobserved = new List<BackgroundFaultReport>();
+        foreach (var exception in DistinctExceptions(BackgroundFaultTracker.MaxTrackedFaults + 20))
+        {
+            var report = tracker.Record(Fault(exception));
+            if (report is not null)
+            {
+                unobserved.Add(report);
+            }
+        }
+
+        Assert.Contains(unobserved, report => report.TopFrame == BackgroundFaultTracker.OverflowFrame);
+
+        // A component that breaks now is still told apart from everything else.
+        var render = tracker.RecordRenderDispatch(ThrowFromFirstSite(), "Home", "OnTick", stopped: false);
+
+        Assert.NotNull(render);
+        Assert.NotEqual(BackgroundFaultTracker.OverflowFrame, render!.TopFrame);
+        Assert.Equal("Home", render.Owner);
+        Assert.Contains(nameof(ThrowFromFirstSite), render.TopFrame, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BothBudgetsSpentStillLeaveTheTotalBoundedAndEachOverflowRowLabelledWithItsSource()
+    {
+        var tracker = new BackgroundFaultTracker();
+        var reports = new List<BackgroundFaultReport>();
+
+        foreach (var exception in DistinctExceptions(BackgroundFaultTracker.MaxTrackedFaults + 20))
+        {
+            if (tracker.Record(Fault(exception)) is { } report)
+            {
+                reports.Add(report);
+            }
+        }
+
+        for (var i = 0; i < BackgroundFaultTracker.MaxTrackedFaults + 20; i++)
+        {
+            if (tracker.RecordRenderDispatch(NoOwnFrames(), $"Component{i}", "OnTick", stopped: false) is { } report)
+            {
+                reports.Add(report);
+            }
+        }
+
+        // Each source is at its cap plus its own overflow bucket, and nothing beyond that.
+        Assert.Equal(BackgroundFaultTracker.MaxTrackedFaultsTotal, tracker.TrackedFaultCount);
+
+        // Under the shared dictionary one overflow bucket served both sources and wore whichever
+        // source hit the limit first, so the other source's overflow was reported as the wrong
+        // population. Each budget now overflows into a row of its own kind.
+        var overflow = reports.Where(report => report.TopFrame == BackgroundFaultTracker.OverflowFrame).ToList();
+        Assert.Contains(overflow, report => report.Source == BackgroundFaultSource.UnobservedTask);
+        Assert.Contains(overflow, report => report.Source == BackgroundFaultSource.RenderDispatch);
+    }
+
     [Fact]
     public async Task LosesNoFaultUnderConcurrentRecordAndFlush()
     {
