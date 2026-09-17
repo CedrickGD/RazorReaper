@@ -50,7 +50,18 @@
             <h3>Connected accounts</h3>
             <div class="account-row"><span>Discord</span><strong>@@@profile.DiscordUsername</strong><span>Connected</span></div>
             <div class="account-row"><span>This installation</span><strong>RazorReaper</strong><span>Linked to your account</span></div>
-            <div class="account-row"><span>License on this device</span><strong>@(License.IsActivated ? "Active" : "Free")</strong><button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">Manage license</button></div>
+            @* There is nothing to "manage": the overlay shows the licence and, on the free tier,
+               takes a key. So the button says which of the two this click is, and the free tier
+               gets the way to buy one next to it. *@
+            <div class="account-row"><span>License on this device</span><strong>@(License.IsActivated ? "Active" : "Free")</strong><span class="account-actions">@if (License.IsActivated)
+                {
+                    <button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">View license</button>
+                }
+                else
+                {
+                    <button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">Redeem key</button>
+                    <a class="rr-pill-btn ghost sm" href="@StoreLinks.Store" target="_blank" rel="noopener">Buy Premium</a>
+                }</span></div>
             <p class="account-hint">Sign in with the same Discord account on another computer to use this profile there. License activation remains tied to the licensed device.</p>
         </section>
         <section class="content-card">

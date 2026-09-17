@@ -85,7 +85,9 @@
 
                 <div class="license-hero-foot">
                     <a class="btn btn-secondary" href="@StoreUrl" target="_blank" rel="noopener">
-                        @(premium ? "Manage or renew" : "Buy Premium")
+                        @* "Manage" promised a portal that does not exist: the shop sells and
+                           renews, and that is all it does. *@
+                        @(premium ? "Buy / renew" : "Buy Premium")
                     </a>
                     <span class="license-hero-hint">Esc closes this view</span>
                 </div>
@@ -224,7 +226,8 @@
 }
 
 @code {
-    private const string StoreUrl = "https://rr.sellhub.cx";
+    // My account links at the same shop, so the address lives in one place.
+    private const string StoreUrl = StoreLinks.Store;
 
     private ElementReference _rootRef;
 

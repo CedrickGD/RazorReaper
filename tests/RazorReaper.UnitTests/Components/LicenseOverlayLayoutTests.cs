@@ -65,7 +65,14 @@ public sealed class LicenseOverlayLayoutTests
         Assert.Contains("e.Key == \"Escape\"", overlay, StringComparison.Ordinal);
         Assert.Contains("class=\"license-key-input\"", overlay, StringComparison.Ordinal);
         Assert.Contains("LicenseService.ActivateLicenseAsync(", overlay, StringComparison.Ordinal);
-        Assert.Contains("https://rr.sellhub.cx", overlay, StringComparison.Ordinal);
+
+        // The shop link, through the one constant My account also uses.
+        Assert.Contains("StoreLinks.Store", overlay, StringComparison.Ordinal);
+        Assert.Contains("href=\"@StoreUrl\"", overlay, StringComparison.Ordinal);
+
+        // "Manage or renew" promised a portal that does not exist — the shop sells and renews.
+        Assert.Contains("@(premium ? \"Buy / renew\" : \"Buy Premium\")", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("Manage or renew", overlay, StringComparison.Ordinal);
         Assert.Contains("Bound to this PC", overlay, StringComparison.Ordinal);
         Assert.Contains("is-expired", overlay, StringComparison.Ordinal);
         Assert.Contains("is-soon", overlay, StringComparison.Ordinal);
