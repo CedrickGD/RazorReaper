@@ -142,12 +142,12 @@ If an update was applied and the installer failed, RazorReaper says so at the ne
 
 ### How a release is produced today
 
-1. A local `Release` build of `RazorReaper.sln` is packaged by Inno Setup from [`installer/RazorReaper.iss`](installer/RazorReaper.iss) into a single `RazorReaper-Setup.exe` (~73 MB, self-contained, installs to `{autopf}` i.e. Program Files, admin elevation via Inno's default `PrivilegesRequired=admin`).
-2. That installer is attached as an asset to a GitHub Release on this repo.
-3. [`update-manifest.yml`](.github/workflows/update-manifest.yml) fires on `release: released` (or manually via `workflow_dispatch`) and patches [`update.xml`](update.xml) on `master` with the new `<version>`, the release's `<url>` and `<changelog>` links, and (when the release body has `-`/`*` bullets) refreshed `<notes>`.
-4. [`discord-release.yml`](.github/workflows/discord-release.yml) posts the push/release to the project's Discord webhooks.
+1. The version bump lands on `master` first — the six strings below, in one commit.
+2. [`build-installer.yml`](.github/workflows/build-installer.yml) is dispatched with that version. A `windows-latest` runner verifies the commit carries it, builds `Release`, packages [`installer/RazorReaper.iss`](installer/RazorReaper.iss) with Inno Setup into a single `RazorReaper-Setup.exe` (~73 MB, self-contained, installs to `{autopf}` i.e. Program Files, admin elevation via Inno's default `PrivilegesRequired=admin`), optionally signs it, and attaches it to a **draft** GitHub Release. It never publishes.
+3. Publishing that draft is a deliberate, confirmed click in [RR-Admin-Panel](https://github.com/CedrickGD/RR-Admin-Panel), which also writes [`update.xml`](update.xml) on `master` — and can repoint it at an older tag to roll back. [`update-manifest.yml`](.github/workflows/update-manifest.yml) no longer runs on a release; it survives as a manual `workflow_dispatch` fallback.
+4. [`discord-release.yml`](.github/workflows/discord-release.yml) posts the push/release to the project's Discord webhooks; a release post links the public notes page at `dl.razorreaper.app/release-notes/<tag>`.
 
-`update.xml` is only ever bumped by that workflow, i.e. by cutting a release — not by a plain version-bump commit. A version bump to the app without a matching GitHub release intentionally leaves `update.xml` (and therefore what clients are offered) pointing at the last released version.
+`update.xml` is only ever bumped by publishing a release — not by a plain version-bump commit. A version bump to the app without a published GitHub release intentionally leaves `update.xml` (and therefore what clients are offered) pointing at the last released version.
 
 ### How clients update
 
