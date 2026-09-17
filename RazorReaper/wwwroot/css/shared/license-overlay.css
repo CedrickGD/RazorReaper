@@ -1,8 +1,8 @@
 /* ── License overlay ──────────────────────────────────────────────────────────
    Full-window license view (Components/Shared/LicenseOverlay.razor), opened from the
    sidebar's tier line. Two columns on the app's own tokens: a tinted hero column that
-   says which tier this is, and a panel with the key, facts and — for Freemium — the
-   activation row.
+   says which tier this is and what it covers, and a panel with the key — or, for
+   Freemium, the activation row — the facts and the help row.
 
    Deliberately no keyframes, nothing moves and no entrance/exit fade: it appears and
    disappears in one frame. Only colour changes on hover and focus. */
@@ -19,7 +19,9 @@
        activation errors still show, and far below LicenseActivated / AccessBlocked. */
     z-index: 9500;
     display: flex;
-    align-items: stretch;
+    /* The card hugs its taller column (max-height on the frame) instead of stretching to
+       the window: content decides its height, and both columns end together. */
+    align-items: center;
     justify-content: center;
     padding: var(--space-6);
     background: radial-gradient(120% 120% at 50% 0%, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.94));
@@ -78,14 +80,18 @@ body.license-overlay-open .main-content {
 /* ── Frame ──────────────────────────────────────────────────────────────── */
 
 /* Two near-equal columns. The 1.05fr / 1.6fr split gave the panel an ~830px column at
-   1600×900 that its content ended a third of the way into; the panel now carries the
-   key, six facts and a benefits grid, and the hero a help row, so both fill. */
+   1600×900 that its content ended a third of the way into. The columns are balanced by
+   what they carry: the hero has the tier story and the benefits list, the panel the key,
+   six facts and the help row. The single row is capped by the frame's max-height so a
+   column that still overflows scrolls on its own. */
 .license-overlay-frame {
     position: relative;
     display: grid;
     grid-template-columns: minmax(300px, 1fr) minmax(0, 1.25fr);
+    grid-template-rows: minmax(0, 1fr);
     width: 100%;
     max-width: 1180px;
+    max-height: 100%;
     min-height: 0;
     border: 1px solid rgba(var(--lic-accent-rgb), 0.28);
     border-radius: var(--radius-card);
@@ -167,56 +173,6 @@ body.license-overlay-open .main-content {
             box-shadow: 0 0 0 3px rgba(var(--lic-accent-rgb), 0.18);
         }
 
-/* "Need help?" — between the perks and the foot. */
-.license-hero-help {
-    display: grid;
-    gap: var(--space-2);
-    margin-top: var(--space-2);
-    padding: var(--space-4);
-    border-radius: var(--radius-panel);
-    background: var(--surface-inset);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.license-hero-help-title {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-secondary);
-}
-
-.license-hero-help-text {
-    margin: 0;
-    font-size: 0.82rem;
-    line-height: 1.5;
-    color: var(--text-secondary);
-}
-
-.license-hero-help-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-}
-
-    .license-hero-help-links a {
-        font-size: 0.84rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        text-decoration: none;
-        border-bottom: 1px solid rgba(var(--lic-accent-rgb), 0.5);
-    }
-
-        .license-hero-help-links a:hover {
-            color: var(--lic-accent);
-            border-bottom-color: var(--lic-accent);
-        }
-
-        .license-hero-help-links a:focus-visible {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(var(--lic-accent-rgb), 0.45);
-        }
-
 .license-hero-foot {
     margin-top: auto;
     padding-top: var(--space-5);
@@ -249,7 +205,7 @@ body.license-overlay-open .main-content {
 
 /* The key is the panel's headline: a larger tile with the key at display size. */
 .license-key-block {
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-6);
     border-radius: var(--radius-panel);
     background:
         radial-gradient(80% 90% at 100% 0%, rgba(var(--lic-accent-rgb), 0.12), transparent 70%),
@@ -287,7 +243,7 @@ body.license-overlay-open .main-content {
 
 .license-key-value {
     font-family: var(--font-mono);
-    font-size: 1.7rem;
+    font-size: 1.85rem;
     line-height: 1.4;
     letter-spacing: 0.1em;
     color: var(--text-primary);
@@ -296,17 +252,17 @@ body.license-overlay-open .main-content {
     -webkit-user-select: text;
 }
 
-/* Facts as a tile grid rather than one crowded line. */
+/* Facts as a tile grid rather than one crowded line: two a row, so six make three. */
 .license-facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--space-3);
     margin: 0;
 }
 
 .license-fact {
     margin: 0;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4);
     border-radius: var(--radius-control);
     background: var(--surface-inset);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -378,8 +334,9 @@ body.license-overlay-open .main-content {
         text-decoration: underline;
     }
 
-/* ── Benefits ───────────────────────────────────────────────────────────── */
-/* What the tier covers, two tiles a row. Fills the lower half of the panel column. */
+/* ── Benefits (hero) ────────────────────────────────────────────────────── */
+/* What the tier covers, one compact row per feature under the perks. This is what
+   carries the hero column down to its foot; the panel's counterpart is the help row. */
 
 .license-benefits {
     display: grid;
@@ -400,31 +357,32 @@ body.license-overlay-open .main-content {
     -webkit-text-fill-color: var(--text-secondary) !important;
 }
 
-.license-benefit-grid {
+.license-benefit-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-3);
+    gap: 0.4rem;
 }
 
-    .license-benefit-grid li {
-        display: grid;
-        gap: 0.2rem;
-        padding: var(--space-3) var(--space-4);
-        padding-left: calc(var(--space-4) + 14px);
+    .license-benefit-list li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.15rem var(--space-2);
         position: relative;
+        padding: var(--space-2) var(--space-3);
+        padding-left: calc(var(--space-3) + 14px);
         border-radius: var(--radius-control);
         background: var(--surface-inset);
         border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-        .license-benefit-grid li::before {
+        .license-benefit-list li::before {
             content: "";
             position: absolute;
-            left: var(--space-4);
-            top: calc(var(--space-3) + 0.45rem);
+            left: var(--space-3);
+            top: calc(var(--space-2) + 0.42rem);
             width: 7px;
             height: 7px;
             border-radius: var(--radius-round);
@@ -432,8 +390,9 @@ body.license-overlay-open .main-content {
         }
 
 .license-benefit-name {
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     font-weight: 600;
+    line-height: 1.4;
     color: var(--text-primary);
 }
 
@@ -443,11 +402,63 @@ body.license-overlay-open .main-content {
     color: var(--text-secondary);
 }
 
-/* Freemium: the same grid, but the tiles read as locked — the dot is hollow. */
-.license-overlay.is-freemium .license-benefit-grid li::before {
+/* Freemium: the same rows, but they read as locked — the dot is hollow. */
+.license-overlay.is-freemium .license-benefit-list li::before {
     background: transparent;
     border: 1.5px solid var(--lic-accent);
 }
+
+/* ── Help (panel foot) ──────────────────────────────────────────────────── */
+/* "Need help?" closes the panel column the way the store button closes the hero. */
+
+.license-help {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: auto;
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.license-help-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+}
+
+.license-help-text {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.license-help-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+}
+
+    .license-help-links a {
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(var(--lic-accent-rgb), 0.5);
+    }
+
+        .license-help-links a:hover {
+            color: var(--lic-accent);
+            border-bottom-color: var(--lic-accent);
+        }
+
+        .license-help-links a:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(var(--lic-accent-rgb), 0.45);
+        }
 
 /* ── Activation (Freemium) ──────────────────────────────────────────────── */
 
@@ -512,7 +523,7 @@ body.license-overlay-open .main-content {
 
     .license-overlay-frame {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-rows: auto auto;
         overflow-y: auto;
     }
 

@@ -68,17 +68,19 @@
                     }
                 </ul>
 
-                @* Sits between the perks and the foot so the column carries content all the way
-                   down instead of a gap. Both links close the view; the page opens behind it. *@
-                <div class="license-hero-help">
-                    <span class="license-hero-help-title">Need help?</span>
-                    <p class="license-hero-help-text">
-                        Problems with a key, a purchase or an activation go to support; replies land in your inbox.
-                    </p>
-                    <div class="license-hero-help-links">
-                        <a href="/feedback?section=support" @onclick="Close">Feedback &amp; Support</a>
-                        <a href="/inbox" @onclick="Close">Support inbox</a>
-                    </div>
+                @* What the tier covers, one row per feature: this is what carries the hero column
+                   down to its foot. Page names are the sidebar's. *@
+                <div class="license-benefits">
+                    <h2 class="license-benefits-title">@(premium ? "Included with Premium" : "Premium unlocks")</h2>
+                    <ul class="license-benefit-list">
+                        @foreach (var benefit in Benefits)
+                        {
+                            <li>
+                                <span class="license-benefit-name">@benefit.Name</span>
+                                <span class="license-benefit-note">@benefit.Note</span>
+                            </li>
+                        }
+                    </ul>
                 </div>
 
                 <div class="license-hero-foot">
@@ -193,22 +195,28 @@
                             <dt>Unlock</dt>
                             <dd>One key, this PC</dd>
                         </div>
+                        <div class="license-fact">
+                            <dt>Support</dt>
+                            <dd>In-app inbox</dd>
+                        </div>
+                        <div class="license-fact">
+                            <dt>Updates</dt>
+                            <dd>Automatic</dd>
+                        </div>
                     </dl>
                 }
 
-                @* What the tier covers, as a tile grid — the panel used to end at the facts and
-                   leave the lower half of its column empty. Page names are the sidebar's. *@
-                <div class="license-benefits">
-                    <h2 class="license-benefits-title">@(premium ? "Included with Premium" : "Premium unlocks")</h2>
-                    <ul class="license-benefit-grid">
-                        @foreach (var benefit in Benefits)
-                        {
-                            <li>
-                                <span class="license-benefit-name">@benefit.Name</span>
-                                <span class="license-benefit-note">@benefit.Note</span>
-                            </li>
-                        }
-                    </ul>
+                @* Closes the panel column the way the store button closes the hero. Both links
+                   close the view; the page opens behind it. *@
+                <div class="license-help">
+                    <span class="license-help-title">Need help?</span>
+                    <p class="license-help-text">
+                        Problems with a key, a purchase or an activation go to support; replies land in your inbox.
+                    </p>
+                    <div class="license-help-links">
+                        <a href="/feedback?section=support" @onclick="Close">Feedback &amp; Support</a>
+                        <a href="/inbox" @onclick="Close">Support inbox</a>
+                    </div>
                 </div>
             </section>
         </div>

@@ -199,25 +199,50 @@ public sealed class LicenseOverlayLayoutTests
         Assert.Contains("-webkit-text-fill-color: var(--accent-purple-light);", css[start..css.IndexOf('}', start)], StringComparison.Ordinal);
     }
 
-    /// <summary>Both columns carry content to the bottom: the key tile, the facts, the benefits grid and the help row.</summary>
+    /// <summary>
+    /// Both columns carry content to the same foot line: the hero has the tier story and the
+    /// benefits list, the panel the key (or activation), six facts and the help row, and the
+    /// frame hugs the taller column instead of stretching to the window around a void.
+    /// </summary>
     [Fact]
     public void TheOverlayFillsBothColumns()
     {
         var overlay = File.ReadAllText(ComponentPath("Shared", "LicenseOverlay.razor"));
 
-        Assert.Contains("class=\"license-hero-help\"", overlay, StringComparison.Ordinal);
+        var heroEnd = overlay.IndexOf("</aside>", StringComparison.Ordinal);
+        var panelStart = overlay.IndexOf("<section class=\"license-panel\"", StringComparison.Ordinal);
+        Assert.True(heroEnd > 0 && panelStart > heroEnd);
+
+        // The benefits list lives in the hero, under the perks.
+        var benefits = overlay.IndexOf("class=\"license-benefit-list\"", StringComparison.Ordinal);
+        Assert.True(benefits > 0 && benefits < heroEnd, "The benefits list belongs to the hero column.");
+        Assert.True(overlay.IndexOf("class=\"license-perks\"", StringComparison.Ordinal) < benefits);
+        Assert.Contains("Included with Premium", overlay, StringComparison.Ordinal);
+        Assert.Contains("Premium unlocks", overlay, StringComparison.Ordinal);
+
+        // "Need help?" closes the panel column.
+        var help = overlay.IndexOf("class=\"license-help\"", StringComparison.Ordinal);
+        Assert.True(help > panelStart, "The help row belongs to the panel column.");
         Assert.Contains("Need help?", overlay, StringComparison.Ordinal);
         Assert.Contains("href=\"/feedback?section=support\" @onclick=\"Close\"", overlay, StringComparison.Ordinal);
         Assert.Contains("href=\"/inbox\" @onclick=\"Close\"", overlay, StringComparison.Ordinal);
-        Assert.Contains("class=\"license-benefit-grid\"", overlay, StringComparison.Ordinal);
-        Assert.Contains("Included with Premium", overlay, StringComparison.Ordinal);
-        Assert.Contains("Premium unlocks", overlay, StringComparison.Ordinal);
+
+        // Six facts on both tiers, Status among them.
         Assert.Contains("<dt>Status</dt>", overlay, StringComparison.Ordinal);
+        Assert.Equal(12, Regex.Matches(overlay, "<dt>").Count);
 
         var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "license-overlay.css"));
-        Assert.Contains(".license-benefit-grid {", css, StringComparison.Ordinal);
-        Assert.Contains(".license-hero-help {", css, StringComparison.Ordinal);
+        Assert.Contains(".license-benefit-list {", css, StringComparison.Ordinal);
+        Assert.Contains(".license-help {", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("license-hero-help", css, StringComparison.Ordinal);
         Assert.DoesNotContain("minmax(280px, 1.05fr) minmax(0, 1.6fr)", css, StringComparison.Ordinal);
+
+        var root = css.IndexOf(".license-overlay {", StringComparison.Ordinal);
+        Assert.Contains("align-items: center;", css[root..css.IndexOf('}', root)], StringComparison.Ordinal);
+        var frame = css.IndexOf(".license-overlay-frame {", StringComparison.Ordinal);
+        var frameBlock = css[frame..css.IndexOf('}', frame)];
+        Assert.Contains("max-height: 100%;", frameBlock, StringComparison.Ordinal);
+        Assert.Contains("grid-template-rows: minmax(0, 1fr);", frameBlock, StringComparison.Ordinal);
     }
 
     /// <summary>
