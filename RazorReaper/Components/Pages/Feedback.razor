@@ -2,6 +2,8 @@
 @using RazorReaper.Services
 @inject IFeedbackService FeedbackService
 @inject INotificationService NotificationService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <header class="page-header">
     <h1 class="page-title">Feedback & Support</h1>
@@ -153,6 +155,11 @@
         ? "Describe what happened, what you expected, and the steps that led there..."
         : "Share an idea, an opinion, or anything you'd like to see next...";
 
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
     protected override void OnParametersSet()
     {
         // Only a *changed* query value moves the section, so a deep link lands where it points
@@ -163,7 +170,64 @@
         }
 
         _appliedSection = Section;
-        SelectSection(string.Equals(Section, SupportSectionKey, StringComparison.OrdinalIgnoreCase));
+        ApplySection(Section);
+    }
+
+    /// <summary>
+    /// The sidebar's "Feedback &amp; Support" entry is the bare /feedback. Arriving there with the
+    /// Support tab picked by hand used to keep Support selected: the query's section was null,
+    /// the last applied one was null too, so OnParametersSet saw nothing to do. Every navigation
+    /// onto this page now applies the URL's section — none means Feedback — whichever tab was
+    /// chosen before. Navigations to other pages are ignored; the page is disposed for those.
+    /// </summary>
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (!IsThisPage(e.Location))
+        {
+            return;
+        }
+
+        this.DispatchRender(() => InvokeAsync(() =>
+        {
+            var section = SectionFromUri(e.Location);
+            _appliedSection = section;
+            ApplySection(section);
+            StateHasChanged();
+        }));
+    }
+
+    private void ApplySection(string? section)
+        => SelectSection(string.Equals(section, SupportSectionKey, StringComparison.OrdinalIgnoreCase));
+
+    private bool IsThisPage(string location)
+    {
+        var relative = Navigation.ToBaseRelativePath(location);
+        var cut = relative.IndexOfAny(['?', '#']);
+        var path = (cut < 0 ? relative : relative[..cut]).Trim('/');
+        return string.Equals(path, "feedback", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The "section" query value of <paramref name="location"/>, or null when there is none.</summary>
+    private static string? SectionFromUri(string location)
+    {
+        if (!Uri.TryCreate(location, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=');
+            var key = separator < 0 ? pair : pair[..separator];
+            if (!string.Equals(Uri.UnescapeDataString(key), "section", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return separator < 0 ? string.Empty : Uri.UnescapeDataString(pair[(separator + 1)..].Replace('+', ' '));
+        }
+
+        return null;
     }
 
     private void ShowFeedback() => SelectSection(support: false);
@@ -216,5 +280,11 @@
         }
 
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        this.StopRenderDispatch();
+        Navigation.LocationChanged -= HandleLocationChanged;
     }
 }
