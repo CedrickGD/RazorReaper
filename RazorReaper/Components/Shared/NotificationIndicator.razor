@@ -1,0 +1,118 @@
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@using RazorReaper.Services.Implementations
+@inject ISupportInboxService Inbox
+@inject IAutoUpdateManager AutoUpdateManager
+@inject IUpdateService UpdateService
+@inject IWhatsNewService WhatsNew
+@inject ILogger<NotificationIndicator> Logger
+@implements IDisposable
+
+@*
+    Notification icon
+    -----------------
+    Sits at the right end of the sidebar's tier row (SharedNavbar). A muted bell at rest; a
+    dot in the app accent pops at its top edge when there is something new — unread support
+    replies, or a release whose notes have not been opened yet — and the tooltip says which.
+    Clicking opens the "What's new & inbox" overlay (WhatsNewOverlay, rendered by MainLayout).
+
+    This component also owns the inbox poll that the old sidebar Inbox link ran: the count on
+    the dot is only as fresh as the poll, so they live together.
+*@
+
+<button type="button"
+        class="nav-notify @(HasNews ? "has-news" : "")"
+        title="@Tooltip"
+        aria-label="@Tooltip"
+        aria-haspopup="dialog"
+        aria-expanded="@(WhatsNew.IsOpen ? "true" : "false")"
+        @onclick="Open">
+    <svg class="nav-notify-glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10 3.5a4.5 4.5 0 0 0-4.5 4.5v2.7L4.2 13h11.6l-1.3-2.3V8A4.5 4.5 0 0 0 10 3.5Z" />
+        <path d="M8.3 15.5a1.8 1.8 0 0 0 3.4 0" />
+    </svg>
+    @if (HasNews)
+    {
+        <span class="nav-notify-dot" aria-hidden="true"></span>
+    }
+</button>
+
+@code {
+    private readonly CancellationTokenSource _stop = new();
+
+    protected override void OnInitialized()
+    {
+        Inbox.Changed += OnInboxChanged;
+        AutoUpdateManager.StateChanged += OnUpdateStateChanged;
+        WhatsNew.OnStateChanged += OnWhatsNewStateChanged;
+        _ = PollAsync(_stop.Token);
+    }
+
+    // This loop is started with `_ = PollAsync(...)`, so nothing observes it: anything it lets
+    // escape becomes an unobserved task exception (RR-E1003) every 20s for the session's life.
+    private async Task PollAsync(CancellationToken token)
+    {
+        try
+        {
+            await Inbox.RefreshAsync(cancellationToken: token);
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+            while (await timer.WaitForNextTickAsync(token)) await Inbox.RefreshAsync(cancellationToken: token);
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex) { Logger.LogDebug(ex, "Support inbox poll stopped"); }
+    }
+
+    private void OnInboxChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+
+    private void OnUpdateStateChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+
+    // Keeps aria-expanded truthful while the overlay is open, and drops the dot once the notes were seen.
+    private void OnWhatsNewStateChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+
+    private void Open() => WhatsNew.Open();
+
+    // ---- What counts as new -------------------------------------------------
+
+    private int Unread => Inbox.UnreadCount;
+
+    private Version? UnseenRelease
+        => WhatsNew.UnseenRelease(AutoUpdateManager.LastCheckResult, UpdateService.CurrentVersion);
+
+    private bool HasUpdate => AutoUpdateManager.LastCheckResult?.HasUpdate == true;
+
+    private bool HasNews => Unread > 0 || UnseenRelease is not null;
+
+    /// <summary>"2 unread replies · new version 1.5.3" — or the view's name when nothing is new.</summary>
+    private string Tooltip
+    {
+        get
+        {
+            var parts = new List<string>(2);
+
+            if (Unread > 0)
+            {
+                parts.Add(Unread == 1 ? "1 unread reply" : $"{Unread} unread replies");
+            }
+
+            if (UnseenRelease is { } release)
+            {
+                var label = WhatsNewService.Format(release);
+                parts.Add(HasUpdate ? $"new version {label}" : $"what's new in {label}");
+            }
+
+            return parts.Count == 0 ? "What's new & inbox" : string.Join(" · ", parts);
+        }
+    }
+
+    // Cancel but do not dispose: the poll above may still hold this token, and registering on a
+    // disposed source throws — which is how a torn-down navbar took the poll loop with it.
+    public void Dispose()
+    {
+        this.StopRenderDispatch();
+        Inbox.Changed -= OnInboxChanged;
+        AutoUpdateManager.StateChanged -= OnUpdateStateChanged;
+        WhatsNew.OnStateChanged -= OnWhatsNewStateChanged;
+        _stop.Cancel();
+    }
+}

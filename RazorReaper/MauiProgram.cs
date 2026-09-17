@@ -274,6 +274,7 @@ namespace RazorReaper
             services.AddSingleton<IGameIniService, GameIniService>();
             services.AddSingleton<INotificationService, NotificationService>();
             services.AddSingleton<ILicenseOverlayService, LicenseOverlayService>();
+            services.AddSingleton<IWhatsNewService, WhatsNewService>();
             services.AddSingleton<IFontInstaller, FontInstaller>();
             services.AddSingleton<IScopeModeStartupService, ScopeModeStartupService>();
             services.AddSingleton<IDeviceLocationService, DeviceLocationService>();

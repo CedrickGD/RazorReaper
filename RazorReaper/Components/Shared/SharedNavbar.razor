@@ -90,19 +90,24 @@
        a rule, a dot + state on top, muted meta underneath. Parenthesise the version —
        "v@UpdateService..." parses as literal text, which is how it rendered wrong once. *@
     <div class="nav-status">
-        <SupportInboxLink />
-        @* A real button: it opens the full-window license view (LicenseOverlay, rendered by
-           MainLayout). Colour only on hover and open — no motion. *@
-        <button type="button"
-                class="nav-status-line"
-                title="@LicenseTooltip"
-                aria-label="@LicenseTooltip"
-                aria-haspopup="dialog"
-                aria-expanded="@(LicenseOverlay.IsOpen ? "true" : "false")"
-                @onclick="OpenLicenseOverlay">
-            <span class="nav-status-dot @LicenseDotClass"></span>
-            <span class="nav-status-label">@LicenseLabel</span>
-        </button>
+        @* One row: the tier button fills it, the notification icon sits at its right end.
+           The icon is its own <button> (a button cannot nest in a button), and it owns the
+           support-inbox poll as well as the "something new" dot. *@
+        <div class="nav-status-row">
+            @* A real button: it opens the full-window license view (LicenseOverlay, rendered by
+               MainLayout). Colour only on hover and open — no motion. *@
+            <button type="button"
+                    class="nav-status-line"
+                    title="@LicenseTooltip"
+                    aria-label="@LicenseTooltip"
+                    aria-haspopup="dialog"
+                    aria-expanded="@(LicenseOverlay.IsOpen ? "true" : "false")"
+                    @onclick="OpenLicenseOverlay">
+                <span class="nav-status-dot @LicenseDotClass"></span>
+                <span class="nav-status-label">@LicenseLabel</span>
+            </button>
+            <NotificationIndicator />
+        </div>
         <div class="nav-status-meta">@($"v{UpdateService.CurrentVersionLabel}")</div>
     </div>
 

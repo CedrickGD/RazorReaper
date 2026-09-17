@@ -409,17 +409,25 @@ html[data-sidebar-resizing] .sidebar {
     user-select: none;
 }
 
-/* A <button>: it opens the full-window license view. Bleeds into the block's side
-   padding so the hit area is the whole row while the text stays on the same column as
-   the inbox link and version line. Colour only on hover, focus and while the overlay is
-   open — no transform, no motion. */
+/* The tier button and the notification icon share one row. The row bleeds into the
+   block's side padding so both hit areas reach the edges while the text stays on the
+   same column as the version line. */
+.nav-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0 -0.45rem;
+    min-width: 0;
+}
+
+/* A <button>: it opens the full-window license view. Fills the row up to the icon.
+   Colour only on hover, focus and while the overlay is open — no transform, no motion. */
 .nav-status-line {
     display: flex;
     align-items: center;
     gap: 0.45rem;
+    flex: 1 1 auto;
     min-width: 0;
-    width: calc(100% + 0.9rem);
-    margin: 0 -0.45rem;
     padding: 0.3rem 0.45rem;
     border: 1px solid transparent;
     border-radius: var(--radius-control);
@@ -488,6 +496,92 @@ html[data-sidebar-resizing] .sidebar {
     color: var(--text-secondary);
     opacity: 0.42;
     white-space: nowrap;
+}
+
+/* --- Notification icon ------------------------------------------------ */
+/* Components/Shared/NotificationIndicator.razor, at the right end of the tier row. A
+   muted glyph at rest, the same colour as the version line; a dot in the app accent
+   pops at its top edge when there are unread replies or a release whose notes have not
+   been opened. The one animation in the sidebar: the dot's ring pulses three times when
+   the dot appears, then rests. The glyph itself never moves. */
+.nav-notify {
+    position: relative;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--text-secondary);
+    opacity: 0.55;
+    cursor: pointer;
+}
+
+    .nav-notify:hover,
+    .nav-notify[aria-expanded="true"],
+    .nav-notify.has-news {
+        opacity: 1;
+    }
+
+    .nav-notify:hover,
+    .nav-notify[aria-expanded="true"] {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-notify:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
+    }
+
+.nav-notify-glyph {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+.nav-notify-dot {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-round);
+    background: var(--accent-purple);
+    /* A cut-out ring in the sidebar colour so the dot reads on top of the glyph. */
+    box-shadow: 0 0 0 2px var(--background-sidebar);
+}
+
+    .nav-notify-dot::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: inherit;
+        border: 1.5px solid var(--accent-purple);
+        opacity: 0;
+        animation: nav-notify-pulse 1.6s ease-out 3;
+    }
+
+@keyframes nav-notify-pulse {
+    0% {
+        transform: scale(0.6);
+        opacity: 0.9;
+    }
+
+    100% {
+        transform: scale(2.2);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-notify-dot::after {
+        animation: none;
+    }
 }
 
 /* --- Resize handle ---------------------------------------------------- */
