@@ -19,7 +19,8 @@ public sealed class UpdateApplyPolicyTests
         bool ark = false,
         bool macro = false,
         bool complete = true,
-        Version? staged = null)
+        Version? staged = null,
+        Version? lastFailed = null)
         => new(
             StagedVersion: staged ?? Staged,
             RunningVersion: Running,
@@ -27,7 +28,8 @@ public sealed class UpdateApplyPolicyTests
             IsMandatory: mandatory,
             ArkRunning: ark,
             MacroRunning: macro,
-            Trigger: trigger);
+            Trigger: trigger,
+            LastFailedVersion: lastFailed);
 
     [Fact]
     public void AFinishedDownloadStaysReadyAndNeverRestartsByItself()
@@ -139,6 +141,60 @@ public sealed class UpdateApplyPolicyTests
             Trigger: UpdateApplyTrigger.Startup);
 
         Assert.Equal(UpdateApplyDecision.NoUpdate, UpdateApplyPolicy.Decide(inputs));
+    }
+
+    // ---- After a failed install --------------------------------------------------
+    // The orchestrator's marker says this exact installer already ran and came back non-zero.
+    // Handing it to the same unattended path again is the same attempt with the same answer:
+    // a UAC prompt and a restart nobody asked for, on every launch, until the second failure
+    // throws the file away. The retry is the user's to ask for.
+
+    [Fact]
+    public void TheStartupPassDoesNotRetryAnInstallerThatAlreadyFailed()
+    {
+        Assert.Equal(
+            UpdateApplyDecision.StayReady,
+            UpdateApplyPolicy.Decide(Inputs(UpdateApplyTrigger.Startup, lastFailed: Staged)));
+    }
+
+    [Theory]
+    [InlineData(UpdateApplyTrigger.Button)]
+    [InlineData(UpdateApplyTrigger.Tray)]
+    public void TheUserCanStillRetryAnInstallerThatFailed(UpdateApplyTrigger trigger)
+    {
+        Assert.Equal(
+            UpdateApplyDecision.Apply,
+            UpdateApplyPolicy.Decide(Inputs(trigger, lastFailed: Staged)));
+    }
+
+    /// <summary>The mandatory path is the other exemption: it is not waiting for anyone.</summary>
+    [Theory]
+    [InlineData(UpdateApplyTrigger.Mandatory)]
+    [InlineData(UpdateApplyTrigger.Startup)]
+    public void AMandatoryReleaseStillAppliesAfterAFailedInstall(UpdateApplyTrigger trigger)
+    {
+        Assert.Equal(
+            UpdateApplyDecision.Apply,
+            UpdateApplyPolicy.Decide(Inputs(trigger, mandatory: true, lastFailed: Staged)));
+    }
+
+    /// <summary>A failure recorded against another build says nothing about this installer.</summary>
+    [Fact]
+    public void AFailureOnADifferentVersionLeavesTheStartupPassAlone()
+    {
+        Assert.Equal(
+            UpdateApplyDecision.Apply,
+            UpdateApplyPolicy.Decide(Inputs(UpdateApplyTrigger.Startup, lastFailed: new Version(1, 5, 2))));
+    }
+
+    /// <summary>Held back, not thrown away: the button has to have something to press.</summary>
+    [Fact]
+    public void AFailedInstallerIsNotDiscardedByThePolicy()
+    {
+        var decision = UpdateApplyPolicy.Decide(Inputs(UpdateApplyTrigger.Startup, lastFailed: Staged));
+
+        Assert.NotEqual(UpdateApplyDecision.NoUpdate, decision);
+        Assert.NotEqual(UpdateApplyDecision.Apply, decision);
     }
 
     // ---- Cleanup ----------------------------------------------------------------

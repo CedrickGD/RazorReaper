@@ -80,6 +80,13 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     private int _downloadProgressPercent = -1; // -1 means null
     private volatile string statusMessage = "";
+
+    /// <summary>What the user is told about the install that failed at the previous handoff, or
+    /// null when the last one worked (or there was none). Outranks the "ready" status line for
+    /// the rest of the session, because "ready — restart to install" is exactly the sentence
+    /// that was on screen before the installer silently did nothing.</summary>
+    private volatile string? installFailureMessage;
+
     private Version? pendingVersion;
     private UpdateCheckResult? lastCheckResult;
     private string? installerPath;
@@ -114,6 +121,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     public int? DownloadProgressPercent => _downloadProgressPercent >= 0 ? _downloadProgressPercent : null;
     public Version? PendingVersion => pendingVersion;
     public string StatusMessage => statusMessage;
+    public string? InstallFailureMessage => installFailureMessage;
     public UpdateCheckResult? LastCheckResult => lastCheckResult;
 
     public async Task RunStartupCheckAsync(CancellationToken cancellationToken = default)
@@ -278,7 +286,8 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
             IsMandatory: mandatory,
             ArkRunning: activityGate.IsArkRunning,
             MacroRunning: activityGate.IsMacroRunning,
-            Trigger: trigger));
+            Trigger: trigger,
+            LastFailedVersion: RecordedFailedVersion()));
 
         switch (decision)
         {
@@ -306,7 +315,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
                 return false;
 
             case UpdateApplyDecision.StayReady:
-                statusMessage = $"Update v{Label(staged)} is ready — restart to install.";
+                statusMessage = ReadyMessage(staged);
                 OnStateChanged();
                 return false;
 
@@ -362,6 +371,9 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         installRequested = true;
         isInstallLaunching = true;
         Preferences.Set(PrefKeyLaunchTrigger, UpdateApplyPolicy.TriggerName(trigger, stagedIsMandatory));
+
+        // A new attempt is underway, so the previous one's warning has had its say.
+        installFailureMessage = null;
 
         var label = Label(version);
         statusMessage = $"Installing v{label} — restarting...";
@@ -677,7 +689,16 @@ del ""%~f0"" >nul 2>&1
         isInstallerReady = true;
         isDownloading = false;
         _downloadProgressPercent = 100;
-        statusMessage = $"Update v{Label(result.LatestVersion)} is ready — restart to install.";
+
+        // A different build is a different installer, so an earlier failure has nothing left to
+        // warn about. The same build staged again keeps the warning — and keeps the policy's
+        // hands off the unattended retry.
+        if (result.LatestVersion is null || result.LatestVersion != RecordedFailedVersion())
+        {
+            installFailureMessage = null;
+        }
+
+        statusMessage = ReadyMessage(result.LatestVersion);
 
         Preferences.Set(PrefKeyInstallerPath, targetPath);
         Preferences.Set(PrefKeyInstallerArgs, args);
@@ -740,7 +761,7 @@ del ""%~f0"" >nul 2>&1
             stagedIsMandatory = Preferences.Get(PrefKeyMandatory, false);
             isInstallerReady = true;
             _downloadProgressPercent = 100;
-            statusMessage = $"Update v{Label(staged)} is ready — restart to install.";
+            statusMessage = ReadyMessage(staged);
 
             logger.LogInformation("Picked up a staged installer for v{Version}", Label(staged));
             OnStateChanged();
@@ -833,14 +854,16 @@ del ""%~f0"" >nul 2>&1
             var trigger = Preferences.Get(PrefKeyLaunchTrigger, "startup");
             logger.LogWarning("The previous update install for v{Version} exited with {Code}", version, raw);
 
+            var parsedCode = int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var code)
+                ? code
+                : (int?)null;
+
             var metrics = new Dictionary<string, object?>
             {
                 ["status"] = "failed",
                 ["trigger"] = trigger,
                 ["version"] = version,
-                ["exit_code"] = int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var code)
-                    ? code
-                    : null
+                ["exit_code"] = parsedCode
             };
             Track("update_install", TelemetryEventStatus.Degraded, "Update install failed.", metrics);
 
@@ -852,17 +875,56 @@ del ""%~f0"" >nul 2>&1
 
             // One retry. Twice is the installer saying it will not work on this machine, and
             // re-running it forever is the loop this whole change exists to end.
-            if (failures >= MaxInstallAttemptsPerVersion)
+            var givingUp = failures >= MaxInstallAttemptsPerVersion;
+
+            // Say it. A silent failure left the app on the old version with "ready — restart to
+            // install" still on screen: the user pressed the button, watched it restart, and
+            // came back to the same sentence with nothing to explain it.
+            var label = string.IsNullOrWhiteSpace(version) ? "?" : version;
+            var exitCode = parsedCode?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
+            var failureMessage = givingUp
+                ? $"Update to v{label} could not be installed (installer exit code {exitCode}). "
+                  + "It has been discarded — install the latest version manually."
+                : $"Update to v{label} could not be installed (installer exit code {exitCode}). "
+                  + "Restart & update to try again.";
+
+            installFailureMessage = failureMessage;
+            statusMessage = failureMessage;
+            notifications.ShowWarning(failureMessage);
+
+            if (givingUp)
             {
                 logger.LogWarning("Giving up on v{Version} after {Count} failed installs", version, failures);
                 DiscardStagedInstaller();
             }
+
+            OnStateChanged();
         }
         catch (Exception ex)
         {
             logger.LogDebug(ex, "Could not read the update failure marker (non-critical)");
         }
     }
+
+    /// <summary>The build whose installer already came back non-zero on this machine, as the
+    /// policy wants it. Persisted, so it still answers after the app was closed and reopened.</summary>
+    private Version? RecordedFailedVersion()
+    {
+        try
+        {
+            return Version.TryParse(Preferences.Get(PrefKeyFailedVersion, ""), out var failed) ? failed : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The "ready" status line, unless a failed install has something more important to
+    /// say — "restart to install" is the sentence that was already on screen when nothing
+    /// installed.</summary>
+    private string ReadyMessage(Version? staged)
+        => installFailureMessage ?? $"Update v{Label(staged)} is ready — restart to install.";
 
     private bool HasExhaustedAttempts(Version? version)
     {

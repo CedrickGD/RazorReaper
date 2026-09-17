@@ -180,6 +180,13 @@ body.whats-new-overlay-open .main-content {
     background: rgba(var(--accent-purple-rgb), 0.1);
 }
 
+    /* The staged installer ran and did not install anything. Same panel, same actions — the
+       retry stays one press away — in the warning tone .whats-new-status.is-warning already uses. */
+    .whats-new-update.is-warning {
+        border-color: rgba(var(--accent-orange-rgb), 0.35);
+        background: rgba(var(--accent-orange-rgb), 0.09);
+    }
+
 .whats-new-update-text {
     display: grid;
     gap: 0.2rem;

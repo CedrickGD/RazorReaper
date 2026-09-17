@@ -44,6 +44,8 @@ public enum UpdateApplyDecision
 /// <param name="ArkRunning">ARK is running.</param>
 /// <param name="MacroRunning">An automation script, the auto clicker or a macro runner is live.</param>
 /// <param name="Trigger">Who is asking.</param>
+/// <param name="LastFailedVersion">The version whose installer already came back with a non-zero
+/// exit code on this machine, or null when nothing has failed.</param>
 public readonly record struct UpdateApplyInputs(
     Version? StagedVersion,
     Version RunningVersion,
@@ -51,7 +53,8 @@ public readonly record struct UpdateApplyInputs(
     bool IsMandatory,
     bool ArkRunning,
     bool MacroRunning,
-    UpdateApplyTrigger Trigger);
+    UpdateApplyTrigger Trigger,
+    Version? LastFailedVersion = null);
 
 /// <summary>
 /// The whole "may we restart into the installer?" decision, with no MAUI, no disk and no clock of
@@ -61,7 +64,8 @@ public readonly record struct UpdateApplyInputs(
 /// The rule the hybrid flow rests on: downloading stays silent and automatic, but a finished
 /// download never restarts the app on its own. It waits for the user, for the next start, or for a
 /// release the manifest marks mandatory — and never while ARK or a macro is live, because that
-/// restart would land in the middle of a raid.
+/// restart would land in the middle of a raid. An installer that already failed once is not
+/// re-run unattended either: that retry is the user's to ask for.
 /// </summary>
 public static class UpdateApplyPolicy
 {
@@ -88,6 +92,20 @@ public static class UpdateApplyPolicy
         // manifest insists on.
         var wantsApply = input.Trigger != UpdateApplyTrigger.Download || input.IsMandatory;
         if (!wantsApply)
+        {
+            return UpdateApplyDecision.StayReady;
+        }
+
+        // A recorded failure for exactly this build means the last unattended attempt already
+        // ran this installer and it came back non-zero. Running it again at the next start is
+        // the same attempt with the same answer — a UAC prompt and a restart the user did not
+        // ask for, on every single launch, until the second failure discards the file. So the
+        // retry needs the button (or the tray, or a release the manifest insists on); the
+        // Startup trigger stands down and leaves the update ready and visible instead.
+        if (input.Trigger == UpdateApplyTrigger.Startup
+            && !input.IsMandatory
+            && input.LastFailedVersion is not null
+            && input.LastFailedVersion == input.StagedVersion)
         {
             return UpdateApplyDecision.StayReady;
         }

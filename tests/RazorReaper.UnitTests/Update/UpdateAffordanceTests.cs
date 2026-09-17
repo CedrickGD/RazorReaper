@@ -211,6 +211,113 @@ public sealed class UpdateAffordanceTests
     }
 
     /// <summary>
+    /// A failed install used to be a log line and a telemetry row: the user pressed "Restart &amp;
+    /// update", watched the app come back on the old version, and found the same "ready — restart
+    /// to install" sentence waiting. It is a warning and a visible state now.
+    /// </summary>
+    [Fact]
+    public void AFailedInstallIsSaidOutLoud()
+    {
+        var manager = File.ReadAllText(ManagerPath());
+
+        var report = manager.IndexOf("private void ReportPreviousInstallFailure()", StringComparison.Ordinal);
+        Assert.True(report > 0);
+        var body = manager[report..manager.IndexOf("private Version? RecordedFailedVersion()", report, StringComparison.Ordinal)];
+
+        Assert.Contains("notifications.ShowWarning(failureMessage);", body, StringComparison.Ordinal);
+        Assert.Contains("could not be installed (installer exit code", body, StringComparison.Ordinal);
+        Assert.Contains("Restart & update to try again.", body, StringComparison.Ordinal);
+        Assert.Contains("installFailureMessage = failureMessage;", body, StringComparison.Ordinal);
+        Assert.Contains("statusMessage = failureMessage;", body, StringComparison.Ordinal);
+        Assert.Contains("OnStateChanged();", body, StringComparison.Ordinal);
+
+        // The failure outranks "ready — restart to install" wherever that line is set again, so
+        // the startup pass cannot paint over it with the sentence that was already wrong.
+        Assert.Contains("private string ReadyMessage(Version? staged)", manager, StringComparison.Ordinal);
+        Assert.Contains(
+            "=> installFailureMessage ?? $\"Update v{Label(staged)} is ready — restart to install.\";",
+            manager,
+            StringComparison.Ordinal);
+        Assert.Contains("statusMessage = ReadyMessage(staged);", manager, StringComparison.Ordinal);
+
+        var contract = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "Services", "IAutoUpdateManager.cs"));
+        Assert.Contains("string? InstallFailureMessage { get; }", contract, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The What's new view turns that message into a real state — the same panel in the warning
+    /// tone — and leaves the actions alone, so "Restart &amp; update" is still the retry.
+    /// </summary>
+    [Fact]
+    public void TheOverlayShowsTheFailureAndKeepsTheRestartButton()
+    {
+        var overlay = File.ReadAllText(ComponentPath("Shared", "WhatsNewOverlay.razor"));
+
+        Assert.Contains("var installFailure = AutoUpdateManager.InstallFailureMessage;", overlay, StringComparison.Ordinal);
+        Assert.Contains("|| check?.HasUpdate == true || installFailure is not null;", overlay, StringComparison.Ordinal);
+        Assert.Contains("<strong>Update failed</strong>", overlay, StringComparison.Ordinal);
+        Assert.Contains("<span>@installFailure</span>", overlay, StringComparison.Ordinal);
+        Assert.Contains(
+            "class=\"whats-new-update @(installFailure is not null ? \"is-warning\" : \"\")\"",
+            overlay,
+            StringComparison.Ordinal);
+
+        // The failed state is inside the panel that carries the actions, so the primary button
+        // is still rendered by the IsInstallerReady branch below it.
+        var panel = overlay.IndexOf("<div class=\"whats-new-update ", StringComparison.Ordinal);
+        var actions = overlay.IndexOf("whats-new-update-actions", panel, StringComparison.Ordinal);
+        var failed = overlay.IndexOf("<strong>Update failed</strong>", panel, StringComparison.Ordinal);
+        Assert.True(failed > panel && failed < actions, "The failed state sits above the actions, not instead of them.");
+        Assert.Contains("@onclick=\"RestartAndUpdateAsync\"", overlay[actions..], StringComparison.Ordinal);
+
+        // Reuses the tone .whats-new-status.is-warning already carries — no new colour.
+        var css = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "whats-new-overlay.css"));
+        var rule = css.IndexOf(".whats-new-update.is-warning {", StringComparison.Ordinal);
+        Assert.True(rule > 0);
+        Assert.Contains("rgba(var(--accent-orange-rgb)", css[rule..css.IndexOf('}', rule)], StringComparison.Ordinal);
+    }
+
+    /// <summary>Must-fix C, where the app reads it: the policy is asked, with the recorded
+    /// failure among the facts, instead of the manager retrying on its own.</summary>
+    [Fact]
+    public void TheManagerTellsThePolicyWhichBuildAlreadyFailed()
+    {
+        var manager = File.ReadAllText(ManagerPath());
+
+        Assert.Contains("LastFailedVersion: RecordedFailedVersion()", manager, StringComparison.Ordinal);
+        Assert.Contains("Preferences.Get(PrefKeyFailedVersion, \"\")", manager, StringComparison.Ordinal);
+
+        var policy = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "Services", "UpdateApplyPolicy.cs"));
+        Assert.Contains("Version? LastFailedVersion = null", policy, StringComparison.Ordinal);
+        Assert.Contains("input.Trigger == UpdateApplyTrigger.Startup", policy, StringComparison.Ordinal);
+        Assert.Contains("input.LastFailedVersion == input.StagedVersion", policy, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// "Never in the middle of a session" was a promise the app cannot keep: a mandatory release
+    /// restarts whenever the gate is clear, session or not. What it does keep is the gate itself,
+    /// and both places that describe the flow have to say that and not more.
+    /// </summary>
+    [Theory]
+    [InlineData("README.md")]
+    [InlineData("installer/RazorReaper.iss")]
+    public void TheUpdateGuaranteeIsWrittenDownPrecisely(string relativePath)
+    {
+        var text = File.ReadAllText(Path.Combine(RepositoryRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        Assert.DoesNotContain("never in the middle of a session", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("no longer interrupts a live session out of nowhere", text, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("while ARK or a macro is running", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("mandatory", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("as soon as that gate is clear", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("next start", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// The UAC prompt is expected and stays; where it comes from has to be written down next to
     /// the settings that cause it, because the obvious "fix" is to change them.
     /// </summary>

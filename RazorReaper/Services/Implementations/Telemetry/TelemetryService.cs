@@ -35,7 +35,13 @@ public sealed class TelemetryService : ITelemetryService
         // Feature usage events shown on the admin panel. Heartbeat-style noise stays out.
         "process_start",
         "process_kill",
+        // The whole update flow, not just the check: without the three rows below every
+        // download, hand-off and applied upgrade was sanitized, found missing here, and
+        // dropped without a trace — the admin panel saw checks and nothing after them.
         "update_check",
+        "update_download",
+        "update_install",
+        "update_applied",
         "ini_preset_add",
         "ini_preset_remove",
         "ini_preset_image_set",

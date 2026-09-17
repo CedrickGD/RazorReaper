@@ -32,9 +32,13 @@
 @if (Overlay.IsOpen)
 {
     var check = AutoUpdateManager.LastCheckResult;
+    // The previous hand-off's installer came back non-zero. Read at start, kept for the session.
+    var installFailure = AutoUpdateManager.InstallFailureMessage;
     // A staged installer outranks the check result: it survives a session, so it is still the
-    // thing to act on when the app comes back up offline and this check could not run.
-    var hasUpdate = AutoUpdateManager.IsInstallerReady || AutoUpdateManager.IsDownloading || check?.HasUpdate == true;
+    // thing to act on when the app comes back up offline and this check could not run. A failed
+    // install shows here too, even when there is nothing staged left to press.
+    var hasUpdate = AutoUpdateManager.IsInstallerReady || AutoUpdateManager.IsDownloading
+        || check?.HasUpdate == true || installFailure is not null;
     var target = AutoUpdateManager.PendingVersion ?? check?.LatestVersion;
 
     <div class="whats-new-overlay"
@@ -59,10 +63,22 @@
 
                 @if (hasUpdate)
                 {
-                    <div class="whats-new-update" role="status">
+                    @* A failed install is the same panel in the warning tone, not a separate
+                       surface: the version line becomes "Update failed", the installer's own
+                       words sit underneath, and the actions below are untouched — so
+                       "Restart & update to vX" is still the one press that retries it. *@
+                    <div class="whats-new-update @(installFailure is not null ? "is-warning" : "")" role="status">
                         <div class="whats-new-update-text">
-                            <strong>@($"Version {ReleaseLabel(target)} is available.")</strong>
-                            <span>@($"You're on {UpdateService.CurrentVersionLabel}.") @AutoUpdateManager.StatusMessage</span>
+                            @if (installFailure is not null)
+                            {
+                                <strong>Update failed</strong>
+                                <span>@installFailure</span>
+                            }
+                            else
+                            {
+                                <strong>@($"Version {ReleaseLabel(target)} is available.")</strong>
+                                <span>@($"You're on {UpdateService.CurrentVersionLabel}.") @AutoUpdateManager.StatusMessage</span>
+                            }
                         </div>
                         <div class="whats-new-update-actions">
                             @if (AutoUpdateManager.IsInstallLaunching)

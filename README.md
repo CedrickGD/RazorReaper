@@ -130,9 +130,11 @@ Installing is the part you control. Once the download has finished and been veri
 - **Restart & update (vX)** in the tray menu, or
 - nothing at all — the next time you start RazorReaper, the waiting update is applied before anything else runs.
 
-Two rules never bend. The app will not restart itself while ARK or one of your macros is running: it says so and stays ready until you are done. And a release the manifest marks *mandatory* installs on its own as soon as that is safe.
+Two rules never bend. The app will not restart itself while ARK or one of your macros is running: it says so and stays ready until you are done. And a release the manifest marks *mandatory* applies on its own as soon as that gate is clear — it does not wait for the button.
 
-Because RazorReaper installs into Program Files, Windows shows a UAC prompt while an update is applied. That prompt now always follows a restart you asked for, or lands in the first seconds of a launch — never in the middle of a session.
+Because RazorReaper installs into Program Files, Windows shows a UAC prompt while an update is applied. The guarantee is narrower than "never during a session", so here it is exactly: RazorReaper will not restart while ARK or a macro is running. A mandatory release applies as soon as that gate is clear, whatever else you are doing. Every other update waits for you to press **Restart & update**, or for the next start.
+
+If an update was applied and the installer failed, RazorReaper says so at the next start — in a warning and in the **What's new & inbox** view — and leaves the installer staged for one retry. That retry is yours to ask for: the same **Restart & update** button. It is not tried again on its own.
 
 ## Build From Source
 

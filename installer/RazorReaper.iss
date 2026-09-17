@@ -12,7 +12,10 @@
 ; the prompt appears: an update is downloaded silently but never applied on its own, so the
 ; prompt now follows a restart the user just asked for ("Restart & update" in the What's new view
 ; or the tray menu), or lands in the first seconds of a launch when the app applies an installer
-; staged in an earlier session. It no longer interrupts a live session out of nowhere.
+; staged in an earlier session.
+; The guarantee is precise, and narrower than "never mid-session". It is this: the app does not
+; restart while ARK or a macro is running. A release the manifest marks mandatory applies
+; as soon as that gate is clear; every other one waits for the button or for the next start.
 ; Moving to a per-user install ({localappdata}, PrivilegesRequired=lowest) would remove the prompt
 ; entirely, but it relocates every existing install and is a separate decision.
 ; See RazorReaper/Services/Implementations/AutoUpdateManager.cs (LaunchPendingInstaller).

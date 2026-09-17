@@ -27,6 +27,15 @@ public interface IAutoUpdateManager
     int? DownloadProgressPercent { get; }
     Version? PendingVersion { get; }
     string StatusMessage { get; }
+
+    /// <summary>
+    /// Why the previous hand-off's installer did not install anything, or null when the last one
+    /// worked (or there was none). Read at start from the marker the orchestrator leaves behind
+    /// and kept for the session: the What's new view turns it into an "Update failed" state,
+    /// with "Restart &amp; update" still offered so the retry is one press away.
+    /// </summary>
+    string? InstallFailureMessage { get; }
+
     UpdateCheckResult? LastCheckResult { get; }
 
     event Action? StateChanged;
