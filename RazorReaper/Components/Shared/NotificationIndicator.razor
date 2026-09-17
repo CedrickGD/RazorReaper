@@ -50,6 +50,11 @@
 
     protected override void OnInitialized()
     {
+        // Seeded from the service when it has already loaded (a re-mounted navbar), so the
+        // first change after mount is measured against the real count rather than swallowed
+        // as the baseline. On the first mount of a session nothing has loaded yet: null.
+        _knownUnread = Inbox.HasLoaded ? Inbox.UnreadCount : null;
+
         Inbox.Changed += OnInboxChanged;
         AutoUpdateManager.StateChanged += OnUpdateStateChanged;
         WhatsNew.OnStateChanged += OnWhatsNewStateChanged;

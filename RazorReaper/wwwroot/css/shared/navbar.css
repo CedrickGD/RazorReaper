@@ -521,14 +521,10 @@ html[data-sidebar-resizing] .sidebar {
     cursor: pointer;
 }
 
-    .nav-notify:hover,
-    .nav-notify[aria-expanded="true"],
-    .nav-notify.has-news {
-        opacity: 1;
-    }
-
+    /* The glyph stays muted even with news — the dot is the signal, not a brighter bell. */
     .nav-notify:hover,
     .nav-notify[aria-expanded="true"] {
+        opacity: 1;
         background: rgba(255, 255, 255, 0.06);
         border-color: rgba(255, 255, 255, 0.08);
     }

@@ -81,6 +81,10 @@ public sealed class NotificationIndicatorLayoutTests
         var index = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "index.html"));
         Assert.Contains("<audio id=\"inbox-plop-audio\" src=\"assets/sounds/inbox-plop.wav\"", index, StringComparison.Ordinal);
 
+        // The baseline is seeded at mount when the inbox has already loaded (a re-mounted navbar),
+        // and stays null on the first mount of a session.
+        Assert.Contains("_knownUnread = Inbox.HasLoaded ? Inbox.UnreadCount : null;", indicator, StringComparison.Ordinal);
+
         var helper = index.IndexOf("window.playInboxPlop = function", StringComparison.Ordinal);
         Assert.True(helper >= 0, "index.html must define window.playInboxPlop.");
         var helperBody = index[helper..index.IndexOf("};", helper, StringComparison.Ordinal)];
@@ -122,6 +126,9 @@ public sealed class NotificationIndicatorLayoutTests
         var reduced = css.IndexOf("@media (prefers-reduced-motion: reduce)", ring, StringComparison.Ordinal);
         Assert.True(reduced > ring);
         Assert.Contains("animation: none;", css[reduced..], StringComparison.Ordinal);
+
+        // The glyph stays muted with news: only the dot signals, nothing brightens the bell.
+        Assert.DoesNotContain(".nav-notify.has-news", css, StringComparison.Ordinal);
     }
 
     [Fact]
