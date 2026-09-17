@@ -46,6 +46,31 @@ public sealed class FeedbackPageLayoutTests
         Assert.Contains("SupportSectionKey = \"support\"", page, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The sidebar entry is the bare /feedback. With Support picked by hand, that navigation
+    /// used to keep Support: null section == null applied. The page now applies the URL's
+    /// section on every navigation onto it, through the render gate, and unsubscribes.
+    /// </summary>
+    [Fact]
+    public void OpeningTheBarePageResetsToFeedback()
+    {
+        var page = File.ReadAllText(PagePath());
+
+        Assert.Contains("@inject NavigationManager Navigation", page, StringComparison.Ordinal);
+        Assert.Contains("Navigation.LocationChanged += HandleLocationChanged;", page, StringComparison.Ordinal);
+        Assert.Contains("Navigation.LocationChanged -= HandleLocationChanged;", page, StringComparison.Ordinal);
+        Assert.Contains("this.StopRenderDispatch();", page, StringComparison.Ordinal);
+
+        var handler = page.IndexOf("private void HandleLocationChanged(", StringComparison.Ordinal);
+        Assert.True(handler >= 0);
+        var body = page[handler..page.IndexOf("private void ApplySection(", handler, StringComparison.Ordinal)];
+        Assert.Contains("IsThisPage(e.Location)", body, StringComparison.Ordinal);
+        Assert.Contains("this.DispatchRender(() => InvokeAsync(", body, StringComparison.Ordinal);
+        Assert.Contains("SectionFromUri(e.Location)", body, StringComparison.Ordinal);
+        Assert.Contains("_appliedSection = section;", body, StringComparison.Ordinal);
+        Assert.Contains("ApplySection(section);", body, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheSidebarListsFeedbackAndSupport()
     {

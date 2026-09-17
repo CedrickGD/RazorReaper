@@ -85,13 +85,106 @@ public sealed class LicenseOverlayLayoutTests
         Assert.Empty(others);
     }
 
-    [Fact]
-    public void TheOverlayHasNoEntranceOrExitMotion()
+    /// <summary>
+    /// Both full-window overlays are no-motion surfaces: the license view and the "What's new
+    /// &amp; inbox" view that shares its frame family. The one moving part on that path is the
+    /// dot on the sidebar icon, and that lives in navbar.css.
+    /// </summary>
+    [Theory]
+    [InlineData("license-overlay.css")]
+    [InlineData("whats-new-overlay.css")]
+    public void TheOverlayHasNoEntranceOrExitMotion(string sheet)
     {
-        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "license-overlay.css"));
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", sheet));
 
         Assert.DoesNotContain("@keyframes", css, StringComparison.Ordinal);
         Assert.Empty(MotionProperties(css));
+    }
+
+    /// <summary>
+    /// .btn and .rr-pill-btn carry an app-wide transition and a press scale, which the overlays
+    /// inherit. The sheets above may not spell "transform" at all, so the override lives next
+    /// to the rules that add the motion, and it must cover both overlays.
+    /// </summary>
+    [Theory]
+    [InlineData("theme.css", ".btn")]
+    [InlineData("primitives.css", ".rr-pill-btn")]
+    public void ButtonsInsideTheOverlaysDoNotPress(string sheet, string button)
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", sheet));
+
+        foreach (var overlay in new[] { ".license-overlay", ".whats-new-overlay" })
+        {
+            var rest = css.IndexOf($"{overlay} {button}", StringComparison.Ordinal);
+            Assert.True(rest >= 0, $"{sheet} must override {button} inside {overlay}.");
+
+            var active = css.IndexOf($"{overlay} {button}:active:not(:disabled)", StringComparison.Ordinal);
+            Assert.True(active >= 0, $"{sheet} must override {button}:active inside {overlay}.");
+            var block = css[active..css.IndexOf('}', active)];
+            Assert.Contains("transform: none;", block, StringComparison.Ordinal);
+            // A colour change stands in for the press.
+            Assert.Contains("background:", block, StringComparison.Ordinal);
+        }
+
+        var transition = css.IndexOf($".license-overlay {button},", StringComparison.Ordinal);
+        Assert.True(transition >= 0);
+        Assert.Contains("transition: none;", css[transition..css.IndexOf('}', transition)], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheOverlayKeepsTabInside()
+    {
+        var js = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "js", "license-overlay.js"));
+
+        Assert.Contains("event.key !== 'Tab'", js, StringComparison.Ordinal);
+        Assert.Contains("document.addEventListener('keydown', trapTab, true);", js, StringComparison.Ordinal);
+        Assert.Contains("document.removeEventListener('keydown', trapTab, true);", js, StringComparison.Ordinal);
+        Assert.Contains("if (event.shiftKey)", js, StringComparison.Ordinal);
+        Assert.Contains("window.razorReaperLicenseOverlay = createOverlayRuntime('license-overlay-open')", js, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The Freemium tier is red in the sidebar (#d8524f dot) and was purple in the overlay. The
+    /// overlay now takes the theme's red tokens for that state; Premium stays green in both.
+    /// </summary>
+    [Fact]
+    public void TheFreemiumAccentIsTheSidebarsRed()
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "license-overlay.css"));
+
+        var freemium = css.IndexOf(".license-overlay.is-freemium {", StringComparison.Ordinal);
+        Assert.True(freemium > 0);
+        var block = css[freemium..css.IndexOf('}', freemium)];
+        Assert.Contains("--lic-accent: var(--accent-red);", block, StringComparison.Ordinal);
+        Assert.Contains("--lic-accent-rgb: var(--accent-red-rgb);", block, StringComparison.Ordinal);
+        Assert.DoesNotContain("--accent-purple", block, StringComparison.Ordinal);
+
+        var root = css.IndexOf(".license-overlay {", StringComparison.Ordinal);
+        Assert.Contains("--lic-accent: var(--accent-green);", css[root..css.IndexOf('}', root)], StringComparison.Ordinal);
+
+        var navbar = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "navbar.css"));
+        Assert.Contains(".nav-status-dot.freemium {", navbar, StringComparison.Ordinal);
+    }
+
+    /// <summary>Both columns carry content to the bottom: the key tile, the facts, the benefits grid and the help row.</summary>
+    [Fact]
+    public void TheOverlayFillsBothColumns()
+    {
+        var overlay = File.ReadAllText(ComponentPath("Shared", "LicenseOverlay.razor"));
+
+        Assert.Contains("class=\"license-hero-help\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("Need help?", overlay, StringComparison.Ordinal);
+        Assert.Contains("href=\"/feedback?section=support\" @onclick=\"Close\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("href=\"/inbox\" @onclick=\"Close\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("class=\"license-benefit-grid\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("Included with Premium", overlay, StringComparison.Ordinal);
+        Assert.Contains("Premium unlocks", overlay, StringComparison.Ordinal);
+        Assert.Contains("<dt>Status</dt>", overlay, StringComparison.Ordinal);
+
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "license-overlay.css"));
+        Assert.Contains(".license-benefit-grid {", css, StringComparison.Ordinal);
+        Assert.Contains(".license-hero-help {", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("minmax(280px, 1.05fr) minmax(0, 1.6fr)", css, StringComparison.Ordinal);
     }
 
     /// <summary>
