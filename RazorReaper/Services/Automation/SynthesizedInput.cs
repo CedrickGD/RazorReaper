@@ -59,6 +59,30 @@ public static class SynthesizedInput
                && Environment.TickCount64 - released < ReleaseGraceMs;
     }
 
+    /// <summary>
+    /// True while we hold any key at all, or released one within the grace window. Asked by the
+    /// update gate: the app must not close itself into an installer while its own input layer is
+    /// mid-keystroke.
+    /// </summary>
+    public static bool AnyActive
+    {
+        get
+        {
+            foreach (var down in DownCounts)
+            {
+                if (down.Value > 0) return true;
+            }
+
+            var now = Environment.TickCount64;
+            foreach (var released in ReleasedAt)
+            {
+                if (now - released.Value < ReleaseGraceMs) return true;
+            }
+
+            return false;
+        }
+    }
+
     /// <summary>Clears all state. For tests.</summary>
     internal static void Reset()
     {

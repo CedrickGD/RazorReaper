@@ -69,6 +69,16 @@ public abstract class AutomationScriptBase : IDisposable
         catch (Exception ex) { Logger.LogWarning(ex, "{Script} hotkey setup failed", _displayName); }
     }
 
+    /// <summary>
+    /// How many scripts are running across the whole process. Kept as a static counter rather
+    /// than by enumerating the DI registrations, because resolving every script just to ask
+    /// would construct all seventeen of them — and constructing one claims its global hotkey.
+    /// </summary>
+    private static int s_runningScripts;
+
+    /// <summary>True while any script's run loop is live. Read by the update gate.</summary>
+    public static bool AnyRunning => Volatile.Read(ref s_runningScripts) > 0;
+
     public ScriptState State => _state;
     public bool IsRunning => _state == ScriptState.Running;
     public string DisplayName => _displayName;
@@ -103,7 +113,7 @@ public abstract class AutomationScriptBase : IDisposable
             if (_state == ScriptState.Running) return true;
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
-            _state = ScriptState.Running;
+            SetStateLocked(ScriptState.Running);
             _task = Task.Run(() => RunGuardedAsync(token));
         }
 
@@ -146,13 +156,32 @@ public abstract class AutomationScriptBase : IDisposable
         else Stop();
     }
 
+    /// <summary>
+    /// The only writer of <see cref="_state"/>, so the process-wide running count cannot drift.
+    /// The caller holds <see cref="_gate"/>.
+    /// </summary>
+    private void SetStateLocked(ScriptState next)
+    {
+        if (_state == next) return;
+
+        _state = next;
+        if (next == ScriptState.Running)
+        {
+            Interlocked.Increment(ref s_runningScripts);
+        }
+        else
+        {
+            Interlocked.Decrement(ref s_runningScripts);
+        }
+    }
+
     private void StopCore(bool notify)
     {
         CancellationTokenSource? cts;
         lock (_gate)
         {
             if (_state == ScriptState.Off) return;
-            _state = ScriptState.Off;
+            SetStateLocked(ScriptState.Off);
             cts = _cts;
             _cts = null;
         }
@@ -187,7 +216,7 @@ public abstract class AutomationScriptBase : IDisposable
             lock (_gate)
             {
                 if (!ct.IsCancellationRequested)
-                    _state = ScriptState.Off;
+                    SetStateLocked(ScriptState.Off);
             }
             RaiseChanged();
         }

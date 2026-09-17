@@ -404,6 +404,9 @@ namespace RazorReaper
             services.AddSingleton<ITelemetryService, TelemetryService>();
             services.AddSingleton<IUsageGateService, UsageGateService>();
             services.AddSingleton<IUpdateService, UpdateService>();
+            // What has to be quiet before the app may restart into an installer. Its own service
+            // so the update manager stays free of ARK and automation dependencies.
+            services.AddSingleton<IUpdateActivityGate, UpdateActivityGate>();
             services.AddSingleton<IAutoUpdateManager, AutoUpdateManager>();
             services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
             services.AddSingleton<ILicenseService, LicenseService>();
