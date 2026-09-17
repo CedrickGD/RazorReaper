@@ -1,0 +1,260 @@
+# Builds RazorReaper on a GitHub Windows runner and attaches RazorReaper-Setup.exe to a
+# DRAFT release for the tag.
+#
+# It never publishes. Publishing is the owner's button in the admin panel
+# (docs/release-process.md), and `release: published` is what fires discord-release.yml —
+# a workflow that published would post to the update channels behind the owner's back.
+#
+# The version bump is not made here either: the panel commits the five RazorReaper.csproj
+# fields and MyAppVersion in installer/RazorReaper.iss before dispatching, and the guard
+# step below only verifies that the commit this run checked out carries `version`.
+
+name: Build installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build — 3-part, and already committed to master (e.g. 1.5.4)"
+        required: true
+        type: string
+      notes:
+        description: "Customer-facing notes, one bullet per line. Only used when the draft release has to be created."
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the draft release as a prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+# One build per version at a time. Two runs for the same version would race on the same
+# release asset; runs for different versions are independent and may overlap.
+concurrency:
+  group: build-installer-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      # A step-level `if:` cannot read the `secrets` context, so the optional signing steps
+      # test these job-level copies instead; an unset secret resolves to the empty string.
+      RR_SIGN_PFX_BASE64: ${{ secrets.RR_SIGN_PFX_BASE64 }}
+      RR_SIGN_PFX_PASSWORD: ${{ secrets.RR_SIGN_PFX_PASSWORD }}
+      APP_EXE: RazorReaper\bin\Release\net10.0-windows10.0.19041.0\win-x64\RazorReaper.exe
+      SETUP_EXE: artifacts\RazorReaper-Setup.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # global.json pins the SDK the project builds with (prerelease allowed), so it is
+          # the authority; 10.0.x is installed alongside it so global.json's `rollForward`
+          # always has a candidate. Never hard-code an SDK version here instead.
+          global-json-file: global.json
+          dotnet-version: 10.0.x
+
+      - name: Verify the committed version matches the input
+        env:
+          RR_VERSION: ${{ inputs.version }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "$env:RR_VERSION".Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "version must be 3-part, e.g. 1.5.4 — got '$version'."
+          }
+
+          $iss = Get-Content -LiteralPath 'installer/RazorReaper.iss' -Raw
+          $expected = '#define MyAppVersion "' + $version + '"'
+          if (-not $iss.Contains($expected)) {
+            throw "installer/RazorReaper.iss does not carry [$expected]. The panel bumps the version; this workflow only verifies it."
+          }
+
+          $csproj = [xml](Get-Content -LiteralPath 'RazorReaper/RazorReaper.csproj' -Raw)
+          $display = @($csproj.SelectNodes('//ApplicationDisplayVersion') | ForEach-Object { $_.InnerText.Trim() } | Select-Object -Unique)
+          if ($display.Count -ne 1) {
+            throw "RazorReaper.csproj must declare exactly one ApplicationDisplayVersion, found $($display.Count)."
+          }
+          if ($display[0] -ne $version) {
+            throw "RazorReaper.csproj ApplicationDisplayVersion is '$($display[0])', expected '$version'."
+          }
+
+          Write-Host "Version $version confirmed in RazorReaper.csproj and installer/RazorReaper.iss."
+
+      - name: Install the MAUI Windows workload
+        shell: pwsh
+        run: dotnet workload install maui-windows
+
+      - name: Build RazorReaper (Release)
+        shell: pwsh
+        run: dotnet build RazorReaper/RazorReaper.csproj -c Release
+
+      - name: Warn that this build is unsigned
+        if: ${{ env.RR_SIGN_PFX_BASE64 == '' || env.RR_SIGN_PFX_PASSWORD == '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $line = 'Unsigned build — RR_SIGN_PFX_BASE64 / RR_SIGN_PFX_PASSWORD not set.'
+          Write-Host "::warning::$line"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $line
+
+      # Optional code signing (docs/release-management-design.md decision 7). The pfx and its
+      # password exist only as repository secrets the owner created: this workflow decodes the
+      # pfx into the runner's temp directory, uses it, and the runner is destroyed afterwards.
+      # Neither value is copied anywhere else, echoed, or written to a log.
+      - name: Prepare code signing
+        if: ${{ env.RR_SIGN_PFX_BASE64 != '' && env.RR_SIGN_PFX_PASSWORD != '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          Write-Host "::add-mask::$env:RR_SIGN_PFX_PASSWORD"
+
+          $pfx = Join-Path $env:RUNNER_TEMP 'RazorReaperCodeSign.pfx'
+          $cer = Join-Path $env:RUNNER_TEMP 'RazorReaperCodeSign.cer'
+          [System.IO.File]::WriteAllBytes($pfx, [System.Convert]::FromBase64String($env:RR_SIGN_PFX_BASE64))
+
+          # signtool verify /pa only passes if the machine trusts the self-signed certificate,
+          # exactly as rr_sign.bat arranges locally: export the public .cer and import it into
+          # LocalMachine\Root and LocalMachine\TrustedPublisher. The private key never leaves the pfx.
+          $securePassword = ConvertTo-SecureString $env:RR_SIGN_PFX_PASSWORD -AsPlainText -Force
+          $certificate = Get-PfxCertificate -FilePath $pfx -Password $securePassword
+          Export-Certificate -Cert $certificate -FilePath $cer | Out-Null
+          Import-Certificate -FilePath $cer -CertStoreLocation 'Cert:\LocalMachine\Root' | Out-Null
+          Import-Certificate -FilePath $cer -CertStoreLocation 'Cert:\LocalMachine\TrustedPublisher' | Out-Null
+
+          $signtool = Get-ChildItem -Path 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter 'signtool.exe' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signtool) { throw 'signtool.exe not found on the runner (expected with the Windows SDK).' }
+
+          # Same parameters rr_sign.bat uses, with its timestamp fallback: a signature without a
+          # countersignature still installs, a failed sign does not.
+          $script = @'
+          param([Parameter(Mandatory = $true)][string]$Target)
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          Write-Host "::add-mask::$env:RR_SIGN_PFX_PASSWORD"
+          if (-not (Test-Path -LiteralPath $Target)) { throw "Nothing to sign at $Target." }
+          & $env:RR_SIGNTOOL sign /f $env:RR_SIGN_PFX_PATH /p $env:RR_SIGN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $Target
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::warning::Timestamping failed — signing $Target without a timestamp."
+            & $env:RR_SIGNTOOL sign /f $env:RR_SIGN_PFX_PATH /p $env:RR_SIGN_PFX_PASSWORD /fd SHA256 /v $Target
+            if ($LASTEXITCODE -ne 0) { throw "signtool could not sign $Target." }
+          }
+          '@
+          Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'rr-sign.ps1') -Value $script -Encoding utf8
+
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "RR_SIGNTOOL=$($signtool.FullName)"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "RR_SIGN_PFX_PATH=$pfx"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "RR_SIGN_SCRIPT=$(Join-Path $env:RUNNER_TEMP 'rr-sign.ps1')"
+
+      - name: Sign RazorReaper.exe
+        if: ${{ env.RR_SIGN_PFX_BASE64 != '' && env.RR_SIGN_PFX_PASSWORD != '' }}
+        shell: pwsh
+        run: '& $env:RR_SIGN_SCRIPT -Target $env:APP_EXE'
+
+      - name: Verify the RazorReaper.exe signature
+        if: ${{ env.RR_SIGN_PFX_BASE64 != '' && env.RR_SIGN_PFX_PASSWORD != '' }}
+        continue-on-error: true
+        shell: pwsh
+        run: '& $env:RR_SIGNTOOL verify /pa /v $env:APP_EXE'
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $outputDir = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+          $iscc = (Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
+              Where-Object { Test-Path -LiteralPath $_ } |
+              Select-Object -First 1
+          }
+          if (-not $iscc) { throw 'ISCC.exe not found after installing Inno Setup.' }
+
+          # /O<dir> overrides the script's OutputDir, so installer/RazorReaper.iss needs no
+          # CI-only edit and a local build still lands on the owner's Desktop.
+          & $iscc "/O$outputDir" installer\RazorReaper.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE." }
+
+          # The guard for the line above: if /O ever stopped overriding OutputDir the installer
+          # would be sitting somewhere else and the upload would quietly ship nothing.
+          if (-not (Test-Path -LiteralPath (Join-Path $outputDir 'RazorReaper-Setup.exe'))) {
+            throw "ISCC produced no $outputDir\RazorReaper-Setup.exe — /O did not override OutputDir."
+          }
+
+      - name: Sign the installer
+        if: ${{ env.RR_SIGN_PFX_BASE64 != '' && env.RR_SIGN_PFX_PASSWORD != '' }}
+        shell: pwsh
+        run: '& $env:RR_SIGN_SCRIPT -Target $env:SETUP_EXE'
+
+      - name: Verify the installer signature
+        if: ${{ env.RR_SIGN_PFX_BASE64 != '' && env.RR_SIGN_PFX_PASSWORD != '' }}
+        continue-on-error: true
+        shell: pwsh
+        run: '& $env:RR_SIGNTOOL verify /pa /v $env:SETUP_EXE'
+
+      # Uploaded before the release step, so a failed or rate-limited `gh` call still leaves a
+      # recoverable installer behind.
+      - name: Upload the installer as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RazorReaper-Setup-${{ inputs.version }}
+          path: artifacts/RazorReaper-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach the installer to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RR_VERSION: ${{ inputs.version }}
+          RR_NOTES: ${{ inputs.notes }}
+          RR_PRERELEASE: ${{ inputs.prerelease }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $tag = "v$("$env:RR_VERSION".Trim())"
+
+          gh release view $tag | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            $bullets = @("$env:RR_NOTES" -split "`r?`n" |
+              ForEach-Object { ($_ -replace '^\s*[-*]\s+', '').Trim() } |
+              Where-Object { $_ } |
+              ForEach-Object { "- $_" })
+            $notesFile = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+            Set-Content -LiteralPath $notesFile -Value ($bullets -join "`n") -Encoding utf8
+
+            # --draft is load-bearing: this workflow must never fire `release: published`.
+            $ghArgs = @('release', 'create', $tag, '--draft', '--title', "RazorReaper $("$env:RR_VERSION".Trim())", '--notes-file', $notesFile)
+            if ("$env:RR_PRERELEASE" -eq 'true') { $ghArgs += '--prerelease' }
+            gh @ghArgs
+            if ($LASTEXITCODE -ne 0) { throw "gh release create failed for $tag." }
+            Write-Host "Created draft release $tag."
+          } else {
+            Write-Host "Release $tag already exists — leaving its state, title and notes untouched."
+          }
+
+          gh release upload $tag artifacts/RazorReaper-Setup.exe --clobber
+          if ($LASTEXITCODE -ne 0) { throw "gh release upload failed for $tag." }
+
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "RazorReaper-Setup.exe attached to **$tag**. The release stays a draft — publish it from the admin panel."
