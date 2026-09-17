@@ -2,7 +2,6 @@
 @page "/home"
 @using RazorReaper.Services
 @using RazorReaper.Models
-@using System.Globalization
 @using Microsoft.Extensions.Logging
 @using Microsoft.Extensions.Options
 @using RazorReaper.Configuration
@@ -18,7 +17,6 @@
 @inject IOptions<AppConfiguration> Configuration
 @inject IJSRuntime JSRuntime
 @inject INotificationService NotificationService
-@inject ILicenseService LicenseService
 @implements IAsyncDisposable
 
 
@@ -26,114 +24,6 @@
             <h1 class="page-title">Welcome, @userName</h1>
             <p class="page-subtitle">ARK: Survival Evolved Configuration & Server Management Tool</p>
         </header>
-
-        <div class="content-card home-support-prompt">
-            <div>
-                <strong>Something not working?</strong>
-                <span>Describe the issue. A system and feature snapshot is attached when you send your report.</span>
-            </div>
-            <SendDiagnosticsButton SourceRoute="home" />
-        </div>
-
-        <!-- Keep activation near the top, directly below the compact support prompt. -->
-        <div class="content-card license-widget home-license-top @(LicenseService.IsPremium ? "premium-active" : "free-tier")">
-            <div class="update-card-header">
-                <div class="update-title">
-                    <div class="update-icon">
-                        @if (LicenseService.IsPremium)
-                        {
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                        else
-                        {
-                            <svg fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
-                            </svg>
-                        }
-                    </div>
-                    <div>
-                        <h3>
-                            RazorReaper
-                            @if (LicenseService.IsPremium)
-                            {
-                                <span class="premium-badge">Premium Active</span>
-                            }
-                        </h3>
-                        <p class="update-subtitle">
-                            @(LicenseService.IsPremium ? "Premium is active on this PC." : "Enter the key from your order to unlock Premium.")
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            @if (LicenseService.IsPremium)
-            {
-                <div class="license-key-panel">
-                    <div class="license-key-head">
-                        <span class="license-key-label">Your license key</span>
-                        <div class="license-key-actions">
-                            <button class="rr-pill-btn ghost sm" @onclick="ToggleLicenseKeyVisibility">
-                                @(licenseKeyHidden ? "Show" : "Hide")
-                            </button>
-                            <button class="rr-pill-btn ghost sm" @onclick="CopyLicenseKeyAsync">Copy</button>
-                        </div>
-                    </div>
-
-                    <div class="license-key-value">@DisplayedLicenseKey</div>
-                    <div class="license-key-facts">
-                        <span class="license-fact">
-                            <span class="license-fact-label">Plan</span>
-                            @LicensePlanLabel
-                        </span>
-                        <span class="license-fact">
-                            <span class="license-fact-label">Expires</span>
-                            @(LicenseIsPerpetual ? "Never" : FormatLicenseExpiry(LicenseService.ExpiresAt))
-                        </span>
-                        @if (!LicenseIsPerpetual)
-                        {
-                            <span class="license-fact @LicenseRemainingClass">
-                                <span class="license-fact-label">Time left</span>
-                                @LicenseRemainingLabel
-                            </span>
-                        }
-                        <span class="license-fact">
-                            <span class="license-fact-label">Device</span>
-                            Bound to this PC
-                        </span>
-                    </div>
-
-                    @if (LicenseExpiresSoon)
-                    {
-                        <div class="license-expiry-warning">
-                            @(LicenseRemaining <= TimeSpan.Zero
-                                ? "Your license has expired."
-                                : $"Your license runs out in {LicenseRemainingLabel}.")
-                            <a href="https://rr.sellhub.cx" target="_blank" rel="noopener">Renew</a>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="license-activation-area">
-                    <input class="license-key-input" type="text" @bind="licenseKeyInput" @bind:event="oninput"
-                           @onkeydown="HandleLicenseKeyDown"
-                           placeholder="Enter your key (XXXX-XXXX-XXXX-XXXX)" spellcheck="false" autocomplete="off" />
-                    <button class="btn btn-primary license-btn" @onclick="ActivateLicense" disabled="@isActivating">
-                        @(isActivating ? "Verifying…" : "Activate")
-                    </button>
-                    <a class="btn btn-secondary license-btn" href="https://rr.sellhub.cx" target="_blank" rel="noopener">
-                        Buy Premium
-                    </a>
-                </div>
-                @if (!string.IsNullOrEmpty(activationError))
-                {
-                    <div class="license-error">@activationError</div>
-                }
-            }
-        </div>
 
         <AnnouncementBanner />
 
@@ -569,217 +459,6 @@
     private readonly DateTime appStartTime = DateTime.Now;
     private string systemUptime = "0m";
     private string appSessionDuration = "0m";
-    private string licenseKeyInput = "";
-    private bool isActivating = false;
-    private string activationError = "";
-    // Shown in full by default — the whole point of the panel is that people can read their
-    // key back without digging it out of their order mail.
-    private bool licenseKeyHidden = false;
-
-    private async Task ActivateLicense()
-    {
-        if (isActivating)
-        {
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(licenseKeyInput))
-        {
-            activationError = "Please enter a license key.";
-            return;
-        }
-
-        isActivating = true;
-        activationError = "";
-        StateHasChanged();
-
-        var result = await LicenseService.ActivateLicenseAsync(licenseKeyInput.Trim());
-
-        isActivating = false;
-
-        if (result.Success)
-        {
-            activationError = "";
-            licenseKeyInput = "";
-            // No success toast here: LicenseActivated (rendered by MainLayout) plays the
-            // full-window celebration off the service's OnLicenseActivated event.
-        }
-        else
-        {
-            activationError = result.Message;
-        }
-
-        StateHasChanged();
-    }
-
-    private async Task HandleLicenseKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await ActivateLicense();
-        }
-    }
-
-    private void ToggleLicenseKeyVisibility() => licenseKeyHidden = !licenseKeyHidden;
-
-    private string DisplayedLicenseKey
-    {
-        get
-        {
-            var key = LicenseService.CurrentLicenseKey;
-            if (string.IsNullOrWhiteSpace(key))
-            {
-                return "—";
-            }
-
-            return licenseKeyHidden ? MaskLicenseKey(key) : key;
-        }
-    }
-
-    /// <summary>
-    /// Masks everything but the last four alphanumerics and leaves separators alone, so the
-    /// hidden key keeps its shape and stays identifiable at a glance.
-    /// </summary>
-    private static string MaskLicenseKey(string key)
-    {
-        var chars = key.ToCharArray();
-        var kept = 0;
-
-        for (var i = chars.Length - 1; i >= 0; i--)
-        {
-            if (!char.IsLetterOrDigit(chars[i]))
-            {
-                continue;
-            }
-
-            if (kept < 4)
-            {
-                kept++;
-                continue;
-            }
-
-            chars[i] = '•';
-        }
-
-        return new string(chars);
-    }
-
-    // ---- License expiry detail --------------------------------------------
-    // A lifetime key simply carries no expiry date, so "no date" means perpetual
-    // rather than unknown.
-
-    private static bool TryGetExpiry(string? raw, out DateTimeOffset when)
-    {
-        when = default;
-        return !string.IsNullOrWhiteSpace(raw)
-            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
-                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out when);
-    }
-
-    private bool LicenseIsPerpetual => string.IsNullOrWhiteSpace(LicenseService.ExpiresAt);
-
-    /// <summary>The store sends plan names lowercase ("lifetime", "3-months"); the other facts aren't.</summary>
-    private string LicensePlanLabel
-    {
-        get
-        {
-            var plan = LicenseService.LicenseType;
-            if (string.IsNullOrWhiteSpace(plan)) return "Premium";
-            switch (plan.ToLowerInvariant())
-            {
-                case "lifetime": return "Lifetime";
-                case "1-month": return "1 Month";
-                case "3-months": return "3 Months";
-                case "6-months": return "6 Months";
-                case "12-months": return "12 Months";
-            }
-            // Plan names arrive as ASCII from the store, so the current culture has no say here —
-            // under tr-TR "invite" would come back capitalised as 'İ'.
-            return char.ToUpperInvariant(plan[0]) + plan[1..];
-        }
-    }
-
-    private TimeSpan? LicenseRemaining =>
-        TryGetExpiry(LicenseService.ExpiresAt, out var when)
-            ? when - DateTimeOffset.UtcNow
-            : null;
-
-    private string LicenseRemainingLabel
-    {
-        get
-        {
-            if (LicenseIsPerpetual) return "Lifetime";
-
-            var left = LicenseRemaining;
-            if (left is null) return "—";
-            if (left.Value <= TimeSpan.Zero) return "Expired";
-
-            var d = left.Value;
-            if (d.TotalDays >= 60) return $"{(int)(d.TotalDays / 30)} months";
-            if (d.TotalDays >= 2) return $"{(int)d.TotalDays} days";
-            if (d.TotalHours >= 2) return $"{(int)d.TotalHours} hours";
-            return $"{Math.Max(1, (int)d.TotalMinutes)} minutes";
-        }
-    }
-
-    /// <summary>Under a week left, or already gone — worth colouring.</summary>
-    private bool LicenseExpiresSoon
-        => LicenseRemaining is { } left && left < TimeSpan.FromDays(7);
-
-    private string LicenseRemainingClass
-    {
-        get
-        {
-            var left = LicenseRemaining;
-            if (left is null) return "";
-            if (left.Value <= TimeSpan.Zero) return "is-expired";
-            return left.Value < TimeSpan.FromDays(7) ? "is-soon" : "";
-        }
-    }
-
-    private static string FormatLicenseExpiry(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return "—";
-        }
-
-        // The API hands back whatever the store recorded; show a readable local date when it
-        // parses and fall back to the raw string rather than inventing one.
-        if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
-        {
-            return parsed.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
-        }
-
-        return raw;
-    }
-
-    private async Task CopyLicenseKeyAsync()
-    {
-        var key = LicenseService.CurrentLicenseKey;
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return;
-        }
-
-        try
-        {
-            await Clipboard.Default.SetTextAsync(key);
-            NotificationService.ShowSuccess("License key copied to clipboard.");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error copying license key to clipboard");
-            NotificationService.ShowError("Failed to copy license key.");
-        }
-    }
-
-    private void OnLicenseStateChangedHandler()
-    {
-        this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
-    }
-
     private int driveCount = 0;
     private List<DriveUsageInfo> driveInfos = new();
     private const int MaxDriveCards = 4;
@@ -853,8 +532,6 @@
 
     protected override Task OnInitializedAsync()
     {
-        LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
-
         // Keep initial render lightweight to reduce navigation lag.
         userName = Environment.UserName;
 
@@ -2202,7 +1879,6 @@
 
         _isDisposed = true;
         this.StopRenderDispatch();
-        LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
 
         updateTimer?.Stop();
         updateTimer?.Dispose();

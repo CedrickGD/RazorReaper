@@ -1,0 +1,486 @@
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Services
+@inject ILicenseOverlayService Overlay
+@inject ILicenseService LicenseService
+@inject INotificationService NotificationService
+@inject IJSRuntime JS
+@inject ILogger<LicenseOverlay> Logger
+@implements IAsyncDisposable
+
+@*
+    Full-window license view
+    ------------------------
+    Everything about the license lives here: the tier, the key, plan, expiry, the countdown
+    and — for Freemium — activation. Opened from the sidebar's tier line through
+    ILicenseOverlayService, rendered by MainLayout so it covers the whole app like
+    LicenseActivated and AccessBlocked do.
+
+    No entrance or exit motion on purpose: it appears and disappears in one frame.
+    Body scroll is locked and focus moves in while it is open; both are undone on close
+    (wwwroot/js/license-overlay.js). Escape closes it.
+*@
+
+@if (Overlay.IsOpen)
+{
+    var premium = LicenseService.IsPremium;
+
+    <div class="license-overlay @(premium ? "is-premium" : "is-freemium")"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="license-overlay-title"
+         tabindex="-1"
+         @ref="_rootRef"
+         @onkeydown="HandleOverlayKeyDown">
+
+        <div class="license-overlay-frame">
+
+            <button type="button" class="license-overlay-close" aria-label="Close" title="Close (Esc)" @onclick="Close">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M5 5l10 10M15 5L5 15" />
+                </svg>
+            </button>
+
+            <aside class="license-hero">
+                <span class="license-plan-pill">@(premium ? "Premium" : "Freemium")</span>
+                <h1 id="license-overlay-title" class="license-hero-title">@HeroTitle</h1>
+                <p class="license-hero-lede">@HeroLede</p>
+
+                <ul class="license-perks">
+                    @if (premium)
+                    {
+                        <li>Every feature is unlocked on this machine.</li>
+                        <li>The license is re-checked in the background — nothing to do.</li>
+                        @if (IsPerpetual)
+                        {
+                            <li>Lifetime plan: there is no expiry to keep an eye on.</li>
+                        }
+                        else
+                        {
+                            <li>Renew before the countdown ends to stay uninterrupted.</li>
+                        }
+                    }
+                    else
+                    {
+                        <li>A key from your order unlocks every feature.</li>
+                        <li>Keys bind to one PC at activation.</li>
+                        <li>Support replies land in your in-app inbox.</li>
+                    }
+                </ul>
+
+                <div class="license-hero-foot">
+                    <a class="btn btn-secondary" href="@StoreUrl" target="_blank" rel="noopener">
+                        @(premium ? "Manage or renew" : "Buy Premium")
+                    </a>
+                    <span class="license-hero-hint">Esc closes this view</span>
+                </div>
+            </aside>
+
+            <section class="license-panel" aria-label="License details">
+                @if (premium)
+                {
+                    <div class="license-key-block">
+                        <div class="license-key-head">
+                            <span class="license-key-label">Your license key</span>
+                            <div class="license-key-actions">
+                                <button type="button" class="rr-pill-btn ghost sm"
+                                        aria-pressed="@(_keyHidden ? "false" : "true")"
+                                        @onclick="ToggleKeyVisibility">
+                                    @(_keyHidden ? "Reveal" : "Hide")
+                                </button>
+                                <button type="button" class="rr-pill-btn ghost sm" @onclick="CopyKeyAsync">Copy</button>
+                            </div>
+                        </div>
+                        <div class="license-key-value">@DisplayedKey</div>
+                    </div>
+
+                    <dl class="license-facts">
+                        <div class="license-fact">
+                            <dt>Plan</dt>
+                            <dd>@PlanLabel</dd>
+                        </div>
+                        <div class="license-fact">
+                            <dt>Expires</dt>
+                            <dd>@(IsPerpetual ? "Never" : FormatExpiry(LicenseService.ExpiresAt))</dd>
+                        </div>
+                        @if (!IsPerpetual)
+                        {
+                            <div class="license-fact @RemainingClass">
+                                <dt>Time left</dt>
+                                <dd>@RemainingLabel</dd>
+                            </div>
+                        }
+                        <div class="license-fact">
+                            <dt>Device</dt>
+                            <dd>Bound to this PC</dd>
+                        </div>
+                    </dl>
+
+                    @if (ExpiresSoon)
+                    {
+                        <div class="license-expiry-warning @RemainingClass" role="status">
+                            <span>
+                                @(Remaining <= TimeSpan.Zero
+                                    ? "Your license has expired."
+                                    : $"Your license runs out in {RemainingLabel}.")
+                            </span>
+                            <a href="@StoreUrl" target="_blank" rel="noopener">Renew</a>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="license-activation">
+                        <label class="license-key-label" for="license-overlay-key">License key</label>
+                        <div class="license-activation-row">
+                            <input id="license-overlay-key"
+                                   class="license-key-input"
+                                   type="text"
+                                   @bind="_keyInput"
+                                   @bind:event="oninput"
+                                   @onkeydown="HandleKeyInputKeyDown"
+                                   placeholder="XXXX-XXXX-XXXX-XXXX"
+                                   spellcheck="false"
+                                   autocomplete="off" />
+                            <button type="button" class="btn btn-primary license-btn" @onclick="ActivateAsync" disabled="@_activating">
+                                @(_activating ? "Verifying…" : "Activate")
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_activationError))
+                        {
+                            <div class="license-error" role="alert">@_activationError</div>
+                        }
+                        <p class="license-activation-note">
+                            The key is in your order confirmation. It binds to this PC the moment it is activated.
+                        </p>
+                    </div>
+
+                    <dl class="license-facts">
+                        <div class="license-fact">
+                            <dt>Plan</dt>
+                            <dd>Freemium</dd>
+                        </div>
+                        <div class="license-fact">
+                            <dt>Device</dt>
+                            <dd>This PC</dd>
+                        </div>
+                    </dl>
+                }
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private const string StoreUrl = "https://rr.sellhub.cx";
+
+    private ElementReference _rootRef;
+
+    // Masked until asked: the sidebar opens this over whatever is on screen, and the key
+    // is not something to flash by default.
+    private bool _keyHidden = true;
+    private string _keyInput = "";
+    private bool _activating;
+    private string _activationError = "";
+
+    // The scroll lock and focus hand-off run after the render that adds or removes the
+    // markup, so the root exists when it is focused and is gone before focus goes back.
+    private bool _syncJsPending;
+    private bool _jsOpen;
+
+    protected override void OnInitialized()
+    {
+        Overlay.OnStateChanged += HandleOverlayStateChanged;
+        LicenseService.OnLicenseStateChanged += HandleLicenseStateChanged;
+    }
+
+    private void HandleOverlayStateChanged() => this.DispatchRender(() => InvokeAsync(ApplyOverlayState), Logger);
+
+    private void HandleLicenseStateChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+
+    private void ApplyOverlayState()
+    {
+        if (Overlay.IsOpen)
+        {
+            _keyHidden = true;
+            _keyInput = "";
+            _activationError = "";
+        }
+
+        _syncJsPending = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_syncJsPending)
+        {
+            return;
+        }
+
+        _syncJsPending = false;
+        await SyncJsAsync(Overlay.IsOpen);
+    }
+
+    private async Task SyncJsAsync(bool open)
+    {
+        if (open == _jsOpen)
+        {
+            return;
+        }
+
+        try
+        {
+            if (open)
+            {
+                await JS.InvokeVoidAsync("razorReaperLicenseOverlay.open", _rootRef);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("razorReaperLicenseOverlay.close");
+            }
+
+            _jsOpen = open;
+        }
+        catch (Exception ex)
+        {
+            // Focus and the scroll lock are conveniences; the view works without them.
+            Logger.LogDebug(ex, "License overlay JS sync failed");
+        }
+    }
+
+    private void Close() => Overlay.Close();
+
+    private void HandleOverlayKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Overlay.Close();
+        }
+    }
+
+    private async Task HandleKeyInputKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ActivateAsync();
+        }
+    }
+
+    private async Task ActivateAsync()
+    {
+        if (_activating)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_keyInput))
+        {
+            _activationError = "Please enter a license key.";
+            return;
+        }
+
+        _activating = true;
+        _activationError = "";
+        StateHasChanged();
+
+        var result = await LicenseService.ActivateLicenseAsync(_keyInput.Trim());
+
+        _activating = false;
+
+        if (result.Success)
+        {
+            _keyInput = "";
+            // Closes itself so the full-window "Premium unlocked" moment (LicenseActivated,
+            // rendered by MainLayout off OnLicenseActivated) is what the user sees next.
+            Overlay.Close();
+        }
+        else
+        {
+            _activationError = result.Message;
+        }
+
+        StateHasChanged();
+    }
+
+    private void ToggleKeyVisibility() => _keyHidden = !_keyHidden;
+
+    private string HeroTitle => LicenseService.IsPremium ? "Premium is active" : "Unlock Premium";
+
+    private string HeroLede => LicenseService.IsPremium
+        ? "This PC is licensed. Your key, plan and expiry are on the right."
+        : "Paste the key from your order to unlock every RazorReaper feature on this PC.";
+
+    private string DisplayedKey
+    {
+        get
+        {
+            var key = LicenseService.CurrentLicenseKey;
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return "—";
+            }
+
+            return _keyHidden ? MaskKey(key) : key;
+        }
+    }
+
+    /// <summary>
+    /// Masks everything but the last four alphanumerics and leaves separators alone, so the
+    /// hidden key keeps its shape and stays identifiable at a glance.
+    /// </summary>
+    private static string MaskKey(string key)
+    {
+        var chars = key.ToCharArray();
+        var kept = 0;
+
+        for (var i = chars.Length - 1; i >= 0; i--)
+        {
+            if (!char.IsLetterOrDigit(chars[i]))
+            {
+                continue;
+            }
+
+            if (kept < 4)
+            {
+                kept++;
+                continue;
+            }
+
+            chars[i] = '•';
+        }
+
+        return new string(chars);
+    }
+
+    private async Task CopyKeyAsync()
+    {
+        var key = LicenseService.CurrentLicenseKey;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        try
+        {
+            await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(key);
+            NotificationService.ShowSuccess("License key copied to clipboard.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying license key to clipboard");
+            NotificationService.ShowError("Failed to copy license key.");
+        }
+    }
+
+    // ---- Expiry detail ------------------------------------------------------
+    // A lifetime key simply carries no expiry date, so "no date" means perpetual
+    // rather than unknown.
+
+    private static bool TryGetExpiry(string? raw, out DateTimeOffset when)
+    {
+        when = default;
+        return !string.IsNullOrWhiteSpace(raw)
+            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out when);
+    }
+
+    private bool IsPerpetual => string.IsNullOrWhiteSpace(LicenseService.ExpiresAt);
+
+    /// <summary>The store sends plan names lowercase ("lifetime", "3-months"); the other facts aren't.</summary>
+    private string PlanLabel
+    {
+        get
+        {
+            var plan = LicenseService.LicenseType;
+            if (string.IsNullOrWhiteSpace(plan)) return "Premium";
+            switch (plan.ToLowerInvariant())
+            {
+                case "lifetime": return "Lifetime";
+                case "1-month": return "1 Month";
+                case "3-months": return "3 Months";
+                case "6-months": return "6 Months";
+                case "12-months": return "12 Months";
+            }
+            // Plan names arrive as ASCII from the store, so the current culture has no say here —
+            // under tr-TR "invite" would come back capitalised as 'İ'.
+            return char.ToUpperInvariant(plan[0]) + plan[1..];
+        }
+    }
+
+    private TimeSpan? Remaining =>
+        TryGetExpiry(LicenseService.ExpiresAt, out var when)
+            ? when - DateTimeOffset.UtcNow
+            : null;
+
+    private string RemainingLabel
+    {
+        get
+        {
+            if (IsPerpetual) return "Lifetime";
+
+            var left = Remaining;
+            if (left is null) return "—";
+            if (left.Value <= TimeSpan.Zero) return "Expired";
+
+            var d = left.Value;
+            if (d.TotalDays >= 60) return $"{(int)(d.TotalDays / 30)} months";
+            if (d.TotalDays >= 2) return $"{(int)d.TotalDays} days";
+            if (d.TotalHours >= 2) return $"{(int)d.TotalHours} hours";
+            return $"{Math.Max(1, (int)d.TotalMinutes)} minutes";
+        }
+    }
+
+    /// <summary>Under a week left, or already gone — worth colouring.</summary>
+    private bool ExpiresSoon
+        => Remaining is { } left && left < TimeSpan.FromDays(7);
+
+    private string RemainingClass
+    {
+        get
+        {
+            var left = Remaining;
+            if (left is null) return "";
+            if (left.Value <= TimeSpan.Zero) return "is-expired";
+            return left.Value < TimeSpan.FromDays(7) ? "is-soon" : "";
+        }
+    }
+
+    private static string FormatExpiry(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return "—";
+        }
+
+        // The API hands back whatever the store recorded; show a readable local date when it
+        // parses and fall back to the raw string rather than inventing one.
+        if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+        {
+            return parsed.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        }
+
+        return raw;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        this.StopRenderDispatch();
+        Overlay.OnStateChanged -= HandleOverlayStateChanged;
+        LicenseService.OnLicenseStateChanged -= HandleLicenseStateChanged;
+
+        if (_jsOpen)
+        {
+            _jsOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("razorReaperLicenseOverlay.close");
+            }
+            catch
+            {
+                // JS interop may fail during disposal.
+            }
+        }
+    }
+}

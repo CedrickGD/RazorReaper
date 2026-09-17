@@ -409,12 +409,37 @@ html[data-sidebar-resizing] .sidebar {
     user-select: none;
 }
 
+/* A <button>: it opens the full-window license view. Bleeds into the block's side
+   padding so the hit area is the whole row while the text stays on the same column as
+   the inbox link and version line. Colour only on hover, focus and while the overlay is
+   open — no transform, no motion. */
 .nav-status-line {
     display: flex;
     align-items: center;
     gap: 0.45rem;
     min-width: 0;
+    width: calc(100% + 0.9rem);
+    margin: 0 -0.45rem;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
 }
+
+    .nav-status-line:hover,
+    .nav-status-line[aria-expanded="true"] {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-status-line:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
+    }
 
 .nav-status-dot {
     width: 7px;

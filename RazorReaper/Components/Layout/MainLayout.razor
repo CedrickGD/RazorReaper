@@ -23,6 +23,9 @@
 @* Plays the full-window "Premium unlocked" moment. Lives here rather than on Home so it
    covers the whole app and fires wherever the activation happened. *@
 <LicenseActivated />
+@* Full-window license view (tier, key, expiry, activation), opened from the sidebar's
+   tier line. Rendered here for the same reason: it has to cover the nav as well. *@
+<LicenseOverlay />
 
 <div class="app-container">
     <SharedNavbar />

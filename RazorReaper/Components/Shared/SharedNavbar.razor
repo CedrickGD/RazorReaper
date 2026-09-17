@@ -3,6 +3,7 @@
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
 @inject ILicenseService LicenseService
+@inject ILicenseOverlayService LicenseOverlay
 @inject IUpdateService UpdateService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -90,10 +91,18 @@
        "v@UpdateService..." parses as literal text, which is how it rendered wrong once. *@
     <div class="nav-status">
         <SupportInboxLink />
-        <div class="nav-status-line" title="@LicenseTooltip">
+        @* A real button: it opens the full-window license view (LicenseOverlay, rendered by
+           MainLayout). Colour only on hover and open — no motion. *@
+        <button type="button"
+                class="nav-status-line"
+                title="@LicenseTooltip"
+                aria-label="@LicenseTooltip"
+                aria-haspopup="dialog"
+                aria-expanded="@(LicenseOverlay.IsOpen ? "true" : "false")"
+                @onclick="OpenLicenseOverlay">
             <span class="nav-status-dot @LicenseDotClass"></span>
             <span class="nav-status-label">@LicenseLabel</span>
-        </div>
+        </button>
         <div class="nav-status-meta">@($"v{UpdateService.CurrentVersionLabel}")</div>
     </div>
 
@@ -122,25 +131,31 @@
     protected override void OnInitialized()
     {
         LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
+        LicenseOverlay.OnStateChanged += OnLicenseOverlayStateChangedHandler;
         Navigation.LocationChanged += HandleLocationChanged;
         SyncPanelToCurrentPage();
     }
 
     private void OnLicenseStateChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
+    // Keeps aria-expanded on the tier button truthful while the overlay is open.
+    private void OnLicenseOverlayStateChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
+
+    private void OpenLicenseOverlay() => LicenseOverlay.Open();
+
     // ---- Foot status ------------------------------------------------------
     // The one thing in the sidebar that changes on its own, so the one thing that
     // earns a colour.
 
-    // Two states only. The plan name, expiry and countdown live in the Home
-    // page's license widget; this is just the at-a-glance tier.
+    // Two states only. The plan name, key, expiry and countdown live in the license
+    // overlay this line opens; this is just the at-a-glance tier.
     private string LicenseLabel => LicenseService.IsPremium ? "Premium" : "Freemium";
 
     private string LicenseDotClass => LicenseService.IsPremium ? "premium" : "freemium";
 
     private string LicenseTooltip => LicenseService.IsPremium
-        ? "Premium — see Home for plan and expiry"
-        : "Freemium — see Home to activate a key";
+        ? "Premium — open your license: plan, key and expiry"
+        : "Freemium — open your license to activate a key";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -298,6 +313,7 @@
     {
         this.StopRenderDispatch();
         LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
+        LicenseOverlay.OnStateChanged -= OnLicenseOverlayStateChangedHandler;
         Navigation.LocationChanged -= HandleLocationChanged;
 
         try
