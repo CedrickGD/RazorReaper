@@ -1,0 +1,388 @@
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@using RazorReaper.Models
+@using RazorReaper.Services
+@using RazorReaper.Services.Implementations
+@inject IWhatsNewService Overlay
+@inject IAutoUpdateManager AutoUpdateManager
+@inject IUpdateService UpdateService
+@inject ISupportInboxService Inbox
+@inject IJSRuntime JS
+@inject ILogger<WhatsNewOverlay> Logger
+@implements IAsyncDisposable
+
+@*
+    Full-window "What's new & inbox" view
+    -------------------------------------
+    Opened from the sidebar's notification icon (NotificationIndicator) through
+    IWhatsNewService, rendered by MainLayout so it covers the whole app like LicenseOverlay.
+    Same frame family as the license view: red close X top-right, Escape closes, focus moves
+    in and back out, the page behind stops scrolling (wwwroot/js/license-overlay.js).
+
+    Top: the release notes from update.xml, set large. With an update live they are the new
+    version's notes plus "Update now"; on the latest version they are the running version's
+    notes under "You're up to date". Opening this view marks the release as seen, which is
+    what clears the "new version" dot on the icon. Below: the latest support replies, each
+    opening the inbox on that reply. No entrance or exit motion.
+*@
+
+@if (Overlay.IsOpen)
+{
+    var check = AutoUpdateManager.LastCheckResult;
+    var hasUpdate = check?.HasUpdate == true;
+
+    <div class="whats-new-overlay"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="whats-new-title"
+         tabindex="-1"
+         @ref="_rootRef"
+         @onkeydown="HandleOverlayKeyDown">
+
+        <div class="whats-new-frame">
+
+            <button type="button" class="whats-new-close" aria-label="Close" title="Close (Esc)" @onclick="Close">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M5 5l10 10M15 5L5 15" />
+                </svg>
+            </button>
+
+            <section class="whats-new-release" aria-labelledby="whats-new-title">
+                <span class="whats-new-eyebrow">Release notes</span>
+                <h1 id="whats-new-title" class="whats-new-title">@ReleaseTitle(check)</h1>
+
+                @if (check is null)
+                {
+                    <p class="whats-new-status">Release notes appear once the update check has run.</p>
+                }
+                else if (!check.IsSuccess)
+                {
+                    <div class="whats-new-status is-warning" role="status">
+                        <span>@(check.ErrorMessage ?? "Update check failed.") The notes will appear at the next check.</span>
+                        <button type="button" class="rr-pill-btn ghost sm" @onclick="UpdateNowAsync" disabled="@UpdateBusy">
+                            @(UpdateBusy ? "Checking…" : "Check again")
+                        </button>
+                    </div>
+                }
+                else if (hasUpdate)
+                {
+                    <div class="whats-new-update" role="status">
+                        <div class="whats-new-update-text">
+                            <strong>@($"Version {ReleaseLabel(check.LatestVersion)} is available.")</strong>
+                            <span>@($"You're on {UpdateService.CurrentVersionLabel}.") @(UpdateInFlight ? "" : AutoUpdateManager.StatusMessage)</span>
+                        </div>
+                        <div class="whats-new-update-actions">
+                            @if (UpdateInFlight)
+                            {
+                                <span class="whats-new-progress">@UpdateProgressLine</span>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-primary" @onclick="UpdateNowAsync" disabled="@UpdateBusy">
+                                    @(UpdateBusy ? "Checking…" : "Update now")
+                                </button>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(check.ChangelogUrl))
+                            {
+                                <a class="btn btn-secondary" href="@check.ChangelogUrl" target="_blank" rel="noopener">Full changelog</a>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="whats-new-status is-current">
+                        <span class="whats-new-tick" aria-hidden="true">✓</span>
+                        <span>@($"You're up to date — v{UpdateService.CurrentVersionLabel}.")</span>
+                        @if (!string.IsNullOrWhiteSpace(check.ChangelogUrl))
+                        {
+                            <a href="@check.ChangelogUrl" target="_blank" rel="noopener">Full changelog</a>
+                        }
+                    </p>
+                }
+
+                @if (check?.IsSuccess == true)
+                {
+                    if (check.Notes.Count > 0)
+                    {
+                        <ul class="whats-new-notes">
+                            @foreach (var note in check.Notes)
+                            {
+                                <li>@note</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="whats-new-empty">No notes were published for this release.</p>
+                    }
+                }
+            </section>
+
+            <section class="whats-new-inbox" aria-labelledby="whats-new-inbox-title">
+                <div class="whats-new-inbox-head">
+                    <h2 id="whats-new-inbox-title" class="whats-new-inbox-title">
+                        Inbox
+                        @if (Inbox.UnreadCount > 0)
+                        {
+                            <span class="whats-new-unread">@(Inbox.UnreadCount == 1 ? "1 unread" : $"{Inbox.UnreadCount} unread")</span>
+                        }
+                    </h2>
+                    <a class="btn btn-secondary" href="/inbox" @onclick="Close">Open inbox</a>
+                </div>
+
+                @if (Inbox.Error is not null)
+                {
+                    <p class="whats-new-inbox-note" role="status">@Inbox.Error</p>
+                }
+
+                @if (!Inbox.HasLoaded && Inbox.Error is null)
+                {
+                    <p class="whats-new-inbox-note">Loading your inbox…</p>
+                }
+                else if (Inbox.Replies.Count == 0)
+                {
+                    <p class="whats-new-inbox-note">No replies yet. Answers to your reports land here.</p>
+                }
+                else
+                {
+                    <ul class="whats-new-replies">
+                        @foreach (var reply in Inbox.Replies.Take(MaxPreview))
+                        {
+                            <li @key="reply.Id">
+                                <a class="whats-new-reply @(reply.ReadAt is null ? "is-unread" : "")"
+                                   href="@InboxLink(reply)"
+                                   @onclick="Close">
+                                    <span class="whats-new-reply-main">
+                                        <span class="whats-new-reply-subject">Support replied · @reply.ReportId</span>
+                                        <span class="whats-new-reply-preview">@FirstLine(reply.Message)</span>
+                                    </span>
+                                    <span class="whats-new-reply-side">
+                                        @if (reply.ReadAt is null)
+                                        {
+                                            <span class="whats-new-reply-new">New</span>
+                                        }
+                                        <span class="whats-new-reply-time">@FormatWhen(reply.CreatedAt)</span>
+                                    </span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private const int MaxPreview = 5;
+
+    private ElementReference _rootRef;
+
+    // The scroll lock and focus hand-off run after the render that adds or removes the
+    // markup, so the root exists when it is focused and is gone before focus goes back.
+    private bool _syncJsPending;
+    private bool _jsOpen;
+    private bool _updating;
+
+    protected override void OnInitialized()
+    {
+        Overlay.OnStateChanged += HandleOverlayStateChanged;
+        AutoUpdateManager.StateChanged += HandleUpdateStateChanged;
+        Inbox.Changed += HandleInboxChanged;
+    }
+
+    private void HandleOverlayStateChanged() => this.DispatchRender(() => InvokeAsync(ApplyOverlayState), Logger);
+
+    private void HandleUpdateStateChanged() => this.DispatchRender(() => InvokeAsync(ApplyUpdateState), Logger);
+
+    private void HandleInboxChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+
+    private void ApplyOverlayState()
+    {
+        if (Overlay.IsOpen)
+        {
+            MarkReleaseSeen();
+        }
+
+        _syncJsPending = true;
+        StateHasChanged();
+    }
+
+    // A check result landing while the view is open is seen too.
+    private void ApplyUpdateState()
+    {
+        if (Overlay.IsOpen)
+        {
+            MarkReleaseSeen();
+        }
+
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Seeing the section is what clears the "new version" dot: the notes are the top of this
+    /// view, so opening it counts. The service persists the release and raises its event, which
+    /// re-renders the icon without the dot.
+    /// </summary>
+    private void MarkReleaseSeen()
+    {
+        var release = Overlay.UnseenRelease(AutoUpdateManager.LastCheckResult, UpdateService.CurrentVersion);
+        if (release is not null)
+        {
+            Overlay.MarkReleaseSeen(release);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_syncJsPending)
+        {
+            return;
+        }
+
+        _syncJsPending = false;
+        await SyncJsAsync(Overlay.IsOpen);
+    }
+
+    private async Task SyncJsAsync(bool open)
+    {
+        if (open == _jsOpen)
+        {
+            return;
+        }
+
+        try
+        {
+            if (open)
+            {
+                await JS.InvokeVoidAsync("razorReaperWhatsNewOverlay.open", _rootRef);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("razorReaperWhatsNewOverlay.close");
+            }
+
+            _jsOpen = open;
+        }
+        catch (Exception ex)
+        {
+            // Focus and the scroll lock are conveniences; the view works without them.
+            Logger.LogDebug(ex, "What's new overlay JS sync failed");
+        }
+    }
+
+    private void Close() => Overlay.Close();
+
+    private void HandleOverlayKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Overlay.Close();
+        }
+    }
+
+    // ---- Update ---------------------------------------------------------------
+    // Updates are unattended: once a build is seen it is downloaded and installed, and the
+    // app restarts. "Update now" is for the case where that did not happen — it re-runs the
+    // same check-and-install pass rather than a second update path.
+
+    private bool UpdateInFlight => AutoUpdateManager.IsDownloading || AutoUpdateManager.IsInstallerReady;
+
+    private bool UpdateBusy => _updating || AutoUpdateManager.IsChecking;
+
+    private string UpdateProgressLine
+    {
+        get
+        {
+            if (AutoUpdateManager.IsInstallerReady)
+            {
+                return "Installing — RazorReaper restarts in a moment.";
+            }
+
+            if (AutoUpdateManager.IsDownloading)
+            {
+                return AutoUpdateManager.DownloadProgressPercent is int percent
+                    ? $"Downloading… {percent}%"
+                    : "Downloading…";
+            }
+
+            return AutoUpdateManager.StatusMessage;
+        }
+    }
+
+    private async Task UpdateNowAsync()
+    {
+        if (_updating)
+        {
+            return;
+        }
+
+        _updating = true;
+        StateHasChanged();
+
+        try
+        {
+            await AutoUpdateManager.CheckNowAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Manual update check failed");
+        }
+        finally
+        {
+            _updating = false;
+        }
+
+        StateHasChanged();
+    }
+
+    // ---- Labels ---------------------------------------------------------------
+
+    private string ReleaseTitle(UpdateCheckResult? check)
+        => $"What's new in v{ReleaseLabel(check?.LatestVersion)}";
+
+    /// <summary>The manifest's version, or the running one while there is no check result.</summary>
+    private string ReleaseLabel(Version? version)
+        => WhatsNewService.Format(version ?? UpdateService.CurrentVersion);
+
+    private static string InboxLink(SupportReply reply)
+        => $"/inbox?open={reply.Id.ToString(CultureInfo.InvariantCulture)}";
+
+    private static string FirstLine(string message)
+    {
+        var line = message.Split('\n')[0].Trim();
+        return line.Length > 140 ? line[..140].TrimEnd() + "…" : line;
+    }
+
+    private static string FormatWhen(DateTimeOffset when)
+    {
+        var age = DateTimeOffset.UtcNow - when;
+        if (age < TimeSpan.FromMinutes(1)) return "just now";
+        if (age < TimeSpan.FromHours(1)) return $"{(int)age.TotalMinutes} min ago";
+        if (age < TimeSpan.FromDays(1)) return $"{(int)age.TotalHours} h ago";
+        if (age < TimeSpan.FromDays(7)) return $"{(int)age.TotalDays} d ago";
+        return when.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        this.StopRenderDispatch();
+        Overlay.OnStateChanged -= HandleOverlayStateChanged;
+        AutoUpdateManager.StateChanged -= HandleUpdateStateChanged;
+        Inbox.Changed -= HandleInboxChanged;
+
+        if (_jsOpen)
+        {
+            _jsOpen = false;
+            try
+            {
+                await JS.InvokeVoidAsync("razorReaperWhatsNewOverlay.close");
+            }
+            catch
+            {
+                // JS interop may fail during disposal.
+            }
+        }
+    }
+}

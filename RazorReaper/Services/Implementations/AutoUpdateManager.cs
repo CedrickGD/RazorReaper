@@ -69,6 +69,15 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         StartRecurringChecks();
     }
 
+    public async Task CheckNowAsync(CancellationToken cancellationToken = default)
+    {
+        // Same guard as the interval loop, plus "already checking": two overlapping passes
+        // would download the same build twice and race over the same installer file.
+        if (isChecking || isInstallerReady || isDownloading) return;
+
+        await CheckAndInstallAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Re-checks on <see cref="CheckInterval"/> for as long as the app is open. Started
     /// once; the interlock keeps a second call from spawning a second loop.

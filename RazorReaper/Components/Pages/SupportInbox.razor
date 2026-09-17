@@ -47,12 +47,45 @@ else if (Inbox.HasLoaded && Inbox.Replies.Count == 0)
 @code {
     private readonly HashSet<long> _opened = [];
     private bool _loadingOlder;
+    private long? _appliedOpen;
+
+    /// <summary>/inbox?open=ID expands that reply and marks it read — the What's new view's per-reply links land here.</summary>
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "open")]
+    public long? Open { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         Inbox.Changed += OnChanged;
         await Inbox.RefreshAsync();
     }
-    private void OnChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only a *changed* query value opens a reply, so a reply folded by hand stays folded
+        // across unrelated parameter updates.
+        if (Open == _appliedOpen) return;
+        _appliedOpen = Open;
+        _pendingOpen = Open;
+        await OpenPendingAsync();
+    }
+    // The reply may not be in the list yet when the page lands (the refresh above yields to a
+    // poll already in flight), so the request waits for the next change that brings it.
+    private long? _pendingOpen;
+    private async Task OpenPendingAsync()
+    {
+        if (_pendingOpen is not long id) return;
+        var reply = Inbox.Replies.FirstOrDefault(r => r.Id == id);
+        if (reply is null) return;
+        _pendingOpen = null;
+        if (!_opened.Add(id)) return;
+        if (reply.ReadAt is null) await Inbox.MarkReadAsync(id);
+    }
+    private void OnChanged() => this.DispatchRender(() => InvokeAsync(HandleChangedAsync));
+    private async Task HandleChangedAsync()
+    {
+        await OpenPendingAsync();
+        StateHasChanged();
+    }
     private async Task OpenAsync(SupportReply reply)
     {
         if (!_opened.Add(reply.Id)) { _opened.Remove(reply.Id); return; }

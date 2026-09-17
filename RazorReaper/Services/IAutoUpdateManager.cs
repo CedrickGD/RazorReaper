@@ -30,6 +30,14 @@ public interface IAutoUpdateManager
     /// <summary>Runs the first check, then keeps checking on an interval.</summary>
     Task RunStartupCheckAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The same check-and-install pass the interval runs, on demand — the "Update now" action
+    /// in the What's new view, for when the automatic download did not go through (offline at
+    /// the time, say) and the user does not want to wait for the next interval. A no-op while a
+    /// check, a download or a staged install is already in flight.
+    /// </summary>
+    Task CheckNowAsync(CancellationToken cancellationToken = default);
+
     bool LaunchPendingInstaller();
 
     /// <summary>
