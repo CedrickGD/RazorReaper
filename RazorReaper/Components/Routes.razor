@@ -7,4 +7,12 @@
            to the sidebar button that opened them). See FocusOnPageChange.razor. *@
         <FocusOnPageChange RouteData="@routeData" Selector="h1" />
     </Found>
+    @* Without this branch a stale route rendered nothing at all, so a dead link looked like
+       the app had thrown the window away. Same layout as every page, so the sidebar stays. *@
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            @* Fully qualified: <NotFound> is also the Router's own parameter name here. *@
+            <RazorReaper.Components.Pages.NotFound />
+        </LayoutView>
+    </NotFound>
 </Router>

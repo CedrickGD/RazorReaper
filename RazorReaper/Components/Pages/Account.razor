@@ -6,6 +6,7 @@
 @inject INotificationService Notifications
 @inject ILicenseService License
 @inject IClientIdentityService Identity
+@inject ILicenseOverlayService LicenseOverlay
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -49,7 +50,7 @@
             <h3>Connected accounts</h3>
             <div class="account-row"><span>Discord</span><strong>@@@profile.DiscordUsername</strong><span>Connected</span></div>
             <div class="account-row"><span>This installation</span><strong>RazorReaper</strong><span>Linked to your account</span></div>
-            <div class="account-row"><span>License on this device</span><strong>@(License.IsActivated ? "Active" : "Free")</strong><a class="rr-pill-btn ghost sm" href="/home">Manage license</a></div>
+            <div class="account-row"><span>License on this device</span><strong>@(License.IsActivated ? "Active" : "Free")</strong><button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">Manage license</button></div>
             <p class="account-hint">Sign in with the same Discord account on another computer to use this profile there. License activation remains tied to the licensed device.</p>
         </section>
         <section class="content-card">
@@ -136,6 +137,10 @@
         await _dialogModule.InvokeVoidAsync("setOpen", _dialog, _authOpen, _dialogOwner);
     }
     private void OpenSignIn() { _error = null; _authOpen = true; }
+    // The license facts live in the full-window overlay MainLayout mounts — the same one the
+    // sidebar tier button opens. Home has not carried the licence widget since da6e216, so the
+    // link this button replaced landed on a page with nothing to manage.
+    private void OpenLicenseOverlay() => LicenseOverlay.Open();
     [JSInvokable] public Task CloseAuthDialog() { if (!_busy) CancelSignIn(); return InvokeAsync(StateHasChanged); }
     private Task ReopenBrowser() => Execute(async () => { if (_login is not null) await Launcher.Default.OpenAsync(_login.VerificationUrl); });
     private void LoadProfile() { _name = Accounts.Profile?.DisplayName ?? ""; _avatar = null; _removeAvatar = false; }
