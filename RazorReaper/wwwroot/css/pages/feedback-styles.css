@@ -24,6 +24,60 @@
     margin-bottom: 0 !important;
 }
 
+/* ── Section tabs ─────────────────────────────────────────────────────────
+   Feedback | Support, switched in place. Colour only on hover, focus and the active
+   tab — the panel below re-renders instantly, nothing slides. */
+.feedback-tabs {
+    display: inline-flex;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    padding: 0.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-panel);
+    background: rgba(0, 0, 0, 0.22);
+}
+
+.feedback-tab {
+    padding: 0.5rem 1.15rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+    .feedback-tab:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .feedback-tab.active {
+        color: var(--text-primary);
+        background: rgba(var(--accent-purple-rgb), 0.16);
+        border-color: rgba(var(--accent-purple-rgb), 0.45);
+    }
+
+    .feedback-tab:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--accent-purple-rgb), 0.55);
+    }
+
+/* The one line on the Support side that says what travels with the report. */
+.feedback-attach-note {
+    margin: 0 0 14px;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-control);
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.22);
+    background: rgba(var(--accent-purple-rgb), 0.08);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
 .feedback-field {
     margin-bottom: 14px;
 }

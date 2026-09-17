@@ -45,17 +45,14 @@ public class FeedbackService : IFeedbackService
         _logger = logger;
     }
 
-    public async Task<(bool Success, string Message)> SubmitAsync(string message, string? contact, CancellationToken cancellationToken = default)
-    {
-        var result = await SubmitCoreAsync(
+    public Task<FeedbackSubmissionResult> SubmitAsync(string message, string? contact, CancellationToken cancellationToken = default)
+        => SubmitCoreAsync(
             message,
             contact,
             sourceRoute: null,
             includeDiagnostics: false,
             requireDiagnostics: false,
-            cancellationToken).ConfigureAwait(false);
-        return (result.Success, result.Message);
-    }
+            cancellationToken);
 
     public Task<FeedbackSubmissionResult> SubmitWithDiagnosticsAsync(
         string message,

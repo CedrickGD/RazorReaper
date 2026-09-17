@@ -16,6 +16,8 @@
     [Parameter]
     public string ButtonClass { get; set; } = "btn btn-primary";
 
+    // Lands on the Support section of Feedback & Support, where the report form attaches the
+    // system and feature snapshot; the source route tells the snapshot where it was asked for.
     private void OpenReport()
-        => Navigation.NavigateTo($"/feedback?source={Uri.EscapeDataString(SourceRoute)}");
+        => Navigation.NavigateTo($"/feedback?source={Uri.EscapeDataString(SourceRoute)}&section=support");
 }
