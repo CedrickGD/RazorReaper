@@ -136,6 +136,38 @@ Because RazorReaper installs into Program Files, Windows shows a UAC prompt whil
 
 If an update was applied and the installer failed, RazorReaper says so at the next start — in a warning and in the **What's new & inbox** view — and leaves the installer staged for one retry. That retry is yours to ask for: the same **Restart & update** button. It is not tried again on its own.
 
+[Releases & updates](#releases--updates) below describes the same thing from the other side: how a version is cut, and how your install hears about it.
+
+## Releases & updates
+
+### How a release is produced today
+
+1. A local `Release` build of `RazorReaper.sln` is packaged by Inno Setup from [`installer/RazorReaper.iss`](installer/RazorReaper.iss) into a single `RazorReaper-Setup.exe` (~73 MB, self-contained, installs to `{autopf}` i.e. Program Files, admin elevation via Inno's default `PrivilegesRequired=admin`).
+2. That installer is attached as an asset to a GitHub Release on this repo.
+3. [`update-manifest.yml`](.github/workflows/update-manifest.yml) fires on `release: released` (or manually via `workflow_dispatch`) and patches [`update.xml`](update.xml) on `master` with the new `<version>`, the release's `<url>` and `<changelog>` links, and (when the release body has `-`/`*` bullets) refreshed `<notes>`.
+4. [`discord-release.yml`](.github/workflows/discord-release.yml) posts the push/release to the project's Discord webhooks.
+
+`update.xml` is only ever bumped by that workflow, i.e. by cutting a release — not by a plain version-bump commit. A version bump to the app without a matching GitHub release intentionally leaves `update.xml` (and therefore what clients are offered) pointing at the last released version.
+
+### How clients update
+
+The client fetches the manifest from the Cloudflare Worker (`https://backend.rr-admin-panel.workers.dev/update/update.xml`) run in [RR-Admin-Panel](https://github.com/CedrickGD/RR-Admin-Panel)'s `backend-worker`, which proxies GitHub with a server-side token and rewrites `<url>` to its own `/update/download` redirect. If the worker is unreachable, the client falls back to reading `update.xml` straight from `raw.githubusercontent.com` — which only works while this repo is public. `<changelog>` is not rewritten by the worker and always points at a `github.com/.../releases/tag/...` URL.
+
+The client side is the flow described under [Updating](#updating), and it lives in `AutoUpdateManager` (when a staged installer may run is `UpdateApplyPolicy`). A check at startup and every 30 minutes, plus **Check again** in the What's new & inbox view. An update downloads to `%TEMP%\RazorReaperUpdate\` and is *staged* there: verified against its byte count, kept across sessions, and swept only when it is partial, superseded, or older than 14 days.
+
+Applying it means handing off to a small relaunch script that waits for this process to exit, runs the installer with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`, writes a marker file if the installer returns a non-zero exit code, and relaunches. The hand-off happens when the user asks for it (the button or the tray item), at the next start, or on its own for a release `update.xml` marks `<mandatory>` — and in no case while ARK or a macro is running.
+
+A non-zero exit code is read from that marker at the next start: it is reported to the user and to telemetry, the installer stays staged for one retry the user has to ask for, and a second failure on the same version discards it.
+
+### Versions that must move together
+
+A release bumps six version strings in lockstep, all enforced by [`ReleaseReadinessTests`](tests/RazorReaper.UnitTests/ReleaseReadinessTests.cs):
+
+- `RazorReaper/RazorReaper.csproj`: `ApplicationDisplayVersion`, `ApplicationVersion` (build number), `AssemblyVersion`, `FileVersion`, `Version`
+- `installer/RazorReaper.iss`: `MyAppVersion`
+
+See [`docs/release-process.md`](docs/release-process.md) for the full release checklist.
+
 ## Build From Source
 
 ```powershell
