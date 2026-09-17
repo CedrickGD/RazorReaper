@@ -217,7 +217,21 @@ public sealed class NotificationIndicatorLayoutTests
         Assert.True(method >= 0);
         var body = manager[method..manager.IndexOf("StartRecurringChecks()", method, StringComparison.Ordinal)];
         Assert.Contains("if (isChecking || isInstallerReady || isDownloading) return;", body, StringComparison.Ordinal);
-        Assert.Contains("await CheckAndInstallAsync(cancellationToken);", body, StringComparison.Ordinal);
+        // Off the caller's context, like the startup pass: a click handler must not await the
+        // installer download on the renderer's dispatcher.
+        Assert.Contains("await Task.Run(() => CheckAndInstallAsync(cancellationToken), cancellationToken);", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>The palette (z 9000) must not open under either overlay (z 9500), whose Tab trap would swallow its focus.</summary>
+    [Fact]
+    public void ThePaletteStaysClosedUnderTheOverlays()
+    {
+        var index = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "index.html"));
+        var handler = index.IndexOf("window.registerGlobalSearch = function", StringComparison.Ordinal);
+        Assert.True(handler >= 0);
+        var body = index[handler..index.IndexOf("window.triggerGlobalSearch", handler, StringComparison.Ordinal)];
+        Assert.Contains("classList.contains('license-overlay-open')", body, StringComparison.Ordinal);
+        Assert.Contains("classList.contains('whats-new-overlay-open')", body, StringComparison.Ordinal);
     }
 
     private static string[] MotionProperties(string css)

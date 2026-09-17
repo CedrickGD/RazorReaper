@@ -75,7 +75,10 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         // would download the same build twice and race over the same installer file.
         if (isChecking || isInstallerReady || isDownloading) return;
 
-        await CheckAndInstallAsync(cancellationToken);
+        // Off the caller's context, like the startup pass (App.RunStartupTask): this is
+        // called from a Blazor click handler, and an installer download awaited on the
+        // renderer's dispatcher would post every read continuation back through it.
+        await Task.Run(() => CheckAndInstallAsync(cancellationToken), cancellationToken);
     }
 
     /// <summary>

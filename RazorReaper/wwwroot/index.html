@@ -816,6 +816,13 @@
                     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                         e.preventDefault();
                         e.stopPropagation();
+                        // The palette sits below the full-window overlays (9000 vs 9500) and
+                        // their Tab trap would pull focus straight back out of it: not while
+                        // one is open.
+                        if (document.body.classList.contains('license-overlay-open')
+                            || document.body.classList.contains('whats-new-overlay-open')) {
+                            return;
+                        }
                         if (_searchRef) {
                             _searchRef.invokeMethodAsync('ToggleSearch');
                         }
