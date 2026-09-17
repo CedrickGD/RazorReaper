@@ -99,6 +99,9 @@
 
     <audio id="notify-audio" src="assets/sounds/notify.mp3" preload="metadata"></audio>
     <audio id="click-audio" preload="metadata"></audio>
+    <!-- A short plop for a support reply arriving while the app runs (NotificationIndicator).
+         Not user-replaceable, so it is not part of the sound settings' sources. -->
+    <audio id="inbox-plop-audio" src="assets/sounds/inbox-plop.wav" preload="auto"></audio>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
     <script>
@@ -699,6 +702,17 @@
             if (!settings.enabled || !settings.notificationEnabled) return;
 
             const audio = document.getElementById('notify-audio');
+            playAudioElement(audio, settings.notificationVolume ?? 0.35);
+        };
+
+        // Gated exactly like the notification sound: the "Enable UI sounds" master toggle
+        // and the notification toggle, at the notification volume. No click suppression —
+        // nothing was clicked; a reply just arrived.
+        window.playInboxPlop = function () {
+            const settings = getSoundSettingsSafe();
+            if (!settings.enabled || !settings.notificationEnabled) return;
+
+            const audio = document.getElementById('inbox-plop-audio');
             playAudioElement(audio, settings.notificationVolume ?? 0.35);
         };
 

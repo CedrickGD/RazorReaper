@@ -5,6 +5,7 @@
 @inject IAutoUpdateManager AutoUpdateManager
 @inject IUpdateService UpdateService
 @inject IWhatsNewService WhatsNew
+@inject IJSRuntime JS
 @inject ILogger<NotificationIndicator> Logger
 @implements IDisposable
 
@@ -17,7 +18,9 @@
     Clicking opens the "What's new & inbox" overlay (WhatsNewOverlay, rendered by MainLayout).
 
     This component also owns the inbox poll that the old sidebar Inbox link ran: the count on
-    the dot is only as fresh as the poll, so they live together.
+    the dot is only as fresh as the poll, so they live together. When the poll brings a reply
+    that was not there before, a short plop plays (window.playInboxPlop, under the same sound
+    settings as the notification sound). The first load of a session is silent: it is old news.
 *@
 
 <button type="button"
@@ -39,6 +42,11 @@
 
 @code {
     private readonly CancellationTokenSource _stop = new();
+
+    // The unread count the plop was last measured against. Null until the inbox has loaded for
+    // the current account, so the first load of a session — and the reload after an account
+    // switch, which resets the service to zero first — is a baseline, not a new reply.
+    private int? _knownUnread;
 
     protected override void OnInitialized()
     {
@@ -63,7 +71,40 @@
         catch (Exception ex) { Logger.LogDebug(ex, "Support inbox poll stopped"); }
     }
 
-    private void OnInboxChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+    private void OnInboxChanged() => this.DispatchRender(() => InvokeAsync(HandleInboxChangedAsync), Logger);
+
+    private async Task HandleInboxChangedAsync()
+    {
+        if (!Inbox.HasLoaded)
+        {
+            _knownUnread = null;
+        }
+        else
+        {
+            var unread = Inbox.UnreadCount;
+            var arrived = _knownUnread is int known && unread > known;
+            _knownUnread = unread;
+            if (arrived)
+            {
+                await PlayPlopAsync();
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task PlayPlopAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("playInboxPlop");
+        }
+        catch (Exception ex)
+        {
+            // The sound is a courtesy; the dot is the signal.
+            Logger.LogDebug(ex, "Inbox plop failed");
+        }
+    }
 
     private void OnUpdateStateChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
 
