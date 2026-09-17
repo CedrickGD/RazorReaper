@@ -20,7 +20,20 @@ public sealed class FeedbackPageLayoutTests
         Assert.Equal(2, Regex.Matches(page, @"<button\s+type=""button""\s+role=""tab""").Count);
         Assert.Contains("id=\"feedback-tab-feedback\"", page, StringComparison.Ordinal);
         Assert.Contains("id=\"feedback-tab-support\"", page, StringComparison.Ordinal);
-        Assert.Contains("Open support inbox", page, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The header used to carry an "Open support inbox" button. The sidebar's "Support inbox"
+    /// entry and the bell beside the tier row both already lead there, so the page must not
+    /// grow a third link back to the inbox.
+    /// </summary>
+    [Fact]
+    public void ThePageDoesNotLinkBackToTheInbox()
+    {
+        var page = File.ReadAllText(PagePath());
+
+        Assert.DoesNotContain("Open support inbox", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"/inbox\"", page, StringComparison.Ordinal);
     }
 
     [Fact]
