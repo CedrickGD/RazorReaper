@@ -384,6 +384,20 @@
     }
 }
 
+/* Same as .btn in theme.css: no press scale and no transition inside the no-motion
+   overlays, a colour change instead. */
+.license-overlay .rr-pill-btn,
+.whats-new-overlay .rr-pill-btn {
+    transition: none;
+}
+
+    .license-overlay .rr-pill-btn:active:not(:disabled),
+    .whats-new-overlay .rr-pill-btn:active:not(:disabled) {
+        transform: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
+    }
+
 /* ── Slider ─────────────────────────────────────────────────────────────────
    One design for every range input in the app. Pages used to bring their own
    (.aa-slider, .gm-slider, .hud-slider, .ls-slider) or none at all, so the same

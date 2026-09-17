@@ -351,6 +351,22 @@ html[data-sidebar-resizing] .main-content::before {
     }
 }
 
+/* The full-window overlays (license, what's new) are no-motion surfaces: their own
+   sheets declare no transform, animation or transition, so the press scale and the
+   transition above are undone here, where the rule that adds them lives. A colour
+   change stands in for the press. */
+.license-overlay .btn,
+.whats-new-overlay .btn {
+    transition: none;
+}
+
+    .license-overlay .btn:active:not(:disabled),
+    .whats-new-overlay .btn:active:not(:disabled) {
+        transform: none;
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-primary) !important;
+    }
+
 
 /* Global Input Styles */
 input, textarea, select {

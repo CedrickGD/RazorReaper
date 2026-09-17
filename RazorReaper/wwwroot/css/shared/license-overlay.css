@@ -8,8 +8,9 @@
    disappears in one frame. Only colour changes on hover and focus. */
 
 .license-overlay {
-    /* Premium is the sidebar's green tier; Freemium takes the app accent because the one
-       thing to do there is the activate button. Overridden per state below. */
+    /* Premium is the sidebar's green tier; Freemium is the sidebar's warm red, from the
+       theme's red tokens, so the tier reads the same colour in both places. Overridden
+       per state below. The activate button keeps the app accent — it is the action. */
     --lic-accent: var(--accent-green);
     --lic-accent-rgb: var(--accent-green-rgb);
     position: fixed;
@@ -28,8 +29,8 @@
 }
 
     .license-overlay.is-freemium {
-        --lic-accent: var(--accent-purple);
-        --lic-accent-rgb: var(--accent-purple-rgb);
+        --lic-accent: var(--accent-red);
+        --lic-accent-rgb: var(--accent-red-rgb);
     }
 
 /* Set on <body> by license-overlay.js while the view is open: the page behind it
@@ -76,12 +77,15 @@ body.license-overlay-open .main-content {
 
 /* ── Frame ──────────────────────────────────────────────────────────────── */
 
+/* Two near-equal columns. The 1.05fr / 1.6fr split gave the panel an ~830px column at
+   1600×900 that its content ended a third of the way into; the panel now carries the
+   key, six facts and a benefits grid, and the hero a help row, so both fill. */
 .license-overlay-frame {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(280px, 1.05fr) minmax(0, 1.6fr);
+    grid-template-columns: minmax(300px, 1fr) minmax(0, 1.25fr);
     width: 100%;
-    max-width: 1240px;
+    max-width: 1180px;
     min-height: 0;
     border: 1px solid rgba(var(--lic-accent-rgb), 0.28);
     border-radius: var(--radius-card);
@@ -163,6 +167,56 @@ body.license-overlay-open .main-content {
             box-shadow: 0 0 0 3px rgba(var(--lic-accent-rgb), 0.18);
         }
 
+/* "Need help?" — between the perks and the foot. */
+.license-hero-help {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding: var(--space-4);
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.license-hero-help-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+}
+
+.license-hero-help-text {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.license-hero-help-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+}
+
+    .license-hero-help-links a {
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(var(--lic-accent-rgb), 0.5);
+    }
+
+        .license-hero-help-links a:hover {
+            color: var(--lic-accent);
+            border-bottom-color: var(--lic-accent);
+        }
+
+        .license-hero-help-links a:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(var(--lic-accent-rgb), 0.45);
+        }
+
 .license-hero-foot {
     margin-top: auto;
     padding-top: var(--space-5);
@@ -193,10 +247,13 @@ body.license-overlay-open .main-content {
     overflow-y: auto;
 }
 
+/* The key is the panel's headline: a larger tile with the key at display size. */
 .license-key-block {
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-5) var(--space-6);
     border-radius: var(--radius-panel);
-    background: var(--surface-inset);
+    background:
+        radial-gradient(80% 90% at 100% 0%, rgba(var(--lic-accent-rgb), 0.12), transparent 70%),
+        var(--surface-inset);
     border: 1px solid rgba(var(--lic-accent-rgb), 0.22);
 }
 
@@ -230,9 +287,9 @@ body.license-overlay-open .main-content {
 
 .license-key-value {
     font-family: var(--font-mono);
-    font-size: 1.35rem;
+    font-size: 1.7rem;
     line-height: 1.4;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     color: var(--text-primary);
     overflow-wrap: anywhere;
     user-select: text;
@@ -321,6 +378,72 @@ body.license-overlay-open .main-content {
         text-decoration: underline;
     }
 
+/* ── Benefits ───────────────────────────────────────────────────────────── */
+/* What the tier covers, two tiles a row. Fills the lower half of the panel column. */
+
+.license-benefits {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.license-benefits-title {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+}
+
+.license-benefit-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-3);
+}
+
+    .license-benefit-grid li {
+        display: grid;
+        gap: 0.2rem;
+        padding: var(--space-3) var(--space-4);
+        padding-left: calc(var(--space-4) + 14px);
+        position: relative;
+        border-radius: var(--radius-control);
+        background: var(--surface-inset);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+        .license-benefit-grid li::before {
+            content: "";
+            position: absolute;
+            left: var(--space-4);
+            top: calc(var(--space-3) + 0.45rem);
+            width: 7px;
+            height: 7px;
+            border-radius: var(--radius-round);
+            background: var(--lic-accent);
+        }
+
+.license-benefit-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.license-benefit-note {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+/* Freemium: the same grid, but the tiles read as locked — the dot is hollow. */
+.license-overlay.is-freemium .license-benefit-grid li::before {
+    background: transparent;
+    border: 1.5px solid var(--lic-accent);
+}
+
 /* ── Activation (Freemium) ──────────────────────────────────────────────── */
 
 .license-activation {
@@ -355,6 +478,12 @@ body.license-overlay-open .main-content {
         min-width: 140px;
         padding: 0 var(--space-5);
         white-space: nowrap;
+    }
+
+    /* The action keeps the app accent even though the Freemium tier is red: red on the
+       one button to press would read as "danger". */
+    .license-overlay.is-freemium .license-activation {
+        border-color: rgba(var(--accent-purple-rgb), 0.35);
     }
 
 .license-error {
