@@ -4,6 +4,19 @@
 #define MyAppURL "rr.sellhub.cx"
 #define MyAppExeName "RazorReaper.exe"
 
+; UAC, and why it is not a bug
+; ----------------------------
+; DefaultDirName is {autopf} (Program Files) and Inno's PrivilegesRequired defaults to admin, so
+; running this installer — including the /VERYSILENT run the in-app updater spawns — raises a UAC
+; prompt. That is deliberate and stays as it is. What changed in the hybrid update flow is *when*
+; the prompt appears: an update is downloaded silently but never applied on its own, so the
+; prompt now follows a restart the user just asked for ("Restart & update" in the What's new view
+; or the tray menu), or lands in the first seconds of a launch when the app applies an installer
+; staged in an earlier session. It no longer interrupts a live session out of nowhere.
+; Moving to a per-user install ({localappdata}, PrivilegesRequired=lowest) would remove the prompt
+; entirely, but it relocates every existing install and is a separate decision.
+; See RazorReaper/Services/Implementations/AutoUpdateManager.cs (LaunchPendingInstaller).
+
 [Setup]
 AppId={{7C0B8C10-169C-4157-A812-25C3F60197F6}
 AppName={#MyAppName}

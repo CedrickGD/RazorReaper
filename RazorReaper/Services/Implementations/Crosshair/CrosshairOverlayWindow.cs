@@ -28,6 +28,8 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
     private readonly Action _onHotkeyToggle;
     private readonly Action _onTrayShowApp;
     private readonly Action _onTrayQuit;
+    private readonly Action _onTrayApplyUpdate;
+    private readonly Func<string?> _updateReadyLabel;
     private readonly Func<bool> _isOverlayActive;
 
     private Thread? _uiThread;
@@ -68,12 +70,16 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         Action onHotkeyToggle,
         Action onTrayShowApp,
         Action onTrayQuit,
+        Action onTrayApplyUpdate,
+        Func<string?> updateReadyLabel,
         Func<bool> isOverlayActive)
     {
         _logger = logger;
         _onHotkeyToggle = onHotkeyToggle;
         _onTrayShowApp = onTrayShowApp;
         _onTrayQuit = onTrayQuit;
+        _onTrayApplyUpdate = onTrayApplyUpdate;
+        _updateReadyLabel = updateReadyLabel;
         _isOverlayActive = isOverlayActive;
     }
 

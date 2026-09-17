@@ -17,6 +17,16 @@ public interface ICrosshairService
     /// <summary>Fired when the tray icon asks to terminate the process entirely.</summary>
     event Action? QuitRequested;
 
+    /// <summary>Fired when the tray menu's "Restart &amp; update" item is chosen.</summary>
+    event Action? ApplyUpdateRequested;
+
+    /// <summary>
+    /// The version label to offer a restart for in the tray menu, or null to leave the item out.
+    /// The tray owns no update state of its own: the platform shell pushes the label in whenever
+    /// the update manager's state changes, so this service stays a crosshair service.
+    /// </summary>
+    void SetUpdateReadyLabel(string? versionLabel);
+
     bool IsOverlayActive { get; }
     CrosshairProfile ActiveProfile { get; }
 

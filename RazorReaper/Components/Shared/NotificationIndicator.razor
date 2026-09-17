@@ -14,7 +14,8 @@
     -----------------
     Sits at the right end of the sidebar's tier row (SharedNavbar). A muted bell at rest; a
     dot in the app accent pops at its top edge when there is something new — unread support
-    replies, or a release whose notes have not been opened yet — and the tooltip says which.
+    replies, a release whose notes have not been opened yet, or an update that is downloaded
+    and waiting for a restart — and the tooltip says which.
     Clicking opens the "What's new & inbox" overlay (WhatsNewOverlay, rendered by MainLayout).
 
     This component also owns the inbox poll that the old sidebar Inbox link ran: the count on
@@ -127,9 +128,16 @@
 
     private bool HasUpdate => AutoUpdateManager.LastCheckResult?.HasUpdate == true;
 
-    private bool HasNews => Unread > 0 || UnseenRelease is not null;
+    /// <summary>
+    /// An installer is on disk and only the restart is outstanding. This keeps the dot lit even
+    /// after the notes have been opened: the release is no longer news, but the restart still is,
+    /// and the dot is the only standing reminder of it outside the tray menu.
+    /// </summary>
+    private bool UpdateReady => AutoUpdateManager.IsInstallerReady;
 
-    /// <summary>"2 unread replies · new version 1.5.3" — or the view's name when nothing is new.</summary>
+    private bool HasNews => Unread > 0 || UnseenRelease is not null || UpdateReady;
+
+    /// <summary>"2 unread replies · update 1.5.4 ready" — or the view's name when nothing is new.</summary>
     private string Tooltip
     {
         get
@@ -141,7 +149,14 @@
                 parts.Add(Unread == 1 ? "1 unread reply" : $"{Unread} unread replies");
             }
 
-            if (UnseenRelease is { } release)
+            if (UpdateReady)
+            {
+                var pending = AutoUpdateManager.PendingVersion;
+                parts.Add(pending is null
+                    ? "update ready — restart to install"
+                    : $"update {WhatsNewService.Format(pending)} ready — restart to install");
+            }
+            else if (UnseenRelease is { } release)
             {
                 var label = WhatsNewService.Format(release);
                 parts.Add(HasUpdate ? $"new version {label}" : $"what's new in {label}");

@@ -46,6 +46,7 @@ internal sealed partial class CrosshairOverlayWindow
     private const int CmdToggleOverlay = 1001;
     private const int CmdOpenApp = 1002;
     private const int CmdQuit = 1003;
+    private const int CmdApplyUpdate = 1004;
 
     // ─── Window style flags ────────────────────────────────────────────────────
 

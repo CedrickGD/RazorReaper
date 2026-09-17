@@ -130,6 +130,19 @@ internal sealed partial class CrosshairOverlayWindow
         var overlayActive = false;
         try { overlayActive = _isOverlayActive(); } catch { }
 
+        string? updateLabel = null;
+        try { updateLabel = _updateReadyLabel(); } catch { }
+
+        // Only while an installer is actually staged. Top of the menu because it is the one
+        // item here that is time-limited; everything below it is always available.
+        // "&&" is not a typo: AppendMenu reads a single & as the mnemonic prefix, so the item
+        // would otherwise read "Restart _update".
+        if (!string.IsNullOrWhiteSpace(updateLabel))
+        {
+            AppendMenu(menu, MF_STRING, CmdApplyUpdate, $"Restart && update (v{updateLabel})");
+            AppendMenu(menu, MF_SEPARATOR, 0, null);
+        }
+
         AppendMenu(menu, MF_STRING, CmdOpenApp, "Open Razor Reaper");
         AppendMenu(menu, MF_SEPARATOR, 0, null);
         AppendMenu(menu, MF_STRING | (overlayActive ? MF_CHECKED : 0), CmdToggleOverlay, overlayActive ? "Hide overlay" : "Show overlay");
@@ -156,6 +169,9 @@ internal sealed partial class CrosshairOverlayWindow
                 break;
             case CmdQuit:
                 SafeInvoke(_onTrayQuit, "tray quit");
+                break;
+            case CmdApplyUpdate:
+                SafeInvoke(_onTrayApplyUpdate, "tray restart & update");
                 break;
         }
     }

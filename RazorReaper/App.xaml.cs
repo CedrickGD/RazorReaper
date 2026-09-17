@@ -75,9 +75,11 @@ namespace RazorReaper
             discordPresence = discord;
             accessGate = access;
 
-            // Updates are forced: when the manager has an installer staged it asks us to
-            // get out of the way. The orchestrator it spawns waits for this PID to exit,
-            // installs silently, then relaunches — so all we do is hand off and quit.
+            // Downloads are automatic; restarting is not. The manager raises this only once the
+            // update is actually being applied — the user asked, the manifest said mandatory, or
+            // an installer staged in an earlier session is being applied at this start. The
+            // orchestrator it spawns waits for this PID to exit, installs silently, then
+            // relaunches — so all we do is hand off and quit.
             updateManager.InstallRequested += HandleInstallRequested;
 
             RunStartupTask("font-install", () => fontInstaller.EnsurePresetFontsInstalledAsync());
@@ -174,6 +176,8 @@ namespace RazorReaper
 
         private void HandleWindowDestroying(object? sender, EventArgs e)
         {
+            // Only completes a handoff that is already under way — a staged installer that is
+            // merely waiting stays waiting, so quitting never turns into a surprise install.
             SafeInvoke(() => autoUpdateManager!.LaunchPendingInstaller());
             SafeInvoke(() => discordPresence!.Shutdown());
 

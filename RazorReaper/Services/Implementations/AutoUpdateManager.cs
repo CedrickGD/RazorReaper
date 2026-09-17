@@ -1,9 +1,17 @@
 using Microsoft.Extensions.Logging;
+using RazorReaper.Diagnostics;
 using RazorReaper.Models;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace RazorReaper.Services.Implementations;
 
+/// <summary>
+/// Owns the staged installer: downloads it silently, keeps it across sessions, and hands off to
+/// it when the moment is right. What "the right moment" means lives in
+/// <see cref="UpdateApplyPolicy"/>; everything MAUI-shaped (preferences, temp files, the
+/// orchestrator script) lives here.
+/// </summary>
 public sealed class AutoUpdateManager : IAutoUpdateManager
 {
     private const string PrefKeyLastKnownVersion = "rr.autoupdate.lastknownversion";
@@ -11,43 +19,74 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     private const string PrefKeyInstallerArgs = "rr.autoupdate.installerargs";
     private const string PrefKeyPendingVersion = "rr.autoupdate.pendingversion";
 
+    // The hybrid flow keeps an installer across sessions, so the next start has to be able to
+    // tell a finished download from a half-written file it must never run. The byte count is
+    // written only after the response was verified; the ready flag says the write finished.
+    private const string PrefKeyReady = "rr.autoupdate.ready";
+    private const string PrefKeyInstallerBytes = "rr.autoupdate.installerbytes";
+    private const string PrefKeyStagedAt = "rr.autoupdate.stagedat";
+    private const string PrefKeyMandatory = "rr.autoupdate.mandatory";
+
+    private const string DefaultInstallerArgs = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";
+
     private static readonly string TempDir = Path.Combine(Path.GetTempPath(), "RazorReaperUpdate");
-    private static readonly string InstallerFileName = "RazorReaper_Update.exe";
+    private const string InstallerFileName = "RazorReaper_Update.exe";
 
     /// <summary>How often to re-check while the app stays open, so a release published
     /// mid-session is picked up without waiting for the next launch.</summary>
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(30);
 
+    /// <summary>How often a mandatory update that ran into the gate tries again.</summary>
+    private static readonly TimeSpan MandatoryRetryInterval = TimeSpan.FromMinutes(1);
+
     /// <summary>Breathing room between the "installing" toast and the app vanishing.</summary>
     private static readonly TimeSpan HandoffGrace = TimeSpan.FromSeconds(4);
+
+    /// <summary>What the user is told when ARK or a macro is in the way. The update stays ready
+    /// and the action stays available — this is a "not yet", not a failure.</summary>
+    internal const string GatedMessage = "Close ARK (or stop the running macro) first, then restart to update.";
 
     private readonly IUpdateService updateService;
     private readonly HttpClient httpClient;
     private readonly INotificationService notifications;
+    private readonly IUpdateActivityGate activityGate;
     private readonly ILogger<AutoUpdateManager> logger;
 
     private int recurringStarted;
     private int orchestratorLaunched;
+    private int handoffStarted;
+    private int mandatoryRetryStarted;
 
     private volatile bool isChecking;
     private volatile bool isDownloading;
     private volatile bool isInstallerReady;
+    private volatile bool isInstallLaunching;
+
+    /// <summary>Set the moment a handoff is asked for. <see cref="LaunchPendingInstaller"/>
+    /// refuses to do anything until it is.</summary>
+    private volatile bool installRequested;
+
     private int _downloadProgressPercent = -1; // -1 means null
     private volatile string statusMessage = "";
     private Version? pendingVersion;
     private UpdateCheckResult? lastCheckResult;
     private string? installerPath;
     private string? installerArgs;
+    private long stagedBytes;
+    private volatile bool stagedIsMandatory;
+    private UpdateApplyTrigger requestedTrigger = UpdateApplyTrigger.Download;
 
     public AutoUpdateManager(
         IUpdateService updateService,
         HttpClient httpClient,
         INotificationService notifications,
+        IUpdateActivityGate activityGate,
         ILogger<AutoUpdateManager> logger)
     {
         this.updateService = updateService;
         this.httpClient = httpClient;
         this.notifications = notifications;
+        this.activityGate = activityGate;
         this.logger = logger;
     }
 
@@ -56,6 +95,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     public bool IsChecking => isChecking;
     public bool IsInstallerReady => isInstallerReady;
+    public bool IsInstallLaunching => isInstallLaunching;
     public bool IsDownloading => isDownloading;
     public int? DownloadProgressPercent => _downloadProgressPercent >= 0 ? _downloadProgressPercent : null;
     public Version? PendingVersion => pendingVersion;
@@ -64,7 +104,18 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     public async Task RunStartupCheckAsync(CancellationToken cancellationToken = default)
     {
-        CleanupStaleInstaller();
+        // Before anything else: is there still a usable installer on disk? An update staged in
+        // an earlier session is applied here, while nothing is in flight and the window has
+        // barely appeared.
+        if (RestoreStagedInstaller())
+        {
+            TryApply(UpdateApplyTrigger.Startup);
+        }
+
+        // Runs either way. If the handoff above went through, this process has a few seconds
+        // left and the check is harmless — the download path stands down while an install is
+        // requested. If it was gated (ARK is often already running: the ARK link is what
+        // launched us), the session still gets its check result and its interval.
         await CheckAndInstallAsync(cancellationToken);
         StartRecurringChecks();
     }
@@ -81,6 +132,14 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         await Task.Run(() => CheckAndInstallAsync(cancellationToken), cancellationToken);
     }
 
+    public Task<bool> ApplyUpdateNowAsync(
+        UpdateApplyTrigger trigger,
+        CancellationToken cancellationToken = default)
+    {
+        // The gate enumerates processes, which is slow enough to notice on a click handler.
+        return Task.Run(() => TryApply(trigger), cancellationToken);
+    }
+
     /// <summary>
     /// Re-checks on <see cref="CheckInterval"/> for as long as the app is open. Started
     /// once; the interlock keeps a second call from spawning a second loop.
@@ -94,9 +153,8 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
             using var timer = new PeriodicTimer(CheckInterval);
             while (await timer.WaitForNextTickAsync())
             {
-                // Once an installer is staged the handoff is already in flight; checking
-                // again would only download the same build twice.
-                if (isInstallerReady || isDownloading) continue;
+                // A handoff is already in flight — the process is on its way out.
+                if (isDownloading || installRequested) continue;
 
                 try
                 {
@@ -112,6 +170,10 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     private async Task CheckAndInstallAsync(CancellationToken cancellationToken)
     {
+        // A handoff is already under way — the status line belongs to it, not to a check whose
+        // answer nobody will be around to read.
+        if (installRequested) return;
+
         isChecking = true;
         statusMessage = "Checking for updates...";
         OnStateChanged();
@@ -152,21 +214,144 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
             return;
         }
 
-        // No opt-out: a new build is downloaded and installed as soon as it's seen.
+        if (isInstallerReady)
+        {
+            // Already staged. Same build (the common case): keep it and let the policy decide
+            // whether this is a release that may not wait. A newer one means the staged file is
+            // now stale, so it goes and the new build is fetched.
+            if (pendingVersion is not null && result.LatestVersion is not null && result.LatestVersion > pendingVersion)
+            {
+                logger.LogInformation(
+                    "A newer build v{Latest} superseded the staged v{Staged}; re-downloading",
+                    result.LatestVersion,
+                    pendingVersion);
+                DiscardStagedInstaller();
+            }
+            else
+            {
+                stagedIsMandatory |= result.IsMandatory;
+                TryApply(UpdateApplyTrigger.Download);
+                return;
+            }
+        }
+
+        // The download itself stays automatic and silent; what happens once it lands does not.
         await DownloadInstallerAsync(result, cancellationToken);
+    }
+
+    // ---- Applying ------------------------------------------------------------------
+
+    /// <summary>
+    /// Collects the facts, asks <see cref="UpdateApplyPolicy"/>, and acts on the answer.
+    /// Returns true only when a handoff was actually started.
+    /// </summary>
+    private bool TryApply(UpdateApplyTrigger trigger)
+    {
+        if (!isInstallerReady || installRequested)
+        {
+            return false;
+        }
+
+        var staged = pendingVersion;
+        var mandatory = stagedIsMandatory;
+
+        var decision = UpdateApplyPolicy.Decide(new UpdateApplyInputs(
+            StagedVersion: staged,
+            RunningVersion: updateService.CurrentVersion,
+            InstallerComplete: IsStagedInstallerComplete(),
+            IsMandatory: mandatory,
+            ArkRunning: activityGate.IsArkRunning,
+            MacroRunning: activityGate.IsMacroRunning,
+            Trigger: trigger));
+
+        switch (decision)
+        {
+            case UpdateApplyDecision.Apply:
+                RequestInstall(staged, trigger);
+                return true;
+
+            case UpdateApplyDecision.Gated:
+                logger.LogInformation("Update v{Version} stays staged: ARK or a macro is running", Label(staged));
+
+                // Only say it when someone is waiting for an answer. ARK is running at startup
+                // more often than not (the ARK link is what launched us), and a toast on every
+                // launch would be noise; the mandatory retry would repeat it every minute.
+                if (trigger is UpdateApplyTrigger.Button or UpdateApplyTrigger.Tray
+                    || (mandatory && trigger != UpdateApplyTrigger.Mandatory))
+                {
+                    notifications.ShowWarning(GatedMessage);
+                }
+
+                statusMessage = $"Update v{Label(staged)} is ready — close ARK, then restart to install.";
+                OnStateChanged();
+                StartMandatoryRetry();
+                return false;
+
+            case UpdateApplyDecision.StayReady:
+                statusMessage = $"Update v{Label(staged)} is ready — restart to install.";
+                OnStateChanged();
+                return false;
+
+            default:
+                // The file went missing, was truncated, or names a build we already run.
+                DiscardStagedInstaller();
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// A mandatory release that ran into the gate keeps asking, once a minute, until ARK and the
+    /// macros are quiet. Nothing else retries by itself.
+    /// </summary>
+    private void StartMandatoryRetry()
+    {
+        if (!stagedIsMandatory) return;
+        if (Interlocked.Exchange(ref mandatoryRetryStarted, 1) != 0) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var timer = new PeriodicTimer(MandatoryRetryInterval);
+                while (await timer.WaitForNextTickAsync())
+                {
+                    if (!isInstallerReady || installRequested) return;
+                    if (TryApply(UpdateApplyTrigger.Mandatory)) return;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Mandatory update retry stopped");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref mandatoryRetryStarted, 0);
+            }
+        });
     }
 
     /// <summary>
     /// Tells the app to hand off. Warns first and waits <see cref="HandoffGrace"/> so the
     /// window doesn't just disappear out from under whatever the user was doing.
     /// </summary>
-    private void RequestInstall(Version? version)
+    private void RequestInstall(Version? version, UpdateApplyTrigger trigger)
     {
+        if (Interlocked.Exchange(ref handoffStarted, 1) != 0) return;
+
+        // Set before the grace period, not after: from here on the exit handlers are allowed to
+        // launch the installer, because the user has been told the app is about to restart.
+        requestedTrigger = trigger;
+        installRequested = true;
+        isInstallLaunching = true;
+
+        var label = Label(version);
+        statusMessage = $"Installing v{label} — restarting...";
+        OnStateChanged();
+
         _ = Task.Run(async () =>
         {
             try
             {
-                var label = version?.ToString() ?? "a new version";
                 // Countdown variant, because this toast's lifetime *is* the grace period:
                 // when it runs out the window is gone. A static warning gave no hint how
                 // much time was left to finish what you were doing.
@@ -188,6 +373,15 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     public bool LaunchPendingInstaller()
     {
+        // The window-destroying and process-exit handlers call this on every shutdown. Under the
+        // hybrid flow an installer can sit staged for days, and "Quit" must not turn into a
+        // silent install — a UAC prompt out of nowhere plus an app that comes back after the
+        // user closed it. Nothing happens here until a handoff was actually asked for.
+        if (!installRequested)
+        {
+            return false;
+        }
+
         // The forced path calls this twice on its own: App.HandleInstallRequested launches
         // the orchestrator and then calls Environment.Exit(0), which fires ProcessExit —
         // and that handler calls in here again. Nothing about the staged state stops the
@@ -201,7 +395,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         }
 
         var path = installerPath ?? Preferences.Get(PrefKeyInstallerPath, "");
-        var args = installerArgs ?? Preferences.Get(PrefKeyInstallerArgs, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART");
+        var args = installerArgs ?? Preferences.Get(PrefKeyInstallerArgs, DefaultInstallerArgs);
 
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
@@ -231,6 +425,11 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
             Directory.CreateDirectory(scriptDir);
             var scriptPath = Path.Combine(scriptDir, "rr_update.cmd");
 
+            // The installer is an Inno Setup build that installs into Program Files, so this is
+            // where Windows shows a UAC prompt. That is expected and deliberate: it now follows
+            // a restart the user asked for, or lands in the first seconds of a launch, instead
+            // of ambushing a session mid-raid. See installer/RazorReaper.iss.
+            // `del "%~f0"` stays the last line: cmd reads this file as it goes.
             var script = $@"@echo off
 :wait
 tasklist /FI ""PID eq {ourPid}"" 2>nul | find ""{ourPid}"" >nul
@@ -254,15 +453,8 @@ del ""%~f0"" >nul 2>&1
                 WindowStyle = ProcessWindowStyle.Hidden
             });
 
-            // Drop the in-memory copies as well, not just the prefs: they were the reason a
-            // re-entrant call sailed past every guard above.
-            installerPath = null;
-            installerArgs = null;
-
-            Preferences.Remove(PrefKeyInstallerPath);
-            Preferences.Remove(PrefKeyInstallerArgs);
-            Preferences.Remove(PrefKeyPendingVersion);
-
+            // The staged installer and its preferences stay on disk on purpose: once the running
+            // version has caught up, the cleanup pass at the next start deletes them.
             logger.LogInformation("Launched auto-update orchestrator for installer: {Path}", path);
             return true;
         }
@@ -277,25 +469,18 @@ del ""%~f0"" >nul 2>&1
     }
 
     /// <summary>
-    /// Called when the app tried to hand off and stayed open anyway. The recurring loop
-    /// skips every tick while an installer is staged, and <c>isInstallerReady</c> is only
-    /// ever set — so without this the session would never check again and the Home widget
-    /// would sit on "Installing v… — restarting..." forever while nothing restarts.
+    /// Called when the app tried to hand off and stayed open anyway. Only the in-flight handoff
+    /// is cleared — the installer stays staged, because it is complete and newer, and the next
+    /// start applies it before anything else runs.
     /// </summary>
     public void ResetPendingInstaller()
     {
-        isInstallerReady = false;
-        installerPath = null;
-        installerArgs = null;
-        pendingVersion = null;
-        _downloadProgressPercent = -1;
-        statusMessage = "Update couldn't start — will retry at the next check.";
+        installRequested = false;
+        isInstallLaunching = false;
+        Interlocked.Exchange(ref handoffStarted, 0);
+        statusMessage = $"Update v{Label(pendingVersion)} couldn't start — it will be applied at the next start.";
 
-        Preferences.Remove(PrefKeyInstallerPath);
-        Preferences.Remove(PrefKeyInstallerArgs);
-        Preferences.Remove(PrefKeyPendingVersion);
-
-        logger.LogWarning("Auto-update handoff failed; cleared the staged installer so checks resume");
+        logger.LogWarning("Auto-update handoff failed; the installer stays staged for the next start");
         OnStateChanged();
     }
 
@@ -312,11 +497,13 @@ del ""%~f0"" >nul 2>&1
         if (!Version.TryParse(storedText, out var previousVersion))
             return null;
 
-        if (previousVersion < currentVersion)
-            return previousVersion;
+        if (previousVersion >= currentVersion)
+            return null;
 
-        return null;
+        return previousVersion;
     }
+
+    // ---- Downloading ---------------------------------------------------------------
 
     private async Task DownloadInstallerAsync(UpdateCheckResult result, CancellationToken cancellationToken)
     {
@@ -332,61 +519,72 @@ del ""%~f0"" >nul 2>&1
         statusMessage = "Downloading update...";
         OnStateChanged();
 
+        var targetPath = Path.Combine(TempDir, InstallerFileName);
+        long bytesWritten = 0;
+        long? expectedBytes = null;
+
         try
         {
             Directory.CreateDirectory(TempDir);
-            var targetPath = Path.Combine(TempDir, InstallerFileName);
 
-            using var response = await httpClient.GetAsync(result.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var totalBytes = response.Content.Headers.ContentLength;
-            long bytesRead = 0;
-            int lastReportedPercent = 0;
-
-            await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await using var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-            var buffer = new byte[8192];
-            int read;
-            while ((read = await contentStream.ReadAsync(buffer, cancellationToken)) > 0)
+            using (var response = await httpClient.GetAsync(result.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                bytesRead += read;
+                response.EnsureSuccessStatusCode();
+                expectedBytes = response.Content.Headers.ContentLength;
 
-                if (totalBytes.HasValue && totalBytes.Value > 0)
+                int lastReportedPercent = 0;
+
+                await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                await using var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+                var buffer = new byte[8192];
+                int read;
+                while ((read = await contentStream.ReadAsync(buffer, cancellationToken)) > 0)
                 {
-                    var percent = (int)(bytesRead * 100 / totalBytes.Value);
-                    if (percent != lastReportedPercent)
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                    bytesWritten += read;
+
+                    if (expectedBytes is > 0)
                     {
-                        lastReportedPercent = percent;
-                        _downloadProgressPercent = percent;
-                        statusMessage = $"Downloading update... {percent}%";
-                        OnStateChanged();
+                        var percent = (int)(bytesWritten * 100 / expectedBytes.Value);
+                        if (percent != lastReportedPercent)
+                        {
+                            lastReportedPercent = percent;
+                            _downloadProgressPercent = percent;
+                            statusMessage = $"Downloading update... {percent}%";
+                            OnStateChanged();
+                        }
                     }
                 }
             }
 
-            var args = result.InstallerArgs ?? "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";
+            // The streams are closed, so the length on disk is the final one. A truncated
+            // response (a proxy giving up halfway) used to be staged and run as if it were an
+            // installer; it is not, and the whole hybrid flow rests on never doing that.
+            var onDisk = new FileInfo(targetPath).Length;
+            var complete = onDisk > 0 && (expectedBytes is not > 0 || onDisk == expectedBytes.Value);
 
-            installerPath = targetPath;
-            installerArgs = args;
-            pendingVersion = result.LatestVersion;
-            isInstallerReady = true;
-            isDownloading = false;
-            _downloadProgressPercent = 100;
-            statusMessage = $"Installing v{result.LatestVersion} — restarting...";
+            if (!complete)
+            {
+                logger.LogWarning(
+                    "Update download was incomplete: {OnDisk} of {Expected} bytes",
+                    onDisk,
+                    expectedBytes);
+                TryDeleteStagedFile(targetPath);
+                isDownloading = false;
+                _downloadProgressPercent = -1;
+                statusMessage = "Update download was incomplete — it will be retried.";
+                OnStateChanged();
+                return;
+            }
 
-            Preferences.Set(PrefKeyInstallerPath, targetPath);
-            Preferences.Set(PrefKeyInstallerArgs, args);
-            if (result.LatestVersion != null)
-                Preferences.Set(PrefKeyPendingVersion, result.LatestVersion.ToString());
+            StageInstaller(targetPath, result, onDisk);
 
             logger.LogInformation("Auto-update installer downloaded: {Path} for v{Version}", targetPath, result.LatestVersion);
             OnStateChanged();
 
-            // Straight to install — no waiting for the user to close the app.
-            RequestInstall(result.LatestVersion);
+            // Ready, not restarting: only a mandatory release goes straight on to the handoff.
+            TryApply(UpdateApplyTrigger.Download);
         }
         catch (OperationCanceledException)
         {
@@ -405,31 +603,158 @@ del ""%~f0"" >nul 2>&1
         }
     }
 
-    private void CleanupStaleInstaller()
+    private void StageInstaller(string targetPath, UpdateCheckResult result, long bytes)
     {
+        var args = result.InstallerArgs ?? DefaultInstallerArgs;
+
+        installerPath = targetPath;
+        installerArgs = args;
+        pendingVersion = result.LatestVersion;
+        stagedBytes = bytes;
+        stagedIsMandatory = result.IsMandatory;
+        isInstallerReady = true;
+        isDownloading = false;
+        _downloadProgressPercent = 100;
+        statusMessage = $"Update v{Label(result.LatestVersion)} is ready — restart to install.";
+
+        Preferences.Set(PrefKeyInstallerPath, targetPath);
+        Preferences.Set(PrefKeyInstallerArgs, args);
+        Preferences.Set(PrefKeyInstallerBytes, bytes);
+        Preferences.Set(PrefKeyStagedAt, DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        Preferences.Set(PrefKeyMandatory, result.IsMandatory);
+        if (result.LatestVersion != null)
+            Preferences.Set(PrefKeyPendingVersion, result.LatestVersion.ToString());
+
+        // Last, so a crash between the writes above never leaves a half-described installer
+        // looking ready at the next start.
+        Preferences.Set(PrefKeyReady, true);
+    }
+
+    // ---- Staged installer across sessions -------------------------------------------
+
+    /// <summary>
+    /// Picks up an installer staged by an earlier session, if it is still worth keeping.
+    /// Replaces the old unconditional cleanup, which deleted a perfectly good installer on
+    /// every launch and left 1.4.8 downloading the same 73 MB forever.
+    /// </summary>
+    private bool RestoreStagedInstaller()
+    {
+        try
+        {
+            var path = Preferences.Get(PrefKeyInstallerPath, "");
+            var ready = Preferences.Get(PrefKeyReady, false);
+            var bytes = Preferences.Get(PrefKeyInstallerBytes, 0L);
+
+            var staged = Version.TryParse(Preferences.Get(PrefKeyPendingVersion, ""), out var parsedVersion)
+                ? parsedVersion
+                : null;
+
+            var stagedAt = DateTimeOffset.TryParse(
+                Preferences.Get(PrefKeyStagedAt, ""),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out var parsedStagedAt)
+                ? parsedStagedAt
+                : DateTimeOffset.MinValue;
+
+            var onDisk = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+            var complete = ready && onDisk && bytes > 0 && new FileInfo(path).Length == bytes;
+
+            if (!UpdateApplyPolicy.KeepStagedInstaller(
+                    staged,
+                    updateService.CurrentVersion,
+                    complete,
+                    stagedAt,
+                    DateTimeOffset.UtcNow))
+            {
+                DiscardStagedInstaller();
+                return false;
+            }
+
+            installerPath = path;
+            installerArgs = Preferences.Get(PrefKeyInstallerArgs, DefaultInstallerArgs);
+            pendingVersion = staged;
+            stagedBytes = bytes;
+            stagedIsMandatory = Preferences.Get(PrefKeyMandatory, false);
+            isInstallerReady = true;
+            _downloadProgressPercent = 100;
+            statusMessage = $"Update v{Label(staged)} is ready — restart to install.";
+
+            logger.LogInformation("Picked up a staged installer for v{Version}", Label(staged));
+            OnStateChanged();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Could not restore the staged installer (non-critical)");
+            return false;
+        }
+    }
+
+    /// <summary>True while the staged file is still exactly the size it was verified at.</summary>
+    private bool IsStagedInstallerComplete()
+    {
+        try
+        {
+            var path = installerPath;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+            return stagedBytes > 0 && new FileInfo(path).Length == stagedBytes;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Could not measure the staged installer");
+            return false;
+        }
+    }
+
+    /// <summary>Drops a staged installer that is partial, superseded, or past its shelf life.</summary>
+    private void DiscardStagedInstaller()
+    {
+        isInstallerReady = false;
+        installerPath = null;
+        installerArgs = null;
+        pendingVersion = null;
+        stagedBytes = 0;
+        stagedIsMandatory = false;
+        _downloadProgressPercent = -1;
+
         try
         {
             var stalePath = Preferences.Get(PrefKeyInstallerPath, "");
             if (!string.IsNullOrWhiteSpace(stalePath) && File.Exists(stalePath))
             {
                 File.Delete(stalePath);
-                logger.LogDebug("Cleaned up stale installer: {Path}", stalePath);
+                logger.LogDebug("Deleted a staged installer that is no longer usable: {Path}", stalePath);
             }
-
-            if (Directory.Exists(TempDir))
-            {
-                Directory.Delete(TempDir, recursive: true);
-            }
-
-            Preferences.Remove(PrefKeyInstallerPath);
-            Preferences.Remove(PrefKeyInstallerArgs);
-            Preferences.Remove(PrefKeyPendingVersion);
         }
         catch (Exception ex)
         {
-            logger.LogDebug(ex, "Stale installer cleanup failed (non-critical)");
+            logger.LogDebug(ex, "Staged installer cleanup failed (non-critical)");
+        }
+
+        Preferences.Remove(PrefKeyInstallerPath);
+        Preferences.Remove(PrefKeyInstallerArgs);
+        Preferences.Remove(PrefKeyPendingVersion);
+        Preferences.Remove(PrefKeyInstallerBytes);
+        Preferences.Remove(PrefKeyStagedAt);
+        Preferences.Remove(PrefKeyMandatory);
+        Preferences.Remove(PrefKeyReady);
+    }
+
+    private static void TryDeleteStagedFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch
+        {
+            // A partial file that cannot be deleted is overwritten by the next download anyway.
         }
     }
+
+    private static string Label(Version? version)
+        => version is null ? "?" : AppVersionInfo.FormatVersion(version);
 
     private void OnStateChanged()
     {

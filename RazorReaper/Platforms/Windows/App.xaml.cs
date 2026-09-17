@@ -151,7 +151,36 @@ namespace RazorReaper.WinUI
                 Environment.Exit(0);
             };
 
+            WireTrayUpdateItem(services, crosshair);
+
             _wiredCrosshairTray = true;
+        }
+
+        /// <summary>
+        /// "Restart &amp; update (vX)" in the tray menu, for the user who never opens the window.
+        /// The tray keeps no update state: the manager's label is pushed in whenever it changes,
+        /// and the item disappears again the moment nothing is staged.
+        /// </summary>
+        private static void WireTrayUpdateItem(IServiceProvider? services, ICrosshairService crosshair)
+        {
+            var updates = services?.GetService<IAutoUpdateManager>();
+            if (updates is null) return;
+
+            void SyncLabel()
+            {
+                var label = updates.IsInstallerReady && !updates.IsInstallLaunching && updates.PendingVersion is { } version
+                    ? WhatsNewService.Format(version)
+                    : null;
+                crosshair.SetUpdateReadyLabel(label);
+            }
+
+            updates.StateChanged += SyncLabel;
+            SyncLabel();
+
+            // Fire-and-forget: the click arrives on the overlay's STA thread, which must not
+            // block on a process enumeration, and the manager reports the outcome itself.
+            crosshair.ApplyUpdateRequested += () =>
+                _ = updates.ApplyUpdateNowAsync(RazorReaper.Services.UpdateApplyTrigger.Tray);
         }
 
         private void StartShowSignalListener()

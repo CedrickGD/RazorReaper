@@ -83,6 +83,14 @@ public partial class CrosshairService : ICrosshairService, IDisposable
     public event Action? LibraryChanged;
     public event Action? ShowAppRequested;
     public event Action? QuitRequested;
+    public event Action? ApplyUpdateRequested;
+
+    // Pushed in by the platform shell whenever the update manager's state changes; read by the
+    // tray menu on the overlay's STA thread, hence volatile.
+    private volatile string? _updateReadyLabel;
+
+    public void SetUpdateReadyLabel(string? versionLabel)
+        => _updateReadyLabel = string.IsNullOrWhiteSpace(versionLabel) ? null : versionLabel;
 
     public bool IsOverlayActive => _overlayActive;
     public CrosshairProfile ActiveProfile { get { lock (_lock) return _active; } }
@@ -127,6 +135,8 @@ public partial class CrosshairService : ICrosshairService, IDisposable
             onHotkeyToggle: OnHotkeyToggle,
             onTrayShowApp: () => ShowAppRequested?.Invoke(),
             onTrayQuit: () => QuitRequested?.Invoke(),
+            onTrayApplyUpdate: () => ApplyUpdateRequested?.Invoke(),
+            updateReadyLabel: () => _updateReadyLabel,
             isOverlayActive: () => _overlayActive);
         _overlay.Start();
         _overlay.RegisterHotkey(_hotkeyVk, _hotkeyCtrl, _hotkeyAlt, _hotkeyShift);
