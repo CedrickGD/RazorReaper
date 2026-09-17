@@ -144,6 +144,69 @@ public sealed class LicenseOverlayLayoutTests
     }
 
     /// <summary>
+    /// Closing an overlay — X or Escape, both of which are just Overlay.Close() — puts focus
+    /// back on the sidebar button that opened it, so the keyboard carries on from where it
+    /// left off instead of at the top of the page underneath. The runtime remembers the
+    /// element that had focus when it opened and focuses it again on close; each overlay has
+    /// its own runtime, so one never restores the other's opener.
+    /// </summary>
+    [Theory]
+    [InlineData("LicenseOverlay.razor", "razorReaperLicenseOverlay")]
+    [InlineData("WhatsNewOverlay.razor", "razorReaperWhatsNewOverlay")]
+    public void ClosingTheOverlayHandsFocusBackToItsOpener(string component, string runtime)
+    {
+        var js = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "js", "license-overlay.js"));
+
+        Assert.Contains("restoreFocusTo = active instanceof HTMLElement ? active : null;", js, StringComparison.Ordinal);
+        Assert.Contains("const target = restoreFocusTo;", js, StringComparison.Ordinal);
+        Assert.Contains("target.focus({ preventScroll: true });", js, StringComparison.Ordinal);
+
+        // Open and close both run from OnAfterRenderAsync, after the render that added or
+        // removed the markup, and the X and Escape share the one Close.
+        var overlay = File.ReadAllText(ComponentPath("Shared", component));
+        Assert.Contains($"await JS.InvokeVoidAsync(\"{runtime}.open\", _rootRef);", overlay, StringComparison.Ordinal);
+        Assert.Contains($"await JS.InvokeVoidAsync(\"{runtime}.close\");", overlay, StringComparison.Ordinal);
+        Assert.Contains("_syncJsPending = false;", overlay, StringComparison.Ordinal);
+        Assert.Contains("private void Close() => Overlay.Close();", overlay, StringComparison.Ordinal);
+        Assert.Contains("@onclick=\"Close\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("e.Key == \"Escape\"", overlay, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Nothing may focus a heading on the app's first paint. &lt;FocusOnNavigate&gt; counts the
+    /// very first render as a navigation and queues one focusBySelector call for it; that call
+    /// lands whenever the interop channel gets to it, stamps tabindex="-1" on the match and
+    /// focuses it. An overlay opened and closed in that window handed focus back to the
+    /// sidebar button correctly and then lost it again to the page &lt;h1&gt;. The router goes
+    /// through FocusOnPageChange instead, which holds the framework component back until the
+    /// route has actually moved between two different page types.
+    /// </summary>
+    [Fact]
+    public void TheRouterDoesNotFocusTheHeadingOnTheFirstPaint()
+    {
+        var components = Path.Combine(RepositoryRoot(), "RazorReaper", "Components");
+        var routes = File.ReadAllText(Path.Combine(components, "Routes.razor"));
+
+        Assert.Contains("<FocusOnPageChange RouteData=\"@routeData\" Selector=\"h1\" />", routes, StringComparison.Ordinal);
+
+        var gate = File.ReadAllText(Path.Combine(components, "FocusOnPageChange.razor"));
+        Assert.Contains("<FocusOnNavigate RouteData=\"@RouteData\" Selector=\"@Selector\" />", gate, StringComparison.Ordinal);
+        Assert.Contains("@if (_armed)", gate, StringComparison.Ordinal);
+        // The first page type is remembered, not acted on; a different one arms the component.
+        Assert.Contains("_firstPageType = RouteData.PageType;", gate, StringComparison.Ordinal);
+        Assert.Contains("if (RouteData.PageType != _firstPageType)", gate, StringComparison.Ordinal);
+        Assert.Contains("_armed = true;", gate, StringComparison.Ordinal);
+
+        // The gate is the only place the framework component may be mounted.
+        var offenders = Directory.GetFiles(components, "*.razor", SearchOption.AllDirectories)
+            .Where(path => Path.GetFileName(path) != "FocusOnPageChange.razor")
+            .Where(path => File.ReadAllText(path).Contains("<FocusOnNavigate", StringComparison.Ordinal))
+            .Select(Path.GetFileName)
+            .ToArray();
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
     /// The Freemium tier is red in the sidebar (#d8524f dot) and was purple in the overlay. The
     /// overlay now takes the theme's red tokens for that state; Premium stays green in both.
     /// </summary>

@@ -1,6 +1,10 @@
 ﻿<Router AppAssembly="@typeof(MauiProgram).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        @* Heading focus on real page changes only — never on the first paint, where the
+           framework's own FocusOnNavigate would queue a focus call that lands late and
+           steals focus back from whatever moved it in the meantime (the overlays hand it
+           to the sidebar button that opened them). See FocusOnPageChange.razor. *@
+        <FocusOnPageChange RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>

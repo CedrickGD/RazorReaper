@@ -1,0 +1,66 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+@*
+    Heading focus on real navigations only
+    --------------------------------------
+    <FocusOnNavigate> moves focus to the first element matching Selector whenever the
+    router swaps page types — good for screen readers on a real page change, wrong at
+    startup, where there is no previous page to have come from.
+
+    The framework component cannot tell those apart: it compares the incoming page type
+    against a sentinel that never matches, so the very first render always counts as a
+    navigation and always queues one JS focus call. That one call is the problem. It is
+    dispatched over the interop channel during Home's first render and lands whenever it
+    lands — and the JS behind it (focusBySelector) stamps tabindex="-1" onto the match and
+    focuses it, permanently. Anything that legitimately moves focus in that window loses
+    it again a moment later: the license and What's-new overlays each hand focus back to
+    the sidebar button that opened them when they close (wwwroot/js/license-overlay.js),
+    and an open-then-close right after launch had the delayed startup call arrive after
+    that hand-off and pull focus onto the page's <h1> instead.
+
+    So this only mounts <FocusOnNavigate> once the router has actually moved between two
+    different page types. The first page type it is handed is remembered, not acted on;
+    the first genuinely different one arms the framework component, which then fires for
+    that navigation and every one after it. Nothing focuses anything on the initial paint.
+*@
+
+@if (_armed)
+{
+    <FocusOnNavigate RouteData="@RouteData" Selector="@Selector" />
+}
+
+@code {
+    /// <summary>The router's current route data, straight from the &lt;Found&gt; context.</summary>
+    [Parameter, EditorRequired]
+    public RouteData RouteData { get; set; } = default!;
+
+    /// <summary>CSS selector for the element to focus after a navigation.</summary>
+    [Parameter, EditorRequired]
+    public string Selector { get; set; } = default!;
+
+    // The page type the app started on. Null until the first parameters arrive.
+    private Type? _firstPageType;
+
+    // Set once and never cleared: from the first real page change on, focus handling is
+    // the framework component's again, including a later return to the starting page.
+    private bool _armed;
+
+    protected override void OnParametersSet()
+    {
+        if (_armed)
+        {
+            return;
+        }
+
+        if (_firstPageType is null)
+        {
+            _firstPageType = RouteData.PageType;
+            return;
+        }
+
+        if (RouteData.PageType != _firstPageType)
+        {
+            _armed = true;
+        }
+    }
+}
