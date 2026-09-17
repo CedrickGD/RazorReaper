@@ -175,7 +175,9 @@
 }
 
 @code {
-    private const int MaxPreview = 5;
+    // A preview, not the inbox: three rows fit under the notes without scrolling the card
+    // at 1280×800, and "Open inbox" is right above them.
+    private const int MaxPreview = 3;
 
     private ElementReference _rootRef;
 

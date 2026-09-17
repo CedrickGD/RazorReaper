@@ -144,6 +144,26 @@ public sealed class NotificationIndicatorLayoutTests
         Assert.Contains("razorReaperWhatsNewOverlay.close", overlay, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The card hugs its content instead of stretching to the window around a void; the notes
+    /// keep a reading measure; the inbox is a preview of three, not a second inbox.
+    /// </summary>
+    [Fact]
+    public void TheWhatsNewFrameHugsItsContent()
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "whats-new-overlay.css"));
+
+        var root = css.IndexOf(".whats-new-overlay {", StringComparison.Ordinal);
+        Assert.Contains("align-items: center;", css[root..css.IndexOf('}', root)], StringComparison.Ordinal);
+        var frame = css.IndexOf(".whats-new-frame {", StringComparison.Ordinal);
+        Assert.Contains("max-height: 100%;", css[frame..css.IndexOf('}', frame)], StringComparison.Ordinal);
+        var note = css.IndexOf(".whats-new-notes li {", StringComparison.Ordinal);
+        Assert.Contains("max-width: 68ch;", css[note..css.IndexOf('}', note)], StringComparison.Ordinal);
+
+        var overlay = File.ReadAllText(ComponentPath("Shared", "WhatsNewOverlay.razor"));
+        Assert.Contains("private const int MaxPreview = 3;", overlay, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheOverlayShowsTheNotesTheUpdateActionAndTheInbox()
     {

@@ -16,7 +16,10 @@
        overlay: the two cannot be open together, the icon that opens this sits under it. */
     z-index: 9500;
     display: flex;
-    align-items: stretch;
+    /* The card hugs its content (max-height on the frame) instead of stretching to the
+       window: a short "up to date, no replies" view is a short card, not a card with a
+       blank quarter under the inbox. */
+    align-items: center;
     justify-content: center;
     padding: var(--space-6);
     background: radial-gradient(120% 120% at 50% 0%, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.94));
@@ -75,6 +78,7 @@ body.whats-new-overlay-open .main-content {
     flex-direction: column;
     width: 100%;
     max-width: 880px;
+    max-height: 100%;
     min-height: 0;
     border: 1px solid rgba(var(--accent-purple-rgb), 0.28);
     border-radius: var(--radius-card);
@@ -223,6 +227,8 @@ body.whats-new-overlay-open .main-content {
     .whats-new-notes li {
         position: relative;
         padding-left: 1.7rem;
+        /* A reading measure: the frame is wider than a comfortable line. */
+        max-width: 68ch;
         font-size: 1.08rem;
         line-height: 1.65;
         color: var(--text-primary);
