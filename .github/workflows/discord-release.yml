@@ -53,7 +53,11 @@ jobs:
           if [ "$EVENT_NAME" = "release" ]; then
             release_name="$(jq -r '.release.name // empty' "$GITHUB_EVENT_PATH")"
             tag_name="$(jq -r '.release.tag_name // "unknown"' "$GITHUB_EVENT_PATH")"
-            release_url="$(jq -r '.release.html_url // empty' "$GITHUB_EVENT_PATH")"
+            # Deliberately not .release.html_url: the repository is going private, and a
+            # github.com release link 404s for every customer without repo access. The notes
+            # page is public, served by rr-api on the NAS (RR-Admin-Panel
+            # docs/release-management-design.md decision 3 and §8).
+            release_url="https://dl.razorreaper.app/release-notes/${tag_name}"
             prerelease="$(jq -r '.release.prerelease // false' "$GITHUB_EVENT_PATH")"
 
             if [ -z "$release_name" ]; then
