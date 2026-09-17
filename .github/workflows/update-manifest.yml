@@ -1,9 +1,18 @@
-name: Update update.xml on release
+# Manual fallback only.
+#
+# The `release: released` trigger is deliberately gone. The admin panel writes update.xml
+# itself now — publish commits it as one step of a sequence that has already checked the
+# release carries RazorReaper-Setup.exe, and `make-current` rewrites it for a rollback
+# (RR-Admin-Panel docs/release-management-design.md §6). Leaving the trigger in would put
+# two writers on master racing over the same file, and would silently undo a rollback the
+# moment anything else got published.
+#
+# What is left is the fallback for a day the panel or the NAS is down: dispatch it by hand
+# with the tag to point update.xml at. It is not part of the normal release path.
+
+name: Update update.xml (manual fallback)
 
 on:
-  release:
-    types:
-      - released
   workflow_dispatch:
     inputs:
       tag_name:
@@ -26,12 +35,16 @@ jobs:
 
       - name: Patch update.xml
         env:
-          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag_name }}
+          TAG_NAME: ${{ inputs.tag_name }}
           REPO: ${{ github.repository }}
-          RELEASE_BODY: ${{ github.event.release.body }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
+
+          # Without the release trigger there is no event payload to read the body from, so
+          # the notes sync asks the API for it. An empty body just leaves <notes> alone.
+          RELEASE_BODY="$(gh release view "${TAG_NAME}" --json body -q .body 2>/dev/null || true)"
 
           # v1.4.4 -> 1.4.4 -> 1.4.4.0
           tag_clean="${TAG_NAME#v}"
@@ -67,7 +80,7 @@ jobs:
 
       - name: Commit and push
         env:
-          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag_name }}
+          TAG_NAME: ${{ inputs.tag_name }}
         shell: bash
         run: |
           set -euo pipefail
