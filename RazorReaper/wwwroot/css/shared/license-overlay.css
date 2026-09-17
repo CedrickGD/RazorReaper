@@ -4,7 +4,7 @@
    says which tier this is, and a panel with the key, facts and — for Freemium — the
    activation row.
 
-   Deliberately no keyframes, no transforms and no entrance/exit fade: it appears and
+   Deliberately no keyframes, nothing moves and no entrance/exit fade: it appears and
    disappears in one frame. Only colour changes on hover and focus. */
 
 .license-overlay {

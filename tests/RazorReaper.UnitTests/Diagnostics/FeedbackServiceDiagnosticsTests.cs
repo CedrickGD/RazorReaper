@@ -27,6 +27,7 @@ public sealed class FeedbackServiceDiagnosticsTests
         Assert.Equal("FB-000123", result.ReportId);
         using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
         var root = body.RootElement;
+        Assert.Equal("support", root.GetProperty("kind").GetString());
         Assert.Equal("Desync does not work", root.GetProperty("message").GetString());
         Assert.Equal("tester", root.GetProperty("contact").GetString());
         Assert.Equal("HWID-TEST", root.GetProperty("hwid").GetString());
@@ -51,6 +52,7 @@ public sealed class FeedbackServiceDiagnosticsTests
         Assert.True(result.Success);
         Assert.Equal("FB-7", result.ReportId);
         using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        Assert.Equal("support", body.RootElement.GetProperty("kind").GetString());
         Assert.Equal("The game does not start", body.RootElement.GetProperty("message").GetString());
         Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("contact").ValueKind);
         Assert.True(body.RootElement.TryGetProperty("diagnostics", out _));
@@ -99,7 +101,39 @@ public sealed class FeedbackServiceDiagnosticsTests
         Assert.True(result.Success);
         Assert.Equal(0, diagnostics.CallCount);
         using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        Assert.Equal("feedback", body.RootElement.GetProperty("kind").GetString());
         Assert.False(body.RootElement.TryGetProperty("diagnostics", out _));
+    }
+
+    /// <summary>
+    /// The panel accepts kind ∈ {feedback, support} and, for clients without it, infers support
+    /// from the presence of diagnostics. The explicit value must always agree with that
+    /// inference: "feedback" never carries a snapshot, "support" always does.
+    /// </summary>
+    [Fact]
+    public async Task KindMatchesWhetherASnapshotTravelsWithTheReport()
+    {
+        using var handler = Handler("""{"ok":true,"message":"received","report_id":"FB-K"}""");
+        using var client = new HttpClient(handler, disposeHandler: false);
+        var service = CreateService(client, new SnapshotService());
+
+        Assert.True((await service.SubmitAsync("An idea", null)).Success);
+        Assert.True((await service.SubmitWithDiagnosticsAsync("Optional snapshot", null, "feedback")).Success);
+        Assert.True((await service.SubmitDiagnosticsAsync("A problem", null, "troubleshoot")).Success);
+
+        Assert.Equal(3, handler.Requests.Count);
+        var kinds = new List<(string Kind, bool HasDiagnostics)>();
+        foreach (var request in handler.Requests)
+        {
+            using var body = JsonDocument.Parse(request.Body!);
+            kinds.Add((
+                body.RootElement.GetProperty("kind").GetString()!,
+                body.RootElement.TryGetProperty("diagnostics", out _)));
+        }
+
+        Assert.Equal(
+            new[] { (FeedbackKinds.Feedback, false), (FeedbackKinds.Support, true), (FeedbackKinds.Support, true) },
+            kinds.ToArray());
     }
 
     [Fact]
