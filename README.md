@@ -28,7 +28,7 @@ RazorReaper bundles the entire day-to-day ARK workflow into a single desktop app
 
 - **One app, 35+ tools** — organized into searchable sections with instant global search (`Ctrl+K`)
 - **Self-contained installer** — bundles the .NET runtime; download, install, play (no prerequisites)
-- **Silent auto-updates** — updates download in the background and install when you close the app (toggleable)
+- **Updates on your schedule** — new versions download silently in the background; the restart that installs them is yours to trigger, from the sidebar or the tray
 - **Fully themeable** — recolor the entire app with a built-in accent color picker
 - **Tray-native** — minimizes to the system tray and stays out of your way while you play
 - **Discord Rich Presence** — shows the tool you're using as your Discord activity (optional)
@@ -40,7 +40,7 @@ RazorReaper bundles the entire day-to-day ARK workflow into a single desktop app
 
 | Tool | What it does |
 | --- | --- |
-| **Home** | Dashboard with system info, update controls, accent theming and game path handling |
+| **Home** | Dashboard with system info, announcements, accent theming and game path handling |
 | **Server** | Connect to and manage ARK servers from one panel |
 | **Game** | Launch, control and monitor the ARK game process |
 
@@ -122,7 +122,17 @@ The installer is fully self-contained — the .NET runtime ships inside, so ther
 
 ### Updating
 
-RazorReaper checks for updates on launch, downloads them silently in the background and installs them when you close the app. Prefer manual control? Toggle auto-updates off on the **Home** page and run the newest installer yourself whenever you like.
+RazorReaper checks for updates on launch and every 30 minutes while it is open, and downloads a new version silently in the background — there is nothing to click and nothing to wait for.
+
+Installing is the part you control. Once the download has finished and been verified, the update sits ready and the bell in the sidebar keeps a dot. From there, pick whichever suits you:
+
+- **Restart & update to vX** in the **What's new & inbox** view (click the bell), or
+- **Restart & update (vX)** in the tray menu, or
+- nothing at all — the next time you start RazorReaper, the waiting update is applied before anything else runs.
+
+Two rules never bend. The app will not restart itself while ARK or one of your macros is running: it says so and stays ready until you are done. And a release the manifest marks *mandatory* installs on its own as soon as that is safe.
+
+Because RazorReaper installs into Program Files, Windows shows a UAC prompt while an update is applied. That prompt now always follows a restart you asked for, or lands in the first seconds of a launch — never in the middle of a session.
 
 ## Build From Source
 
