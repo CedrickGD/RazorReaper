@@ -2,6 +2,20 @@ namespace RazorReaper.Services;
 
 public sealed record FeedbackSubmissionResult(bool Success, string Message, string? ReportId = null);
 
+/// <summary>
+/// The "kind" the admin panel's POST /api/feedback accepts. Older clients send none, and the
+/// server then treats a body with diagnostics as support and one without as feedback — the
+/// same split these two values make explicit.
+/// </summary>
+public static class FeedbackKinds
+{
+    /// <summary>Ideas and opinions; sent without a diagnostic snapshot.</summary>
+    public const string Feedback = "feedback";
+
+    /// <summary>A problem report; sent with the diagnostic snapshot.</summary>
+    public const string Support = "support";
+}
+
 public interface IFeedbackService
 {
     /// <summary>

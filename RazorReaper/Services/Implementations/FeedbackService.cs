@@ -47,6 +47,7 @@ public class FeedbackService : IFeedbackService
 
     public Task<FeedbackSubmissionResult> SubmitAsync(string message, string? contact, CancellationToken cancellationToken = default)
         => SubmitCoreAsync(
+            FeedbackKinds.Feedback,
             message,
             contact,
             sourceRoute: null,
@@ -59,16 +60,17 @@ public class FeedbackService : IFeedbackService
         string? contact,
         string? sourceRoute,
         CancellationToken cancellationToken = default)
-        => SubmitCoreAsync(message, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: false, cancellationToken);
+        => SubmitCoreAsync(FeedbackKinds.Support, message, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: false, cancellationToken);
 
     public Task<FeedbackSubmissionResult> SubmitDiagnosticsAsync(
         string message,
         string? contact,
         string? sourceRoute,
         CancellationToken cancellationToken = default)
-        => SubmitCoreAsync(message, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: true, cancellationToken);
+        => SubmitCoreAsync(FeedbackKinds.Support, message, contact, sourceRoute, includeDiagnostics: true, requireDiagnostics: true, cancellationToken);
 
     private async Task<FeedbackSubmissionResult> SubmitCoreAsync(
+        string kind,
         string message,
         string? contact,
         string? sourceRoute,
@@ -119,6 +121,7 @@ public class FeedbackService : IFeedbackService
 
             var payload = new FeedbackPayload
             {
+                Kind = kind,
                 Message = message.Trim(),
                 Contact = string.IsNullOrWhiteSpace(contact) ? null : contact.Trim(),
                 Hwid = identity?.HardwareId,
@@ -225,6 +228,10 @@ public class FeedbackService : IFeedbackService
 
     private sealed record FeedbackPayload
     {
+        /// <summary>One of <see cref="FeedbackKinds"/>; the panel accepts "feedback" and "support".</summary>
+        [JsonPropertyName("kind")]
+        public required string Kind { get; init; }
+
         [JsonPropertyName("message")]
         public required string Message { get; init; }
 
