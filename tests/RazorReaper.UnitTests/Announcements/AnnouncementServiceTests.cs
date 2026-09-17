@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Services.Implementations;
 using RazorReaper.UnitTests.Infrastructure;
 
@@ -61,7 +62,11 @@ public sealed class AnnouncementServiceTests
         Assert.Equal("Notice", announcement.Title);
         var request = Assert.Single(handler.Requests);
         Assert.Equal(HttpMethod.Get, request.Method);
-        Assert.Equal("https://rr-admin-panel.pages.dev/api/announcements/active", request.Uri?.ToString());
+        // ?v= is what the panel filters a version-targeted announcement on; it is the client's
+        // own version and nothing else, so it moves with AppVersionInfo rather than a literal.
+        Assert.Equal(
+            $"https://rr-admin-panel.pages.dev/api/announcements/active?v={AppVersionInfo.VersionString}",
+            request.Uri?.ToString());
     }
 
     private static AnnouncementService CreateService(RecordingHttpMessageHandler handler)

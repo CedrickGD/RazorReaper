@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Diagnostics;
 using RazorReaper.Models;
 using RazorReaper.Services;
 
@@ -39,7 +40,13 @@ public class AnnouncementService : IAnnouncementService
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/announcements/active");
+            // ?v= lets the panel target an announcement at a version range. A client that omits
+            // it — every build up to 1.5.3 — still matches every announcement, so nothing
+            // regresses for the installs that never update.
+            var version = Uri.EscapeDataString(AppVersionInfo.VersionString);
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"{baseUrl}/api/announcements/active?v={version}");
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(settings.RequestTimeoutSeconds, 3, 60)));
 
