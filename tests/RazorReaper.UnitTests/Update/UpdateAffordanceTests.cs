@@ -93,12 +93,14 @@ public sealed class UpdateAffordanceTests
         Assert.True(method > 0);
         var body = manager[method..manager.IndexOf("public async Task CheckNowAsync(", method, StringComparison.Ordinal)];
 
+        var failureReport = body.IndexOf("ReportPreviousInstallFailure();", StringComparison.Ordinal);
         var restore = body.IndexOf("RestoreStagedInstaller()", StringComparison.Ordinal);
         var apply = body.IndexOf("TryApply(UpdateApplyTrigger.Startup)", StringComparison.Ordinal);
         var check = body.IndexOf("await CheckAndInstallAsync(", StringComparison.Ordinal);
 
-        Assert.True(restore >= 0, "A staged installer is picked up before anything else.");
-        Assert.True(apply > restore);
+        Assert.True(failureReport >= 0, "The previous install's exit code is read first.");
+        Assert.True(restore > failureReport);
+        Assert.True(apply > failureReport);
         Assert.True(check > apply, "A staged installer is applied before the app looks for a newer one.");
     }
 
@@ -142,6 +144,25 @@ public sealed class UpdateAffordanceTests
     }
 
     [Fact]
+    public void TheOrchestratorRecordsAFailedInstallForTheNextStart()
+    {
+        var manager = File.ReadAllText(ManagerPath());
+
+        Assert.Contains("set RR_CODE=%ERRORLEVEL%", manager, StringComparison.Ordinal);
+        Assert.Contains("if \"\"%RR_CODE%\"\"==\"\"0\"\" goto relaunch", manager, StringComparison.Ordinal);
+        // Redirect first: `echo 2>file` would be parsed as a stream redirect, not a digit.
+        Assert.Contains(">\"\"{markerPath}\"\" echo %RR_CODE%", manager, StringComparison.Ordinal);
+        Assert.Contains("private const string FailureMarkerFileName = \"update-failed.txt\";", manager, StringComparison.Ordinal);
+
+        var report = manager.IndexOf("private void ReportPreviousInstallFailure()", StringComparison.Ordinal);
+        Assert.True(report > 0);
+        var body = manager[report..manager.IndexOf("private bool HasExhaustedAttempts(", report, StringComparison.Ordinal)];
+        Assert.Contains("File.Delete(markerPath);", body, StringComparison.Ordinal);
+        Assert.Contains("[\"exit_code\"]", body, StringComparison.Ordinal);
+        Assert.Contains("failures >= MaxInstallAttemptsPerVersion", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheGateSaysWhatToDoAndLeavesTheUpdateStaged()
     {
         var manager = File.ReadAllText(ManagerPath());
@@ -163,6 +184,30 @@ public sealed class UpdateAffordanceTests
 
         var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "MauiProgram.cs"));
         Assert.Contains("services.AddSingleton<IUpdateActivityGate, UpdateActivityGate>();", program, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheNewTelemetryRowsAreEmittedWithoutPersonalData()
+    {
+        var manager = File.ReadAllText(ManagerPath());
+
+        Assert.Contains("\"update_download\"", manager, StringComparison.Ordinal);
+        Assert.Contains("\"update_install\"", manager, StringComparison.Ordinal);
+        Assert.Contains("\"update_applied\"", manager, StringComparison.Ordinal);
+
+        // update_applied is reported where the upgrade is noticed, at the next start.
+        var detect = manager.IndexOf("public Version? DetectVersionUpgrade()", StringComparison.Ordinal);
+        var body = manager[detect..manager.IndexOf("private async Task DownloadInstallerAsync(", detect, StringComparison.Ordinal)];
+        Assert.Contains("[\"from\"]", body, StringComparison.Ordinal);
+        Assert.Contains("[\"to\"]", body, StringComparison.Ordinal);
+
+        // Version strings, counters and a status word — nothing that identifies a machine.
+        foreach (var forbidden in new[] { "installerPath", "Environment.UserName", "MachineName", "install_id" })
+        {
+            var track = manager.IndexOf("private void TrackDownload(", StringComparison.Ordinal);
+            var end = manager.IndexOf("private static string Label(", track, StringComparison.Ordinal);
+            Assert.DoesNotContain(forbidden, manager[track..end], StringComparison.Ordinal);
+        }
     }
 
     /// <summary>

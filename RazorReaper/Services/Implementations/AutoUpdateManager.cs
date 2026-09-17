@@ -26,11 +26,22 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     private const string PrefKeyInstallerBytes = "rr.autoupdate.installerbytes";
     private const string PrefKeyStagedAt = "rr.autoupdate.stagedat";
     private const string PrefKeyMandatory = "rr.autoupdate.mandatory";
+    private const string PrefKeyLaunchTrigger = "rr.autoupdate.launchtrigger";
+    private const string PrefKeyFailedVersion = "rr.autoupdate.failedversion";
+    private const string PrefKeyFailedCount = "rr.autoupdate.failedcount";
 
     private const string DefaultInstallerArgs = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";
 
     private static readonly string TempDir = Path.Combine(Path.GetTempPath(), "RazorReaperUpdate");
     private const string InstallerFileName = "RazorReaper_Update.exe";
+
+    /// <summary>Written by the orchestrator script when the installer returned a non-zero exit
+    /// code, read and deleted at the next start.</summary>
+    private const string FailureMarkerFileName = "update-failed.txt";
+
+    /// <summary>Two failures on the same build is the installer saying it will not work here.
+    /// A third attempt would be the 1.4.8 download loop with extra steps.</summary>
+    private const int MaxInstallAttemptsPerVersion = 2;
 
     /// <summary>How often to re-check while the app stays open, so a release published
     /// mid-session is picked up without waiting for the next launch.</summary>
@@ -50,6 +61,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     private readonly HttpClient httpClient;
     private readonly INotificationService notifications;
     private readonly IUpdateActivityGate activityGate;
+    private readonly ITelemetryService telemetry;
     private readonly ILogger<AutoUpdateManager> logger;
 
     private int recurringStarted;
@@ -81,12 +93,14 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         HttpClient httpClient,
         INotificationService notifications,
         IUpdateActivityGate activityGate,
+        ITelemetryService telemetry,
         ILogger<AutoUpdateManager> logger)
     {
         this.updateService = updateService;
         this.httpClient = httpClient;
         this.notifications = notifications;
         this.activityGate = activityGate;
+        this.telemetry = telemetry;
         this.logger = logger;
     }
 
@@ -104,9 +118,11 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     public async Task RunStartupCheckAsync(CancellationToken cancellationToken = default)
     {
-        // Before anything else: is there still a usable installer on disk? An update staged in
-        // an earlier session is applied here, while nothing is in flight and the window has
-        // barely appeared.
+        // Before anything else: was the last handoff's installer actually able to run, and is
+        // there still a usable installer on disk? An update staged in an earlier session is
+        // applied here, while nothing is in flight and the window has barely appeared.
+        ReportPreviousInstallFailure();
+
         if (RestoreStagedInstaller())
         {
             TryApply(UpdateApplyTrigger.Startup);
@@ -267,10 +283,12 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         switch (decision)
         {
             case UpdateApplyDecision.Apply:
+                TrackInstall("requested", trigger, staged, mandatory);
                 RequestInstall(staged, trigger);
                 return true;
 
             case UpdateApplyDecision.Gated:
+                TrackInstall("gated", trigger, staged, mandatory);
                 logger.LogInformation("Update v{Version} stays staged: ARK or a macro is running", Label(staged));
 
                 // Only say it when someone is waiting for an answer. ARK is running at startup
@@ -343,6 +361,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         requestedTrigger = trigger;
         installRequested = true;
         isInstallLaunching = true;
+        Preferences.Set(PrefKeyLaunchTrigger, UpdateApplyPolicy.TriggerName(trigger, stagedIsMandatory));
 
         var label = Label(version);
         statusMessage = $"Installing v{label} — restarting...";
@@ -416,19 +435,28 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
             //   1. Waits for our PID to disappear (so file locks are released)
             //   2. Force-kills any leftover RazorReaper.exe (paranoia)
             //   3. Runs the installer silently
-            //   4. Relaunches the freshly installed RazorReaper.exe from its own dir
-            //   5. Deletes itself
+            //   4. Leaves a marker file behind if the installer failed
+            //   5. Relaunches the freshly installed RazorReaper.exe from its own dir
+            //   6. Deletes itself
             var ourExe = Process.GetCurrentProcess().MainModule?.FileName
                          ?? Path.Combine(AppContext.BaseDirectory, "RazorReaper.exe");
             var ourPid = Environment.ProcessId;
             var scriptDir = Path.GetDirectoryName(path) ?? Path.GetTempPath();
             Directory.CreateDirectory(scriptDir);
             var scriptPath = Path.Combine(scriptDir, "rr_update.cmd");
+            var markerPath = Path.Combine(TempDir, FailureMarkerFileName);
 
             // The installer is an Inno Setup build that installs into Program Files, so this is
             // where Windows shows a UAC prompt. That is expected and deliberate: it now follows
             // a restart the user asked for, or lands in the first seconds of a launch, instead
             // of ambushing a session mid-raid. See installer/RazorReaper.iss.
+            //
+            // RR_CODE is captured on its own line, not inside a parenthesised block — %VAR% in
+            // a block is expanded when the block is parsed, which would always read the value
+            // from before the installer ran. The failure line is reached by a jump rather than
+            // written as `if ... >file echo`, so there is no question about what the redirect
+            // attaches to, and the redirect comes before `echo` so a single-digit exit code
+            // cannot be parsed as a stream handle (`echo 2>file` redirects stderr).
             // `del "%~f0"` stays the last line: cmd reads this file as it goes.
             var script = $@"@echo off
 :wait
@@ -439,6 +467,10 @@ if not errorlevel 1 (
 )
 taskkill /F /IM RazorReaper.exe >nul 2>&1
 ""{path}"" {args}
+set RR_CODE=%ERRORLEVEL%
+if ""%RR_CODE%""==""0"" goto relaunch
+>""{markerPath}"" echo %RR_CODE%
+:relaunch
 start """" ""{ourExe}""
 del ""%~f0"" >nul 2>&1
 ";
@@ -453,8 +485,12 @@ del ""%~f0"" >nul 2>&1
                 WindowStyle = ProcessWindowStyle.Hidden
             });
 
-            // The staged installer and its preferences stay on disk on purpose: once the running
-            // version has caught up, the cleanup pass at the next start deletes them.
+            // The staged installer and its preferences stay on disk on purpose. If the install
+            // fails, the orchestrator drops a marker and the next start retries from the same
+            // file instead of downloading 73 MB again; once the running version has caught up,
+            // the cleanup pass deletes it.
+            TrackInstall("launched", requestedTrigger, pendingVersion, stagedIsMandatory);
+
             logger.LogInformation("Launched auto-update orchestrator for installer: {Path}", path);
             return true;
         }
@@ -464,6 +500,7 @@ del ""%~f0"" >nul 2>&1
             // ResetPendingInstaller would be answered with a phantom "already launched".
             Interlocked.Exchange(ref orchestratorLaunched, 0);
             logger.LogError(ex, "Failed to launch auto-update orchestrator: {Path}", path);
+            TrackInstall("failed", requestedTrigger, pendingVersion, stagedIsMandatory);
             return false;
         }
     }
@@ -500,6 +537,16 @@ del ""%~f0"" >nul 2>&1
         if (previousVersion >= currentVersion)
             return null;
 
+        // The install worked, so forget any failure streak recorded against the build we left.
+        Preferences.Remove(PrefKeyFailedVersion);
+        Preferences.Remove(PrefKeyFailedCount);
+
+        Track("update_applied", TelemetryEventStatus.Ok, "Update applied.", new Dictionary<string, object?>
+        {
+            ["from"] = Label(previousVersion),
+            ["to"] = Label(currentVersion)
+        });
+
         return previousVersion;
     }
 
@@ -514,11 +561,23 @@ del ""%~f0"" >nul 2>&1
             return;
         }
 
+        if (HasExhaustedAttempts(result.LatestVersion))
+        {
+            statusMessage = $"Update v{Label(result.LatestVersion)} could not be installed — install it manually.";
+            logger.LogWarning(
+                "Not downloading v{Version} again: its installer already failed {Count} times",
+                Label(result.LatestVersion),
+                MaxInstallAttemptsPerVersion);
+            OnStateChanged();
+            return;
+        }
+
         isDownloading = true;
         _downloadProgressPercent = 0;
         statusMessage = "Downloading update...";
         OnStateChanged();
 
+        var startedAt = Stopwatch.GetTimestamp();
         var targetPath = Path.Combine(TempDir, InstallerFileName);
         long bytesWritten = 0;
         long? expectedBytes = null;
@@ -574,11 +633,13 @@ del ""%~f0"" >nul 2>&1
                 isDownloading = false;
                 _downloadProgressPercent = -1;
                 statusMessage = "Update download was incomplete — it will be retried.";
+                TrackDownload("failed", onDisk, startedAt, result.LatestVersion);
                 OnStateChanged();
                 return;
             }
 
             StageInstaller(targetPath, result, onDisk);
+            TrackDownload("ok", onDisk, startedAt, result.LatestVersion);
 
             logger.LogInformation("Auto-update installer downloaded: {Path} for v{Version}", targetPath, result.LatestVersion);
             OnStateChanged();
@@ -599,6 +660,7 @@ del ""%~f0"" >nul 2>&1
             isDownloading = false;
             _downloadProgressPercent = -1;
             statusMessage = "Failed to download update.";
+            TrackDownload("failed", bytesWritten, startedAt, result.LatestVersion);
             OnStateChanged();
         }
     }
@@ -750,6 +812,114 @@ del ""%~f0"" >nul 2>&1
         catch
         {
             // A partial file that cannot be deleted is overwritten by the next download anyway.
+        }
+    }
+
+    /// <summary>
+    /// Reads the marker the orchestrator leaves when the installer returned a non-zero exit
+    /// code, reports it, and decides whether the same build is worth one more attempt.
+    /// </summary>
+    private void ReportPreviousInstallFailure()
+    {
+        try
+        {
+            var markerPath = Path.Combine(TempDir, FailureMarkerFileName);
+            if (!File.Exists(markerPath)) return;
+
+            var raw = File.ReadAllText(markerPath).Trim();
+            File.Delete(markerPath);
+
+            var version = Preferences.Get(PrefKeyPendingVersion, "");
+            var trigger = Preferences.Get(PrefKeyLaunchTrigger, "startup");
+            logger.LogWarning("The previous update install for v{Version} exited with {Code}", version, raw);
+
+            var metrics = new Dictionary<string, object?>
+            {
+                ["status"] = "failed",
+                ["trigger"] = trigger,
+                ["version"] = version,
+                ["exit_code"] = int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var code)
+                    ? code
+                    : null
+            };
+            Track("update_install", TelemetryEventStatus.Degraded, "Update install failed.", metrics);
+
+            var failures = string.Equals(Preferences.Get(PrefKeyFailedVersion, ""), version, StringComparison.Ordinal)
+                ? Preferences.Get(PrefKeyFailedCount, 0) + 1
+                : 1;
+            Preferences.Set(PrefKeyFailedVersion, version);
+            Preferences.Set(PrefKeyFailedCount, failures);
+
+            // One retry. Twice is the installer saying it will not work on this machine, and
+            // re-running it forever is the loop this whole change exists to end.
+            if (failures >= MaxInstallAttemptsPerVersion)
+            {
+                logger.LogWarning("Giving up on v{Version} after {Count} failed installs", version, failures);
+                DiscardStagedInstaller();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Could not read the update failure marker (non-critical)");
+        }
+    }
+
+    private bool HasExhaustedAttempts(Version? version)
+    {
+        if (version is null) return false;
+
+        try
+        {
+            return string.Equals(Preferences.Get(PrefKeyFailedVersion, ""), version.ToString(), StringComparison.Ordinal)
+                   && Preferences.Get(PrefKeyFailedCount, 0) >= MaxInstallAttemptsPerVersion;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ---- Telemetry -------------------------------------------------------------------
+
+    private void TrackDownload(string status, long bytes, long startedAtTimestamp, Version? version)
+    {
+        Track(
+            "update_download",
+            status == "ok" ? TelemetryEventStatus.Ok : TelemetryEventStatus.Degraded,
+            status == "ok" ? "Update downloaded." : "Update download failed.",
+            new Dictionary<string, object?>
+            {
+                ["status"] = status,
+                ["bytes"] = bytes,
+                ["seconds"] = Math.Round(Stopwatch.GetElapsedTime(startedAtTimestamp).TotalSeconds, 2),
+                ["version"] = Label(version)
+            });
+    }
+
+    private void TrackInstall(string status, UpdateApplyTrigger trigger, Version? version, bool mandatory)
+    {
+        Track(
+            "update_install",
+            status is "requested" or "launched" ? TelemetryEventStatus.Ok : TelemetryEventStatus.Degraded,
+            $"Update install {status}.",
+            new Dictionary<string, object?>
+            {
+                ["status"] = status,
+                ["trigger"] = UpdateApplyPolicy.TriggerName(trigger, mandatory),
+                ["version"] = Label(version)
+            });
+    }
+
+    /// <summary>No install id, no paths, no user: version strings, counters and a status word.</summary>
+    private void Track(string name, TelemetryEventStatus status, string message, Dictionary<string, object?> metrics)
+    {
+        try
+        {
+            _ = telemetry.TrackEventAsync(name, status, message, metrics);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Update telemetry '{Event}' could not be queued", name);
         }
     }
 
