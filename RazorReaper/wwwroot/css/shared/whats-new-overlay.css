@@ -262,14 +262,19 @@ body.whats-new-overlay-open .main-content {
     gap: var(--space-3);
 }
 
+/* A section title at card-title size, not the 1.75rem gradient h2 theme.css makes of
+   every h2 (!important), so size, margin and fill are pinned here the way the page sheets
+   do it (crosshair-styles.css, autoclicker-styles.css). */
 .whats-new-inbox-title {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    margin: 0 !important;
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    background: none !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
 }
 
 .whats-new-unread {
@@ -278,6 +283,8 @@ body.whats-new-overlay-open .main-content {
     background: rgba(var(--accent-purple-rgb), 0.16);
     border: 1px solid rgba(var(--accent-purple-rgb), 0.4);
     color: var(--accent-purple-light);
+    /* Sits inside the heading: its own fill, so a gradient-clipped parent cannot blank it. */
+    -webkit-text-fill-color: var(--accent-purple-light);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.04em;

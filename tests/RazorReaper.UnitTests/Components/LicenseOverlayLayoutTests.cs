@@ -166,6 +166,39 @@ public sealed class LicenseOverlayLayoutTests
         Assert.Contains(".nav-status-dot.freemium {", navbar, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// theme.css sets every h2 to 1.75rem with a gradient text fill and a 1.5rem margin, all
+    /// !important. The two overlay h2s are an eyebrow and a card-size title, so they pin
+    /// their own size, margin and fill the way the page sheets do — and the unread badge
+    /// inside one keeps its own fill so a gradient-clipped parent cannot blank it.
+    /// </summary>
+    [Theory]
+    [InlineData("license-overlay.css", ".license-benefits-title {", "0.7rem", "var(--text-secondary)")]
+    [InlineData("whats-new-overlay.css", ".whats-new-inbox-title {", "1.05rem", "var(--text-primary)")]
+    public void TheOverlayHeadingsEscapeTheGlobalH2Rule(string sheet, string selector, string size, string fill)
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", sheet));
+
+        var start = css.IndexOf(selector, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"{sheet} must style {selector.TrimEnd(' ', '{')}.");
+        var block = css[start..css.IndexOf('}', start)];
+
+        Assert.Contains($"font-size: {size} !important;", block, StringComparison.Ordinal);
+        Assert.Contains("margin: 0 !important;", block, StringComparison.Ordinal);
+        Assert.Contains("background: none !important;", block, StringComparison.Ordinal);
+        Assert.Contains($"-webkit-text-fill-color: {fill} !important;", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheUnreadBadgeKeepsItsOwnFillInsideTheHeading()
+    {
+        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "whats-new-overlay.css"));
+
+        var start = css.IndexOf(".whats-new-unread {", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        Assert.Contains("-webkit-text-fill-color: var(--accent-purple-light);", css[start..css.IndexOf('}', start)], StringComparison.Ordinal);
+    }
+
     /// <summary>Both columns carry content to the bottom: the key tile, the facts, the benefits grid and the help row.</summary>
     [Fact]
     public void TheOverlayFillsBothColumns()

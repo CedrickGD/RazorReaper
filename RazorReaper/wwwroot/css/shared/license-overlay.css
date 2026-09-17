@@ -386,13 +386,18 @@ body.license-overlay-open .main-content {
     gap: var(--space-3);
 }
 
+/* An eyebrow, not a section header: theme.css sets every h2 to 1.75rem with a gradient
+   text fill and a 1.5rem margin, all !important, so the size, margin and fill are pinned
+   here the way the page sheets do it (crosshair-styles.css, autoclicker-styles.css). */
 .license-benefits-title {
-    margin: 0;
-    font-size: 0.7rem;
-    font-weight: 600;
+    margin: 0 !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
+    background: none !important;
+    -webkit-text-fill-color: var(--text-secondary) !important;
 }
 
 .license-benefit-grid {
