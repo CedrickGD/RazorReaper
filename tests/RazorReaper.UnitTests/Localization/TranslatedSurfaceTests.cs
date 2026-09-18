@@ -1682,6 +1682,95 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Gamma.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Notifier</h1>",
+            "Live in-game alerts for rare dinos",
+            ">Disconnect</button>",
+            ">Connect</button>",
+            ">Test alert</button>",
+            ">Endpoint</h3>",
+            "Where the client streams alerts from.",
+            "Title=\"Stream URL\"",
+            "An SSE or HTTP stream endpoint",
+            "A Notifier backend is required.",
+            ">Alert types</h3>",
+            "Choose which alerts pass, their sound",
+            "@def.Label",
+            ">Test</button>",
+            "\"Silent\"",
+            "\"Notification\"",
+            "\"Click\"",
+            ">Rare dino species</h3>",
+            "Only applies while Rare dinos is enabled.",
+            "Species.Count on",
+            ">All</button>",
+            ">None</button>",
+            ">Clusters</h3>",
+            "Enable the clusters you play on.",
+            ">Tribe log triggers</h3>",
+            "Only applies while Tribe log is enabled.",
+            "One phrase per line — e.g. was killed",
+            ">Watched channels</h3>",
+            "Discord channels the backend relays from.",
+            ">Refresh</button>",
+            "placeholder=\"Channel ID (digits only)\"",
+            "placeholder=\"Cluster / label\"",
+            ">Add channel</button>",
+            "title=\"Remove channel\"",
+            "No channels loaded.",
+            "\"Rare dino\"",
+            "\"Element node\"",
+            "\"OSD / events\"",
+            "\"Tribe log\"",
+            ">Recent alerts</h3>",
+            "The last alerts received or tested.",
+            "No alerts yet. Connect to a backend",
+            "\"Connected\"",
+            "\"Connecting…\"",
+            "\"Connection error\"",
+            "\"Disconnected\"",
+            "\"Dino\"",
+            "\"Element\"",
+            "\"OSD\"",
+        })
+        {
+            data.Add("Components/Pages/Notifier.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"Rare dinos\"",
+            "Wild spawns from the whitelist below.",
+            "Harvestable nodes and gatherables of note.",
+            "Element veins and charge nodes coming online.",
+            "Orbital supply drops and timed server events.",
+            "Tribe-log events matching your trigger phrases below.",
+            "No endpoint configured — a backend is required.",
+            "\"Disconnected.\"",
+            "Connecting to {HostOf",
+            "Streaming from {HostOf",
+            "— retrying…",
+            "Server returned",
+            "Could not reach the backend",
+            "Connection timed out",
+            "Connection failed",
+            "Rare dino spotted",
+            "Resource available",
+            "Element node active",
+            "\"OSD event\"",
+            "\"Alert\"",
+            "Set the stream endpoint first",
+            "Unauthorized — the token in your endpoint URL is wrong.",
+            "The backend has no token configured yet.",
+            "That doesn't look like a valid Discord channel ID",
+            "The backend returned",
+            "Couldn't read the backend's response.",
+        })
+        {
+            data.Add("Services/Overlay/NotifierClientService.cs", literal);
+        }
+
         return data;
     }
 
@@ -1894,11 +1983,13 @@ public sealed class TranslatedSurfaceTests
     }
 
     /// <summary>
-    /// Every key the app spells out, with the file that spells it. Four call shapes: the ordinary
+    /// Every key the app spells out, with the file that spells it. Five call shapes: the ordinary
     /// <c>Localizer.T("…")</c>, the update manager's two, which hold a key and its arguments so a
-    /// status line that sits on screen for a session can be re-read after a switch, and
+    /// status line that sits on screen for a session can be re-read after a switch,
     /// <c>GameIniService.Failed("…")</c>, which resolves the key for the reader and keeps the key
-    /// itself for the log — the literal is the key either way.
+    /// itself for the log, and <c>NotifierClientService.SetState("…")</c>, whose status line lasts
+    /// as long as the connection does and is therefore resolved on every read rather than stored.
+    /// The literal is the key in all five.
     ///
     /// Which key a call asks for is not always its first token. <c>T(on ? "a.on" : "a.off")</c> is
     /// the shape a toggle's two messages take all over the app, and reading only the literal that
@@ -1922,7 +2013,7 @@ public sealed class TranslatedSurfaceTests
     }
 
     /// <summary>"Localizer.T(" must match, so only a word character in front rules a T( call out.</summary>
-    private static readonly Regex CallSite = new(@"(?:(?<!\w)(?:T|Failed)|SetStatus|new StatusLine)\(");
+    private static readonly Regex CallSite = new(@"(?:(?<!\w)(?:T|Failed|SetState)|SetStatus|new StatusLine)\(");
 
     /// <summary>
     /// A dictionary key as it is written: lowercase, dotted, hyphens inside a segment. Tight

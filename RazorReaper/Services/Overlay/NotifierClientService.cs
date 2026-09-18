@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Overlay;
 
@@ -40,7 +41,12 @@ public enum NotifierSound
 }
 
 /// <summary>Static metadata for one alert type, so the page and service share one source of labels.</summary>
-public sealed record NotifierAlertTypeDef(NotifierAlertType Type, string Key, string Label, string Description);
+/// <remarks>
+/// <paramref name="Key"/> is the type's identity — it is the Preferences suffix, the backend's own
+/// wire value and the CSS class — so it stays as it is. The words the page shows live under
+/// <paramref name="LabelKey"/> and <paramref name="DescriptionKey"/>.
+/// </remarks>
+public sealed record NotifierAlertTypeDef(NotifierAlertType Type, string Key, string LabelKey, string DescriptionKey);
 
 /// <summary>One rare/notable species the rare-dino filter can whitelist. Facts only.</summary>
 public sealed record RareDinoSpecies(string Id, string Name, string Category);
@@ -150,6 +156,10 @@ public sealed class NotifierClientService : INotifierClientService
 
     private readonly IHudOverlayService _hud;
     private readonly ILogger<NotifierClientService> _logger;
+
+    // The page shows StateDetail and every thrown message verbatim, and the alert text goes to
+    // the HUD as well as to the list, so this service words all of them.
+    private readonly ILocalizer _localizer;
     private readonly HttpClient _http;
 
     private readonly object _gate = new();
@@ -162,7 +172,12 @@ public sealed class NotifierClientService : INotifierClientService
 
     private string _endpoint = "";
     private NotifierConnectionState _state = NotifierConnectionState.Disconnected;
-    private string _stateDetail = "Disconnected.";
+
+    // The status line is held as a key and its arguments rather than as a sentence: it sits on
+    // screen for as long as the connection lasts, so a resolved string would keep the language
+    // it was set in through every switch after it.
+    private string _stateDetailKey = "notifier.state.disconnected";
+    private object?[] _stateDetailArgs = [];
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private int _testCounter;
@@ -175,16 +190,21 @@ public sealed class NotifierClientService : INotifierClientService
 
     private static readonly IReadOnlyList<NotifierAlertTypeDef> TypeDefsStatic = new List<NotifierAlertTypeDef>
     {
-        new(NotifierAlertType.RareDino, "rare-dino", "Rare dinos",
-            "Wild spawns from the whitelist below."),
-        new(NotifierAlertType.Resource, "resource", "Resources",
-            "Harvestable nodes and gatherables of note."),
-        new(NotifierAlertType.ElementNode, "element-node", "Element nodes",
-            "Element veins and charge nodes coming online."),
-        new(NotifierAlertType.Osd, "osd", "OSD / events",
-            "Orbital supply drops and timed server events."),
-        new(NotifierAlertType.TribeLog, "tribe-log", "Tribe log",
-            "Tribe-log events matching your trigger phrases below."),
+        new(NotifierAlertType.RareDino, "rare-dino",
+            LabelKey: "notifier.type.rare-dino.label",
+            DescriptionKey: "notifier.type.rare-dino.description"),
+        new(NotifierAlertType.Resource, "resource",
+            LabelKey: "notifier.type.resource.label",
+            DescriptionKey: "notifier.type.resource.description"),
+        new(NotifierAlertType.ElementNode, "element-node",
+            LabelKey: "notifier.type.element-node.label",
+            DescriptionKey: "notifier.type.element-node.description"),
+        new(NotifierAlertType.Osd, "osd",
+            LabelKey: "notifier.type.osd.label",
+            DescriptionKey: "notifier.type.osd.description"),
+        new(NotifierAlertType.TribeLog, "tribe-log",
+            LabelKey: "notifier.type.tribe-log.label",
+            DescriptionKey: "notifier.type.tribe-log.description"),
     };
 
     // 24 rare / aberrant / tek / notable ARK: Survival Evolved species — facts only.
@@ -221,17 +241,19 @@ public sealed class NotifierClientService : INotifierClientService
 
     // ── Construction / persistence ────────────────────────────────────────────────────────────
 
-    public NotifierClientService(IHudOverlayService hud, ILogger<NotifierClientService> logger)
+    public NotifierClientService(
+        IHudOverlayService hud,
+        ILogger<NotifierClientService> logger,
+        ILocalizer localizer)
     {
         _hud = hud;
         _logger = logger;
+        _localizer = localizer;
         _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
 
         LoadSettings();
         // Intentionally does not auto-connect: there is no shipped backend, and the user opts in.
-        _stateDetail = string.IsNullOrWhiteSpace(_endpoint)
-            ? "No endpoint configured — a backend is required."
-            : "Disconnected.";
+        _stateDetailKey = IdleKey();
     }
 
     private void LoadSettings()
@@ -312,7 +334,21 @@ public sealed class NotifierClientService : INotifierClientService
     // ── State exposure ────────────────────────────────────────────────────────────────────────
 
     public NotifierConnectionState State { get { lock (_gate) return _state; } }
-    public string StateDetail { get { lock (_gate) return _stateDetail; } }
+    public string StateDetail
+    {
+        get
+        {
+            string key;
+            object?[] args;
+            lock (_gate) { key = _stateDetailKey; args = _stateDetailArgs; }
+            return args.Length == 0 ? _localizer.T(key) : _localizer.T(key, args);
+        }
+    }
+
+    /// <summary>Which of the two resting states applies: nothing configured, or simply off.</summary>
+    private string IdleKey() => string.IsNullOrWhiteSpace(_endpoint)
+        ? "notifier.state.noendpoint"
+        : "notifier.state.disconnected";
     public string Endpoint { get { lock (_gate) return _endpoint; } }
 
     public IReadOnlyList<NotifierAlert> RecentAlerts
@@ -354,9 +390,10 @@ public sealed class NotifierClientService : INotifierClientService
             if (_endpoint == trimmed) return;
             _endpoint = trimmed;
             if (_state is NotifierConnectionState.Disconnected or NotifierConnectionState.Error)
-                _stateDetail = string.IsNullOrWhiteSpace(trimmed)
-                    ? "No endpoint configured — a backend is required."
-                    : "Disconnected.";
+            {
+                _stateDetailKey = IdleKey();
+                _stateDetailArgs = [];
+            }
         }
         try { Preferences.Set(EndpointKey, trimmed); }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to persist Notifier endpoint"); }
@@ -459,7 +496,8 @@ public sealed class NotifierClientService : INotifierClientService
             if (string.IsNullOrWhiteSpace(_endpoint))
             {
                 _state = NotifierConnectionState.Disconnected;
-                _stateDetail = "No endpoint configured — a backend is required.";
+                _stateDetailKey = "notifier.state.noendpoint";
+                _stateDetailArgs = [];
                 RaiseChangedNoLock();
                 return;
             }
@@ -467,7 +505,8 @@ public sealed class NotifierClientService : INotifierClientService
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
             _state = NotifierConnectionState.Connecting;
-            _stateDetail = $"Connecting to {HostOf(_endpoint)}…";
+            _stateDetailKey = "notifier.state.connecting";
+            _stateDetailArgs = [HostOf(_endpoint)];
             _loop = Task.Run(() => RunLoopAsync(token), token);
         }
         RaiseChanged();
@@ -481,9 +520,8 @@ public sealed class NotifierClientService : INotifierClientService
             cts = _cts;
             _cts = null;
             _state = NotifierConnectionState.Disconnected;
-            _stateDetail = string.IsNullOrWhiteSpace(_endpoint)
-                ? "No endpoint configured — a backend is required."
-                : "Disconnected.";
+            _stateDetailKey = IdleKey();
+            _stateDetailArgs = [];
         }
         try { cts?.Cancel(); } catch { /* ignore */ }
         RaiseChanged();
@@ -498,13 +536,13 @@ public sealed class NotifierClientService : INotifierClientService
             lock (_gate) url = _endpoint;
             if (string.IsNullOrWhiteSpace(url))
             {
-                SetState(NotifierConnectionState.Disconnected, "No endpoint configured — a backend is required.");
+                SetState(NotifierConnectionState.Disconnected, "notifier.state.noendpoint");
                 return;
             }
 
             try
             {
-                SetState(NotifierConnectionState.Connecting, $"Connecting to {HostOf(url)}…");
+                SetState(NotifierConnectionState.Connecting, "notifier.state.connecting", HostOf(url));
 
                 // Bound the connect (headers) phase so an unreachable host can't hang forever;
                 // once streaming, reads are governed only by the outer cancellation token.
@@ -518,7 +556,7 @@ public sealed class NotifierClientService : INotifierClientService
                 using var respScope = resp;
                 resp.EnsureSuccessStatusCode();
 
-                SetState(NotifierConnectionState.Connected, $"Streaming from {HostOf(url)}");
+                SetState(NotifierConnectionState.Connected, "notifier.state.streaming", HostOf(url));
                 attempt = 0;
 
                 await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
@@ -539,7 +577,7 @@ public sealed class NotifierClientService : INotifierClientService
             }
             catch (Exception ex)
             {
-                SetState(NotifierConnectionState.Error, $"{ReasonOf(ex)} — retrying…");
+                SetState(NotifierConnectionState.Error, "notifier.state.retrying", ReasonOf(ex));
             }
 
             if (ct.IsCancellationRequested) break;
@@ -551,7 +589,7 @@ public sealed class NotifierClientService : INotifierClientService
         }
 
         if (ct.IsCancellationRequested)
-            SetState(NotifierConnectionState.Disconnected, "Disconnected.");
+            SetState(NotifierConnectionState.Disconnected, "notifier.state.disconnected");
     }
 
     private void ProcessLine(string line, StringBuilder buffer)
@@ -744,7 +782,8 @@ public sealed class NotifierClientService : INotifierClientService
             NotifierAlertType.TribeLog => "Your Tribe: Bob was killed by a Raptor!",
             _ => "Orbital supply drop"
         };
-        var text = ComposeText(type, subject, "Test") + " (test)";
+        var text = _localizer.T("notifier.test.marker",
+            ComposeText(type, subject, _localizer.T("notifier.test.cluster")));
         Dispatch(new NotifierAlert(type, subject, text, null, DateTime.UtcNow), bypassFilters: true);
     }
 
@@ -761,18 +800,32 @@ public sealed class NotifierClientService : INotifierClientService
         _ => HudAlertSeverity.Info
     };
 
-    private static string ComposeText(NotifierAlertType type, string? subject, string? clusterLabel)
+    /// <remarks>
+    /// Not static any more: the alert text is written once, into the list and into the HUD frame,
+    /// and is worded in the language that was active when it arrived — the same rule Home's
+    /// activity timeline and the Sky Changer's log already live under.
+    /// </remarks>
+    private string ComposeText(NotifierAlertType type, string? subject, string? clusterLabel)
     {
+        var named = !string.IsNullOrWhiteSpace(subject);
         var body = type switch
         {
-            NotifierAlertType.RareDino => string.IsNullOrWhiteSpace(subject) ? "Rare dino spotted" : $"Rare dino: {subject}",
-            NotifierAlertType.Resource => string.IsNullOrWhiteSpace(subject) ? "Resource available" : $"Resource: {subject}",
-            NotifierAlertType.ElementNode => string.IsNullOrWhiteSpace(subject) ? "Element node active" : $"Element node: {subject}",
-            NotifierAlertType.Osd => string.IsNullOrWhiteSpace(subject) ? "OSD event" : subject!,
-            NotifierAlertType.TribeLog => string.IsNullOrWhiteSpace(subject) ? "Tribe log" : subject!,
-            _ => subject ?? "Alert"
+            NotifierAlertType.RareDino => named
+                ? _localizer.T("notifier.alert.raredino.named", subject!)
+                : _localizer.T("notifier.alert.raredino"),
+            NotifierAlertType.Resource => named
+                ? _localizer.T("notifier.alert.resource.named", subject!)
+                : _localizer.T("notifier.alert.resource"),
+            NotifierAlertType.ElementNode => named
+                ? _localizer.T("notifier.alert.element.named", subject!)
+                : _localizer.T("notifier.alert.element"),
+            NotifierAlertType.Osd => named ? subject! : _localizer.T("notifier.alert.osd"),
+            NotifierAlertType.TribeLog => named ? subject! : _localizer.T("notifier.alert.tribelog"),
+            _ => subject ?? _localizer.T("notifier.alert.generic")
         };
-        return string.IsNullOrWhiteSpace(clusterLabel) ? body : $"{body} · {clusterLabel}";
+        return string.IsNullOrWhiteSpace(clusterLabel)
+            ? body
+            : _localizer.T("notifier.alert.withcluster", body, clusterLabel);
     }
 
     private static string HostOf(string url)
@@ -781,13 +834,13 @@ public sealed class NotifierClientService : INotifierClientService
         catch { return url; }
     }
 
-    private static string ReasonOf(Exception ex) => ex switch
+    private string ReasonOf(Exception ex) => ex switch
     {
         HttpRequestException hre => hre.StatusCode is { } code
-            ? $"Server returned {(int)code}"
-            : "Could not reach the backend",
-        TaskCanceledException => "Connection timed out",
-        _ => "Connection failed"
+            ? _localizer.T("notifier.reason.status", (int)code)
+            : _localizer.T("notifier.reason.unreachable"),
+        TaskCanceledException => _localizer.T("notifier.reason.timeout"),
+        _ => _localizer.T("notifier.reason.failed")
     };
 
     // ── Channel management (backend /notifier/channels) ────────────────────────────────────────
@@ -806,7 +859,7 @@ public sealed class NotifierClientService : INotifierClientService
         string ep;
         lock (_gate) ep = _endpoint;
         if (string.IsNullOrWhiteSpace(ep) || !Uri.TryCreate(ep, UriKind.Absolute, out var uri))
-            throw new InvalidOperationException("Set the stream endpoint first (Endpoint field above).");
+            throw new InvalidOperationException(_localizer.T("notifier.channels.error.noendpoint"));
         var url = $"{uri.GetLeftPart(UriPartial.Authority)}/notifier/channels{uri.Query}";
         if (!string.IsNullOrEmpty(extraQuery))
             url += (string.IsNullOrEmpty(uri.Query) ? "?" : "&") + extraQuery;
@@ -835,16 +888,16 @@ public sealed class NotifierClientService : INotifierClientService
         return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
     }
 
-    private static async Task<IReadOnlyList<NotifierWatchedChannel>> ParseChannelsAsync(HttpResponseMessage resp, CancellationToken ct)
+    private async Task<IReadOnlyList<NotifierWatchedChannel>> ParseChannelsAsync(HttpResponseMessage resp, CancellationToken ct)
     {
         if (!resp.IsSuccessStatusCode)
         {
             throw new InvalidOperationException(resp.StatusCode switch
             {
-                System.Net.HttpStatusCode.Unauthorized => "Unauthorized — the token in your endpoint URL is wrong.",
-                System.Net.HttpStatusCode.ServiceUnavailable => "The backend has no token configured yet.",
-                System.Net.HttpStatusCode.BadRequest => "That doesn't look like a valid Discord channel ID (digits only).",
-                _ => $"The backend returned {(int)resp.StatusCode}."
+                System.Net.HttpStatusCode.Unauthorized => _localizer.T("notifier.channels.error.unauthorized"),
+                System.Net.HttpStatusCode.ServiceUnavailable => _localizer.T("notifier.channels.error.notoken"),
+                System.Net.HttpStatusCode.BadRequest => _localizer.T("notifier.channels.error.badid"),
+                _ => _localizer.T("notifier.channels.error.status", (int)resp.StatusCode)
             });
         }
         var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -857,17 +910,18 @@ public sealed class NotifierClientService : INotifierClientService
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException("Couldn't read the backend's response.", ex);
+            throw new InvalidOperationException(_localizer.T("notifier.channels.error.badresponse"), ex);
         }
     }
 
-    private void SetState(NotifierConnectionState state, string detail)
+    private void SetState(NotifierConnectionState state, string detailKey, params object?[] args)
     {
         lock (_gate)
         {
-            if (_state == state && _stateDetail == detail) return;
+            if (_state == state && _stateDetailKey == detailKey && _stateDetailArgs.SequenceEqual(args)) return;
             _state = state;
-            _stateDetail = detail;
+            _stateDetailKey = detailKey;
+            _stateDetailArgs = args;
         }
         RaiseChanged();
     }

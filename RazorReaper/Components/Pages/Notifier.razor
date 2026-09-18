@@ -2,13 +2,15 @@
 @using Microsoft.JSInterop
 @using RazorReaper.Services.Overlay
 @using RazorReaper.Components.Shared
+@using RazorReaper.Services.Localization
 @inject INotifierClientService NotifierClient
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 @implements IDisposable
 
 <header class="page-header">
-    <h1 class="page-title">Notifier</h1>
-    <p class="page-subtitle">Live in-game alerts for rare dinos, resources and OSD events</p>
+    <h1 class="page-title">@Localizer.T("notifier.title")</h1>
+    <p class="page-subtitle">@Localizer.T("notifier.subtitle")</p>
 </header>
 
 <div class="nt-page">
@@ -17,13 +19,13 @@
         <Actions>
             @if (IsConnectingOrConnected)
             {
-                <button class="btn btn-danger" @onclick="Disconnect">Disconnect</button>
+                <button class="btn btn-danger" @onclick="Disconnect">@Localizer.T("notifier.disconnect")</button>
             }
             else
             {
-                <button class="btn btn-primary" @onclick="Connect" disabled="@(!CanConnect)">Connect</button>
+                <button class="btn btn-primary" @onclick="Connect" disabled="@(!CanConnect)">@Localizer.T("notifier.connect")</button>
             }
-            <button class="btn btn-secondary" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert()">Test alert</button>
+            <button class="btn btn-secondary" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert()">@Localizer.T("notifier.testalert")</button>
         </Actions>
     </StatusHeader>
 
@@ -31,35 +33,39 @@
 
         @* ── Endpoint ────────────────────────────────────────────────────── *@
         <div class="content-card nt-card">
-            <h3 class="nt-card-title">Endpoint</h3>
-            <p class="nt-card-desc">Where the client streams alerts from. Stored locally.</p>
+            <h3 class="nt-card-title">@Localizer.T("notifier.endpoint.title")</h3>
+            <p class="nt-card-desc">@Localizer.T("notifier.endpoint.description")</p>
 
             <div class="nt-rows">
-                <SettingRow Title="Stream URL" Description="An SSE or HTTP stream endpoint (https://…/notifier/stream).">
+                <SettingRow Title="@Localizer.T("notifier.endpoint.url.title")" Description="@Localizer.T("notifier.endpoint.url.description")">
                     <input class="nt-input nt-input-wide" type="url" spellcheck="false"
                            placeholder="https://…" @bind="_endpointDraft" @bind:after="ApplyEndpoint" />
                 </SettingRow>
             </div>
 
             <div class="nt-note">
-                <p>A Notifier backend is required. The hosted service is not available yet — the client stays offline until an endpoint is online. Use <strong>Test alert</strong> to preview the HUD and sound wiring.</p>
+                <p>
+                    @Localizer.T("notifier.endpoint.note.lead")
+                    <strong>@Localizer.T("notifier.testalert")</strong>
+                    @Localizer.T("notifier.endpoint.note.rest")
+                </p>
             </div>
         </div>
 
         @* ── Alert types ─────────────────────────────────────────────────── *@
         <div class="content-card nt-card">
-            <h3 class="nt-card-title">Alert types</h3>
-            <p class="nt-card-desc">Choose which alerts pass, their sound, and preview each one.</p>
+            <h3 class="nt-card-title">@Localizer.T("notifier.types.title")</h3>
+            <p class="nt-card-desc">@Localizer.T("notifier.types.description")</p>
 
             <div class="nt-rows">
                 @foreach (var def in NotifierClient.TypeDefs)
                 {
-                    <SettingRow Title="@def.Label" Description="@def.Description">
+                    <SettingRow Title="@Localizer.T(def.LabelKey)" Description="@Localizer.T(def.DescriptionKey)">
                         <div class="nt-type-control">
                             <Dropdown Value="@NotifierClient.GetTypeSound(def.Type).ToString()"
                                       ValueChanged="v => OnTypeSound(def.Type, v)"
                                       Options="SoundOptions" />
-                            <button class="nt-mini" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert(def.Type)">Test</button>
+                            <button class="nt-mini" data-sound-skip="true" @onclick="() => NotifierClient.TestAlert(def.Type)">@Localizer.T("notifier.test")</button>
                             <Switch Value="NotifierClient.IsTypeEnabled(def.Type)"
                                     ValueChanged="v => NotifierClient.SetTypeEnabled(def.Type, v)" />
                         </div>
@@ -72,12 +78,15 @@
         <div class="content-card nt-card">
             <div class="nt-card-head">
                 <div>
-                    <h3 class="nt-card-title">Rare dino species</h3>
-                    <p class="nt-card-desc">Only applies while Rare dinos is enabled. <span class="nt-count">@SpeciesEnabledCount / @NotifierClient.Species.Count on</span></p>
+                    <h3 class="nt-card-title">@Localizer.T("notifier.species.title")</h3>
+                    <p class="nt-card-desc">
+                        @Localizer.T("notifier.species.description", Localizer.T("notifier.type.rare-dino.label"))
+                        <span class="nt-count">@Localizer.T("notifier.species.count", SpeciesEnabledCount, NotifierClient.Species.Count)</span>
+                    </p>
                 </div>
                 <div class="nt-head-actions">
-                    <button class="nt-mini" @onclick="() => NotifierClient.SetAllSpecies(true)">All</button>
-                    <button class="nt-mini" @onclick="() => NotifierClient.SetAllSpecies(false)">None</button>
+                    <button class="nt-mini" @onclick="() => NotifierClient.SetAllSpecies(true)">@Localizer.T("common.all")</button>
+                    <button class="nt-mini" @onclick="() => NotifierClient.SetAllSpecies(false)">@Localizer.T("notifier.species.none")</button>
                 </div>
             </div>
 
@@ -93,8 +102,8 @@
 
         @* ── Clusters ────────────────────────────────────────────────────── *@
         <div class="content-card nt-card">
-            <h3 class="nt-card-title">Clusters</h3>
-            <p class="nt-card-desc">Enable the clusters you play on. Real cluster names roll out later — rename these to match.</p>
+            <h3 class="nt-card-title">@Localizer.T("notifier.clusters.title")</h3>
+            <p class="nt-card-desc">@Localizer.T("notifier.clusters.description")</p>
 
             <div class="nt-rows">
                 @foreach (var c in NotifierClient.Clusters)
@@ -110,11 +119,11 @@
 
         @* ── Tribe log triggers ──────────────────────────────────────────── *@
         <div class="content-card nt-card">
-            <h3 class="nt-card-title">Tribe log triggers</h3>
-            <p class="nt-card-desc">Only applies while Tribe log is enabled. One phrase per line; a tribe-log alert shows if it contains any of them (case-insensitive). Leave empty to show every tribe-log message.</p>
+            <h3 class="nt-card-title">@Localizer.T("notifier.tribelog.title")</h3>
+            <p class="nt-card-desc">@Localizer.T("notifier.tribelog.description", Localizer.T("notifier.type.tribe-log.label"))</p>
 
             <textarea class="nt-input nt-triggers" spellcheck="false" rows="5"
-                      placeholder="One phrase per line — e.g. was killed, destroyed, starved to death, an enemy tribe name…"
+                      placeholder="@Localizer.T("notifier.tribelog.placeholder")"
                       value="@_tribeTriggersDraft"
                       @onchange="ApplyTribeTriggers"></textarea>
         </div>
@@ -125,22 +134,22 @@
     <div class="content-card nt-card nt-channels-card">
         <div class="nt-card-head">
             <div>
-                <h3 class="nt-card-title">Watched channels</h3>
-                <p class="nt-card-desc">Discord channels the backend relays from. Add or remove them here — it applies live, no restart. The bot must be a member of the channel's server.</p>
+                <h3 class="nt-card-title">@Localizer.T("notifier.channels.title")</h3>
+                <p class="nt-card-desc">@Localizer.T("notifier.channels.description")</p>
             </div>
             <div class="nt-head-actions">
-                <button class="nt-mini" @onclick="() => LoadChannels(false)" disabled="@_channelsBusy">Refresh</button>
+                <button class="nt-mini" @onclick="() => LoadChannels(false)" disabled="@_channelsBusy">@Localizer.T("notifier.channels.refresh")</button>
             </div>
         </div>
 
         <div class="nt-channel-add">
             <input class="nt-input nt-chan-id" type="text" spellcheck="false" inputmode="numeric"
-                   placeholder="Channel ID (digits only)" @bind="_newChannelId" />
+                   placeholder="@Localizer.T("notifier.channels.id.placeholder")" @bind="_newChannelId" />
             <input class="nt-input nt-chan-cluster" type="text" spellcheck="false"
-                   placeholder="Cluster / label" @bind="_newCluster" />
+                   placeholder="@Localizer.T("notifier.channels.cluster.placeholder")" @bind="_newCluster" />
             <Dropdown @bind-Value="_newType" Options="ChannelTypeOptions" />
             <button class="nt-mini nt-chan-add" @onclick="AddChannel"
-                    disabled="@(_channelsBusy || string.IsNullOrWhiteSpace(_newChannelId))">Add channel</button>
+                    disabled="@(_channelsBusy || string.IsNullOrWhiteSpace(_newChannelId))">@Localizer.T("notifier.channels.add")</button>
         </div>
 
         @if (!string.IsNullOrEmpty(_channelError))
@@ -150,7 +159,11 @@
 
         @if (_watchedChannels.Count == 0)
         {
-            <div class="nt-empty">No channels loaded. Add one above, or hit <strong>Refresh</strong> to pull the current list from the backend.</div>
+            <div class="nt-empty">
+                @Localizer.T("notifier.channels.empty.lead")
+                <strong>@Localizer.T("notifier.channels.refresh")</strong>
+                @Localizer.T("notifier.channels.empty.rest")
+            </div>
         }
         else
         {
@@ -158,10 +171,10 @@
                 @foreach (var ch in _watchedChannels)
                 {
                     <div class="nt-channel-row">
-                        <span class="nt-type-chip nt-type-@TypeCssFromKey(ch.Type)">@ch.Type</span>
+                        <span class="nt-type-chip nt-type-@TypeCssFromKey(ch.Type)">@ChannelTypeLabel(ch.Type)</span>
                         <span class="nt-chan-cluster-label">@ch.Cluster</span>
                         <span class="nt-chan-id-label">@ch.ChannelId</span>
-                        <button class="nt-chan-remove" title="Remove channel" data-sound-skip="true"
+                        <button class="nt-chan-remove" title="@Localizer.T("notifier.channels.remove")" data-sound-skip="true"
                                 @onclick="() => RemoveChannel(ch.ChannelId)" disabled="@_channelsBusy">&times;</button>
                     </div>
                 }
@@ -171,15 +184,15 @@
 
     @* ── Recent alerts ───────────────────────────────────────────────────── *@
     <div class="content-card nt-card nt-recent-card">
-        <h3 class="nt-card-title">Recent alerts</h3>
-        <p class="nt-card-desc">The last alerts received or tested.</p>
+        <h3 class="nt-card-title">@Localizer.T("notifier.recent.title")</h3>
+        <p class="nt-card-desc">@Localizer.T("notifier.recent.description")</p>
 
         @{
             var recent = NotifierClient.RecentAlerts;
         }
         @if (recent.Count == 0)
         {
-            <div class="nt-empty">No alerts yet. Connect to a backend or send a test alert.</div>
+            <div class="nt-empty">@Localizer.T("notifier.recent.empty")</div>
         }
         else
         {
@@ -199,6 +212,9 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     private string _endpointDraft = "";
     private string _tribeTriggersDraft = "";
 
@@ -224,11 +240,13 @@
 
     // ── Alert types ─────────────────────────────────────────────────────────
 
-    private IReadOnlyList<Dropdown.Option> SoundOptions { get; } = new List<Dropdown.Option>
+    // Computed, not a property initializer: a list built once cannot see the localizer and would
+    // keep the language it was built in for the rest of the session.
+    private IReadOnlyList<Dropdown.Option> SoundOptions => new List<Dropdown.Option>
     {
-        new(nameof(NotifierSound.None), "Silent"),
-        new(nameof(NotifierSound.Notification), "Notification"),
-        new(nameof(NotifierSound.Click), "Click")
+        new(nameof(NotifierSound.None), Localizer.T("notifier.sound.silent")),
+        new(nameof(NotifierSound.Notification), Localizer.T("notifier.sound.notification")),
+        new(nameof(NotifierSound.Click), Localizer.T("notifier.sound.click"))
     };
 
     private void OnTypeSound(NotifierAlertType type, string value)
@@ -239,13 +257,27 @@
 
     // ── Watched channels ────────────────────────────────────────────────────
 
-    private IReadOnlyList<Dropdown.Option> ChannelTypeOptions { get; } = new List<Dropdown.Option>
+    private IReadOnlyList<Dropdown.Option> ChannelTypeOptions => new List<Dropdown.Option>
     {
-        new("rare-dino", "Rare dino"),
-        new("resource", "Resource"),
-        new("element-node", "Element node"),
-        new("osd", "OSD / events"),
-        new("tribe-log", "Tribe log")
+        new("rare-dino", ChannelTypeLabel("rare-dino")),
+        new("resource", ChannelTypeLabel("resource")),
+        new("element-node", ChannelTypeLabel("element-node")),
+        new("osd", ChannelTypeLabel("osd")),
+        new("tribe-log", ChannelTypeLabel("tribe-log"))
+    };
+
+    /// <summary>
+    /// The backend's own type key, worded. An unknown key is shown as it arrived — the backend
+    /// may learn a type this build does not know about.
+    /// </summary>
+    private string ChannelTypeLabel(string type) => type switch
+    {
+        "rare-dino" => Localizer.T("notifier.channeltype.rare-dino"),
+        "resource" => Localizer.T("notifier.channeltype.resource"),
+        "element-node" => Localizer.T("notifier.channeltype.element-node"),
+        "osd" => Localizer.T("notifier.channeltype.osd"),
+        "tribe-log" => Localizer.T("notifier.channeltype.tribe-log"),
+        _ => type
     };
 
     private async Task LoadChannels(bool quiet)
@@ -350,13 +382,13 @@
         _ => "off"
     };
 
-    private string StatusLabel => NotifierClient.State switch
+    private string StatusLabel => Localizer.T(NotifierClient.State switch
     {
-        NotifierConnectionState.Connected => "Connected",
-        NotifierConnectionState.Connecting => "Connecting…",
-        NotifierConnectionState.Error => "Connection error",
-        _ => "Disconnected"
-    };
+        NotifierConnectionState.Connected => "notifier.status.connected",
+        NotifierConnectionState.Connecting => "notifier.status.connecting",
+        NotifierConnectionState.Error => "notifier.status.error",
+        _ => "notifier.status.disconnected"
+    });
 
     // ── Filters ────────────────────────────────────────────────────────────
 
@@ -399,13 +431,13 @@
 
     // ── Alert chip mapping ─────────────────────────────────────────────────
 
-    private static string TypeShort(NotifierAlertType type) => type switch
+    private string TypeShort(NotifierAlertType type) => Localizer.T(type switch
     {
-        NotifierAlertType.RareDino => "Dino",
-        NotifierAlertType.Resource => "Resource",
-        NotifierAlertType.ElementNode => "Element",
-        _ => "OSD"
-    };
+        NotifierAlertType.RareDino => "notifier.chip.dino",
+        NotifierAlertType.Resource => "notifier.chip.resource",
+        NotifierAlertType.ElementNode => "notifier.chip.element",
+        _ => "notifier.chip.osd"
+    });
 
     private static string TypeCss(NotifierAlertType type) => type switch
     {
