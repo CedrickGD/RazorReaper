@@ -56,6 +56,13 @@ public interface ICalibratableScript
     /// </summary>
     (int Kept, int Total)? MaskCoverage { get; }
 
+    /// <summary>
+    /// Which display the reference was captured on against the one the game is on now, or null
+    /// when the entry predates the stamp. Numbers, not the sentence — the page words it, for the
+    /// same reason <see cref="RegionTitleKey"/> is a key.
+    /// </summary>
+    CalibrationMonitorInfo? Monitor { get; }
+
     /// <summary>Discards the reference snapshot.</summary>
     void ClearReference();
 }

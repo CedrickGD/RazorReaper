@@ -325,6 +325,18 @@
         font-size: 0.78rem;
     }
 
+/* The reference belongs to another screen, so nothing is being compared. Amber and a tinted
+   row, not red and not a banner: the calibration is not broken, it is describing a monitor
+   the game has moved off — recapturing it there is the whole fix. */
+.scripts-detail .setting-row.scripts-cal-mismatch {
+    background: rgba(var(--accent-orange-rgb), 0.08);
+    border-color: rgba(var(--accent-orange-rgb), 0.3);
+}
+
+    .scripts-detail .setting-row.scripts-cal-mismatch .setting-row-desc {
+        color: var(--accent-orange-soft);
+    }
+
 /* Narrow window: the panels stack and the settings drop to one column, since a 200px
    half-column can't hold a label and a control side by side. */
 @media (max-width: 1180px) {

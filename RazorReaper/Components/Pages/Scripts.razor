@@ -383,6 +383,17 @@
                                     Description="@MaskLine(cal.MaskCoverage)">
                             <button class="btn btn-secondary" @onclick="RefineReferenceMask" disabled="@(!cal.HasReference || _calibrating)">@Localizer.T("scripts.ignorebackground")</button>
                         </SettingRow>
+                        @* Which screen the snapshot belongs to. Without it a reference taken on
+                           the second monitor and compared against the first reads as a script
+                           that simply never fires — the numbers are all there and all nonsense. *@
+                        @if (cal.HasReference)
+                        {
+                            <SettingRow Class="@(cal.Monitor is { Mismatch: true } ? "scripts-cal-mismatch" : null)"
+                                        Title="@Localizer.T("scripts.cal.monitor.title")"
+                                        Description="@MonitorLine(cal.Monitor)">
+                                <span class="setting-value">@MonitorValue(cal.Monitor)</span>
+                            </SettingRow>
+                        }
                     }
                     @if (!string.IsNullOrEmpty(_calStatus))
                     {
@@ -576,6 +587,25 @@
                 c.Kept.ToString("N0", System.Globalization.CultureInfo.InvariantCulture),
                 c.Total.ToString("N0", System.Globalization.CultureInfo.InvariantCulture))
             : Localizer.T("scripts.mask.hint");
+
+    /// <summary>
+    /// Which display the reference belongs to, in one line. Null is its own answer rather than a
+    /// blank: an entry captured before the display was recorded is not a mismatch, and refusing
+    /// to compare it would break a calibration that works.
+    /// </summary>
+    private string MonitorLine(CalibrationMonitorInfo? monitor)
+    {
+        if (monitor is null) return Localizer.T("scripts.cal.monitor.unknown");
+
+        return monitor.Mismatch
+            ? Localizer.T("scripts.cal.monitor.mismatch",
+                monitor.StoredIndex, monitor.StoredResolution, monitor.CurrentIndex, monitor.CurrentResolution)
+            : Localizer.T("scripts.cal.monitor.match", monitor.StoredIndex, monitor.StoredResolution);
+    }
+
+    /// <summary>The short form in the control column — the numbers, with the sentence beside them.</summary>
+    private static string MonitorValue(CalibrationMonitorInfo? monitor)
+        => monitor is null ? "—" : $"{monitor.StoredIndex} · {monitor.StoredResolution}";
 
     private void SetYutyKey(ChangeEventArgs e)
     {

@@ -89,6 +89,36 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     public Rectangle? CalibratedRegion =>
         Calibration.TryGetRegion(_regionKey, out Rectangle r) ? r : null;
 
+    /// <summary>
+    /// Which display the reference was captured on, and which one the game is on now. Null when
+    /// there is no region, or when the entry predates the stamp — an old calibration that still
+    /// works is not something to start refusing.
+    /// </summary>
+    public CalibrationMonitorInfo? Monitor
+    {
+        get
+        {
+            var stored = Calibration.GetRegion(_regionKey);
+            if (stored?.MonitorDeviceName is null || stored.MonitorResolution is null) return null;
+
+            var current = Calibration.CurrentGameMonitor;
+            if (current is null) return null;
+
+            return new CalibrationMonitorInfo(
+                MonitorSelection.IndexFromDeviceName(stored.MonitorDeviceName),
+                stored.MonitorResolution,
+                current.Index,
+                current.ResolutionKey);
+        }
+    }
+
+    /// <summary>
+    /// True when the stored reference describes a different screen from the one ARK is on. The
+    /// pixels would still compare — to noise — and a threshold slider cannot fix noise, so the
+    /// scan is skipped and the page says why instead.
+    /// </summary>
+    public bool MonitorMismatch => Monitor is { Mismatch: true };
+
     /// <summary>Gets the calibrated region for the current resolution.</summary>
     protected bool TryGetRegion(out Rectangle region) => Calibration.TryGetRegion(_regionKey, out region);
 
@@ -96,6 +126,12 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     protected bool IsTargetVisible(double thresholdPercent)
     {
         if (!Calibration.TryGetRegion(_regionKey, out Rectangle region)) return false;
+
+        // A reference from another screen compares to noise, and noise clears a low threshold
+        // as readily as a real match does. "Never fires" is a bug people report; "fires at
+        // random" is one they blame on the game.
+        if (MonitorMismatch) return false;
+
         var tolerance = (1.0 - Math.Clamp(thresholdPercent, 50, 100) / 100.0) * 255.0;
         return Sampler.MatchesReference(_regionKey, region, tolerance);
     }
@@ -104,6 +140,15 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     {
         if (!HasRegion) { reason = Localizer.T("scripts.cannotstart.region"); return false; }
         if (!HasReference) { reason = Localizer.T("scripts.cannotstart.reference"); return false; }
+        if (Monitor is { Mismatch: true } monitor)
+        {
+            // Refused at the press rather than started into a run that can never match: a script
+            // that is "running" and silent is the state this whole wave exists to stop producing.
+            reason = Localizer.T(
+                "scripts.cannotstart.monitor",
+                monitor.StoredIndex, monitor.StoredResolution, monitor.CurrentIndex, monitor.CurrentResolution);
+            return false;
+        }
         reason = null;
         return true;
     }
@@ -115,6 +160,8 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
         {
             var region = await Calibration.CaptureRegionAsync(_regionKey, 3, progress, ct);
             if (region is null) return false;
+            // The old snapshot belonged to the old rectangle — and, on a second monitor, to a
+            // different screen. Dropping it is what forces the two to be captured together.
             ClearReference();
             Notifications.ShowInfo(Localizer.T("scripts.toast.regionset"));
             RaiseChanged();
@@ -143,6 +190,11 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
             return false;
         }
         Sampler.CaptureReference(_regionKey, region);
+
+        // The snapshot is what gets compared from here on, so the display it came off is the one
+        // worth recording — the region may have been calibrated on a different screen.
+        Calibration.StampRegionMonitor(_regionKey);
+
         Notifications.ShowSuccess(Localizer.T("scripts.toast.referencecaptured"));
         RaiseChanged();
         return true;

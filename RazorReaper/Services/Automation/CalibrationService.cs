@@ -11,11 +11,51 @@ namespace RazorReaper.Services.Automation;
 /// <summary>A named, resolution-tagged screen point captured from the live cursor position.</summary>
 public sealed record CalibrationPoint(string Name, int X, int Y, string Resolution);
 
-/// <summary>A named, resolution-tagged screen rectangle captured from two corner points.</summary>
-public sealed record CalibrationRegion(string Name, int Left, int Top, int Right, int Bottom, string Resolution)
+/// <summary>
+/// A named, resolution-tagged screen rectangle captured from two corner points.
+///
+/// <paramref name="MonitorDeviceName"/> and <paramref name="MonitorResolution"/> record the
+/// display ARK was on when the region — and the reference snapshot taken over it — were captured.
+/// Both are null on an entry written before they existed, which is read as "we do not know"
+/// rather than as a mismatch: an old calibration that still works must keep working.
+/// </summary>
+public sealed record CalibrationRegion(
+    string Name,
+    int Left,
+    int Top,
+    int Right,
+    int Bottom,
+    string Resolution,
+    string? MonitorDeviceName = null,
+    string? MonitorResolution = null)
 {
     /// <summary>The region as a <see cref="Rectangle"/>.</summary>
     public Rectangle ToRectangle() => Rectangle.FromLTRB(Left, Top, Right, Bottom);
+}
+
+/// <summary>
+/// The display a reference was captured on, next to the one the game is on now. Numbers and keys
+/// only, no sentence: the Scripts page words it where the row renders, so a language switch
+/// re-words it — the same reason a script publishes <c>RegionTitleKey</c> rather than a title.
+/// </summary>
+/// <param name="StoredIndex">Monitor number at capture time (1-based), or 0 when unknown.</param>
+/// <param name="StoredResolution">That monitor's resolution then, e.g. "2560x1440".</param>
+/// <param name="CurrentIndex">Monitor number the game is on now, or 0 when unknown.</param>
+/// <param name="CurrentResolution">That monitor's resolution now.</param>
+public sealed record CalibrationMonitorInfo(
+    int StoredIndex,
+    string StoredResolution,
+    int CurrentIndex,
+    string CurrentResolution)
+{
+    /// <summary>
+    /// True when the reference describes a different screen from the one being looked at. Pixels
+    /// captured on a 2560x1440 second monitor compared against a 1920x1080 primary are not a low
+    /// score, they are noise — and a threshold slider cannot fix noise.
+    /// </summary>
+    public bool Mismatch =>
+        StoredIndex != CurrentIndex
+        || !string.Equals(StoredResolution, CurrentResolution, StringComparison.Ordinal);
 }
 
 /// <summary>
@@ -47,6 +87,26 @@ public interface ICalibrationService
 {
     /// <summary>Resolution key ("WxH", e.g. "2560x1440") lookups are scoped to right now.</summary>
     string CurrentResolutionKey { get; }
+
+    /// <summary>
+    /// The display ARK is on right now, or the primary one when it is not running. Null only when
+    /// Windows reports no displays at all.
+    /// </summary>
+    AttachedDisplay? CurrentGameMonitor { get; }
+
+    /// <summary>
+    /// The whole stored entry for the current resolution — the rectangle plus which display it was
+    /// captured on — or null when there is none. <see cref="TryGetRegion"/> answers the rectangle
+    /// question; this one answers "and is it still describing the screen we are looking at?".
+    /// </summary>
+    CalibrationRegion? GetRegion(string name);
+
+    /// <summary>
+    /// Records the display ARK is on right now against a stored region. Called when the region is
+    /// calibrated and again when a reference snapshot is taken over it, because the snapshot is
+    /// the thing later compared and it belongs to the screen it was taken from.
+    /// </summary>
+    void StampRegionMonitor(string name);
 
     /// <summary>True while a point or region capture countdown is in progress.</summary>
     bool IsCapturing { get; }
@@ -100,6 +160,7 @@ public sealed class CalibrationService : ICalibrationService
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
     private readonly ILocalizer _localizer;
+    private readonly IGameDisplayService? _displays;
     private readonly ILogger<CalibrationService> _logger;
     private readonly object _storeLock = new();
     private CalibrationStore? _store;
@@ -109,16 +170,38 @@ public sealed class CalibrationService : ICalibrationService
         INotificationService notifications,
         IActivityService activity,
         ILocalizer localizer,
-        ILogger<CalibrationService> logger)
+        ILogger<CalibrationService> logger,
+        IGameDisplayService? displays = null)
     {
         _notifications = notifications;
         _activity = activity;
         _localizer = localizer;
         _logger = logger;
+        _displays = displays;
     }
 
+    /// <summary>
+    /// Still the primary screen's resolution, and deliberately so: it is the store's partition
+    /// key, and re-basing it on the game's monitor would orphan every calibration already on
+    /// disk. What it never was is a statement about the screen the region lives on — that is what
+    /// <see cref="CalibrationRegion.MonitorResolution"/> now records, and what the mismatch check
+    /// reads.
+    /// </summary>
     public string CurrentResolutionKey
         => $"{GetSystemMetrics(SM_CXSCREEN)}x{GetSystemMetrics(SM_CYSCREEN)}";
+
+    public AttachedDisplay? CurrentGameMonitor
+    {
+        get
+        {
+            try { return _displays?.GameMonitor; }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not read the game's display — treating it as unknown");
+                return null;
+            }
+        }
+    }
 
     public bool IsCapturing => Volatile.Read(ref _capturing) == 1;
 
@@ -196,13 +279,16 @@ public sealed class CalibrationService : ICalibrationService
                 return null;
             }
 
+            var monitor = CurrentGameMonitor;
             var region = new CalibrationRegion(
                 name.Trim(),
                 Math.Min(corner1.X, corner2.X),
                 Math.Min(corner1.Y, corner2.Y),
                 Math.Max(corner1.X, corner2.X),
                 Math.Max(corner1.Y, corner2.Y),
-                CurrentResolutionKey);
+                CurrentResolutionKey,
+                monitor?.DeviceName,
+                monitor?.ResolutionKey);
 
             // Both corners landing on (nearly) the same pixel used to be stored as a 0x0 region and
             // reported as a success, which then enabled "Capture reference" against nothing. Keep
@@ -281,6 +367,46 @@ public sealed class CalibrationService : ICalibrationService
             if (match is null) return false;
             region = match.ToRectangle();
             return true;
+        }
+    }
+
+    public CalibrationRegion? GetRegion(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var resolution = CurrentResolutionKey;
+        lock (_storeLock)
+        {
+            return LoadStore().Regions.FirstOrDefault(r => SameEntry(r.Name, r.Resolution, name, resolution));
+        }
+    }
+
+    public void StampRegionMonitor(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var monitor = CurrentGameMonitor;
+        if (monitor is null) return;   // nothing to record is better than recording a guess
+
+        var resolution = CurrentResolutionKey;
+        lock (_storeLock)
+        {
+            var store = LoadStore();
+            var index = store.Regions.FindIndex(r => SameEntry(r.Name, r.Resolution, name, resolution));
+            if (index < 0) return;
+
+            var existing = store.Regions[index];
+            var stamped = existing with
+            {
+                MonitorDeviceName = monitor.DeviceName,
+                MonitorResolution = monitor.ResolutionKey
+            };
+
+            // Nothing moved — skip the write. A snapshot capture per scan session rewriting the
+            // whole store would be a file write per press for no change at all.
+            if (stamped == existing) return;
+
+            store.Regions[index] = stamped;
+            SaveStore(store);
         }
     }
 

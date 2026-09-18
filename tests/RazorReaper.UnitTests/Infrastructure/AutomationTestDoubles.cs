@@ -254,9 +254,39 @@ public sealed class FakeCalibrationService : ICalibrationService
 
     public string CurrentResolutionKey { get; set; } = "1920x1080";
 
+    /// <summary>What the fake says the game's display is. Null reads as "cannot tell".</summary>
+    public AttachedDisplay? CurrentGameMonitor { get; set; } =
+        new(@"\\.\DISPLAY1", new Rectangle(0, 0, 1920, 1080), IsPrimary: true);
+
+    /// <summary>Monitor stamps a test has set on a region, keyed the same way the regions are.</summary>
+    private readonly Dictionary<string, (string Device, string Resolution)> _stamps = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>How many times <see cref="StampRegionMonitor"/> was called, per region.</summary>
+    public Dictionary<string, int> StampCalls { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public bool IsCapturing => false;
 
     public void SetRegion(string name, Rectangle region) => _regions[name] = region;
+
+    /// <summary>Pretends the region was calibrated on a given display, the way a stored entry would.</summary>
+    public void SetRegionMonitor(string name, string deviceName, string resolution)
+        => _stamps[name] = (deviceName, resolution);
+
+    public CalibrationRegion? GetRegion(string name)
+    {
+        if (!_regions.TryGetValue(name, out var region)) return null;
+        _stamps.TryGetValue(name, out var stamp);
+        return new CalibrationRegion(
+            name, region.Left, region.Top, region.Right, region.Bottom, CurrentResolutionKey,
+            stamp.Device, stamp.Resolution);
+    }
+
+    public void StampRegionMonitor(string name)
+    {
+        StampCalls[name] = StampCalls.TryGetValue(name, out var count) ? count + 1 : 1;
+        if (CurrentGameMonitor is { } monitor && _regions.ContainsKey(name))
+            _stamps[name] = (monitor.DeviceName, monitor.ResolutionKey);
+    }
 
     public void SetPoint(string name, Point point) => _points[name] = point;
 
