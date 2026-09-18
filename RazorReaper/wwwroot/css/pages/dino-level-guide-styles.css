@@ -1,0 +1,116 @@
+/* Higher dino levels (/guides/dino-level) — page-scoped layout only (dlg-*).
+   The cards, buttons and header come from theme.css; nothing here introduces a colour.
+   It is a page of prose, so it is one narrow column: long lines are the only thing that
+   can make a short guide hard to read. */
+
+.dlg-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 58rem;
+}
+
+.dlg-card-title {
+    margin-bottom: var(--space-3);
+    font-size: var(--card-title-size);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dlg-intro p {
+    max-width: 52rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.dlg-intro p + p {
+    margin-top: var(--space-3);
+}
+
+/* The steps are numbered because the order is the whole trick — doing them out of
+   sequence is the failure people report. Counters rather than list-style so the number
+   can sit in the accent while the text stays plain. */
+.dlg-steps {
+    counter-reset: dlg-step;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    list-style: none;
+}
+
+.dlg-steps > li {
+    counter-increment: dlg-step;
+    position: relative;
+    padding: var(--space-3) var(--space-3) var(--space-3) 2.9rem;
+    border-radius: var(--radius-panel);
+    background: var(--surface-inset);
+}
+
+.dlg-steps > li::before {
+    content: counter(dlg-step);
+    position: absolute;
+    left: var(--space-3);
+    top: var(--space-3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
+    border-radius: var(--radius-round);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    color: var(--accent-purple-light);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.dlg-step-head {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dlg-step-detail {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+/* Two short boxes side by side on a wide window, stacked when there is no room. */
+.dlg-boxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: var(--space-4);
+}
+
+.dlg-box {
+    margin-bottom: 0 !important;
+}
+
+.dlg-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-left: 1.05rem;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.dlg-footer {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.dlg-footer a {
+    color: var(--accent-purple-light);
+    text-decoration: none;
+}
+
+.dlg-footer a:hover {
+    text-decoration: underline;
+}

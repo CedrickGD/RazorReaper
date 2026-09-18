@@ -4,13 +4,19 @@ namespace RazorReaper.Navigation;
 /// One page in the app. The sidebar renders these as links; the command palette
 /// indexes them as search targets. Both read the same records so the two can't drift.
 /// </summary>
+/// <param name="Badge">
+/// A word the sidebar prints beside the label, for a page that is not in every plan —
+/// "Lifetime" today. Null for the ordinary pages, which is nearly all of them; this is a
+/// marker, not decoration, so a second use has to mean a second kind of restriction.
+/// </param>
 public sealed record NavPage(
     string Label,
     string Route,
     string Category,
     string IconSvg,
     string Description,
-    string[] Keywords);
+    string[] Keywords,
+    string? Badge = null);
 
 /// <summary>
 /// A sidebar category. The sidebar renders one row per group; hovering the row opens a
@@ -154,6 +160,14 @@ public static class NavCatalog
             new NavPage("Bosses", "/bosses", "Mods & Intel", NavIcons.Boss,
                 "Boss tribute guide sorted by map",
                 new[] { "bosses", "tribute", "guide", "map", "requirements", "mini-boss", "fight" }),
+
+            // The one page in the app that is not in every plan. It sits with the other ARK
+            // knowledge pages rather than in a section of its own — a paywall is not a category.
+            new NavPage("Higher dino levels", "/guides/dino-level", "Mods & Intel", NavIcons.DinoLevels,
+                "How to push a tamed creature's level higher",
+                new[] { "dino", "dinos", "level", "levels", "higher", "tame", "taming", "retame", "re-tame",
+                        "noglin", "unclaim", "transmitter", "upload", "guide", "lifetime" },
+                Badge: "Lifetime"),
 
             new NavPage("TP Locations", "/tp-locations", "Mods & Intel", NavIcons.TpLocations,
                 "Teleport location database — obelisks, caves, terminals and landmarks for every map",

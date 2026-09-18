@@ -77,6 +77,12 @@
                         <a href="@entry.Route" class="panel-link @GetActiveClass(entry.Route)">
                             <span class="nav-icon-wrap">@((MarkupString)entry.IconSvg)</span>
                             <span class="panel-label">@entry.Label</span>
+                            @* Only the pages that are not in every plan carry one, so the row
+                               stays a plain label everywhere else. *@
+                            @if (!string.IsNullOrWhiteSpace(entry.Badge))
+                            {
+                                <span class="panel-badge">@entry.Badge</span>
+                            }
                         </a>
                     </li>
                 }

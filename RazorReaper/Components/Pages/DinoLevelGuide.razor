@@ -1,0 +1,99 @@
+@page "/guides/dino-level"
+
+@*
+    The one page in the app that is behind a real paywall, and the only caller of
+    PremiumLock's hard gate. Everything inside that gate is withheld — not blurred — from
+    anyone who is not on the perpetual licence, so the method itself must stay inside it:
+    the header above the gate says what the page is about and nothing about how it is done.
+*@
+
+<header class="page-header">
+    <h1 class="page-title">Higher dino levels</h1>
+    <p class="page-subtitle">How to push a tamed creature's level higher — written down from the owner's own testing</p>
+</header>
+
+<PremiumLock RequiresLifetime="true">
+
+    <div class="dlg-layout">
+
+        <section class="content-card dlg-intro">
+            <h2 class="dlg-card-title">What this does</h2>
+            <p>
+                A creature you have already tamed can be freed and tamed a second time. Each pass
+                lands at a higher tame level than the one before, so the same creature ends up
+                further above where it started without being bred.
+            </p>
+            <p>
+                This is a game mechanic, not a tool in Razor Reaper — there is nothing here to
+                click. It is written down from the owner's own testing and worked at the time it
+                was written. There is no video for it yet.
+            </p>
+        </section>
+
+        <section class="content-card dlg-steps-card">
+            <h2 class="dlg-card-title">Step by step</h2>
+            <ol class="dlg-steps">
+                <li>
+                    <span class="dlg-step-head">Unclaim the tamed dino</span>
+                    <span class="dlg-step-detail">It has to be unclaimed before anything else works.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Catch it with a Noglin</span>
+                    <span class="dlg-step-detail">Take the creature over so the Noglin is holding it.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Upload the Noglin at a transmitter</span>
+                    <span class="dlg-step-detail">Put the Noglin itself into the upload, not the creature.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Leave render distance</span>
+                    <span class="dlg-step-detail">Move far enough away that the area unloads for you.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Wait until the Noglin is gone from render</span>
+                    <span class="dlg-step-detail">Give it time — this is the part that is easy to cut short.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Come back</span>
+                    <span class="dlg-step-detail">The creature should be standing there free again.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Tame it again</span>
+                    <span class="dlg-step-detail">A normal tame, on the creature you just freed.</span>
+                </li>
+                <li>
+                    <span class="dlg-step-head">Repeat</span>
+                    <span class="dlg-step-detail">Every round starts from a higher tame level than the last.</span>
+                </li>
+            </ol>
+        </section>
+
+        <div class="dlg-boxes">
+
+            <section class="content-card dlg-box">
+                <h2 class="dlg-card-title">Requirements</h2>
+                <ul class="dlg-list">
+                    <li>A Noglin — a high level one is likely to be needed.</li>
+                    <li>A transmitter to upload the Noglin at.</li>
+                    <li>The dino unclaimed before you start.</li>
+                </ul>
+            </section>
+
+            <section class="content-card dlg-box">
+                <h2 class="dlg-card-title">Tips &amp; caveats</h2>
+                <ul class="dlg-list">
+                    <li>Leave render properly — half out is not out, and the step will not fire.</li>
+                    <li>Keep the Noglin safe; you need it again for the next round.</li>
+                    <li>Results can differ by server settings, so treat the levels you get as your server's, not a fixed number.</li>
+                </ul>
+            </section>
+
+        </div>
+
+        <p class="dlg-footer">
+            Something changed? Tell us via <a href="/feedback">Feedback &amp; Support</a>.
+        </p>
+
+    </div>
+
+</PremiumLock>

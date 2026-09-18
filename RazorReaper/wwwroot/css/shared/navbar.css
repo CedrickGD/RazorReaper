@@ -305,8 +305,8 @@ html[data-sidebar-resizing] .sidebar {
     width: 0;
 }
 
-/* Rows fade in one after another when the category changes. Capped at eight
-   because that's the largest category — beyond it the delay would drag. */
+/* Rows fade in one after another when the category changes. Capped at eight —
+   beyond that the delay would drag, so the rest of a longer category shares it. */
 .panel-list > li {
     animation: rowIn var(--nav-base) var(--nav-ease) both;
 }
@@ -374,6 +374,32 @@ html[data-sidebar-resizing] .sidebar {
 .panel-label {
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* A flex item will not shrink below its text by default, so on a row that also carries a
+   marker the label would push the marker out of the panel instead of ellipsising. Scoped
+   to those rows: everywhere else the label keeps the width it has always had. */
+.panel-link:has(.panel-badge) .panel-label {
+    min-width: 0;
+}
+
+/* Plan marker on a row whose page is not in every plan. Same chip as the licence
+   overlay's plan pill, sized down to sit inside a nav row — no new colour, and it
+   keeps to the accent so it reads as a state and not as a warning. The label gives
+   up its space first, so the marker never gets clipped when the sidebar is narrow. */
+.panel-badge {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0.05rem 0.34rem;
+    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
+    border-radius: var(--radius-chip);
+    background: rgba(var(--accent-purple-rgb), 0.12);
+    color: var(--accent-purple-light);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    line-height: 1.55;
+    text-transform: uppercase;
 }
 
 .nav-icon-wrap {
