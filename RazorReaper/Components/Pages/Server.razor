@@ -15,20 +15,22 @@
 @inject ISteamFavoritesService SteamFavoritesService
 @inject IServerQueryService ServerQuery
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 
         <header class="page-header">
-            <h1 class="page-title">Server Management</h1>
-            <p class="page-subtitle">Connect and manage ARK servers</p>
+            <h1 class="page-title">@Localizer.T("server.title")</h1>
+            <p class="page-subtitle">@Localizer.T("nav.page.server.description")</p>
         </header>
 
         <div class="server-layout">
             <div class="content-card server-connection-panel">
-                <h3>Server Connection</h3>
+                <h3>@Localizer.T("server.connection.title")</h3>
 
                 <div class="connection-form">
                     <div>
-                        <label class="input-label">Server IP Address</label>
+                        <label class="input-label">@Localizer.T("server.field.ip")</label>
                         <input @bind="ServerInput"
                                @bind:event="oninput"
                                @onkeypress="@(async (e) => { if (e.Key == "Enter") await QueryServer(); })"
@@ -39,7 +41,7 @@
                     @if (!string.IsNullOrWhiteSpace(serverInput))
                     {
                         <div>
-                            <label class="input-label">Steam Connect URL</label>
+                            <label class="input-label">@Localizer.T("server.field.steamurl")</label>
                             <div class="url-input-group">
                                 <input value="@GetSteamUrl()" readonly class="server-input readonly" />
                                 <button class="server-btn copy-btn" @onclick="CopySteamUrl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button>
@@ -52,31 +54,31 @@
                             @if (isQuerying)
                             {
                                 <div class="server-spinner"></div>
-                                <span>Query</span>
+                                <span>@Localizer.T("server.query")</span>
                             }
                             else
                             {
-                                <span>Query</span>
+                                <span>@Localizer.T("server.query")</span>
                             }
                         </button>
 
                         <button class="server-btn connect" @onclick="ConnectToServer" disabled="@IsServerNull()">
-                            Connect
+                            @Localizer.T("server.connect")
                         </button>
                     </div>
 
                     <div class="button-grid">
                         <button class="server-btn save" @onclick="SaveServer" disabled="@IsServerNull()">
-                            Save
+                            @Localizer.T("common.save")
                         </button>
 
                         <button class="server-btn favorite" @onclick="AddToSteamFavorites" disabled="@IsServerNull()">
-                            Add to Steam
+                            @Localizer.T("server.addtosteam")
                         </button>
                     </div>
 
                     <button class="server-btn browser" @onclick="OpenSteamBrowser">
-                        Steam Browser
+                        @Localizer.T("server.steambrowser")
                     </button>
                 </div>
             </div>
@@ -89,29 +91,29 @@
                         <div class="server-details-grid">
                             <div class="detail-column">
                                 <div class="detail-row">
-                                    <span class="detail-label">Status:</span>
-                                    <span class="text-purple detail-value">Online</span>
+                                    <span class="detail-label">@Localizer.T("server.detail.status")</span>
+                                    <span class="text-purple detail-value">@Localizer.T("server.status.online")</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="detail-label">Address:</span>
+                                    <span class="detail-label">@Localizer.T("server.detail.address")</span>
                                     <span class="detail-value">@currentServer.IpAddress:@currentServer.Port</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="detail-label">Players:</span>
+                                    <span class="detail-label">@Localizer.T("server.detail.players")</span>
                                     <span class="text-purple detail-value">@currentServer.CurrentPlayers/@currentServer.MaxPlayers</span>
                                 </div>
                             </div>
                             <div class="detail-column">
                                 <div class="detail-row">
-                                    <span class="detail-label">Map:</span>
-                                    <span class="detail-value">@currentServer.CurrentMap</span>
+                                    <span class="detail-label">@Localizer.T("server.detail.map")</span>
+                                    <span class="detail-value">@OrUnknown(currentServer.CurrentMap)</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="detail-label">Version:</span>
-                                    <span class="detail-value">@currentServer.Version</span>
+                                    <span class="detail-label">@Localizer.T("server.detail.version")</span>
+                                    <span class="detail-value">@OrUnknown(currentServer.Version)</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="detail-label">Query Port:</span>
+                                    <span class="detail-label">@Localizer.T("server.detail.queryport")</span>
                                     <span class="detail-value">@currentServer.QueryPort</span>
                                 </div>
                             </div>
@@ -130,31 +132,31 @@
                         <div class="server-details-grid">
                             <div class="detail-column">
                                 <div class="detail-row">
-                                    <span class="text-secondary">Status:</span>
+                                    <span class="text-secondary">@Localizer.T("server.detail.status")</span>
                                     <span class="@(selectedServer.IsOnline ? "text-purple" : "text-red")">
-                                        @(selectedServer.IsOnline ? "Online" : "Offline")
+                                        @Localizer.T(selectedServer.IsOnline ? "server.status.online" : "server.status.offline")
                                     </span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="text-secondary">Address:</span>
+                                    <span class="text-secondary">@Localizer.T("server.detail.address")</span>
                                     <span class="text-white">@selectedServer.IpAddress:@selectedServer.Port</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="text-secondary">Players:</span>
+                                    <span class="text-secondary">@Localizer.T("server.detail.players")</span>
                                     <span class="text-purple">@selectedServer.CurrentPlayers/@selectedServer.MaxPlayers</span>
                                 </div>
                             </div>
                             <div class="detail-column">
                                 <div class="detail-row">
-                                    <span class="text-secondary">Map:</span>
-                                    <span class="text-white">@selectedServer.CurrentMap</span>
+                                    <span class="text-secondary">@Localizer.T("server.detail.map")</span>
+                                    <span class="text-white">@OrUnknown(selectedServer.CurrentMap)</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="text-secondary">Version:</span>
-                                    <span class="text-white">@selectedServer.Version</span>
+                                    <span class="text-secondary">@Localizer.T("server.detail.version")</span>
+                                    <span class="text-white">@OrUnknown(selectedServer.Version)</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="text-secondary">Query:</span>
+                                    <span class="text-secondary">@Localizer.T("server.detail.query")</span>
                                     <span class="text-white">@selectedServer.QueryPort</span>
                                 </div>
                             </div>
@@ -164,8 +166,8 @@
 
                 <div class="content-card saved-servers-section">
                     <div class="section-header">
-                        <h3>Saved Servers</h3>
-                        <span class="text-secondary">@servers.Count servers</span>
+                        <h3>@Localizer.T("server.saved.title")</h3>
+                        <span class="text-secondary">@Localizer.T("server.saved.count", servers.Count)</span>
                     </div>
 
                     <div class="servers-grid">
@@ -181,12 +183,12 @@
                                             <div class="text-secondary server-address">@server.IpAddress:@server.Port</div>
                                             @if (server.IsOnline)
                                             {
-                                                <div class="server-players">@server.CurrentPlayers/@server.MaxPlayers players</div>
+                                                <div class="server-players">@Localizer.T("server.players", server.CurrentPlayers, server.MaxPlayers)</div>
                                             }
                                         </div>
                                         <div class="server-actions">
-                                            <button class="server-action-btn" @onclick:stopPropagation="true" @onclick="() => SelectServer(server)">Info</button>
-                                            <button class="server-action-btn remove" @onclick:stopPropagation="true" @onclick="() => RemoveServer(server)">Remove</button>
+                                            <button class="server-action-btn" @onclick:stopPropagation="true" @onclick="() => SelectServer(server)">@Localizer.T("server.info")</button>
+                                            <button class="server-action-btn remove" @onclick:stopPropagation="true" @onclick="() => RemoveServer(server)">@Localizer.T("common.remove")</button>
                                         </div>
                                     </div>
                                 </div>
@@ -196,8 +198,8 @@
                         {
                             <div class="empty-servers-state">
                                 <div class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-secondary);"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-                                <div>No servers saved yet</div>
-                                <div class="empty-subtitle">Query and save servers to see them here</div>
+                                <div>@Localizer.T("server.empty.title")</div>
+                                <div class="empty-subtitle">@Localizer.T("server.empty.text")</div>
                             </div>
                         }
                     </div>
@@ -205,13 +207,13 @@
 
                 <div class="content-card bulk-favorites-section">
                     <StatusHeader State="@BulkStatusState"
-                                  Label="Bulk Add Favorites"
+                                  Label="@Localizer.T("server.bulk.title")"
                                   Description="@BulkStatusDescription">
                         <Actions>
                             <button class="server-btn bulk-clear-btn"
                                     @onclick="ClearBulkInput"
                                     disabled="@(isBulkApplying || (string.IsNullOrEmpty(bulkInput) && bulkResults.Count == 0))">
-                                Clear
+                                @Localizer.T("common.clear")
                             </button>
                             <button class="server-btn favorite bulk-apply-btn"
                                     @onclick="ApplyBulkFavorites"
@@ -219,32 +221,31 @@
                                 @if (isBulkApplying)
                                 {
                                     <div class="server-spinner"></div>
-                                    <span>Applying</span>
+                                    <span>@Localizer.T("server.bulk.applying")</span>
                                 }
                                 else
                                 {
-                                    <span>Apply@(bulkParse.Valid.Count > 0 ? $" ({bulkParse.Valid.Count})" : "")</span>
+                                    <span>@Localizer.T("server.bulk.apply")@(bulkParse.Valid.Count > 0 ? $" ({bulkParse.Valid.Count})" : "")</span>
                                 }
                             </button>
                         </Actions>
                     </StatusHeader>
 
                     <p class="bulk-help-text">
-                        One server per line — <span class="bulk-mono">IP:QUERYPORT</span> or a
-                        <span class="bulk-mono">steam://connect/...</span> link; <span class="bulk-mono">#</span> lines are ignored.
+                        @Localizer.T("server.bulk.help.lead")<span class="bulk-mono">IP:QUERYPORT</span>@Localizer.T("server.bulk.help.mid")<span class="bulk-mono">steam://connect/...</span>@Localizer.T("server.bulk.help.rest")
                     </p>
 
                     <textarea class="bulk-input"
                               rows="7"
-                              placeholder="141.98.157.224:27015&#10;144.76.28.10 27017&#10;steam://connect/145.239.87.28:27015&#10;# comment lines are skipped"
+                              placeholder="@Localizer.T("server.bulk.placeholder")"
                               @bind="bulkInput" @bind:event="oninput" @bind:after="OnBulkInputChanged"
                               disabled="@isBulkApplying"></textarea>
 
                     @if (bulkParse.HasInput)
                     {
                         <div class="bulk-preview">
-                            <span class="bulk-count valid">@bulkParse.Valid.Count valid</span>
-                            <span class="bulk-count invalid @(bulkParse.Invalid.Count == 0 ? "none" : "")">@bulkParse.Invalid.Count invalid</span>
+                            <span class="bulk-count valid">@Localizer.T("server.bulk.valid", bulkParse.Valid.Count)</span>
+                            <span class="bulk-count invalid @(bulkParse.Invalid.Count == 0 ? "none" : "")">@Localizer.T("server.bulk.invalid", bulkParse.Invalid.Count)</span>
                         </div>
                     }
 
@@ -254,14 +255,14 @@
                             @foreach (var invalidLine in bulkParse.Invalid.Take(MaxBulkListRows))
                             {
                                 <div @key="@invalidLine.LineNumber" class="bulk-line-item">
-                                    <span class="bulk-line-number">Line @invalidLine.LineNumber</span>
+                                    <span class="bulk-line-number">@Localizer.T("server.bulk.line", invalidLine.LineNumber)</span>
                                     <span class="bulk-line-raw">@TruncateLine(invalidLine.RawLine)</span>
                                     <span class="bulk-line-reason">@invalidLine.Reason</span>
                                 </div>
                             }
                             @if (bulkParse.Invalid.Count > MaxBulkListRows)
                             {
-                                <div class="bulk-line-more">+ @(bulkParse.Invalid.Count - MaxBulkListRows) more invalid lines</div>
+                                <div class="bulk-line-more">@Localizer.T("server.bulk.more", bulkParse.Invalid.Count - MaxBulkListRows)</div>
                             }
                         </div>
                     }
@@ -274,7 +275,7 @@
                                 <div class="bulk-result-item @bulkResult.Status">
                                     <span class="bulk-result-dot"></span>
                                     <span class="bulk-result-endpoint">@bulkResult.Endpoint</span>
-                                    <span class="bulk-result-status">@bulkResult.StatusLabel</span>
+                                    <span class="bulk-result-status">@Localizer.T(bulkResult.Status == "added" ? "server.bulk.status.added" : bulkResult.Status == "skipped" ? "server.bulk.status.skipped" : "server.bulk.status.failed")</span>
                                     <span class="bulk-result-detail">@bulkResult.Detail</span>
                                 </div>
                             }
@@ -282,16 +283,16 @@
                     }
 
                     <div class="bulk-note">
-                        Ports are treated as query ports; the game port is derived automatically.
-                        Steam must be running — added servers appear under View &rarr; Game Servers &rarr; Favorites.
+                        @Localizer.T("server.bulk.note.ports")
+                        @Localizer.T("server.bulk.note.steam")
                     </div>
                 </div>
 
                 <div class="content-card troubleshooting-section">
                     <div class="section-header">
-                        <h3>Troubleshooting</h3>
+                        <h3>@Localizer.T("server.troubleshooting.title")</h3>
                         <button class="toggle-btn" @onclick="ToggleTroubleshooting">
-                            @(showTroubleshooting ? "Hide" : "Show")
+                            @Localizer.T(showTroubleshooting ? "server.troubleshooting.hide" : "server.troubleshooting.show")
                         </button>
                     </div>
 
@@ -299,42 +300,42 @@
                     {
                         <div class="troubleshooting-grid">
                             <div class="troubleshooting-item">
-                                <h4>Connection</h4>
+                                <h4>@Localizer.T("server.trouble.connection")</h4>
                                 <ul>
-                                    <li>Check IP and port</li>
-                                    <li>Verify Steam is running</li>
-                                    <li>Disable VPN</li>
-                                    <li>Check firewall</li>
+                                    <li>@Localizer.T("server.trouble.connection.1")</li>
+                                    <li>@Localizer.T("server.trouble.connection.2")</li>
+                                    <li>@Localizer.T("server.trouble.connection.3")</li>
+                                    <li>@Localizer.T("server.trouble.connection.4")</li>
                                 </ul>
                             </div>
 
                             <div class="troubleshooting-item">
-                                <h4>Game Launch</h4>
+                                <h4>@Localizer.T("server.trouble.launch")</h4>
                                 <ul>
-                                    <li>Restart Steam</li>
-                                    <li>Verify game files</li>
-                                    <li>Run as admin</li>
-                                    <li>Clear cache</li>
+                                    <li>@Localizer.T("server.trouble.launch.1")</li>
+                                    <li>@Localizer.T("server.trouble.launch.2")</li>
+                                    <li>@Localizer.T("server.trouble.launch.3")</li>
+                                    <li>@Localizer.T("server.trouble.launch.4")</li>
                                 </ul>
                             </div>
 
                             <div class="troubleshooting-item">
-                                <h4>Query Issues</h4>
+                                <h4>@Localizer.T("server.trouble.query")</h4>
                                 <ul>
-                                    <li>Server offline</li>
-                                    <li>Port blocked</li>
-                                    <li>Try +1 port</li>
-                                    <li>No response</li>
+                                    <li>@Localizer.T("server.trouble.query.1")</li>
+                                    <li>@Localizer.T("server.trouble.query.2")</li>
+                                    <li>@Localizer.T("server.trouble.query.3")</li>
+                                    <li>@Localizer.T("server.trouble.query.4")</li>
                                 </ul>
                             </div>
 
                             <div class="troubleshooting-item">
-                                <h4>Ports</h4>
+                                <h4>@Localizer.T("server.trouble.ports")</h4>
                                 <ul>
-                                    <li>Game: 7777-7784</li>
-                                    <li>Query: Game+12288</li>
-                                    <li>RCON: Game+2</li>
-                                    <li>Raw UDP: Game+3</li>
+                                    <li>@Localizer.T("server.trouble.ports.1")</li>
+                                    <li>@Localizer.T("server.trouble.ports.2")</li>
+                                    <li>@Localizer.T("server.trouble.ports.3")</li>
+                                    <li>@Localizer.T("server.trouble.ports.4")</li>
                                 </ul>
                             </div>
                         </div>
@@ -345,6 +346,13 @@
 
 
 @code {
+    /// <summary>
+    /// Repaints the page when the language changes; why the cascade rather than a subscription
+    /// of this page's own is explained in MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const int PingTimeoutMs = 2500;
 
     private string serverInput = "";
@@ -626,11 +634,11 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
-            NotificationService.ShowSuccess("Steam URL copied to clipboard.");
+            NotificationService.ShowSuccess(Localizer.T("server.success.urlcopied"));
         }
         catch
         {
-            NotificationService.ShowError("Failed to copy URL to clipboard");
+            NotificationService.ShowError(Localizer.T("server.error.urlcopy"));
         }
     }
 
@@ -675,7 +683,7 @@
             if (serverInfo != null)
             {
                 ApplyServerInfo(currentServer, serverInfo);
-                NotificationService.ShowSuccess($"Server online — Players: {serverInfo.Players}/{serverInfo.MaxPlayers} | Map: {serverInfo.Map}");
+                NotificationService.ShowSuccess(Localizer.T("server.success.online", serverInfo.Players, serverInfo.MaxPlayers, serverInfo.Map));
             }
             else
             {
@@ -689,11 +697,11 @@
                 if (pingReply.Status == IPStatus.Success)
                 {
                     currentServer.IsOnline = true;
-                    NotificationService.ShowWarning($"Server reachable — Ping: {pingReply.RoundtripTime}ms (Query failed)");
+                    NotificationService.ShowWarning(Localizer.T("server.warn.reachable", pingReply.RoundtripTime));
                 }
                 else
                 {
-                    NotificationService.ShowError("Server is offline or unreachable");
+                    NotificationService.ShowError(Localizer.T("server.error.offline"));
                 }
             }
         }
@@ -708,7 +716,7 @@
         {
             if (IsCurrentQuery(requestId))
             {
-                NotificationService.ShowError($"Query failed: {ex.Message}");
+                NotificationService.ShowError(Localizer.T("server.error.query", ex.Message));
             }
         }
         finally
@@ -755,12 +763,12 @@
     {
         ip = string.Empty;
         queryPort = 0;
-        errorMessage = "Invalid format. Use IP:QUERYPORT (e.g., 192.168.1.1:27015)";
+        errorMessage = Localizer.T("server.error.format");
 
         var trimmedInput = input?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(trimmedInput))
         {
-            errorMessage = "Enter a server endpoint in the format IP:QUERYPORT.";
+            errorMessage = Localizer.T("server.error.empty");
             return false;
         }
 
@@ -772,13 +780,13 @@
 
         if (!IPAddress.TryParse(parts[0], out var parsedAddress) || parsedAddress.AddressFamily != AddressFamily.InterNetwork)
         {
-            errorMessage = "Invalid IP address. Use a valid IPv4 address like 141.98.157.224.";
+            errorMessage = Localizer.T("server.error.ip");
             return false;
         }
 
         if (!int.TryParse(parts[1], out queryPort) || queryPort is < 1 or > 65535)
         {
-            errorMessage = "Invalid query port. Use a value between 1 and 65535.";
+            errorMessage = Localizer.T("server.error.port");
             return false;
         }
 
@@ -824,7 +832,7 @@
     {
         if (currentServer == null)
         {
-            NotificationService.ShowError("No server to save - please query a server first");
+            NotificationService.ShowError(Localizer.T("server.error.nosave"));
             return;
         }
 
@@ -839,14 +847,14 @@
                 existing.MaxPlayers = currentServer.MaxPlayers;
                 existing.CurrentMap = currentServer.CurrentMap;
                 existing.Version = currentServer.Version;
-                NotificationService.ShowSuccess($"Server '{currentServer.Name}' updated in local list.");
-                ActivityService.AddActivity($"Server updated: {currentServer.Name}", "info");
+                NotificationService.ShowSuccess(Localizer.T("server.success.updated", currentServer.Name));
+                ActivityService.AddActivity(Localizer.T("server.activity.updated", currentServer.Name), "info");
             }
             else
             {
                 servers.Add(currentServer);
-                NotificationService.ShowSuccess($"Server '{currentServer.Name}' saved to local list. Total servers: {servers.Count}");
-                ActivityService.AddActivity($"Server saved: {currentServer.Name}", "success");
+                NotificationService.ShowSuccess(Localizer.T("server.success.saved", currentServer.Name, servers.Count));
+                ActivityService.AddActivity(Localizer.T("server.activity.saved", currentServer.Name), "success");
             }
 
             await SaveServersToStorage();
@@ -854,7 +862,7 @@
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to save server: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("server.error.save", ex.Message));
         }
     }
 
@@ -862,7 +870,7 @@
     {
         servers.Remove(server);
         await SaveServersToStorage();
-        ActivityService.AddActivity($"Server removed: {server.Name}", "warning");
+        ActivityService.AddActivity(Localizer.T("server.activity.removed", server.Name), "warning");
         if (selectedServer == server)
         {
             selectedServer = null;
@@ -879,12 +887,12 @@
         {
             var steamUrl = $"steam://run/346110//+connect {currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamUrl, "_blank");
-            NotificationService.ShowSuccess("Launching ARK via Steam...");
-            ActivityService.AddActivity($"Connecting to server: {currentServer.Name} ({currentServer.IpAddress})", "success");
+            NotificationService.ShowSuccess(Localizer.T("server.success.launching"));
+            ActivityService.AddActivity(Localizer.T("server.activity.connecting", currentServer.Name, currentServer.IpAddress), "success");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Connection failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("server.error.connect", ex.Message));
         }
     }
 
@@ -892,7 +900,7 @@
     {
         if (currentServer == null)
         {
-            NotificationService.ShowError("No server to add to favorites - query a server first");
+            NotificationService.ShowError(Localizer.T("server.error.nofavorite"));
             return;
         }
 
@@ -903,11 +911,11 @@
             string steamFavoriteUrl = $"steam://friends/joingame/{currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamFavoriteUrl, "_blank");
 
-            NotificationService.ShowSuccess($"Server '{currentServer.Name}' added to Steam favorites.\nCheck Steam → View → Servers → Favorites tab");
+            NotificationService.ShowSuccess(Localizer.T("server.success.favorited", currentServer.Name));
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to add to favorites: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("server.error.favorite", ex.Message));
         }
     }
 
@@ -916,11 +924,11 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("window.open", "steam://open/servers", "_blank");
-            NotificationService.ShowSuccess("Opening Steam server browser...");
+            NotificationService.ShowSuccess(Localizer.T("server.success.browser"));
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to open Steam browser: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("server.error.browser", ex.Message));
         }
     }
 
@@ -954,24 +962,31 @@
     private BulkParseResult bulkParse = new();
     private bool isBulkApplying = false;
     private readonly List<BulkFavoriteResult> bulkResults = new();
-    private string? bulkLastRunSummary;
+    // The last run is kept as three counts rather than a finished sentence: the status line
+    // sits on screen until the list is edited, and a sentence built once would stay in the
+    // language it was built in after a switch.
+    private bool bulkHasLastRun;
+    private int bulkLastAdded;
+    private int bulkLastSkipped;
+    private int bulkLastFailed;
     private bool bulkLastRunHadFailures;
 
     private bool CanApplyBulk => !isBulkApplying && bulkParse.Valid.Count > 0;
 
     private string BulkStatusState =>
         isBulkApplying ? "warning"
-        : bulkLastRunSummary != null ? (bulkLastRunHadFailures ? "warning" : "online")
+        : bulkHasLastRun ? (bulkLastRunHadFailures ? "warning" : "online")
         : bulkParse.Valid.Count > 0 ? "online"
         : bulkParse.Invalid.Count > 0 ? "error"
         : "off";
 
     private string BulkStatusDescription =>
-        isBulkApplying ? $"Adding to Steam favorites ({bulkResults.Count}/{bulkParse.Valid.Count})"
-        : bulkLastRunSummary != null ? $"Last run: {bulkLastRunSummary}"
-        : bulkParse.Valid.Count > 0 ? $"{bulkParse.Valid.Count} server{(bulkParse.Valid.Count == 1 ? "" : "s")} ready to add"
-        : bulkParse.Invalid.Count > 0 ? "No valid servers found"
-        : "Paste a server list to add all entries to Steam favorites";
+        isBulkApplying ? Localizer.T("server.bulk.desc.applying", bulkResults.Count, bulkParse.Valid.Count)
+        : bulkHasLastRun ? Localizer.T("server.bulk.desc.lastrun", bulkLastAdded, bulkLastSkipped, bulkLastFailed)
+        : bulkParse.Valid.Count > 0
+            ? Localizer.T(bulkParse.Valid.Count == 1 ? "server.bulk.desc.ready.one" : "server.bulk.desc.ready.many", bulkParse.Valid.Count)
+        : bulkParse.Invalid.Count > 0 ? Localizer.T("server.bulk.desc.novalid")
+        : Localizer.T("server.bulk.desc.idle");
 
     private void OnBulkInputChanged()
     {
@@ -979,7 +994,7 @@
 
         // Old apply results no longer match the edited list — drop them.
         bulkResults.Clear();
-        bulkLastRunSummary = null;
+        bulkHasLastRun = false;
         bulkLastRunHadFailures = false;
     }
 
@@ -988,7 +1003,7 @@
         bulkInput = "";
         bulkParse = new BulkParseResult();
         bulkResults.Clear();
-        bulkLastRunSummary = null;
+        bulkHasLastRun = false;
         bulkLastRunHadFailures = false;
     }
 
@@ -1001,7 +1016,7 @@
 
         isBulkApplying = true;
         bulkResults.Clear();
-        bulkLastRunSummary = null;
+        bulkHasLastRun = false;
         bulkLastRunHadFailures = false;
         StateHasChanged();
 
@@ -1030,7 +1045,7 @@
                     {
                         Endpoint = favoriteEndpoint,
                         Status = "skipped",
-                        Detail = "Already in Steam favorites"
+                        Detail = Localizer.T("server.bulk.detail.already")
                     });
                     skipped++;
                     StateHasChanged();
@@ -1048,7 +1063,7 @@
                     {
                         Endpoint = favoriteEndpoint,
                         Status = "added",
-                        Detail = "Sent to Steam favorites"
+                        Detail = Localizer.T("server.bulk.detail.sent")
                     });
                     added++;
                     StateHasChanged();
@@ -1070,10 +1085,13 @@
                 }
             }
 
-            bulkLastRunSummary = $"{added} added, {skipped} skipped, {failed} failed";
+            bulkLastAdded = added;
+            bulkLastSkipped = skipped;
+            bulkLastFailed = failed;
+            bulkHasLastRun = true;
             bulkLastRunHadFailures = failed > 0;
 
-            var summary = $"Bulk add complete: {added} added, {skipped} skipped, {failed} failed";
+            var summary = Localizer.T("server.bulk.complete", added, skipped, failed);
             if (failed > 0)
             {
                 NotificationService.ShowWarning(summary);
@@ -1089,13 +1107,15 @@
 
             if (added > 0)
             {
-                ActivityService.AddActivity($"Bulk added {added} server{(added == 1 ? "" : "s")} to Steam favorites", "success");
+                ActivityService.AddActivity(
+                    Localizer.T(added == 1 ? "server.bulk.activity.one" : "server.bulk.activity.many", added),
+                    "success");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Bulk favorites apply failed");
-            NotificationService.ShowError($"Bulk add failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("server.bulk.error", ex.Message));
         }
         finally
         {
@@ -1107,6 +1127,16 @@
         }
     }
 
+    /// <summary>
+    /// The word for a map or version the query did not report. "Unknown" is the sentinel the
+    /// saved list stores, including in lists written before this page was translated, so it is
+    /// read as a sentinel here and the word itself is looked up where it renders.
+    /// </summary>
+    private string OrUnknown(string? value)
+        => string.IsNullOrWhiteSpace(value) || value == "Unknown"
+            ? Localizer.T("common.unknown")
+            : value;
+
     private static string TruncateLine(string value, int maxLength = 48)
         => value.Length <= maxLength ? value : value[..maxLength] + "...";
 
@@ -1117,14 +1147,8 @@
         /// <summary>"added" | "skipped" | "failed" — doubles as the result row CSS class.</summary>
         public string Status { get; init; } = "";
 
+        /// <summary>Already worded when it is set — an exception message passes through as it is.</summary>
         public string Detail { get; init; } = "";
-
-        public string StatusLabel => Status switch
-        {
-            "added" => "Added",
-            "skipped" => "Skipped",
-            _ => "Failed"
-        };
     }
 
     public class GameServer

@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services.Implementations;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Steam;
 
@@ -11,6 +12,11 @@ namespace RazorReaper.Services.Steam;
 /// duplicate check reads Steam's serverbrowser_hist.vdf (located via the same registry
 /// lookup <see cref="SteamPathLocator"/> uses elsewhere) and never writes to it — the
 /// actual "add" stays on the page and reuses the single-server steam:// URL code path.
+///
+/// The per-line rejection reasons are read by a person on the Server page, so they are worded
+/// here in that person's language: this is the "a service that words messages for a page is part
+/// of that page" rule from docs/i18n.md. A rejection is shown until the list is edited, which is
+/// short enough that resolving on creation is enough.
 /// </summary>
 public sealed class SteamFavoritesService : ISteamFavoritesService
 {
@@ -25,10 +31,12 @@ public sealed class SteamFavoritesService : ISteamFavoritesService
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private readonly ILogger<SteamFavoritesService> _logger;
+    private readonly ILocalizer _localizer;
 
-    public SteamFavoritesService(ILogger<SteamFavoritesService> logger)
+    public SteamFavoritesService(ILogger<SteamFavoritesService> logger, ILocalizer localizer)
     {
         _logger = logger;
+        _localizer = localizer;
     }
 
     public BulkParseResult ParseServerList(string? input)
@@ -70,7 +78,7 @@ public sealed class SteamFavoritesService : ISteamFavoritesService
                 {
                     LineNumber = lineNumber,
                     RawLine = line,
-                    Reason = $"Duplicate of an earlier line ({endpoint})"
+                    Reason = _localizer.T("server.bulk.reason.duplicate", endpoint)
                 });
                 continue;
             }
@@ -140,11 +148,11 @@ public sealed class SteamFavoritesService : ISteamFavoritesService
         return endpoints;
     }
 
-    private static bool TryExtractEndpoint(string line, out string ip, out int port, out string reason)
+    private bool TryExtractEndpoint(string line, out string ip, out int port, out string reason)
     {
         ip = "";
         port = 0;
-        reason = "No IP:PORT endpoint found";
+        reason = _localizer.T("server.bulk.reason.noendpoint");
 
         var candidate = line;
 
@@ -170,7 +178,7 @@ public sealed class SteamFavoritesService : ISteamFavoritesService
         var tokens = candidate.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (tokens.Length == 0)
         {
-            reason = "Nothing left after trimming";
+            reason = _localizer.T("server.bulk.reason.empty");
             return false;
         }
 
@@ -196,19 +204,19 @@ public sealed class SteamFavoritesService : ISteamFavoritesService
         if (!IPAddress.TryParse(ipToken, out var parsedAddress) ||
             parsedAddress.AddressFamily != AddressFamily.InterNetwork)
         {
-            reason = $"Invalid IPv4 address '{ipToken}'";
+            reason = _localizer.T("server.bulk.reason.ip", ipToken);
             return false;
         }
 
         if (string.IsNullOrEmpty(portToken))
         {
-            reason = "Missing port";
+            reason = _localizer.T("server.bulk.reason.noport");
             return false;
         }
 
         if (!int.TryParse(portToken, out port) || port is < 1 or > 65535)
         {
-            reason = $"Invalid port '{portToken}' (must be 1-65535)";
+            reason = _localizer.T("server.bulk.reason.port", portToken);
             return false;
         }
 
