@@ -1637,6 +1637,51 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Ini/GameIniService.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Gamma</h1>",
+            "System-wide screen gamma with hotkey",
+            "\"Listening\" : \"Off\"",
+            ">Stop listening</button>",
+            ">Start listening</button>",
+            ">Reset to 1.0</button>",
+            "Couldn't install the global hooks.",
+            ">Live preview</h3>",
+            "Drag to change gamma instantly.",
+            ">gamma</span>",
+            ">Presets</h3>",
+            "Six named levels.",
+            ">Cycle</span>",
+            ">Apply</button>",
+            ">Triggers</h3>",
+            "Cycle steps through the enabled presets",
+            ">Cycle</button>",
+            ">Direct</button>",
+            ">Advance cycle</span>",
+            "Press key or mouse… (Esc)",
+            "Set trigger",
+            "title=\"Clear\"",
+            ">Monitors</h3>",
+            "Apply gamma to every display",
+            "Title=\"All monitors\"",
+            "Turn off to choose which displays are affected.",
+            ">No displays detected.</p>",
+            ">Primary</span>",
+            ">Logitech G HUB script</h3>",
+            "Maps mouse buttons to the keyboard hotkeys above",
+            ">View script</button>",
+            ">Close</button>",
+            "Gamma changes are system-wide",
+            "_copyLabel",
+            "\"Cycle mode\"",
+            "\"Direct mode\"",
+            "Watching triggers",
+            "press Start listening to enable hotkeys",
+        })
+        {
+            data.Add("Components/Pages/Gamma.razor", literal);
+        }
+
         return data;
     }
 
