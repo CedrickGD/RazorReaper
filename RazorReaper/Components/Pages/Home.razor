@@ -1747,6 +1747,19 @@
         return string.Equals(leftNormalized, rightNormalized, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// The automation scripts take their key defaults from <c>Input.ini</c> inside the ARK
+    /// install, scanned once at app start. Pointing the app at a different install — or at one it
+    /// could not find before — moves that file, so the scan is re-run here rather than left stale
+    /// until the next launch. Resolved through the container instead of injected: this page is
+    /// not an automation page, and one line does not earn a field on it.
+    /// </summary>
+    private void RescanArkKeyBindings()
+    {
+        try { RazorReaper.Services.Automation.ArkKeyDefaults.Refresh(); }
+        catch (Exception ex) { Logger.LogDebug(ex, "Rescanning the ARK key bindings after a path change failed"); }
+    }
+
     private void SetArkPaths(string? installPath)
     {
         arkInstallPath = installPath ?? string.Empty;
@@ -1857,6 +1870,7 @@
             // Save to preferences
             Preferences.Set(CustomPathPreferenceKey, normalizedPath);
             SetArkPaths(normalizedPath);
+            RescanArkKeyBindings();
 
             isEditingArkPath = false;
             customArkPath = "";
@@ -1888,6 +1902,7 @@
 
             // Auto-detect again
             LoadArkPaths();
+            RescanArkKeyBindings();
 
             isEditingArkPath = false;
             customArkPath = "";

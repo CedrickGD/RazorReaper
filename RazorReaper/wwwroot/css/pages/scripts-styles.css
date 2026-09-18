@@ -273,6 +273,16 @@
     opacity: 0.85;
 }
 
+/* Where the scripts' key defaults came from, and the button that re-reads it. The same quiet
+   line as the two above — only the row exists, so Rescan sits with the sentence instead of
+   under it, and wraps below it when the pane is narrow. */
+.script-keys-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 /* Settings and Calibration side by side. Stacked, the calibratable scripts ran off the
    bottom; the settings side takes the wider share because it holds up to eight rows. */
 .script-panels {

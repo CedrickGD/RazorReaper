@@ -6,6 +6,8 @@
 @inject IEnumerable<AutomationScriptBase> AllScripts
 @inject IGameIniService GameIni
 @inject IForegroundGate Foreground
+@inject IArkKeyBindingService ArkKeys
+@inject INotificationService Notifications
 @inject ILogger<Scripts> Logger
 @implements IDisposable
 @using RazorReaper.Services.Localization
@@ -104,6 +106,13 @@
                 {
                     <div class="script-effect-line script-experimental-line">@Localizer.T("scripts.experimental.note")</div>
                 }
+                @* Where the key defaults in the card below came from. Quiet and always present:
+                   a script pressing the wrong key because the scan never ran looks exactly like
+                   a script that works, and this is the only place that says which it is. *@
+                <div class="script-effect-line script-keys-line">
+                    <span>@ArkKeySourceText</span>
+                    <button class="btn btn-secondary btn-small" @onclick="RescanArkKeys">@Localizer.T("scripts.keys.rescan")</button>
+                </div>
             </div>
 
             <div class="script-panels">
@@ -479,6 +488,41 @@
         ArkPresence.Background => "warn",
         _ => "off"
     };
+
+    /// <summary>
+    /// Which keys the scripts default to, and where they came from. Read where it renders, like
+    /// the ARK pill above and for the same two reasons: a language switch has to repaint it, and
+    /// the literals have to sit at a <c>T(</c> call site the localization scan can find.
+    /// </summary>
+    private string ArkKeySourceText
+    {
+        get
+        {
+            var status = ArkKeys.Status;
+            if (!status.InputIniFound) return Localizer.T("scripts.keys.missing");
+            return status.CustomBindingCount > 0
+                ? Localizer.T("scripts.keys.custom", status.CustomBindingCount)
+                : Localizer.T("scripts.keys.stock");
+        }
+    }
+
+    /// <summary>
+    /// Forced, not the cheap staleness check the script starts use: someone pressing Rescan has
+    /// just changed something the timestamp may not have caught up with, and an unconditional
+    /// re-read is what they asked for.
+    /// </summary>
+    private void RescanArkKeys()
+    {
+        try
+        {
+            ArkKeys.Refresh();
+            Notifications.ShowInfo(Localizer.T("scripts.keys.rescanned"));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Rescanning the ARK key bindings failed");
+        }
+    }
 
     protected override void OnInitialized()
     {
