@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
 using RazorReaper.Services.Automation;
@@ -139,6 +140,51 @@ public sealed class ScriptEffectTests
         Assert.Empty(script.Warnings);
     }
 
+    /// <summary>
+    /// And a run that ends by simply finishing takes it with it too. That is not the same path:
+    /// Stop() cancels the run's token and the watchdog wakes into an OperationCanceledException,
+    /// but a one-shot — Dino Ready, Astro, Fast TP — returns from its body and nothing cancelled
+    /// anything, so the timer sat out the whole window over a script that was already off.
+    ///
+    /// Harmless on its own, because the first thing it checks is whether the script is running.
+    /// The damage is on the restart: press the tile again inside that window and the counters
+    /// reset, so the stale timer wakes to a live script with zero effects and a shut gate, and
+    /// tells the user their brand-new run has been silent for half a minute. The one toast per
+    /// run is then spent, so the run that really is stuck says nothing when its own window
+    /// passes. Both halves are the same bug — the watchdog was tied to the fields, not the run.
+    /// </summary>
+    [Fact]
+    public async Task AOneShotDoesNotWarnAboutTheRunThatFollowsIt()
+    {
+        using var script = new OneShotScript(gameIsForeground: false) { SilentRunWarningMs = 1_000 };
+
+        // The one-shot: it returns without ever acting, which is what Dino Ready does when the
+        // inventory closed before the first click landed.
+        var started = Stopwatch.StartNew();
+        Assert.True(script.Start());
+        await WaitUntil(() => !script.IsRunning);
+
+        await Task.Delay(800);
+
+        // The restart, well inside the first run's window and still going when it elapses.
+        script.RunLengthMs = 30_000;
+        Assert.True(script.Start());
+        var restarted = Stopwatch.StartNew();
+
+        await Task.Delay(500);
+
+        // The test is only worth anything between those two instants, so it says so rather than
+        // passing quietly on a machine that stalled through one of them.
+        Assert.True(started.ElapsedMilliseconds > script.SilentRunWarningMs,
+            "the first run's window never elapsed, so nothing was proved");
+        Assert.True(restarted.ElapsedMilliseconds < script.SilentRunWarningMs,
+            "the second run's own window elapsed, so a warning here would be a fair one");
+
+        Assert.Empty(script.Warnings);
+
+        script.Stop();
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow.AddSeconds(10);
@@ -198,5 +244,48 @@ public sealed class ScriptEffectTests
                 if (_act) ReportEffect();
                 return Task.CompletedTask;
             }, foregroundOnly: true, ct);
+    }
+
+    /// <summary>
+    /// The other shape in the catalogue: a run that ends because its body returned, not because
+    /// anyone stopped it. <see cref="RunLengthMs"/> is how long this one stays in — zero is the
+    /// one-shot, and a large value is a run that is still going when the previous run's watchdog
+    /// would have woken. Neither ever reports an effect: a silent run is the whole subject.
+    /// </summary>
+    private sealed class OneShotScript : AutomationScriptBase
+    {
+        private readonly RecordingNotificationService _toasts;
+
+        public OneShotScript(bool gameIsForeground)
+            : this(new FakeForegroundGate(gameIsForeground), new RecordingNotificationService())
+        {
+        }
+
+        private OneShotScript(FakeForegroundGate gate, RecordingNotificationService toasts)
+            : base("test-oneshot", "One Shot", string.Empty,
+                   gate,
+                   new NullAutomationHotkeyService(),
+                   toasts,
+                   new RecordingActivityService(),
+                   new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US")),
+                   NullLogger.Instance)
+        {
+            _toasts = toasts;
+        }
+
+        /// <summary>Milliseconds this run stays in its body. Zero returns at once.</summary>
+        public int RunLengthMs { get; set; }
+
+        public IReadOnlyList<RecordingNotificationService.Toast> Warnings
+            => _toasts.Toasts.Where(t => t.Level == "warning").ToArray();
+
+        /// <summary>Vision, so the shared input quota stays out of a test about the watchdog.</summary>
+        public override bool UsesVision => true;
+
+        protected override async Task RunAsync(CancellationToken ct)
+        {
+            if (RunLengthMs <= 0) return;
+            await Task.Delay(RunLengthMs, ct);
+        }
     }
 }

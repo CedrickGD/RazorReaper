@@ -318,10 +318,37 @@ public abstract class AutomationScriptBase : IDisposable
             ReleaseHeldKeys();
 
             // A self-terminated run (returned without a Stop) must reflect Off too.
+            CancellationTokenSource? finished = null;
             lock (_gate)
             {
                 if (!ct.IsCancellationRequested)
                     SetStateLocked(ScriptState.Off);
+
+                // The run's own cancellation source retires with the run, and not only when a
+                // Stop() cancelled it. Without this the one-shots — Dino Ready, Astro, Fast TP —
+                // leave their silent-run watchdog asleep for the rest of the window after the
+                // loop is long gone, and it wakes into whatever run is current by then: a
+                // restart inside that window resets the effect count, so the stale timer finds
+                // a live script at zero effects and warns about a run whose own window has
+                // barely started.
+                //
+                // Identity-checked, so a newer run's source can never be the one cancelled.
+                // Start() takes this same lock and refuses while the state is Running, so it
+                // cannot have replaced _cts before the line above set the state to Off.
+                if (_cts is { } mine && mine.Token == ct)
+                {
+                    finished = mine;
+                    _cts = null;
+                }
+            }
+
+            if (finished is not null)
+            {
+                // Cancel before dispose: the cancel is what wakes the watchdog's Task.Delay,
+                // and a token that is already cancelled short-circuits a Delay that has not
+                // started yet — which is the ordering a run shorter than Start() produces.
+                try { finished.Cancel(); } catch (ObjectDisposedException) { /* already torn down */ }
+                finished.Dispose();
             }
 
             // A crash reports itself; anything else that reached here without a Stop is a run
@@ -407,6 +434,14 @@ public abstract class AutomationScriptBase : IDisposable
         try
         {
             await Task.Delay(SilentRunWarningMs, ct);
+
+            // The run this watchdog was started for, not whichever run happens to be live now.
+            // IsRunning and EffectCount are shared across runs and a restart resets both, so on
+            // their own they cannot tell "this run has been silent for the window" from "the
+            // previous run's timer just went off". The token is the run; if it ended, so did the
+            // question. Belt to the cancellation the run's own teardown now performs: this also
+            // covers the delay expiring in the same instant the run ends.
+            if (ct.IsCancellationRequested) return;
 
             if (!IsRunning || EffectCount > 0) return;
 
