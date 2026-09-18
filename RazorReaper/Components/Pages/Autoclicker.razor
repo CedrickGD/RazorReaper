@@ -9,7 +9,9 @@
 @using RazorReaper.Services
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services.Automation
+@using RazorReaper.Services.Localization
 @inject IJSRuntime JSRuntime
+@inject ILocalizer Localizer
 @inject IActivityService ActivityService
 @inject ILogger<Autoclicker> Logger
 @inject IAutoClickerHotkeyBinder HotkeyBinder
@@ -17,8 +19,8 @@
 @implements IDisposable
 
 <header class="page-header autoclicker-page-header">
-    <h1 class="page-title">Auto Clicker</h1>
-    <p class="page-subtitle">Advanced mouse automation tool</p>
+    <h1 class="page-title">@Localizer.T("autoclicker.title")</h1>
+    <p class="page-subtitle">@Localizer.T("autoclicker.subtitle")</p>
 </header>
 
 @* Mirrors the INI Changer 3-column workspace: viewport-height grid,
@@ -35,11 +37,11 @@
                     <path d="M10 8v3.2l2 1.2" />
                     <path d="M8 3h4" />
                 </svg>
-                Timing
+                @Localizer.T("autoclicker.timing")
             </h3>
             <span class="ini-widget-pill @(isRunning ? "live" : "muted")">
                 <span class="ini-launcher-stat-dot @(isRunning ? "live" : "muted")"></span>
-                @(isRunning ? "Running" : "Idle")
+                @Localizer.T(isRunning ? "autoclicker.running" : "autoclicker.idle")
             </span>
         </div>
 
@@ -65,21 +67,21 @@
             <div class="interval-row">
                 <div class="interval-cell wide">
                     <input type="number" class="interval-input" min="1" max="500" @bind="clickHoldMs" />
-                    <span class="interval-tag">hold (ms)</span>
+                    <span class="interval-tag">@Localizer.T("autoclicker.hold")</span>
                 </div>
                 <div class="interval-cell wide">
                     <input type="number" class="interval-input" min="0" max="60" @bind="preStartDelaySeconds" />
-                    <span class="interval-tag">pre-delay (s)</span>
+                    <span class="interval-tag">@Localizer.T("autoclicker.predelay")</span>
                 </div>
             </div>
 
             <div class="field">
-                <label class="field-label">Repeat</label>
+                <label class="field-label">@Localizer.T("autoclicker.repeat")</label>
                 <div class="seg-control">
                     <button class="seg-btn @(repeatMode == RepeatMode.Infinite ? "active" : "")"
-                            @onclick="() => repeatMode = RepeatMode.Infinite">Until stopped</button>
+                            @onclick="() => repeatMode = RepeatMode.Infinite">@Localizer.T("autoclicker.repeat.infinite")</button>
                     <button class="seg-btn @(repeatMode == RepeatMode.Count ? "active" : "")"
-                            @onclick="() => repeatMode = RepeatMode.Count">Fixed count</button>
+                            @onclick="() => repeatMode = RepeatMode.Count">@Localizer.T("autoclicker.repeat.count")</button>
                 </div>
             </div>
             @if (repeatMode == RepeatMode.Count)
@@ -87,7 +89,7 @@
                 <div class="interval-row">
                     <div class="interval-cell wide">
                         <input type="number" class="interval-input" min="1" max="999999" @bind="repeatCount" />
-                        <span class="interval-tag">clicks</span>
+                        <span class="interval-tag">@Localizer.T("autoclicker.clicks")</span>
                     </div>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" style="width: @(GetProgressPercentage())%"></div></div>
@@ -106,10 +108,10 @@
                the flex sizing that makes it fill the row. *@
             <button class="rr-pill-btn ini-widget-cta @(isRunning ? "danger" : "primary")"
                     @onclick="ToggleClicking" disabled="@IsStartButtonDisabled()">
-                <span class="ac-cta-label">@(isRunning ? "Stop" : "Start")</span>
+                <span class="ac-cta-label">@Localizer.T(isRunning ? "autoclicker.stop" : "autoclicker.start")</span>
                 <kbd class="ac-cta-key">@hotkey</kbd>
             </button>
-            <button class="rr-pill-btn ghost sm" @onclick="ResetStats">Reset</button>
+            <button class="rr-pill-btn ghost sm" @onclick="ResetStats">@Localizer.T("common.reset")</button>
         </div>
     </div>
 
@@ -124,52 +126,52 @@
                     <path d="M10 16c2.8 0 4.6-1.7 4.6-4.1 0-1.7-1-3-2.7-3.5" />
                     <path d="M10 16c-2.8 0-4.6-1.7-4.6-4.1 0-1.7 1-3 2.7-3.5" />
                 </svg>
-                Click
+                @Localizer.T("autoclicker.click")
             </h3>
-            <span class="ini-widget-pill">@mouseButton · @clickType</span>
+            <span class="ini-widget-pill">@MouseButtonLabel(mouseButton) · @ClickTypeLabel(clickType)</span>
         </div>
 
         <div class="ini-widget-body">
             <div class="field">
-                <label class="field-label">Button</label>
+                <label class="field-label">@Localizer.T("autoclicker.button")</label>
                 <div class="seg-control">
                     <button class="seg-btn @(mouseButton == MouseButton.Left ? "active" : "")"
-                            @onclick="() => mouseButton = MouseButton.Left">Left</button>
+                            @onclick="() => mouseButton = MouseButton.Left">@MouseButtonLabel(MouseButton.Left)</button>
                     <button class="seg-btn @(mouseButton == MouseButton.Middle ? "active" : "")"
-                            @onclick="() => mouseButton = MouseButton.Middle">Middle</button>
+                            @onclick="() => mouseButton = MouseButton.Middle">@MouseButtonLabel(MouseButton.Middle)</button>
                     <button class="seg-btn @(mouseButton == MouseButton.Right ? "active" : "")"
-                            @onclick="() => mouseButton = MouseButton.Right">Right</button>
+                            @onclick="() => mouseButton = MouseButton.Right">@MouseButtonLabel(MouseButton.Right)</button>
                 </div>
             </div>
             <div class="field">
-                <label class="field-label">Type</label>
+                <label class="field-label">@Localizer.T("autoclicker.type")</label>
                 <div class="seg-control">
                     <button class="seg-btn @(clickType == ClickType.Single ? "active" : "")"
-                            @onclick="() => clickType = ClickType.Single">Single</button>
+                            @onclick="() => clickType = ClickType.Single">@ClickTypeLabel(ClickType.Single)</button>
                     <button class="seg-btn @(clickType == ClickType.Double ? "active" : "")"
-                            @onclick="() => clickType = ClickType.Double">Double</button>
+                            @onclick="() => clickType = ClickType.Double">@ClickTypeLabel(ClickType.Double)</button>
                 </div>
             </div>
             <div class="field">
-                <label class="field-label">Mode</label>
+                <label class="field-label">@Localizer.T("autoclicker.mode")</label>
                 <div class="seg-control">
                     <button class="seg-btn @(clickMode == ClickMode.Continuous ? "active" : "")"
-                            @onclick="() => clickMode = ClickMode.Continuous">Continuous</button>
+                            @onclick="() => clickMode = ClickMode.Continuous">@Localizer.T("autoclicker.mode.continuous")</button>
                     <button class="seg-btn @(clickMode == ClickMode.Burst ? "active" : "")"
-                            @onclick="() => clickMode = ClickMode.Burst">Burst</button>
+                            @onclick="() => clickMode = ClickMode.Burst">@Localizer.T("autoclicker.mode.burst")</button>
                 </div>
             </div>
             @if (clickMode == ClickMode.Burst)
             {
                 <div class="row-2">
                     <div class="field">
-                        <label class="field-label">Clicks / burst</label>
+                        <label class="field-label">@Localizer.T("autoclicker.burst.count")</label>
                         <div class="interval-cell">
                             <input type="number" class="interval-input" min="1" max="1000" @bind="burstClickCount" />
                         </div>
                     </div>
                     <div class="field">
-                        <label class="field-label">Pause</label>
+                        <label class="field-label">@Localizer.T("autoclicker.burst.pause")</label>
                         <div class="interval-cell">
                             <input type="number" class="interval-input" min="0" max="300" @bind="burstPauseSeconds" />
                             <span class="interval-tag">s</span>
@@ -180,12 +182,12 @@
             <div class="ac-toggle-row">
                 <Switch Value="@enableRandomization"
                         ValueChanged="@((bool v) => enableRandomization = v)"
-                        Label="Randomize variance" />
+                        Label="@Localizer.T("autoclicker.randomize")" />
             </div>
             @if (enableRandomization)
             {
                 <div class="field">
-                    <label class="field-label">Variance: <strong>±@randomVarianceMs ms</strong></label>
+                    <label class="field-label">@Localizer.T("autoclicker.variance") <strong>±@randomVarianceMs ms</strong></label>
                     <input type="range" class="rr-slider" min="0" max="500" step="10" @bind="randomVarianceMs" />
                 </div>
             }
@@ -204,21 +206,21 @@
                     <path d="M15 10h3" />
                     <circle cx="10" cy="10" r="1.2" fill="currentColor" />
                 </svg>
-                Target
+                @Localizer.T("autoclicker.target")
             </h3>
-            <span class="ini-widget-pill">@positionMode</span>
+            <span class="ini-widget-pill">@PositionModeLabel(positionMode)</span>
         </div>
 
         <div class="ini-widget-body">
             <div class="field">
-                <label class="field-label">Position</label>
+                <label class="field-label">@Localizer.T("autoclicker.position")</label>
                 <div class="seg-control">
                     <button class="seg-btn @(positionMode == PositionMode.Current ? "active" : "")"
-                            @onclick="() => positionMode = PositionMode.Current">Cursor</button>
+                            @onclick="() => positionMode = PositionMode.Current">@PositionModeLabel(PositionMode.Current)</button>
                     <button class="seg-btn @(positionMode == PositionMode.Fixed ? "active" : "")"
-                            @onclick="() => positionMode = PositionMode.Fixed">Fixed</button>
+                            @onclick="() => positionMode = PositionMode.Fixed">@PositionModeLabel(PositionMode.Fixed)</button>
                     <button class="seg-btn @(positionMode == PositionMode.Multi ? "active" : "")"
-                            @onclick="() => positionMode = PositionMode.Multi">Multi</button>
+                            @onclick="() => positionMode = PositionMode.Multi">@PositionModeLabel(PositionMode.Multi)</button>
                 </div>
             </div>
             @if (positionMode == PositionMode.Fixed)
@@ -240,7 +242,7 @@
                     </div>
                 </div>
                 <button class="rr-pill-btn ghost sm ac-pick @(pickingLocation ? "armed" : "")" @onclick="StartPickLocation" disabled="@IsPickingLocation()">
-                    @(pickingLocation ? "Click anywhere…" : "Pick location")
+                    @Localizer.T(pickingLocation ? "autoclicker.pick.armed" : "autoclicker.pick")
                 </button>
             }
             @if (positionMode == PositionMode.Multi)
@@ -248,7 +250,7 @@
                 <div class="positions-list">
                     @if (multiPositions.Count == 0)
                     {
-                        <p class="muted-line">No positions yet.</p>
+                        <p class="muted-line">@Localizer.T("autoclicker.positions.empty")</p>
                     }
                     else
                     {
@@ -263,19 +265,19 @@
                     }
                 </div>
                 <button class="rr-pill-btn ghost sm ac-pick @(pickingLocation ? "armed" : "")" @onclick="StartPickMultiLocation" disabled="@IsPickingLocation()">
-                    @(pickingLocation ? "Click anywhere…" : "Add position")
+                    @Localizer.T(pickingLocation ? "autoclicker.pick.armed" : "autoclicker.pick.add")
                 </button>
             }
-            <p class="ac-cursor"><span class="ac-cursor-label">Cursor</span><span class="ac-cursor-val">@currentMouseX, @currentMouseY</span></p>
+            <p class="ac-cursor"><span class="ac-cursor-label">@Localizer.T("autoclicker.cursor")</span><span class="ac-cursor-val">@currentMouseX, @currentMouseY</span></p>
 
             <div class="field">
-                <label class="field-label">Hotkey</label>
+                <label class="field-label">@Localizer.T("autoclicker.hotkey")</label>
                 <button class="hotkey-btn full-width @(recordingKey ? "recording" : "")"
                         @onclick="StartHotkeyRecording"
                         @onkeydown="CaptureHotkey"
                         @onkeydown:preventDefault="true"
                         tabindex="0">
-                    @(recordingKey ? "Press a key…" : hotkey)
+                    @(recordingKey ? Localizer.T("autoclicker.hotkey.recording") : hotkey)
                 </button>
             </div>
         </div>
@@ -285,6 +287,9 @@
 </PremiumLock>
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     public enum MouseButton { Left, Middle, Right }
     public enum ClickType { Single, Double }
     public enum RepeatMode { Infinite, Count }
@@ -293,8 +298,37 @@
 
     // Short summary line shown under the status title.
     private string StatusSubLine => isRunning
-        ? $"{GetIntervalDisplay()} · {mouseButton} · {clickType}{(repeatMode == RepeatMode.Count ? $" · {clickCount}/{repeatCount}" : $" · {clickCount} clicks")}"
-        : $"Press {hotkey} to start · {GetIntervalDisplay()}";
+        ? Localizer.T("autoclicker.status.running",
+            GetIntervalDisplay(),
+            MouseButtonLabel(mouseButton),
+            ClickTypeLabel(clickType),
+            repeatMode == RepeatMode.Count
+                ? Localizer.T("autoclicker.status.progress", clickCount, repeatCount)
+                : Localizer.T("autoclicker.status.clicks", clickCount))
+        : Localizer.T("autoclicker.status.idle", hotkey, GetIntervalDisplay());
+
+    // The three enums are what the segmented controls and the header pills spell out, so each is
+    // worded here rather than through ToString(): a pill reading "Left · Single" is the kind of
+    // English that survives a migration precisely because nobody wrote it down as a literal.
+    private string MouseButtonLabel(MouseButton button) => Localizer.T(button switch
+    {
+        MouseButton.Left => "autoclicker.button.left",
+        MouseButton.Middle => "autoclicker.button.middle",
+        _ => "autoclicker.button.right"
+    });
+
+    private string ClickTypeLabel(ClickType type) => Localizer.T(type switch
+    {
+        ClickType.Single => "autoclicker.type.single",
+        _ => "autoclicker.type.double"
+    });
+
+    private string PositionModeLabel(PositionMode mode) => Localizer.T(mode switch
+    {
+        PositionMode.Current => "autoclicker.position.current",
+        PositionMode.Fixed => "autoclicker.position.fixed",
+        _ => "autoclicker.position.multi"
+    });
 
     private int hours = 0;
     private int minutes = 0;
@@ -738,9 +772,11 @@
 
     private string GetNextClickTime()
     {
-        if (!isRunning || nextClickTime == null) return "N/A";
+        if (!isRunning || nextClickTime == null) return Localizer.T("common.na");
         var remaining = nextClickTime.Value - DateTime.Now;
-        return remaining.TotalMilliseconds > 0 ? $"{remaining.TotalMilliseconds:F0}ms" : "Now";
+        return remaining.TotalMilliseconds > 0
+            ? $"{remaining.TotalMilliseconds:F0}ms"
+            : Localizer.T("autoclicker.next.now");
     }
 
     // ── Engine delegation ──────────────────────────────────────────────────────

@@ -1771,6 +1771,57 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Overlay/NotifierClientService.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Auto Clicker</h1>",
+            "Advanced mouse automation tool",
+            "                Timing\n",
+            "\"Running\" : \"Idle\"",
+            ">hold (ms)</span>",
+            ">pre-delay (s)</span>",
+            ">Repeat</label>",
+            ">Until stopped</button>",
+            ">Fixed count</button>",
+            ">clicks</span>",
+            "\"Stop\" : \"Start\"",
+            ">Reset</button>",
+            "                Click\n",
+            "@mouseButton · @clickType",
+            ">Button</label>",
+            ">Left</button>",
+            ">Middle</button>",
+            ">Right</button>",
+            ">Type</label>",
+            ">Single</button>",
+            ">Double</button>",
+            ">Mode</label>",
+            ">Continuous</button>",
+            ">Burst</button>",
+            ">Clicks / burst</label>",
+            ">Pause</label>",
+            "Label=\"Randomize variance\"",
+            ">Variance: <strong>",
+            "                Target\n",
+            ">@positionMode</span>",
+            ">Position</label>",
+            ">Cursor</button>",
+            ">Fixed</button>",
+            ">Multi</button>",
+            "\"Click anywhere…\" : \"Pick location\"",
+            "\"Click anywhere…\" : \"Add position\"",
+            ">No positions yet.</p>",
+            ">Cursor</span>",
+            ">Hotkey</label>",
+            "\"Press a key…\"",
+            "clicks}\"",
+            "Press {hotkey} to start",
+            "return \"N/A\"",
+            ": \"Now\"",
+        })
+        {
+            data.Add("Components/Pages/Autoclicker.razor", literal);
+        }
+
         return data;
     }
 
