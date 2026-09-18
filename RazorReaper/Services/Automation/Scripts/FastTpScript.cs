@@ -12,6 +12,9 @@ namespace RazorReaper.Services.Automation.Scripts;
 public sealed class FastTpScript : AutomationScriptBase
 {
     private const string Key = "fasttp";
+
+    // Not scanned from Input.ini: this confirms a UI text field, which the engine handles — there
+    // is no ARK ActionMapping behind it.
     private const int EnterVk = 0x0D;
     private readonly IInputSimulator _input;
 

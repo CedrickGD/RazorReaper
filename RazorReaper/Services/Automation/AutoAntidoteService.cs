@@ -43,7 +43,11 @@ public sealed class AutoAntidoteSettings
     public int ScanIntervalMs { get; set; } = 1000;
     /// <summary>Similarity (0–100) at or above which the region counts as "icon visible".</summary>
     public double MatchThresholdPercent { get; set; } = 92;
-    /// <summary>Display name of the key pressed by the burst (parsed to a virtual key at run time).</summary>
+    /// <summary>
+    /// Display name of the key pressed by the burst (parsed to a virtual key at run time). Not
+    /// scanned from Input.ini: this is a hotbar slot, and which slot holds the antidote is the
+    /// player's inventory layout rather than an ARK <c>ActionMapping</c> anything can look up.
+    /// </summary>
     public string BurstKey { get; set; } = "5";
     /// <summary>How many times the burst presses the key.</summary>
     public int BurstPresses { get; set; } = 1;

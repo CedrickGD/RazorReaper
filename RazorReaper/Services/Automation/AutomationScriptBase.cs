@@ -173,6 +173,14 @@ public abstract class AutomationScriptBase : IDisposable
             return false;
         }
 
+        // The ARK bindings are scanned once at app start, and the app outlives a session of
+        // rebinding keys in ARK's options screen by hours. A start is the last moment the answer
+        // is still cheap to correct, so the scan is re-checked here and the scripts that resolve
+        // a key from it re-read their defaults.
+        ArkKeyDefaults.RefreshIfStale();
+        try { OnStarting(); }
+        catch (Exception ex) { Logger.LogWarning(ex, "{Script} OnStarting threw", _displayName); }
+
         lock (_gate)
         {
             if (_state == ScriptState.Running) return true;
@@ -628,6 +636,15 @@ public abstract class AutomationScriptBase : IDisposable
         reason = null;
         return true;
     }
+
+    /// <summary>
+    /// Override for work that has to happen on every start rather than once in the constructor.
+    /// The scripts that resolve a key from the player's ARK bindings re-read their settings here:
+    /// a stored preference still wins, an unset one follows whatever the freshly re-checked scan
+    /// now says. Runs after <see cref="CanStart"/> and before the run task exists, so throwing
+    /// here is logged and ignored rather than failing the start.
+    /// </summary>
+    protected virtual void OnStarting() { }
 
     /// <summary>Override for extra teardown when the script stops (e.g. release a held key/mouse button).</summary>
     protected virtual void OnStopped() { }

@@ -38,6 +38,22 @@ public sealed class AutoWalkScript : AutomationScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// Re-resolves the movement keys the player never set by hand — see
+    /// <see cref="AntiAfkScript.OnStarting"/> for why it is only the keys and only when unset.
+    /// </summary>
+    protected override void OnStarting()
+    {
+        try
+        {
+            if (!Preferences.ContainsKey($"{Key}.forwardkey"))
+                ForwardKey = ArkKeyDefaults.For(ArkActions.MoveForward, "W");
+            if (!Preferences.ContainsKey($"{Key}.sprintkey"))
+                SprintKey = ArkKeyDefaults.For(ArkActions.Run, "LeftShift");
+        }
+        catch (Exception ex) { Logger.LogDebug(ex, "Auto-Walk key re-resolve failed"); }
+    }
+
     protected override async Task RunAsync(CancellationToken ct)
     {
         var forwardVk = HotkeyParser.TryParseKey(ForwardKey, out var f) ? f : 'W';

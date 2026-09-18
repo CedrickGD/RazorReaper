@@ -7,18 +7,32 @@ namespace RazorReaper.Services.Automation;
 /// <summary>User-configurable keys and timings for the Fed-Suit transmitter macro.</summary>
 public sealed class FedSuitSettings
 {
-    /// <summary>Key that opens the transmitter in game.</summary>
-    public string OpenKey { get; set; } = "F";
+    /// <summary>
+    /// Key that opens the transmitter in game. Defaults to whatever the player bound to ARK's
+    /// <c>AccessInventory</c>, the same way <see cref="Scripts.CraftingScript"/> resolves its
+    /// access key — a stored preference still wins. Hard-coding "F" here meant a player who
+    /// rebound Access Inventory got a macro that opened nothing and then transferred into
+    /// whatever happened to be under the cursor, with the tile still reporting cycles.
+    /// </summary>
+    public string OpenKey { get; set; } = ArkKeyDefaults.For(ArkActions.AccessInventory, "F");
 
     /// <summary>
     /// Typed into the inventory search after opening, to narrow what the transfer presses move
     /// (e.g. "exo" for element on a Gen2 transmitter). Empty transfers whatever is already listed.
     /// </summary>
     public string SearchFilter { get; set; } = string.Empty;
-    /// <summary>Key that closes the transmitter UI.</summary>
+
+    /// <summary>
+    /// Key that closes the transmitter UI. Stays a literal: Escape is the engine's own close-UI
+    /// key, not an ARK <c>ActionMapping</c>, so there is nothing in Input.ini to scan for it.
+    /// </summary>
     public string ExitKey { get; set; } = "Esc";
-    /// <summary>Key pressed repeatedly to transfer items between slots.</summary>
-    public string TransferKey { get; set; } = "T";
+
+    /// <summary>
+    /// Key pressed repeatedly to transfer items between slots — the player's own
+    /// <c>TransferItem</c> binding, for the same reason as <see cref="OpenKey"/>.
+    /// </summary>
+    public string TransferKey { get; set; } = ArkKeyDefaults.For(ArkActions.TransferItem, "T");
     /// <summary>Transfer-key presses per cycle.</summary>
     public int PressesPerCycle { get; set; } = 20;
     /// <summary>Delay between transfer presses, in milliseconds.</summary>
@@ -202,10 +216,17 @@ public sealed class FedSuitMacro : IFedSuitMacro
     {
         if (_disposed) return false;
 
+        // Settings were read once, in the constructor, hours ago. Re-checking the scan here is
+        // what lets a key the player never set by hand follow a rebind they made in ARK since
+        // the app started. Done on the way in so both start paths — the Scripts tile and the
+        // command palette — get it.
+        ArkKeyDefaults.RefreshIfStale();
+
         FedSuitSettings snapshot;
         lock (_gate)
         {
             if (_running) return false;
+            _settings = WithRescannedKeys(_settings);
             snapshot = _settings.Clone();
         }
 
@@ -539,6 +560,33 @@ public sealed class FedSuitMacro : IFedSuitMacro
         {
             _logger.LogWarning(ex, "Fed-Suit settings save failed");
         }
+    }
+
+    /// <summary>
+    /// The two keys that name an ARK action, re-taken from the scan when the player never set one
+    /// by hand. Only those two, and only when unset: a stored preference is their own choice and
+    /// still wins, and reloading the whole settings block instead would revert a change whose save
+    /// had failed. A scanned key the macro cannot press is dropped by <see cref="NormalizeKey"/>,
+    /// which is the same guard the stored ones already go through.
+    /// </summary>
+    private FedSuitSettings WithRescannedKeys(FedSuitSettings current)
+    {
+        var next = current.Clone();
+        try
+        {
+            if (!Preferences.ContainsKey("fedsuit.openkey"))
+                next.OpenKey = NormalizeKey(ArkKeyDefaults.For(ArkActions.AccessInventory, current.OpenKey), current.OpenKey);
+
+            if (!Preferences.ContainsKey("fedsuit.transferkey"))
+                next.TransferKey = NormalizeKey(ArkKeyDefaults.For(ArkActions.TransferItem, current.TransferKey), current.TransferKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Fed-Suit key re-resolve failed — keeping the keys already loaded");
+            return current;
+        }
+
+        return next;
     }
 
     private static FedSuitSettings Normalize(FedSuitSettings s)

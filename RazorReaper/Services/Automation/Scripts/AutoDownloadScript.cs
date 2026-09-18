@@ -13,6 +13,9 @@ namespace RazorReaper.Services.Automation.Scripts;
 public sealed class AutoDownloadScript : AutomationScriptBase
 {
     private const string Key = "autodownload";
+
+    // Not scanned from Input.ini: Enter opens and sends ARK chat through the engine's own text
+    // field, which has no ActionMapping to rebind.
     private const int EnterVk = 0x0D;
     private readonly IInputSimulator _input;
 

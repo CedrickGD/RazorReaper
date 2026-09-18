@@ -34,6 +34,22 @@ public sealed class AntiAfkScript : AutomationScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// Re-resolves the inventory key when the player never set one by hand, so rebinding it in
+    /// ARK reaches the next run instead of the next app launch. Only the key, and only when it
+    /// is unset: a stored choice still wins, and re-reading the whole settings block here would
+    /// throw away anything set but not yet saved.
+    /// </summary>
+    protected override void OnStarting()
+    {
+        try
+        {
+            if (!Preferences.ContainsKey($"{Key}.invkey"))
+                InventoryKey = ArkKeyDefaults.For(ArkActions.ShowMyInventory, "I");
+        }
+        catch (Exception ex) { Logger.LogDebug(ex, "Anti-AFK key re-resolve failed"); }
+    }
+
     protected override async Task RunAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)

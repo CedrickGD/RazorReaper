@@ -34,7 +34,9 @@ public sealed class FlakScript : CalibratableScriptBase
 
     /// <summary>
     /// Hotbar key per armor row, top to bottom as ARK draws them. Empty means "ignore this row" —
-    /// a row you have no spare for should never trigger a keypress.
+    /// a row you have no spare for should never trigger a keypress. Not scanned from Input.ini:
+    /// which slot holds the spare piece is the player's inventory layout, not an ARK
+    /// <c>ActionMapping</c>.
     /// </summary>
     public string[] RowKeys { get; set; } = new string[MaxRows];
 

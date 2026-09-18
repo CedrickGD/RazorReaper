@@ -83,6 +83,24 @@ public sealed class CraftingScript : CalibratableScriptBase
         return true;
     }
 
+    /// <summary>
+    /// Re-resolves the three keys the player never set by hand — see
+    /// <see cref="AntiAfkScript.OnStarting"/> for why it is only the keys and only when unset.
+    /// </summary>
+    protected override void OnStarting()
+    {
+        try
+        {
+            if (!Preferences.ContainsKey($"{Key}.craftkey"))
+                CraftKey = ArkKeyDefaults.For(ArkActions.Use, "E");
+            if (!Preferences.ContainsKey($"{Key}.accesskey"))
+                AccessKey = ArkKeyDefaults.For(ArkActions.AccessInventory, "F");
+            if (!Preferences.ContainsKey($"{Key}.forwardkey"))
+                ForwardKey = ArkKeyDefaults.For(ArkActions.MoveForward, "W");
+        }
+        catch (Exception ex) { Logger.LogDebug(ex, "Crafting key re-resolve failed"); }
+    }
+
     private int Pad(int ms) => ms + Math.Clamp(PingCompensationMs, 0, 3000);
 
     protected override Task RunAsync(CancellationToken ct)

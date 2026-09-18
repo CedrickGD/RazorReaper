@@ -7,8 +7,15 @@ namespace RazorReaper.Services.Automation;
 /// <summary>Timing and key options for the premade Fast Transfer macro.</summary>
 public sealed record FastTransferSettings
 {
-    /// <summary>Virtual key that opens/closes the inventory in game (default 'F').</summary>
-    public int InventoryVirtualKey { get; init; } = 0x46;
+    /// <summary>
+    /// Virtual key that opens/closes the inventory in game. Defaults to whatever the player bound
+    /// to ARK's <c>AccessInventory</c> — the same source <see cref="Scripts.CraftingScript"/> and
+    /// <see cref="FedSuitSettings"/> use — falling back to 'F' when there is nothing to read.
+    /// </summary>
+    public int InventoryVirtualKey { get; init; } = DefaultInventoryVirtualKey;
+
+    private static int DefaultInventoryVirtualKey =>
+        HotkeyParser.TryParseKey(ArkKeyDefaults.For(ArkActions.AccessInventory, "F"), out var vk) ? vk : 0x46;
     /// <summary>How many times the calibrated Transfer All point is clicked.</summary>
     public int ClickCount { get; init; } = 3;
     /// <summary>Wait after opening the inventory before the first click, in milliseconds.</summary>

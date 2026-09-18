@@ -14,6 +14,9 @@ namespace RazorReaper.Services.Automation.Scripts;
 public sealed class InvSizeScript : AutomationScriptBase
 {
     private const string Key = "invsize";
+
+    // Not scanned from Input.ini: the blueprint trick needs the literal Shift the inventory UI
+    // reads as "whole stack", which is engine behaviour rather than a rebindable ARK action.
     private const int VkShift = 0x10;
     private readonly IInputSimulator _input;
 

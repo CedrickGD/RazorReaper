@@ -31,6 +31,19 @@ public static class ArkActions
 }
 
 /// <summary>
+/// Where the script key defaults came from, for the one line the Scripts page shows about them.
+/// <paramref name="CustomBindingCount"/> counts only the actions the scripts actually press
+/// (<see cref="ArkKeyBindingParser.StockBindings"/>) whose key differs from ARK's factory one —
+/// the number that decides whether a script presses something other than the stock key, rather
+/// than a total of everything the player ever rebound.
+/// </summary>
+public readonly record struct ArkKeyBindingStatus(bool InputIniFound, int CustomBindingCount)
+{
+    /// <summary>No ARK install, or no Input.ini in it: everything falls back to the stock layout.</summary>
+    public static readonly ArkKeyBindingStatus NotFound = new(false, 0);
+}
+
+/// <summary>
 /// Reads which keys the player actually bound in ARK, so script defaults match their game instead
 /// of ARK's factory layout.
 ///
@@ -51,8 +64,19 @@ public interface IArkKeyBindingService
     /// <summary>True when the player's own Input.ini was found and parsed.</summary>
     bool HasPlayerBindings { get; }
 
-    /// <summary>Drops the cache so the next lookup re-reads Input.ini.</summary>
+    /// <summary>Drops the cache so the next lookup re-reads Input.ini, whatever it says.</summary>
     void Refresh();
+
+    /// <summary>
+    /// Re-reads Input.ini only when re-reading it could change an answer: the resolved path moved
+    /// (the ARK install was found, moved or repointed) or the file's last-write time changed
+    /// (the player rebound something while the app was open). Costs one existence check and one
+    /// timestamp read otherwise, so it is safe on every script start.
+    /// </summary>
+    void RefreshIfStale();
+
+    /// <summary>Where the keys currently come from, for the Scripts page.</summary>
+    ArkKeyBindingStatus Status { get; }
 }
 
 /// <summary>

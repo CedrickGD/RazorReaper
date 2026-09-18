@@ -14,7 +14,11 @@ public sealed class YutyScript : AutomationScriptBase
     private const string Key = "yuty";
     private readonly IInputSimulator _input;
 
-    /// <summary>Key that triggers the roar (ARK default is C while mounted).</summary>
+    /// <summary>
+    /// Key that triggers the roar (ARK default is C while mounted). Not scanned from Input.ini:
+    /// the mounted roar is a creature ability on the C slot, not one of ARK's named
+    /// <c>ActionMappings</c>, so there is nothing to look up — the field stays the player's.
+    /// </summary>
     public string RoarKey { get; set; } = "C";
 
     /// <summary>Milliseconds between roars.</summary>

@@ -43,6 +43,20 @@ public sealed class TurretManagerScript : CalibratableScriptBase
     /// </summary>
     public override bool IsExperimental => true;
 
+    /// <summary>
+    /// Re-resolves the transfer key when the player never set one by hand — see
+    /// <see cref="AntiAfkScript.OnStarting"/> for why it is only the key and only when unset.
+    /// </summary>
+    protected override void OnStarting()
+    {
+        try
+        {
+            if (!Preferences.ContainsKey($"{Key}.transfer"))
+                TransferKey = ArkKeyDefaults.For(ArkActions.TransferItem, "T");
+        }
+        catch (Exception ex) { Logger.LogDebug(ex, "Turret Manager key re-resolve failed"); }
+    }
+
     protected override Task RunAsync(CancellationToken ct) =>
         RunLoopAsync(ScanIntervalMs, async c =>
         {

@@ -14,6 +14,9 @@ namespace RazorReaper.Services.Automation.Scripts;
 public sealed class TekSaddleScript : CalibratableScriptBase
 {
     private const string Key = "teksaddle";
+
+    // Not scanned from Input.ini: this reads the physical left mouse button, and the parser drops
+    // mouse bindings on purpose — a script cannot synthesize a rebound Fire onto another button.
     private const int VkLButton = 0x01;
     private readonly IInputSimulator _input;
 

@@ -12,6 +12,9 @@ namespace RazorReaper.Services.Automation.Scripts;
 public sealed class AstroScript : AutomationScriptBase
 {
     private const string Key = "astro";
+
+    // Not scanned from Input.ini: the tilt-and-drop trick needs the literal Space bar, not ARK's
+    // Jump action — a player who moved Jump elsewhere still dismounts the Astro with Space.
     private const int SpaceVk = 0x20;
     private readonly IInputSimulator _input;
 
