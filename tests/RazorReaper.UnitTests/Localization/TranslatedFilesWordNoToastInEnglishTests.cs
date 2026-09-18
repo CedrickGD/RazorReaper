@@ -75,26 +75,73 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     private static bool ReadsAsEnglish(string literal)
         => Word.IsMatch(Hole.Replace(literal.TrimStart('$').Trim('"').Replace("\\\"", string.Empty), " "));
 
-    /// <summary>Every project source that knows how to translate, with its text.</summary>
-    private static IEnumerable<(string Path, string Source)> FilesWithALocalizer()
+    /// <summary>
+    /// A partial type declared in a file, and the namespace it sits in. Qualified, because two
+    /// unrelated partials of the same name in different namespaces must not lend each other a
+    /// localizer they do not share.
+    /// </summary>
+    private static readonly Regex PartialType =
+        new(@"(?<!\w)partial\s+(?:class|record|struct)\s+(?<name>\w+)");
+
+    private static readonly Regex NamespaceDeclaration =
+        new(@"(?m)^\s*namespace\s+(?<name>[\w.]+)");
+
+    private static IEnumerable<string> PartialTypesIn(string source)
+    {
+        var ns = NamespaceDeclaration.Match(source) is { Success: true } match
+            ? match.Groups["name"].Value
+            : string.Empty;
+
+        foreach (Match declaration in PartialType.Matches(source))
+        {
+            yield return $"{ns}.{declaration.Groups["name"].Value}";
+        }
+    }
+
+    private static (string Path, string Source)[] ProjectSources()
     {
         var root = Path.Combine(TranslationParityTests.RepositoryRoot(), "RazorReaper");
 
-        foreach (var path in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
-                     .Where(p => p.EndsWith(".razor", StringComparison.Ordinal)
-                                 || p.EndsWith(".cs", StringComparison.Ordinal))
-                     .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
-                                     StringComparison.Ordinal)
-                                 && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
-                                     StringComparison.Ordinal))
-                     .OrderBy(p => p, StringComparer.Ordinal))
-        {
-            var source = File.ReadAllText(path);
-            if (KnowsHowToTranslate.IsMatch(source))
-            {
-                yield return (Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/'), source);
-            }
-        }
+        return Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
+            .Where(p => p.EndsWith(".razor", StringComparison.Ordinal)
+                        || p.EndsWith(".cs", StringComparison.Ordinal))
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                            StringComparison.Ordinal)
+                        && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                            StringComparison.Ordinal))
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .Select(p => (
+                Path: Path.GetRelativePath(root, p).Replace(Path.DirectorySeparatorChar, '/'),
+                Source: File.ReadAllText(p)))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Every project source that knows how to translate, with its text.
+    /// </summary>
+    /// <remarks>
+    /// Read per class, not per file. <c>CrosshairService</c> is a partial class across five
+    /// files; one of them names <see cref="ILocalizer"/> and four word eighteen messages through
+    /// the field it declares without naming a type at all. File by file, only the first was ever
+    /// read — which is the fourth time this scan has been fooled the same way, and the cheapest
+    /// one to fall into: moving a message into a new partial file takes it out of range without
+    /// changing a line of its own.
+    ///
+    /// So a class's files vote together. Any one of them holding a localizer puts all of them in
+    /// range, because they all share the field.
+    /// </remarks>
+    private static IEnumerable<(string Path, string Source)> FilesWithALocalizer()
+    {
+        var files = ProjectSources();
+
+        var translatingTypes = files
+            .Where(file => KnowsHowToTranslate.IsMatch(file.Source))
+            .SelectMany(file => PartialTypesIn(file.Source))
+            .ToHashSet(StringComparer.Ordinal);
+
+        return files.Where(file =>
+            KnowsHowToTranslate.IsMatch(file.Source)
+            || PartialTypesIn(file.Source).Any(translatingTypes.Contains));
     }
 
     private static IEnumerable<(string Path, string Literal)> EnglishMessages()
@@ -148,9 +195,10 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     /// English for four waves: nothing under Services/Automation had a localizer at all, so nothing
     /// in this folder was ever read.
     ///
-    /// DesyncService is the last file widened into range: nine activity lines behind its own
-    /// TryActivity and eight toasts beside them, on a page docs/i18n.md has called translated
-    /// since the first wave.
+    /// StretchedResService held no localizer at all and was therefore never read, on a page
+    /// docs/i18n.md has called whole since the second wave. The four CrosshairService partials
+    /// are the sharper case: they are in range because a fifth file of the same class names the
+    /// type, not because any of them does.
     /// </summary>
     [Theory]
     [InlineData("Components/Pages/CompactArk.razor")]
@@ -172,8 +220,54 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("Services/Automation/Scripts/FlakScript.cs")]
     [InlineData("Services/Automation/Scripts/NoglinScript.cs")]
     [InlineData("Services/Desync/DesyncService.cs")]
+    [InlineData("Services/StretchedResService.cs")]
+    [InlineData("Services/Implementations/Crosshair/CrosshairService.Hotkey.cs")]
+    [InlineData("Services/Implementations/Crosshair/CrosshairService.Imports.cs")]
+    [InlineData("Services/Implementations/Crosshair/CrosshairService.Library.cs")]
+    [InlineData("Services/Implementations/Crosshair/CrosshairService.Preview.cs")]
     public void TheFilesThisScanWasWrittenForAreInRangeOfIt(string relativePath)
         => Assert.Contains(relativePath, FilesWithALocalizer().Select(f => f.Path).ToArray());
+
+    /// <summary>
+    /// And why those four are in range, which is the part that would rot silently. None of them
+    /// writes "ILocalizer" or "Localizer.T(" anywhere — they use the field CrosshairService.cs
+    /// declares — so a scan that reads one file at a time cannot see them. If this ever starts
+    /// failing because a file names the type itself, the assertion to keep is the one below it:
+    /// the grouping is what must still hold.
+    /// </summary>
+    [Fact]
+    public void APartialClassesFilesAreReadTogetherRatherThanOneAtATime()
+    {
+        var sources = ProjectSources().ToDictionary(file => file.Path, file => file.Source, StringComparer.Ordinal);
+        var partials = new[]
+        {
+            "Services/Implementations/Crosshair/CrosshairService.Hotkey.cs",
+            "Services/Implementations/Crosshair/CrosshairService.Imports.cs",
+            "Services/Implementations/Crosshair/CrosshairService.Library.cs",
+            "Services/Implementations/Crosshair/CrosshairService.Preview.cs",
+        };
+
+        Assert.All(partials, path => Assert.False(KnowsHowToTranslate.IsMatch(sources[path]),
+            $"{path} names a localizer itself now — pick another file to prove the grouping with."));
+
+        Assert.Matches(KnowsHowToTranslate, sources["Services/Implementations/Crosshair/CrosshairService.cs"]);
+
+        var inRange = FilesWithALocalizer().Select(file => file.Path).ToHashSet(StringComparer.Ordinal);
+        Assert.All(partials, path => Assert.Contains(path, inRange));
+    }
+
+    /// <summary>
+    /// The other direction: a class whose files all name nothing stays out of range, so the
+    /// grouping cannot quietly pull the whole project in and turn every English literal in the
+    /// app into a finding.
+    /// </summary>
+    [Fact]
+    public void AClassThatNamesNoLocalizerAnywhereStaysOutOfRange()
+    {
+        var inRange = FilesWithALocalizer().Select(file => file.Path).ToHashSet(StringComparer.Ordinal);
+
+        Assert.DoesNotContain("Services/Implementations/CustomLab/SkyInjectorService.cs", inRange);
+    }
 
     /// <summary>
     /// Every script is in range, not just the two that happen to word an activity line today. The
