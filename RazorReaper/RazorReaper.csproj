@@ -115,6 +115,15 @@
 		</EmbeddedResource>
 	</ItemGroup>
 
+	<!-- UI translations, embedded for the same reason as the presets above. A dictionary that
+	     can be deleted from disk is one that will be, and a missing one leaves a window with
+	     no way to explain itself. LanguageCatalog reads them by this logical name. -->
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\i18n\*.json">
+			<LogicalName>RazorReaper.I18n.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
+
 	<!-- ============================================================
 	     Self-contained RELEASE builds — no separate .NET install, no publish step
 	     ============================================================

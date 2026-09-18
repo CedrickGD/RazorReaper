@@ -5,6 +5,7 @@
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
+@using RazorReaper.Services.Localization
 @using RazorReaper.Services.Overlay
 @inject NavigationManager Navigation
 @inject IServiceProvider Services
@@ -15,6 +16,7 @@
 @inject ILicenseService LicenseService
 @inject IAccessGateService AccessGate
 @inject IAppearanceService Appearance
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 
 <NotificationContainer />
@@ -64,6 +66,7 @@
         }
 
         SubscribeAccess();
+        SubscribeLanguage();
         ReflectPage(Navigation.ToBaseRelativePath(Navigation.Uri));
         SubscribeNavigation();
     }
@@ -71,6 +74,7 @@
     private IHudOverlayService? _hudOverlay;
     private bool _accessSubscribed;
     private bool _navigationSubscribed;
+    private bool _languageSubscribed;
 
     private void ResolveHudAndSession()
     {
@@ -101,6 +105,19 @@
         AccessGate.OnAccessStateChanged += HandleAccessChanged;
         _accessSubscribed = true;
     }
+
+    /// <summary>
+    /// A language switch has to reach the whole window, not just the settings row that made it.
+    /// Re-rendering the layout re-renders the sidebar, the overlays and the routed page it holds
+    /// in one pass, which is why the subscription lives here and nowhere else.
+    /// </summary>
+    private void SubscribeLanguage()
+    {
+        Localizer.LanguageChanged += HandleLanguageChanged;
+        _languageSubscribed = true;
+    }
+
+    private void HandleLanguageChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     private void SubscribeNavigation()
     {
@@ -163,6 +180,11 @@
         if (_accessSubscribed)
         {
             AccessGate.OnAccessStateChanged -= HandleAccessChanged;
+        }
+
+        if (_languageSubscribed)
+        {
+            Localizer.LanguageChanged -= HandleLanguageChanged;
         }
 
         Appearance.Changed -= HandleAppearanceChanged;

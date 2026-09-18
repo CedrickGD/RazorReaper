@@ -263,6 +263,10 @@ namespace RazorReaper
             // Register application services
             services.AddSingleton<IPreferencesStore, MauiPreferencesStore>();
             services.AddSingleton<IRawHardwareIdentitySource, WindowsRawHardwareIdentitySource>();
+            // Registered right after the preferences store it reads its persisted language from,
+            // and before everything that injects it — the UI resolves it on the first render.
+            services.AddSingleton<RazorReaper.Services.Localization.ILocalizer,
+                                  RazorReaper.Services.Localization.Localizer>();
             services.AddSingleton<IAppearanceService, AppearanceService>();
             services.AddSingleton<IArkPathProvider, ArkPathProvider>();
             services.AddSingleton<IFileSystemService, FileSystemService>();
