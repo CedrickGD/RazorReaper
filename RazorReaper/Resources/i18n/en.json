@@ -7,7 +7,7 @@
   "common.collapse": "Collapse",
 
   "language.label": "Language",
-  "language.description": "The language Razor Reaper's interface is shown in. Pages that have not been translated yet stay English.",
+  "language.description": "The language Razor Reaper's interface is shown in. German, Russian and Chinese are machine-translated — tell us through Feedback & Support if something reads wrong. Pages that have not been translated yet stay English.",
 
   "nav.search.label": "Search",
   "nav.search.tooltip": "Search pages, locations and commands (Ctrl+K)",
@@ -1447,5 +1447,10 @@
   "pixel.category.saddles-tek": "Saddles — Tek",
   "pixel.category.tek-weapons": "Tek weapons",
   "pixel.category.turrets-tek-heavy": "Turrets (Tek & Heavy)",
-  "pixel.category.ui-inventory-textures": "UI — Inventory textures"
+  "pixel.category.ui-inventory-textures": "UI — Inventory textures",
+
+  "licenseactivated.kicker": "License activated",
+  "licenseactivated.title": "Premium unlocked",
+  "licenseactivated.text": "Every RazorReaper feature is now available on this machine.",
+  "licenseactivated.hint": "Click anywhere to continue"
 }

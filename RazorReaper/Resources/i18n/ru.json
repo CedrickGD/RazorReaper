@@ -7,7 +7,7 @@
   "common.collapse": "Свернуть",
 
   "language.label": "Язык",
-  "language.description": "Язык интерфейса Razor Reaper. Страницы, которые ещё не переведены, остаются на английском.",
+  "language.description": "Язык, на котором показан интерфейс Razor Reaper. Немецкий, русский и китайский переведены машинно — напишите через Feedback & Support, если что-то читается неправильно. Страницы, которые ещё не переведены, остаются на английском.",
 
   "nav.search.label": "Поиск",
   "nav.search.tooltip": "Поиск страниц, мест и команд (Ctrl+K)",
@@ -1447,5 +1447,10 @@
   "pixel.category.saddles-tek": "Сёдла — Tek",
   "pixel.category.tek-weapons": "Tek-оружие",
   "pixel.category.turrets-tek-heavy": "Турели (Tek и тяжёлые)",
-  "pixel.category.ui-inventory-textures": "Интерфейс — текстуры инвентаря"
+  "pixel.category.ui-inventory-textures": "Интерфейс — текстуры инвентаря",
+
+  "licenseactivated.kicker": "Лицензия активирована",
+  "licenseactivated.title": "Premium разблокирован",
+  "licenseactivated.text": "Все возможности RazorReaper теперь доступны на этом компьютере.",
+  "licenseactivated.hint": "Нажмите в любом месте, чтобы продолжить"
 }

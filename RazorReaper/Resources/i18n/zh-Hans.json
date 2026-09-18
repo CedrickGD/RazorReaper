@@ -7,7 +7,7 @@
   "common.collapse": "收起",
 
   "language.label": "语言",
-  "language.description": "Razor Reaper 界面使用的语言。尚未翻译的页面仍为英文。",
+  "language.description": "Razor Reaper 界面所用的语言。德语、俄语和中文是机器翻译的 —— 如果哪里读着不对，请通过 Feedback & Support 告诉我们。尚未翻译的页面仍是英文。",
 
   "nav.search.label": "搜索",
   "nav.search.tooltip": "搜索页面、地点和命令 (Ctrl+K)",
@@ -1447,5 +1447,10 @@
   "pixel.category.saddles-tek": "鞍具 —— Tek",
   "pixel.category.tek-weapons": "Tek 武器",
   "pixel.category.turrets-tek-heavy": "炮塔（Tek 与重型）",
-  "pixel.category.ui-inventory-textures": "界面 —— 背包贴图"
+  "pixel.category.ui-inventory-textures": "界面 —— 背包贴图",
+
+  "licenseactivated.kicker": "授权已激活",
+  "licenseactivated.title": "Premium 已解锁",
+  "licenseactivated.text": "这台电脑上的所有 RazorReaper 功能现在都可以使用了。",
+  "licenseactivated.hint": "点击任意位置继续"
 }

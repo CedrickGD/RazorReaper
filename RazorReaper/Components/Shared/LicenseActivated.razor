@@ -1,6 +1,8 @@
 @using RazorReaper.Services
 @inject ILicenseService LicenseService
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @* Full-window celebration that plays once, right after the user activates a key by hand.
    It listens on ILicenseService.OnLicenseActivated (not OnLicenseStateChanged) so the
@@ -40,13 +42,13 @@
         </div>
 
         <div class="lic-copy">
-            <div class="lic-kicker">License activated</div>
-            <div class="lic-title">Premium unlocked</div>
+            <div class="lic-kicker">@Localizer.T("licenseactivated.kicker")</div>
+            <div class="lic-title">@Localizer.T("licenseactivated.title")</div>
             <span class="lic-rule"></span>
-            <p class="lic-sub">Every RazorReaper feature is now available on this machine.</p>
+            <p class="lic-sub">@Localizer.T("licenseactivated.text")</p>
         </div>
 
-        <div class="lic-hint">Click anywhere to continue</div>
+        <div class="lic-hint">@Localizer.T("licenseactivated.hint")</div>
     </div>
 }
 
@@ -395,6 +397,14 @@
 </style>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const int RayCount = 14;
 
     // Matches the .is-closing exit animation. The overlay holds indefinitely before this —

@@ -7,7 +7,7 @@
   "common.collapse": "Einklappen",
 
   "language.label": "Sprache",
-  "language.description": "Die Sprache der Oberfläche von Razor Reaper. Seiten, die noch nicht übersetzt sind, bleiben auf Englisch.",
+  "language.description": "Die Sprache, in der die Oberfläche von Razor Reaper erscheint. Deutsch, Russisch und Chinesisch sind maschinell übersetzt — sag uns über Feedback & Support Bescheid, wenn etwas schief klingt. Seiten, die noch nicht übersetzt sind, bleiben Englisch.",
 
   "nav.search.label": "Suchen",
   "nav.search.tooltip": "Seiten, Orte und Befehle durchsuchen (Strg+K)",
@@ -1447,5 +1447,10 @@
   "pixel.category.saddles-tek": "Sättel — Tek",
   "pixel.category.tek-weapons": "Tek-Waffen",
   "pixel.category.turrets-tek-heavy": "Geschütze (Tek & schwer)",
-  "pixel.category.ui-inventory-textures": "Oberfläche — Inventartexturen"
+  "pixel.category.ui-inventory-textures": "Oberfläche — Inventartexturen",
+
+  "licenseactivated.kicker": "Lizenz aktiviert",
+  "licenseactivated.title": "Premium freigeschaltet",
+  "licenseactivated.text": "Jede Funktion von RazorReaper ist auf diesem Rechner jetzt verfügbar.",
+  "licenseactivated.hint": "Klick irgendwohin, um fortzufahren"
 }
