@@ -49,6 +49,13 @@ by hand. On `windows-latest` the run:
 6. uploads the installer as a workflow artifact, then creates the **draft** release for
    `v{version}` if it is missing and uploads `RazorReaper-Setup.exe` to it with `--clobber`.
 
+**It has run.** The first dispatch was on 2026-09-18. It succeeded on `windows-latest` in about
+nine minutes and left the draft release `v1.5.3` carrying `RazorReaper-Setup.exe` at 76.9 MB,
+unsigned — the signing secrets are not set on this repository, so that step skipped itself and
+said so in the run summary, which is the documented behaviour below and not a failure. Nothing on
+this path is theoretical any more. What has still never run is the *signed* variant of step 4/5,
+and a re-dispatch of a version whose asset already exists.
+
 `--draft` is load-bearing: this workflow never publishes, so it never fires the `release` event
 and never posts to Discord. Re-dispatching the same version replaces the asset, and the
 `concurrency` group stops two runs for one version racing over it. No local MAUI workload, no
