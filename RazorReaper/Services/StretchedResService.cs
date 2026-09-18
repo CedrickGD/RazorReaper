@@ -336,7 +336,7 @@ namespace RazorReaper.Services
                 var test = ChangeDisplaySettingsEx(null, ref target, IntPtr.Zero, CDS_TEST, IntPtr.Zero);
                 if (test != DISP_CHANGE_SUCCESSFUL)
                 {
-                    return DisplayChangeResult.Fail(DescribeMode(test, width, height));
+                    return DisplayChangeResult.Fail(DescribeMode(test, width, height, GetGpuInfo().Vendor));
                 }
 
                 // CDS_FULLSCREEN = temporary change, not written to the registry — a reboot (or our
@@ -344,7 +344,7 @@ namespace RazorReaper.Services
                 var apply = ChangeDisplaySettingsEx(null, ref target, IntPtr.Zero, CDS_FULLSCREEN, IntPtr.Zero);
                 if (apply != DISP_CHANGE_SUCCESSFUL)
                 {
-                    return DisplayChangeResult.Fail(DescribeMode(apply, width, height));
+                    return DisplayChangeResult.Fail(DescribeMode(apply, width, height, GetGpuInfo().Vendor));
                 }
 
                 lock (_gate)
@@ -732,14 +732,26 @@ namespace RazorReaper.Services
             return a == 0 ? 1 : a;
         }
 
-        private static string DescribeMode(int code, int width, int height)
+        internal static string DescribeMode(int code, int width, int height, GpuVendor vendor)
         {
             if (code == DISP_CHANGE_BADMODE)
             {
-                return $"Your display driver rejected {width}×{height}. Create it first in NVIDIA Control Panel → Change resolution → Customize, then try again.";
+                return $"Your display driver rejected {width}×{height}. Create it first in {DescribeCustomResolutionPath(vendor)}, then try again.";
             }
             return DescribeResult(code);
         }
+
+        /// <summary>
+        /// Where a custom resolution is created, per GPU vendor. The single source of truth for
+        /// this wording so the driver-rejection message never drifts from the on-page guidance.
+        /// </summary>
+        internal static string DescribeCustomResolutionPath(GpuVendor vendor) => vendor switch
+        {
+            GpuVendor.Nvidia => "NVIDIA Control Panel → Change resolution → Customize",
+            GpuVendor.Amd => "AMD Software: Adrenalin Edition → Display → Custom Resolutions",
+            GpuVendor.Intel => "Intel Graphics Command Center → Display → Custom Resolutions",
+            _ => "your GPU control panel's custom resolution option"
+        };
 
         private static string DescribeResult(int code) => code switch
         {
