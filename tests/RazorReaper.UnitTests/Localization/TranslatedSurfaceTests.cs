@@ -204,6 +204,29 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Shared/WhatsNewOverlay.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            "Close ARK (or stop the running macro) first",
+            "\"Checking for updates...\"",
+            "You're on the latest version.",
+            "is ready — restart to install.",
+            "is ready — close ARK, then restart to install.",
+            "— restarting...\"",
+            "it will be applied at the next start.",
+            "Update available but download URL is missing.",
+            "install it manually.",
+            "\"Downloading update...\"",
+            // Only the status line; the log template two lines above stays English, as logs do.
+            "Update download was incomplete — it will be retried.",
+            "\"Download cancelled.\"",
+            "\"Failed to download update.\"",
+            "could not be installed (installer exit code",
+            "Razor Reaper will restart.\"",
+        })
+        {
+            data.Add("Services/Implementations/AutoUpdateManager.cs", literal);
+        }
+
         return data;
     }
 
@@ -227,6 +250,9 @@ public sealed class TranslatedSurfaceTests
     [InlineData("whatsnew.checkagain", "Check again")]
     [InlineData("whatsnew.failed", "Update failed")]
     [InlineData("whatsnew.downloading.percent", "Downloading… {0}%")]
+    [InlineData("update.gated", "Close ARK (or stop the running macro) first, then restart to update.")]
+    [InlineData("update.status.ready", "Update v{0} is ready — restart to install.")]
+    [InlineData("update.install.failed.retry", "Update to v{0} could not be installed (installer exit code {1}). Restart & update to try again.")]
     public void TheEnglishWordingIsWhatItWas(string key, string expected)
     {
         Assert.True(TranslationParityTests.Read("en").TryGetValue(key, out var english), $"missing {key}");
@@ -304,12 +330,16 @@ public sealed class TranslatedSurfaceTests
         }
     }
 
-    /// <summary>Every <c>T("…")</c> in the app project, with the file that spells it.</summary>
+    /// <summary>
+    /// Every key the app spells out, with the file that spells it. Three shapes: the ordinary
+    /// <c>Localizer.T("…")</c>, and the update manager's two, which hold a key and its arguments
+    /// so a status line that sits on screen for a session can be re-read after a switch.
+    /// </summary>
     private static IEnumerable<(string File, string Key)> UsedKeys()
     {
         var root = Path.Combine(TranslationParityTests.RepositoryRoot(), "RazorReaper");
-        // "Localizer.T(" must match, so only a word character in front rules a call out.
-        var pattern = new Regex(@"(?<!\w)T\(\s*""(?<key>[^""]+)""");
+        // "Localizer.T(" must match, so only a word character in front rules a T( call out.
+        var pattern = new Regex(@"(?:(?<!\w)T|SetStatus|new StatusLine)\(\s*""(?<key>[^""]+)""");
 
         foreach (var path in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
                      .Where(IsProjectSource))

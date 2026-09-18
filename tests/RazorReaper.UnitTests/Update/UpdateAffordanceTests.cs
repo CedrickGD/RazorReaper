@@ -171,10 +171,9 @@ public sealed class UpdateAffordanceTests
     {
         var manager = File.ReadAllText(ManagerPath());
 
-        Assert.Contains(
-            "\"Close ARK (or stop the running macro) first, then restart to update.\"",
-            manager,
-            StringComparison.Ordinal);
+        // The sentence is a dictionary entry since the i18n wave; its English is pinned in
+        // TranslatedSurfaceTests, and this holds the one place that says it.
+        Assert.Contains("notifications.ShowWarning(localizer.T(\"update.gated\"));", manager, StringComparison.Ordinal);
 
         var gate = File.ReadAllText(Path.Combine(
             RepositoryRoot(), "RazorReaper", "Services", "Implementations", "UpdateActivityGate.cs"));
@@ -228,21 +227,24 @@ public sealed class UpdateAffordanceTests
         Assert.True(report > 0);
         var body = manager[report..manager.IndexOf("private Version? RecordedFailedVersion()", report, StringComparison.Ordinal)];
 
-        Assert.Contains("notifications.ShowWarning(failureMessage);", body, StringComparison.Ordinal);
-        Assert.Contains("could not be installed (installer exit code", body, StringComparison.Ordinal);
-        Assert.Contains("Restart & update to try again.", body, StringComparison.Ordinal);
-        Assert.Contains("installFailureMessage = failureMessage;", body, StringComparison.Ordinal);
-        Assert.Contains("statusMessage = failureMessage;", body, StringComparison.Ordinal);
+        // The wording is two dictionary entries since the i18n wave — the exit code is the second
+        // placeholder — and the status keeps the key rather than the worded sentence, so a
+        // language switch re-reads a failure that is still on screen.
+        Assert.Contains("notifications.ShowWarning(Render(failureMessage)!);", body, StringComparison.Ordinal);
+        Assert.Contains("new StatusLine(\"update.install.failed.givingup\", [label, exitCode])", body, StringComparison.Ordinal);
+        Assert.Contains("new StatusLine(\"update.install.failed.retry\", [label, exitCode])", body, StringComparison.Ordinal);
+        Assert.Contains("installFailure = failureMessage;", body, StringComparison.Ordinal);
+        Assert.Contains("status = failureMessage;", body, StringComparison.Ordinal);
         Assert.Contains("OnStateChanged();", body, StringComparison.Ordinal);
 
         // The failure outranks "ready — restart to install" wherever that line is set again, so
         // the startup pass cannot paint over it with the sentence that was already wrong.
-        Assert.Contains("private string ReadyMessage(Version? staged)", manager, StringComparison.Ordinal);
+        Assert.Contains("private StatusLine ReadyStatus(Version? staged)", manager, StringComparison.Ordinal);
         Assert.Contains(
-            "=> installFailureMessage ?? $\"Update v{Label(staged)} is ready — restart to install.\";",
+            "=> installFailure ?? new StatusLine(\"update.status.ready\", [Label(staged)]);",
             manager,
             StringComparison.Ordinal);
-        Assert.Contains("statusMessage = ReadyMessage(staged);", manager, StringComparison.Ordinal);
+        Assert.Contains("status = ReadyStatus(staged);", manager, StringComparison.Ordinal);
 
         var contract = File.ReadAllText(Path.Combine(
             RepositoryRoot(), "RazorReaper", "Services", "IAutoUpdateManager.cs"));

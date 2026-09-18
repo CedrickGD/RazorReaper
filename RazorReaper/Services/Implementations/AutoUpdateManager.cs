@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using RazorReaper.Diagnostics;
 using RazorReaper.Models;
+using RazorReaper.Services.Localization;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -53,11 +54,20 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     /// <summary>Breathing room between the "installing" toast and the app vanishing.</summary>
     private static readonly TimeSpan HandoffGrace = TimeSpan.FromSeconds(4);
 
-    /// <summary>What the user is told when ARK or a macro is in the way. The update stays ready
-    /// and the action stays available — this is a "not yet", not a failure.</summary>
-    internal const string GatedMessage = "Close ARK (or stop the running macro) first, then restart to update.";
+    /// <summary>
+    /// One line of status, kept as the key it is worded from rather than the worded string.
+    /// The status survives for the life of the session — "ready — restart to install" sits on
+    /// screen from the moment a build is staged — so a language switch has to be able to re-read
+    /// it. Storing the sentence would freeze it in whatever language was on when it was set.
+    /// </summary>
+    /// <param name="Verbatim">
+    /// A line the app did not word: a server or exception message out of the update check. It is
+    /// shown as it arrived, because inventing a translation for it would be inventing its content.
+    /// </param>
+    private sealed record StatusLine(string Key, object?[] Args, string? Verbatim = null);
 
     private readonly IUpdateService updateService;
+    private readonly ILocalizer localizer;
     private readonly HttpClient httpClient;
     private readonly INotificationService notifications;
     private readonly IUpdateActivityGate activityGate;
@@ -79,13 +89,13 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     private volatile bool installRequested;
 
     private int _downloadProgressPercent = -1; // -1 means null
-    private volatile string statusMessage = "";
+    private volatile StatusLine? status;
 
     /// <summary>What the user is told about the install that failed at the previous handoff, or
     /// null when the last one worked (or there was none). Outranks the "ready" status line for
     /// the rest of the session, because "ready — restart to install" is exactly the sentence
     /// that was on screen before the installer silently did nothing.</summary>
-    private volatile string? installFailureMessage;
+    private volatile StatusLine? installFailure;
 
     private Version? pendingVersion;
     private UpdateCheckResult? lastCheckResult;
@@ -97,6 +107,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
     public AutoUpdateManager(
         IUpdateService updateService,
+        ILocalizer localizer,
         HttpClient httpClient,
         INotificationService notifications,
         IUpdateActivityGate activityGate,
@@ -104,6 +115,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         ILogger<AutoUpdateManager> logger)
     {
         this.updateService = updateService;
+        this.localizer = localizer;
         this.httpClient = httpClient;
         this.notifications = notifications;
         this.activityGate = activityGate;
@@ -120,8 +132,8 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     public bool IsDownloading => isDownloading;
     public int? DownloadProgressPercent => _downloadProgressPercent >= 0 ? _downloadProgressPercent : null;
     public Version? PendingVersion => pendingVersion;
-    public string StatusMessage => statusMessage;
-    public string? InstallFailureMessage => installFailureMessage;
+    public string StatusMessage => Render(status) ?? "";
+    public string? InstallFailureMessage => Render(installFailure);
     public UpdateCheckResult? LastCheckResult => lastCheckResult;
 
     public async Task RunStartupCheckAsync(CancellationToken cancellationToken = default)
@@ -199,7 +211,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         if (installRequested) return;
 
         isChecking = true;
-        statusMessage = "Checking for updates...";
+        SetStatus("update.status.checking");
         OnStateChanged();
 
         UpdateCheckResult result;
@@ -226,14 +238,16 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
         if (!result.IsSuccess)
         {
-            statusMessage = result.ErrorMessage ?? "Update check failed.";
+            status = result.ErrorMessage is { } reported
+                ? new StatusLine(string.Empty, [], reported)
+                : new StatusLine("update.check.failed", []);
             OnStateChanged();
             return;
         }
 
         if (!result.HasUpdate)
         {
-            statusMessage = "You're on the latest version.";
+            SetStatus("update.status.latest");
             OnStateChanged();
             return;
         }
@@ -306,16 +320,18 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
                 if (trigger is UpdateApplyTrigger.Button or UpdateApplyTrigger.Tray
                     || (mandatory && trigger != UpdateApplyTrigger.Mandatory))
                 {
-                    notifications.ShowWarning(GatedMessage);
+                    // "update.gated": the update stays ready and the action stays available —
+                    // this is a "not yet", not a failure.
+                    notifications.ShowWarning(localizer.T("update.gated"));
                 }
 
-                statusMessage = $"Update v{Label(staged)} is ready — close ARK, then restart to install.";
+                SetStatus("update.status.ready.closeark", Label(staged));
                 OnStateChanged();
                 StartMandatoryRetry();
                 return false;
 
             case UpdateApplyDecision.StayReady:
-                statusMessage = ReadyMessage(staged);
+                status = ReadyStatus(staged);
                 OnStateChanged();
                 return false;
 
@@ -373,10 +389,10 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
         Preferences.Set(PrefKeyLaunchTrigger, UpdateApplyPolicy.TriggerName(trigger, stagedIsMandatory));
 
         // A new attempt is underway, so the previous one's warning has had its say.
-        installFailureMessage = null;
+        installFailure = null;
 
         var label = Label(version);
-        statusMessage = $"Installing v{label} — restarting...";
+        SetStatus("update.status.installing", label);
         OnStateChanged();
 
         _ = Task.Run(async () =>
@@ -387,7 +403,7 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
                 // when it runs out the window is gone. A static warning gave no hint how
                 // much time was left to finish what you were doing.
                 notifications.ShowWarningWithCountdown(
-                    $"Installing update v{label} — Razor Reaper will restart.",
+                    localizer.T("update.toast.installing", label),
                     durationMs: (int)HandoffGrace.TotalMilliseconds);
 
                 await Task.Delay(HandoffGrace);
@@ -527,7 +543,7 @@ del ""%~f0"" >nul 2>&1
         installRequested = false;
         isInstallLaunching = false;
         Interlocked.Exchange(ref handoffStarted, 0);
-        statusMessage = $"Update v{Label(pendingVersion)} couldn't start — it will be applied at the next start.";
+        SetStatus("update.status.deferred", Label(pendingVersion));
 
         logger.LogWarning("Auto-update handoff failed; the installer stays staged for the next start");
         OnStateChanged();
@@ -568,14 +584,14 @@ del ""%~f0"" >nul 2>&1
     {
         if (string.IsNullOrWhiteSpace(result.DownloadUrl))
         {
-            statusMessage = "Update available but download URL is missing.";
+            SetStatus("update.status.nourl");
             OnStateChanged();
             return;
         }
 
         if (HasExhaustedAttempts(result.LatestVersion))
         {
-            statusMessage = $"Update v{Label(result.LatestVersion)} could not be installed — install it manually.";
+            SetStatus("update.status.manual", Label(result.LatestVersion));
             logger.LogWarning(
                 "Not downloading v{Version} again: its installer already failed {Count} times",
                 Label(result.LatestVersion),
@@ -586,7 +602,7 @@ del ""%~f0"" >nul 2>&1
 
         isDownloading = true;
         _downloadProgressPercent = 0;
-        statusMessage = "Downloading update...";
+        SetStatus("update.status.downloading");
         OnStateChanged();
 
         var startedAt = Stopwatch.GetTimestamp();
@@ -622,7 +638,7 @@ del ""%~f0"" >nul 2>&1
                         {
                             lastReportedPercent = percent;
                             _downloadProgressPercent = percent;
-                            statusMessage = $"Downloading update... {percent}%";
+                            SetStatus("update.status.downloading.percent", percent);
                             OnStateChanged();
                         }
                     }
@@ -644,7 +660,7 @@ del ""%~f0"" >nul 2>&1
                 TryDeleteStagedFile(targetPath);
                 isDownloading = false;
                 _downloadProgressPercent = -1;
-                statusMessage = "Update download was incomplete — it will be retried.";
+                SetStatus("update.status.incomplete");
                 TrackDownload("failed", onDisk, startedAt, result.LatestVersion);
                 OnStateChanged();
                 return;
@@ -663,7 +679,7 @@ del ""%~f0"" >nul 2>&1
         {
             isDownloading = false;
             _downloadProgressPercent = -1;
-            statusMessage = "Download cancelled.";
+            SetStatus("update.status.cancelled");
             OnStateChanged();
         }
         catch (Exception ex)
@@ -671,7 +687,7 @@ del ""%~f0"" >nul 2>&1
             logger.LogError(ex, "Failed to download auto-update installer");
             isDownloading = false;
             _downloadProgressPercent = -1;
-            statusMessage = "Failed to download update.";
+            SetStatus("update.status.downloadfailed");
             TrackDownload("failed", bytesWritten, startedAt, result.LatestVersion);
             OnStateChanged();
         }
@@ -695,10 +711,10 @@ del ""%~f0"" >nul 2>&1
         // hands off the unattended retry.
         if (result.LatestVersion is null || result.LatestVersion != RecordedFailedVersion())
         {
-            installFailureMessage = null;
+            installFailure = null;
         }
 
-        statusMessage = ReadyMessage(result.LatestVersion);
+        status = ReadyStatus(result.LatestVersion);
 
         Preferences.Set(PrefKeyInstallerPath, targetPath);
         Preferences.Set(PrefKeyInstallerArgs, args);
@@ -761,7 +777,7 @@ del ""%~f0"" >nul 2>&1
             stagedIsMandatory = Preferences.Get(PrefKeyMandatory, false);
             isInstallerReady = true;
             _downloadProgressPercent = 100;
-            statusMessage = ReadyMessage(staged);
+            status = ReadyStatus(staged);
 
             logger.LogInformation("Picked up a staged installer for v{Version}", Label(staged));
             OnStateChanged();
@@ -883,14 +899,12 @@ del ""%~f0"" >nul 2>&1
             var label = string.IsNullOrWhiteSpace(version) ? "?" : version;
             var exitCode = parsedCode?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
             var failureMessage = givingUp
-                ? $"Update to v{label} could not be installed (installer exit code {exitCode}). "
-                  + "It has been discarded — install the latest version manually."
-                : $"Update to v{label} could not be installed (installer exit code {exitCode}). "
-                  + "Restart & update to try again.";
+                ? new StatusLine("update.install.failed.givingup", [label, exitCode])
+                : new StatusLine("update.install.failed.retry", [label, exitCode]);
 
-            installFailureMessage = failureMessage;
-            statusMessage = failureMessage;
-            notifications.ShowWarning(failureMessage);
+            installFailure = failureMessage;
+            status = failureMessage;
+            notifications.ShowWarning(Render(failureMessage)!);
 
             if (givingUp)
             {
@@ -923,8 +937,14 @@ del ""%~f0"" >nul 2>&1
     /// <summary>The "ready" status line, unless a failed install has something more important to
     /// say — "restart to install" is the sentence that was already on screen when nothing
     /// installed.</summary>
-    private string ReadyMessage(Version? staged)
-        => installFailureMessage ?? $"Update v{Label(staged)} is ready — restart to install.";
+    private StatusLine ReadyStatus(Version? staged)
+        => installFailure ?? new StatusLine("update.status.ready", [Label(staged)]);
+
+    private void SetStatus(string key, params object?[] args) => status = new StatusLine(key, args);
+
+    /// <summary>Words a line in the language that is on right now, or null when there is no line.</summary>
+    private string? Render(StatusLine? line)
+        => line is null ? null : line.Verbatim ?? localizer.T(line.Key, line.Args);
 
     private bool HasExhaustedAttempts(Version? version)
     {
