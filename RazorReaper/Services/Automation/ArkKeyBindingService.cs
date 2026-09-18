@@ -126,11 +126,7 @@ public sealed class ArkKeyBindingService : IArkKeyBindingService
                     "ARK key bindings scanned: {Count} usable bindings ({Custom} differ from stock) from {Path}",
                     parsed.Count, status.CustomBindingCount, inputIni);
 
-                foreach (var action in new[]
-                         {
-                             ArkActions.AccessInventory, ArkActions.ShowMyInventory, ArkActions.TransferItem,
-                             ArkActions.Use, ArkActions.CraftAll, ArkActions.MoveForward,
-                         })
+                foreach (var action in ArkKeyBindingParser.StockBindings.Keys)
                 {
                     if (parsed.TryGetValue(action, out var key))
                     {

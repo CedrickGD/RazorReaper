@@ -180,7 +180,10 @@ public sealed class ArkKeyScanTests : IDisposable
             "ActionMappings=(ActionName=\"TransferItem\",Key=G,bShift=False)",
             // …one written out but left where ARK put it…
             "ActionMappings=(ActionName=\"Use\",Key=" + ArkKeyBindingParser.StockBindings[ArkActions.Use] + ",bShift=False)",
-            // …and one no script ever presses.
+            // …and two no script ever presses. Craft All is the trap: rebinding ARK's own craft
+            // hotkey is an ordinary thing to do and has nothing to do with any script, so counting
+            // it would tell a player their scripts follow a binding of theirs when none of them do.
+            "ActionMappings=(ActionName=\"CraftAll\",Key=Z,bShift=False)",
             "ActionMappings=(ActionName=\"Crouch\",Key=LeftAlt,bShift=False)");
 
         var status = Service().Status;

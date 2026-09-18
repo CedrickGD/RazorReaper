@@ -20,9 +20,6 @@ public static class ArkActions
     /// <summary>Generic "use" / interact.</summary>
     public const string Use = "Use";
 
-    /// <summary>Craft-all inside an open station.</summary>
-    public const string CraftAll = "CraftAll";
-
     /// <summary>Forward movement. An axis, not an action.</summary>
     public const string MoveForward = "MoveForward";
 
@@ -96,7 +93,12 @@ public static class ArkKeyBindingParser
         """AxisMappings\s*=\s*\(\s*AxisName\s*=\s*"(?<name>[^"]+)"\s*,\s*Key\s*=\s*(?<key>[^,)\s]+)\s*,\s*Scale\s*=\s*(?<scale>-?[\d.]+)""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    /// <summary>ARK's factory bindings for the actions the scripts care about.</summary>
+    /// <summary>
+    /// ARK's factory bindings for the actions the scripts press — and nothing else, because this
+    /// is also the set the Scripts page counts its "your own bindings" number over. An action in
+    /// here that no script resolves would put a rebind on the page that changes nothing a script
+    /// does. Craft All was one until it was dropped.
+    /// </summary>
     public static readonly IReadOnlyDictionary<string, string> StockBindings =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -104,7 +106,6 @@ public static class ArkKeyBindingParser
             [ArkActions.ShowMyInventory] = "I",
             [ArkActions.TransferItem] = "T",
             [ArkActions.Use] = "E",
-            [ArkActions.CraftAll] = "A",
             [ArkActions.MoveForward] = "W",
             [ArkActions.Run] = "LeftShift",
         };

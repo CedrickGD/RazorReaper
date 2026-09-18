@@ -27,7 +27,6 @@ public class ArkKeyBindingParserTests
     [InlineData(ArkActions.ShowMyInventory, "Y")]
     [InlineData(ArkActions.TransferItem, "T")]
     [InlineData(ArkActions.Use, "E")]
-    [InlineData(ArkActions.CraftAll, "A")]
     public void ReadsTheActionsTheScriptsDependOn(string action, string expected)
     {
         var bindings = ArkKeyBindingParser.Parse(RealWorldIni);
@@ -120,7 +119,7 @@ public class ArkKeyBindingParserTests
         foreach (var action in new[]
                  {
                      ArkActions.AccessInventory, ArkActions.ShowMyInventory, ArkActions.TransferItem,
-                     ArkActions.Use, ArkActions.CraftAll, ArkActions.MoveForward,
+                     ArkActions.Use, ArkActions.MoveForward, ArkActions.Run,
                  })
         {
             Assert.True(ArkKeyBindingParser.StockBindings.ContainsKey(action), action);
