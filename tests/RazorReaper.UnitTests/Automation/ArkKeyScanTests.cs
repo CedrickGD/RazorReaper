@@ -96,6 +96,34 @@ public sealed class ArkKeyScanTests : IDisposable
         Assert.True(service.Status.InputIniFound);
     }
 
+    /// <summary>
+    /// What the stale check may cost. It runs on every script start with the global hotkey waiting
+    /// on it, and finding the install is two registry reads, a parse of libraryfolders.vdf and a
+    /// stat per Steam library — once, not once per start.
+    /// </summary>
+    [Fact]
+    public void TheStaleCheckDoesNotHuntForTheInstallAgainWhileTheFileIsWhereItWas()
+    {
+        WriteInputIni("ActionMappings=(ActionName=\"TransferItem\",Key=G,bShift=False)");
+        var paths = new FakeArkPathProvider(_arkRoot);
+        var service = new ArkKeyBindingService(paths, NullLogger<ArkKeyBindingService>.Instance);
+        Assert.Equal(1, paths.Lookups);
+
+        service.RefreshIfStale();
+        service.RefreshIfStale();
+        Assert.Equal(1, paths.Lookups);
+
+        // A rebind still lands — same path, new timestamp, and the file is read again.
+        WriteInputIni("ActionMappings=(ActionName=\"TransferItem\",Key=H,bShift=False)");
+        service.RefreshIfStale();
+        Assert.Equal("H", service.Resolve(ArkActions.TransferItem, "T"));
+        Assert.Equal(1, paths.Lookups);
+
+        // Rescan looks again: where ARK is installed is exactly what that button can change.
+        service.Refresh();
+        Assert.Equal(2, paths.Lookups);
+    }
+
     // ─── Nothing to read ───────────────────────────────────────────────────────
 
     [Fact]
@@ -281,7 +309,14 @@ public sealed class ArkKeyScanTests : IDisposable
     {
         public string? ArkRoot { get; set; } = arkRoot;
 
-        public string? FindArkPath() => ArkRoot;
+        /// <summary>How often the install was searched for — the expensive half of a scan.</summary>
+        public int Lookups { get; private set; }
+
+        public string? FindArkPath()
+        {
+            Lookups++;
+            return ArkRoot;
+        }
 
         public string? GetBaseDeviceProfilesPath() => null;
 

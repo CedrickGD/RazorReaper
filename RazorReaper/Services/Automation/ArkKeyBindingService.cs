@@ -89,7 +89,7 @@ public sealed class ArkKeyBindingService : IArkKeyBindingService
         {
             try
             {
-                var inputIni = ResolveInputIniPath();
+                var inputIni = ResolveInputIniPath(force);
                 var exists = inputIni is not null && File.Exists(inputIni);
                 var stamp = default(DateTime);
                 if (exists)
@@ -149,12 +149,21 @@ public sealed class ArkKeyBindingService : IArkKeyBindingService
     }
 
     /// <summary>
-    /// The ARK path is re-resolved on every load, not cached: a player who installs ARK, moves it
-    /// to another Steam library or repoints the path after the app started would otherwise keep
-    /// the stock layout until the next launch.
+    /// Where Input.ini is. Finding it is not cheap — two registry reads, a parse of
+    /// libraryfolders.vdf and a stat per Steam library — and the stale check runs on every script
+    /// start with the global hotkey on the other end of it. So the path the last load used is
+    /// reused while it still exists, and the search only runs again when it is gone (ARK installed
+    /// or moved since) or when a caller forces it: Rescan, and the ARK path setting changing.
     /// </summary>
-    private string? ResolveInputIniPath()
+    private string? ResolveInputIniPath(bool force)
     {
+        if (!force)
+        {
+            string? known;
+            lock (_gate) known = _loadedPath;
+            if (known is not null && File.Exists(known)) return known;
+        }
+
         var arkPath = _arkPath.FindArkPath();
         return string.IsNullOrWhiteSpace(arkPath)
             ? null

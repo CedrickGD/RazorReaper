@@ -68,10 +68,11 @@ public interface IArkKeyBindingService
     void Refresh();
 
     /// <summary>
-    /// Re-reads Input.ini only when re-reading it could change an answer: the resolved path moved
-    /// (the ARK install was found, moved or repointed) or the file's last-write time changed
-    /// (the player rebound something while the app was open). Costs one existence check and one
-    /// timestamp read otherwise, so it is safe on every script start.
+    /// Re-reads Input.ini only when re-reading it could change an answer: the file's last-write
+    /// time changed (the player rebound something while the app was open) or it is no longer
+    /// where the last scan found it (ARK installed, moved or repointed since). While it stays put
+    /// this costs two existence checks and a timestamp read — no registry, no library search — so
+    /// it is safe on every script start.
     /// </summary>
     void RefreshIfStale();
 
