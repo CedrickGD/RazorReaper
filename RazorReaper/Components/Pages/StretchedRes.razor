@@ -52,7 +52,10 @@
 
     @* ============================================================
        STATUS — current vs native resolution + detected GPU, for the
-       monitor the presets below are aimed at.
+       screen a resolution was last applied to (from either section),
+       falling back to the one the presets below are aimed at. Restore
+       native acts on that same screen, so the button always takes back
+       the change the card is describing.
        ============================================================ *@
     <section class="content-card">
         <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
@@ -85,7 +88,8 @@
     @* ============================================================
        PRESETS — apply a temporary stretched mode to one monitor.
        The picker sits above the grid because it decides what every
-       button below it does, and it drives the status card above.
+       button below it does, and while nothing is applied it is also
+       what the status card above describes.
        ============================================================ *@
     <section class="content-card">
         <h3>@Localizer.T("stretchedres.presets.title") <UsageChip Feature="@UsageFeatures.StretchedRes" /></h3>
@@ -276,6 +280,9 @@
     private bool stretchedFellBack;
     private bool customFellBack;
 
+    /// <summary>The screen the native/GPU facts on show were read from, so a move is detectable.</summary>
+    private string? factsDevice;
+
     private int customWidth = 1440;
     private int customHeight = 1080;
     private CustomError customError = CustomError.None;
@@ -302,6 +309,17 @@
     /// <summary>Empty is not a device name — it is "the service picks", i.e. the primary.</summary>
     private static string? Device(string deviceName) =>
         string.IsNullOrEmpty(deviceName) ? null : deviceName;
+
+    /// <summary>
+    /// The screen the status card describes and "Restore native" acts on: the one a resolution was
+    /// last applied to, whichever section it was applied from, and only otherwise the one the
+    /// presets picker is aimed at.
+    ///
+    /// The distinction is the whole point of having two pickers. Stretch the second screen from the
+    /// Custom card and the card above must not go on reporting the first one as native while the
+    /// only restore button on the page resets a screen nobody touched.
+    /// </summary>
+    private string? StatusDevice => Stretched.LastAppliedDeviceName ?? Device(stretchedDevice);
 
     private IReadOnlyList<Dropdown.Option> MonitorOptions =>
         monitors.Select(m => new Dropdown.Option(m.DeviceName, MonitorLabel(m))).ToList();
@@ -377,7 +395,7 @@
             ? Localizer.T("stretchedres.status.desc.pending")
             : HasCurrent
                 ? Localizer.T("stretchedres.status.desc.current",
-                    MonitorLabelFor(stretchedDevice), current.Label, current.AspectLabel)
+                    MonitorLabelFor(StatusDevice), current.Label, current.AspectLabel)
                 : Localizer.T("stretchedres.status.desc.unknown");
 
     private string ArkButtonLabel
@@ -471,18 +489,32 @@
         }), Logger);
     }
 
-    /// <summary>Everything the status card shows follows the monitor the presets are aimed at.</summary>
+    /// <summary>
+    /// Re-reads the three facts for whatever <see cref="StatusDevice"/> currently is, and records
+    /// which screen they were read from so a later tick can notice that it moved.
+    /// </summary>
     private void RefreshDisplayFacts()
     {
-        var device = Device(stretchedDevice);
+        var device = StatusDevice;
+        factsDevice = device;
         gpu = Stretched.GetGpuInfo(device);
         native = Stretched.GetNativeResolution(device);
-        RefreshCurrent();
+        current = Stretched.GetCurrentResolution(device);
+        arkRunning = Stretched.IsArkRunning();
     }
 
     private void RefreshCurrent()
     {
-        current = Stretched.GetCurrentResolution(Device(stretchedDevice));
+        var device = StatusDevice;
+        if (!string.Equals(device, factsDevice, StringComparison.OrdinalIgnoreCase))
+        {
+            // An apply, a revert or a restore moved the card to another screen — native and GPU
+            // belong to that screen too, so they have to be re-read, not just the current mode.
+            RefreshDisplayFacts();
+            return;
+        }
+
+        current = Stretched.GetCurrentResolution(device);
         arkRunning = Stretched.IsArkRunning();
     }
 
@@ -559,7 +591,8 @@
 
     private void RestoreNative()
     {
-        Stretched.RestoreNative(Device(stretchedDevice));
+        // The screen the card above is describing, which is the stretched one when there is one.
+        Stretched.RestoreNative(StatusDevice);
         RefreshCurrent();
     }
 

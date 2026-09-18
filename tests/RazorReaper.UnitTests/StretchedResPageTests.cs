@@ -83,6 +83,28 @@ public sealed class StretchedResPageTests
     }
 
     /// <summary>
+    /// The status card and the one restore button belong to the screen that was actually changed,
+    /// whichever section changed it. Pinning them to <c>stretchedDevice</c> is what made a custom
+    /// mode on the second monitor read as "Native resolution" on the first, with the only restore
+    /// button on the page resetting a screen nobody had touched.
+    /// </summary>
+    [Fact]
+    public void TheStatusCardAndRestoreFollowTheScreenThatWasActuallyChanged()
+    {
+        var page = Page();
+
+        Assert.Contains("Stretched.LastAppliedDeviceName ?? Device(stretchedDevice)", page, StringComparison.Ordinal);
+        Assert.Contains("Stretched.RestoreNative(StatusDevice)", page, StringComparison.Ordinal);
+        Assert.Contains("MonitorLabelFor(StatusDevice)", page, StringComparison.Ordinal);
+
+        // The three facts are read for that same screen, never for the presets picker directly.
+        foreach (var call in new[] { "GetGpuInfo", "GetNativeResolution", "GetCurrentResolution" })
+        {
+            Assert.DoesNotContain($"Stretched.{call}(Device(stretchedDevice))", page, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
     /// The fallback note is what makes an unplugged monitor visible. Without it the page quietly
     /// swaps the target and the user finds out when the wrong screen changes.
     /// </summary>

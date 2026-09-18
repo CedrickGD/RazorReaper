@@ -142,6 +142,15 @@ namespace RazorReaper.Services
         /// <summary>The device the pending change was applied to, so the page can name the screen.</summary>
         string? PendingDeviceName { get; }
 
+        /// <summary>
+        /// The device a resolution was last applied to and not taken back — it outlives
+        /// <see cref="ConfirmKeep"/>, unlike <see cref="PendingDeviceName"/>, and is cleared again
+        /// by a revert or a restore of that same screen. It is what lets the page keep describing
+        /// and restoring the monitor that actually changed, rather than whichever one a picker
+        /// happens to be aimed at.
+        /// </summary>
+        string? LastAppliedDeviceName { get; }
+
         /// <summary>Validates a width/height against sane bounds (does not touch the display).</summary>
         DisplayChangeResult ValidateResolution(int width, int height);
 
@@ -220,6 +229,12 @@ namespace RazorReaper.Services
         private DisplayResolution? _previousResolution;
         private DisplayResolution? _pendingResolution;
         private string? _pendingDevice;
+
+        // Every screen that currently holds a mode this service applied, oldest first. A list and
+        // not a single slot because two screens can be stretched at once (a preset on one, a custom
+        // mode on the other): taking one of them back must hand the title back to the other, not
+        // claim nothing is stretched any more.
+        private readonly List<string> _appliedDevices = new();
         private bool _isPending;
         private int _secondsRemaining;
 
@@ -248,6 +263,10 @@ namespace RazorReaper.Services
         public DisplayResolution? PreviousResolution { get { lock (_gate) return _previousResolution; } }
         public DisplayResolution? PendingResolution { get { lock (_gate) return _pendingResolution; } }
         public string? PendingDeviceName { get { lock (_gate) return _pendingDevice; } }
+        public string? LastAppliedDeviceName
+        {
+            get { lock (_gate) return _appliedDevices.Count == 0 ? null : _appliedDevices[^1]; }
+        }
 
         // ────────────────────────────────────────────────────────────────────
         // Monitors
@@ -528,6 +547,9 @@ namespace RazorReaper.Services
                     _previousResolution = new DisplayResolution(previous.Width, previous.Height, previous.RefreshHz);
                     _pendingResolution = new DisplayResolution(width, height, mode.RefreshHz);
                     _pendingDevice = device;
+                    // Survives ConfirmKeep on purpose: after the confirmation card is gone, this
+                    // is the only record of which screen is the stretched one.
+                    RememberApplied(device);
                     _isPending = true;
                     _secondsRemaining = AutoRevertSeconds;
                     StartRevertTimer();
@@ -548,6 +570,28 @@ namespace RazorReaper.Services
             }
         }
 
+        // Both call sites already hold _gate.
+        private void RememberApplied(string? device)
+        {
+            if (string.IsNullOrEmpty(device))
+            {
+                return;
+            }
+
+            ForgetApplied(device);
+            _appliedDevices.Add(device);
+        }
+
+        private void ForgetApplied(string? device)
+        {
+            if (string.IsNullOrEmpty(device))
+            {
+                return;
+            }
+
+            _appliedDevices.RemoveAll(d => string.Equals(d, device, StringComparison.OrdinalIgnoreCase));
+        }
+
         public void ConfirmKeep()
         {
             DisplayResolution? kept;
@@ -562,6 +606,10 @@ namespace RazorReaper.Services
                 kept = _pendingResolution;
                 _isPending = false;
                 _secondsRemaining = 0;
+                // Nothing is pending any more, so neither is the device: the record of which
+                // screen was changed lives on in _appliedDevices, where a keep cannot stale it.
+                _pendingResolution = null;
+                _pendingDevice = null;
             }
 
             _logger.LogInformation("User kept stretched resolution {Res}", kept?.Label);
@@ -593,18 +641,21 @@ namespace RazorReaper.Services
         {
             // Cancel any pending confirmation first so its timer cannot fire mid-restore.
             string? pending;
+            string? lastApplied;
             lock (_gate)
             {
                 StopRevertTimer();
                 pending = _pendingDevice;
+                lastApplied = _appliedDevices.Count == 0 ? null : _appliedDevices[^1];
                 _isPending = false;
                 _secondsRemaining = 0;
                 _pendingResolution = null;
             }
 
             // A restore with nothing asked for goes to the screen that was just changed, if any —
-            // pressing it while a change is pending must not leave that screen where it is.
-            var device = EffectiveDevice(deviceName ?? pending);
+            // pressing it while a change is pending must not leave that screen where it is, and
+            // after the confirmation is gone the kept screen is still the one that is wrong.
+            var device = EffectiveDevice(deviceName ?? pending ?? lastApplied);
 
             try
             {
@@ -624,6 +675,8 @@ namespace RazorReaper.Services
                     _previousResolution = null;
                     _previousDevice = null;
                     _pendingDevice = null;
+                    // Only this screen went back to normal; another one may still be stretched.
+                    ForgetApplied(device);
                 }
 
                 var now = GetCurrentResolution(device);
@@ -682,6 +735,7 @@ namespace RazorReaper.Services
                 {
                     _pendingResolution = null;
                     _pendingDevice = null;
+                    ForgetApplied(device);
                 }
 
                 _logger.LogInformation("Reverted display resolution ({Reason}) to {Res}", reason, _previousResolution?.Label);

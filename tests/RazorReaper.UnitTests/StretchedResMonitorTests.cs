@@ -234,6 +234,78 @@ public sealed class StretchedResMonitorTests
         Assert.False(service.IsPendingConfirmation);
     }
 
+    // ---- Which screen is actually the stretched one --------------------------
+
+    /// <summary>
+    /// <see cref="IStretchedResService.PendingDeviceName"/> is gone the moment the user presses
+    /// Keep, and with it the only record of which screen was changed. The page needs that record
+    /// afterwards, not during: the status card and the single "Restore native" button both have to
+    /// keep pointing at the stretched screen once the confirmation card has disappeared.
+    /// </summary>
+    [Fact]
+    public void TheScreenAResolutionWasAppliedToOutlivesTheConfirmation()
+    {
+        using var service = Build(TwoMonitors());
+
+        Assert.Null(service.LastAppliedDeviceName);
+
+        service.ApplyResolution(1440, 1080, Display2);
+        service.ConfirmKeep();
+
+        Assert.Null(service.PendingDeviceName);
+        Assert.Equal(Display2, service.LastAppliedDeviceName);
+    }
+
+    /// <summary>
+    /// Both sections of the page can have a mode on a different screen at the same time — a preset
+    /// on the game monitor, a custom mode on the second one. Taking one of them back leaves the
+    /// other one stretched, so it is the other one the page then has to describe.
+    /// </summary>
+    [Fact]
+    public void TakingOneScreenBackHandsTheTitleToTheOtherStretchedScreen()
+    {
+        using var service = Build(TwoMonitors());
+
+        service.ApplyResolution(1440, 1080, Display2);
+        service.ConfirmKeep();
+        service.ApplyResolution(1280, 1024, Display1);
+        Assert.Equal(Display1, service.LastAppliedDeviceName);
+
+        service.RevertNow();
+
+        Assert.Equal(Display2, service.LastAppliedDeviceName);
+    }
+
+    [Fact]
+    public void RestoringTheStretchedScreenLeavesNoneBehind()
+    {
+        using var service = Build(TwoMonitors());
+
+        service.ApplyResolution(1440, 1080, Display2);
+        service.ConfirmKeep();
+        Assert.True(service.RestoreNative(Display2).Success);
+
+        Assert.Null(service.LastAppliedDeviceName);
+    }
+
+    /// <summary>
+    /// The same defence the pending case already had, one step later: after Keep there is no
+    /// pending device left, and a restore with nothing asked for used to land on the primary while
+    /// the second screen stayed stretched.
+    /// </summary>
+    [Fact]
+    public void RestoreNativeWithNoDeviceGoesToTheKeptScreenNotThePrimary()
+    {
+        var api = TwoMonitors();
+        using var service = Build(api);
+
+        service.ApplyResolution(1440, 1080, Display2);
+        service.ConfirmKeep();
+        Assert.True(service.RestoreNative().Success);
+
+        Assert.Equal(Display2, Assert.Single(api.Resets));
+    }
+
     // ---- The monitor that is not there any more ------------------------------
 
     [Fact]
