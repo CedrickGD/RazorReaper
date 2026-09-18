@@ -1,6 +1,9 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
 using RazorReaper.Services;
 using RazorReaper.Services.Automation;
+using RazorReaper.Services.Localization;
+using RazorReaper.UnitTests.Infrastructure;
 
 namespace RazorReaper.UnitTests.Automation;
 
@@ -158,6 +161,27 @@ public sealed class ArkKeyScanTests : IDisposable
         Assert.Equal(2, status.CustomBindingCount);
     }
 
+    // ─── A start that arrives twice ────────────────────────────────────────────
+
+    /// <summary>
+    /// The keys are re-resolved once per run, behind the running check. Both start paths can fire
+    /// at the same moment — the global hotkey on the native message-pump thread and the Start
+    /// button on the page — and the run loops read those key properties on every tick without a
+    /// lock, so a second start allowed through to OnStarting would swap the key under a run that
+    /// is already pressing it.
+    /// </summary>
+    [Fact]
+    public void AStartOnAScriptAlreadyRunningDoesNotReResolveItsKeys()
+    {
+        using var script = new StartCountingScript();
+
+        Assert.True(script.Start());
+        Assert.True(script.Start());
+
+        Assert.Equal(1, script.KeyResolves);
+        script.Stop();
+    }
+
     // ─── Fed Suit, the macro that used to ignore all of this ───────────────────
 
     [Fact]
@@ -229,6 +253,27 @@ public sealed class ArkKeyScanTests : IDisposable
     private sealed class Restore : IDisposable
     {
         public void Dispose() => ArkKeyDefaults.ResolveService = ArkKeyDefaults.DefaultResolver;
+    }
+
+    /// <summary>A script whose only job is to count how often the scaffold re-resolved its keys.</summary>
+    private sealed class StartCountingScript : AutomationScriptBase
+    {
+        public StartCountingScript()
+            : base("test-arkkeys-start", "Key Re-resolve", string.Empty,
+                   new FakeForegroundGate(gameIsForeground: true),
+                   new NullAutomationHotkeyService(),
+                   new RecordingNotificationService(),
+                   new RecordingActivityService(),
+                   new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US")),
+                   NullLogger.Instance)
+        {
+        }
+
+        public int KeyResolves { get; private set; }
+
+        protected override void OnStarting() => KeyResolves++;
+
+        protected override Task RunAsync(CancellationToken ct) => Task.Delay(Timeout.Infinite, ct);
     }
 
     /// <summary>An ARK install wherever the test says it is, including nowhere.</summary>

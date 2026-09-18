@@ -173,17 +173,24 @@ public abstract class AutomationScriptBase : IDisposable
             return false;
         }
 
-        // The ARK bindings are scanned once at app start, and the app outlives a session of
-        // rebinding keys in ARK's options screen by hours. A start is the last moment the answer
-        // is still cheap to correct, so the scan is re-checked here and the scripts that resolve
-        // a key from it re-read their defaults.
-        ArkKeyDefaults.RefreshIfStale();
-        try { OnStarting(); }
-        catch (Exception ex) { Logger.LogWarning(ex, "{Script} OnStarting threw", _displayName); }
-
         lock (_gate)
         {
+            // Nothing above this line may touch the script's settings: a second start of a script
+            // that is already running — its global hotkey firing on the message-pump thread while
+            // the page's Start button calls in from the UI thread — would otherwise rewrite the
+            // keys of a run in flight, with the run loop reading them on every tick and no lock
+            // between the two. FedSuitMacro.Start() checks _running before rescanning for the
+            // same reason.
             if (_state == ScriptState.Running) return true;
+
+            // The ARK bindings are scanned once at app start, and the app outlives a session of
+            // rebinding keys in ARK's options screen by hours. A start is the last moment the
+            // answer is still cheap to correct, so the scan is re-checked here and the scripts
+            // that resolve a key from it re-read their defaults.
+            ArkKeyDefaults.RefreshIfStale();
+            try { OnStarting(); }
+            catch (Exception ex) { Logger.LogWarning(ex, "{Script} OnStarting threw", _displayName); }
+
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
             ResetRunCounters();
