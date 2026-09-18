@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Media;
 
@@ -15,6 +16,10 @@ public sealed record MediaConvertResult(bool Success, string Message, string? Ou
 /// Deliberately separate from <see cref="IVideoConverter"/>, which exists to put a video
 /// into one of ARK's two movie containers with a volume tweak. That one is load-bearing for
 /// the Loading Screen page and is left alone.
+///
+/// Every <see cref="MediaConvertResult.Message"/> is what the Convert page puts in a toast, so
+/// it is worded here in the reader's language — the "a service that words a page's messages is
+/// part of that page" rule from docs/i18n.md.
 /// </summary>
 public interface IMediaConverter
 {
@@ -41,11 +46,13 @@ public sealed class MediaConverter : IMediaConverter
 
     private readonly ILogger<MediaConverter> _logger;
     private readonly IFfmpegProvider _ffmpeg;
+    private readonly ILocalizer _localizer;
 
-    public MediaConverter(ILogger<MediaConverter> logger, IFfmpegProvider ffmpeg)
+    public MediaConverter(ILogger<MediaConverter> logger, IFfmpegProvider ffmpeg, ILocalizer localizer)
     {
         _logger = logger;
         _ffmpeg = ffmpeg;
+        _localizer = localizer;
     }
 
     public async Task<MediaConvertResult> ConvertAsync(
@@ -57,22 +64,22 @@ public sealed class MediaConverter : IMediaConverter
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
-            return new MediaConvertResult(false, "That file no longer exists.", null);
+            return new MediaConvertResult(false, _localizer.T("convert.svc.gone"), null);
 
         var format = MediaFormats.Normalize(targetFormat);
         if (string.IsNullOrEmpty(format))
-            return new MediaConvertResult(false, "Pick a format to convert to.", null);
+            return new MediaConvertResult(false, _localizer.T("convert.svc.noformat"), null);
 
         var kind = MediaFormats.KindOf(sourcePath);
         if (kind == MediaKind.Unknown)
-            return new MediaConvertResult(false, $"{Path.GetExtension(sourcePath)} files aren't supported.", null);
+            return new MediaConvertResult(false, _localizer.T("convert.unsupported", Path.GetExtension(sourcePath)), null);
 
         if (!MediaFormats.IsCompatible(kind, format))
-            return new MediaConvertResult(false, $"A {kind.ToString().ToLowerInvariant()} can't be converted to {format}.", null);
+            return new MediaConvertResult(false, _localizer.T("convert.svc.wrongkind", format), null);
 
         var ffmpegPath = _ffmpeg.FfmpegPath;
         if (!File.Exists(ffmpegPath))
-            return new MediaConvertResult(false, "The converter isn't ready yet — give it a moment to set up.", null);
+            return new MediaConvertResult(false, _localizer.T("convert.svc.notready"), null);
 
         var directory = string.IsNullOrWhiteSpace(outputDirectory)
             ? Path.GetDirectoryName(sourcePath)!
@@ -144,17 +151,17 @@ public sealed class MediaConverter : IMediaConverter
                 _logger.LogWarning("ffmpeg exited {Code} converting {Source} to {Format}: {Tail}",
                     process.ExitCode, sourcePath, format, tail);
                 TryDelete(outputPath);
-                return new MediaConvertResult(false, $"Couldn't convert to {format}. The file may be damaged or use an unusual codec.", null);
+                return new MediaConvertResult(false, _localizer.T("convert.svc.failed", format), null);
             }
 
             if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
             {
                 TryDelete(outputPath);
-                return new MediaConvertResult(false, "The conversion produced an empty file.", null);
+                return new MediaConvertResult(false, _localizer.T("convert.svc.empty"), null);
             }
 
             progress?.Report(100);
-            return new MediaConvertResult(true, $"Saved as {Path.GetFileName(outputPath)}.", outputPath);
+            return new MediaConvertResult(true, _localizer.T("convert.svc.saved", Path.GetFileName(outputPath)), outputPath);
         }
         catch (OperationCanceledException)
         {
@@ -165,7 +172,7 @@ public sealed class MediaConverter : IMediaConverter
         {
             _logger.LogError(ex, "Converting {Source} to {Format} failed", sourcePath, format);
             TryDelete(outputPath);
-            return new MediaConvertResult(false, $"Conversion failed: {ex.Message}", null);
+            return new MediaConvertResult(false, _localizer.T("convert.error.failed", ex.Message), null);
         }
     }
 

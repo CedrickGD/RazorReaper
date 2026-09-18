@@ -2197,6 +2197,88 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Steam/SteamFavoritesService.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Convert</h1>",
+            "Turn a video, image or audio file into another format.",
+            ">Cancel</button>",
+            "\"Choose file\" : \"Change file\"",
+            "\"Convert & replace\" : \"Convert\"",
+            ">Nothing loaded yet</div>",
+            "and every format it can become.",
+            ">Choose file</button>",
+            "<h3>Preview</h3>",
+            "alt=\"Waveform of @_sourceName\"",
+            "alt=\"Preview of @_sourceName\"",
+            "\"Rendering preview…\" : \"No preview available\"",
+            ">Trim</span>",
+            "kept</span>",
+            ">Reset</button>",
+            "aria-label=\"Trim start\"",
+            "aria-label=\"Trim end\"",
+            ">Start here</button>",
+            ">End here</button>",
+            ">Play selection</button>",
+            ">@_info.Kind</span>",
+            "<h3>Convert to</h3>",
+            "\"This is what the file already is\"",
+            ">Quality</span>",
+            "aria-label=\"Quality\"",
+            ">Volume</span>",
+            "aria-label=\"Volume\"",
+            ">No audio at all</CheckBox>",
+            "<h3>When it's done</h3>",
+            ">Save to</span>",
+            "Saved to the RazorReaper folder — Windows locks that one.",
+            ">Replace in ARK</span>",
+            "Swap the <code>.mp4</code>",
+            "<h3>Converted</h3>",
+            ">Show in folder</button>",
+            "Replacing an ARK loading screen?",
+            "page manages them all.",
+            "\"Downloads\"),",
+            "\"Next to the original\"",
+            "\"RazorReaper folder\"",
+            "\"Choose a folder…\"",
+            "\"Don't replace anything\"",
+            "\" — already replaced\"",
+            "\"Converting…\"",
+            "\"No file chosen\"",
+            "Long videos take a while",
+            "Pick a video, image or audio file to get started.",
+            "$\"Saved as {Path.GetFileName(_lastOutput)}.\"",
+            "this re-encodes rather than converts.",
+            "file — pick a format and convert.",
+            "files aren't supported.",
+            "Windows would not open the file dialog.",
+            "\"Could not choose a folder.\"",
+            "Setting the converter up",
+            "Could not set the converter up.",
+            "\"Conversion cancelled.\"",
+            "$\"Conversion failed:",
+            "the free monthly limit for loading-screen replacements",
+            "$\"Converted, but could not replace it:",
+        })
+        {
+            data.Add("Components/Pages/FileConverter.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"That file no longer exists.\"",
+            "\"Pick a format to convert to.\"",
+            "files aren't supported.",
+            "can't be converted to",
+            "The converter isn't ready yet",
+            "The file may be damaged or use an unusual codec.",
+            "\"The conversion produced an empty file.\"",
+            "$\"Saved as {Path.GetFileName(outputPath)}.\"",
+            "$\"Conversion failed: {ex.Message}\"",
+        })
+        {
+            data.Add("Services/Media/MediaConverter.cs", literal);
+        }
+
         return data;
     }
 
