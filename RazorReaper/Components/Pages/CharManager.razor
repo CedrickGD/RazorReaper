@@ -2,17 +2,19 @@
 @using System.Globalization
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 
 @inject ICharPresetService PresetService
 @inject INotificationService Notifications
 @inject IActivityService Activity
 @inject IProcessService ProcessService
+@inject ILocalizer Localizer
 @inject ILogger<CharManager> Logger
 
 <div class="char-manager-page">
     <header class="page-header">
-        <h1 class="page-title">Char Manager</h1>
-        <p class="page-subtitle">Manage the appearance presets saved on ARK's character creation screen.</p>
+        <h1 class="page-title">@Localizer.T("charmanager.title")</h1>
+        <p class="page-subtitle">@Localizer.T("charmanager.subtitle")</p>
     </header>
 
     @if (!_arkFound)
@@ -23,9 +25,9 @@
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
             </div>
-            <h3>ARK installation not found</h3>
-            <p>RazorReaper couldn't locate ARK: Survival Evolved through Steam. Make sure the game is installed, then rescan.</p>
-            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
+            <h3>@Localizer.T("charmanager.noark.title")</h3>
+            <p>@Localizer.T("charmanager.noark.text")</p>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">@Localizer.T("charmanager.rescan")</button>
         </div>
     }
     else if (!_folderFound)
@@ -36,33 +38,33 @@
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                 </svg>
             </div>
-            <h3>Presets folder missing</h3>
-            <p>The ARK install was found, but SavedArksLocal doesn't exist yet. Start the game once, then rescan.</p>
+            <h3>@Localizer.T("charmanager.nofolder.title")</h3>
+            <p>@Localizer.T("charmanager.nofolder.text")</p>
             <p class="cm-empty-path">@_presetsFolder</p>
-            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">@Localizer.T("charmanager.rescan")</button>
         </div>
     }
     else
     {
         <StatusHeader State="online" Label="@HeaderLabel" Description="@_presetsFolder">
             <Actions>
-                <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">Rescan</button>
-                <button type="button" class="btn btn-secondary" @onclick="OpenPresetsFolder" disabled="@_busy">Open folder</button>
-                <button type="button" class="btn btn-primary" @onclick="ImportPresetAsync" disabled="@_busy">Import…</button>
+                <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">@Localizer.T("charmanager.rescan")</button>
+                <button type="button" class="btn btn-secondary" @onclick="OpenPresetsFolder" disabled="@_busy">@Localizer.T("charmanager.openfolder")</button>
+                <button type="button" class="btn btn-primary" @onclick="ImportPresetAsync" disabled="@_busy">@Localizer.T("charmanager.import")</button>
             </Actions>
         </StatusHeader>
 
         <div class="content-card cm-info-card">
-            <p class="cm-info-text">Presets are the saved templates on ARK's character creation screen — changes here apply the next time you create a character.</p>
-            <p class="cm-info-note">Before a preset is deleted or edited, a copy is kept in <code>@_backupFolder</code>.</p>
+            <p class="cm-info-text">@Localizer.T("charmanager.info.text")</p>
+            <p class="cm-info-note">@Localizer.T("charmanager.info.note") <code>@_backupFolder</code></p>
         </div>
 
         <div class="content-card cm-presets-card">
             @if (_presets.Count == 0)
             {
                 <div class="cm-empty-state">
-                    <p>No character presets yet.</p>
-                    <p>Save one in-game from the character creation screen, or import a .arkcharactersetting file.</p>
+                    <p>@Localizer.T("charmanager.empty.title")</p>
+                    <p>@Localizer.T("charmanager.empty.text")</p>
                 </div>
             }
             else
@@ -78,25 +80,25 @@
                                            @bind="_renameValue"
                                            @bind:event="oninput"
                                            @onkeydown="e => OnRenameKeyDown(e)"
-                                           placeholder="New name" />
-                                    <button type="button" class="btn btn-primary" @onclick="ConfirmRenameAsync" disabled="@_busy">Save</button>
-                                    <button type="button" class="btn btn-secondary" @onclick="CancelRename" disabled="@_busy">Cancel</button>
+                                           placeholder="@Localizer.T("charmanager.rename.placeholder")" />
+                                    <button type="button" class="btn btn-primary" @onclick="ConfirmRenameAsync" disabled="@_busy">@Localizer.T("common.save")</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="CancelRename" disabled="@_busy">@Localizer.T("common.cancel")</button>
                                 }
                                 else if (_confirmDeleteFile == preset.FileName)
                                 {
-                                    <span class="cm-confirm-text">Delete this preset?</span>
-                                    <button type="button" class="btn btn-danger" @onclick="() => ConfirmDeleteAsync(preset)" disabled="@_busy">Delete</button>
-                                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete" disabled="@_busy">Cancel</button>
+                                    <span class="cm-confirm-text">@Localizer.T("charmanager.delete.confirm")</span>
+                                    <button type="button" class="btn btn-danger" @onclick="() => ConfirmDeleteAsync(preset)" disabled="@_busy">@Localizer.T("common.delete")</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete" disabled="@_busy">@Localizer.T("common.cancel")</button>
                                 }
                                 else
                                 {
                                     <button type="button" class="btn btn-secondary" @onclick="() => ToggleEditorAsync(preset)" disabled="@_busy">
-                                        @(_editorFile == preset.FileName ? "Close" : "Edit")
+                                        @Localizer.T(_editorFile == preset.FileName ? "common.close" : "common.edit")
                                     </button>
-                                    <button type="button" class="btn btn-secondary" @onclick="() => StartRename(preset)" disabled="@_busy">Rename</button>
-                                    <button type="button" class="btn btn-secondary" @onclick="() => DuplicateAsync(preset)" disabled="@_busy">Duplicate</button>
-                                    <button type="button" class="btn btn-secondary" @onclick="() => ExportAsync(preset)" disabled="@_busy">Export</button>
-                                    <button type="button" class="btn btn-danger" @onclick="() => StartDelete(preset)" disabled="@_busy">Delete</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="() => StartRename(preset)" disabled="@_busy">@Localizer.T("charmanager.rename")</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="() => DuplicateAsync(preset)" disabled="@_busy">@Localizer.T("charmanager.duplicate")</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="() => ExportAsync(preset)" disabled="@_busy">@Localizer.T("charmanager.export")</button>
+                                    <button type="button" class="btn btn-danger" @onclick="() => StartDelete(preset)" disabled="@_busy">@Localizer.T("common.delete")</button>
                                 }
                             </SettingRow>
 
@@ -105,19 +107,19 @@
                                 <div class="cm-editor">
                                     @if (_document is null)
                                     {
-                                        <div class="cm-editor-loading">Reading preset…</div>
+                                        <div class="cm-editor-loading">@Localizer.T("charmanager.editor.loading")</div>
                                     }
                                     else
                                     {
                                         @if (_document.ColorSliders.Count > 0)
                                         {
                                             <div class="cm-editor-section">
-                                                <div class="cm-editor-title">Colors</div>
+                                                <div class="cm-editor-title">@Localizer.T("charmanager.editor.colors")</div>
                                                 <div class="cm-slider-grid">
                                                     @foreach (var slider in _document.ColorSliders)
                                                     {
                                                         <div class="cm-slider" @key="slider.Key">
-                                                            <span class="cm-slider-label">@slider.Label</span>
+                                                            <span class="cm-slider-label">@SliderLabel(slider)</span>
                                                             <input type="range" min="0" max="1" step="0.01"
                                                                    value="@SliderAttr(slider.Value)"
                                                                    @oninput="e => OnSliderInput(slider, e)" />
@@ -130,12 +132,12 @@
                                         @if (_document.BoneSliders.Count > 0)
                                         {
                                             <div class="cm-editor-section">
-                                                <div class="cm-editor-title">Body proportions</div>
+                                                <div class="cm-editor-title">@Localizer.T("charmanager.editor.body")</div>
                                                 <div class="cm-slider-grid">
                                                     @foreach (var slider in _document.BoneSliders)
                                                     {
                                                         <div class="cm-slider" @key="slider.Key">
-                                                            <span class="cm-slider-label">@slider.Label</span>
+                                                            <span class="cm-slider-label">@SliderLabel(slider)</span>
                                                             <input type="range" min="0" max="1" step="0.01"
                                                                    value="@SliderAttr(slider.Value)"
                                                                    @oninput="e => OnSliderInput(slider, e)" />
@@ -146,11 +148,11 @@
                                             </div>
                                         }
                                         <div class="cm-editor-footer">
-                                            <span class="cm-editor-note">A backup copy is saved before changes are written.</span>
+                                            <span class="cm-editor-note">@Localizer.T("charmanager.editor.note")</span>
                                             <div class="cm-editor-actions">
-                                                <button type="button" class="btn btn-secondary" @onclick="ResetEditor" disabled="@(_busy || !_editorDirty)">Reset</button>
+                                                <button type="button" class="btn btn-secondary" @onclick="ResetEditor" disabled="@(_busy || !_editorDirty)">@Localizer.T("common.reset")</button>
                                                 <button type="button" class="btn btn-primary" @onclick="SaveEditorAsync" disabled="@(_busy || !_editorDirty)">
-                                                    @(_saving ? "Saving…" : "Save changes")
+                                                    @Localizer.T(_saving ? "charmanager.editor.saving" : "charmanager.editor.save")
                                                 </button>
                                             </div>
                                         </div>
@@ -166,6 +168,9 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     private List<CharPresetInfo> _presets = new();
     private string? _presetsFolder;
     private string _backupFolder = "";
@@ -184,8 +189,44 @@
     private bool _editorDirty;
 
     private string HeaderLabel => _presets.Count == 1
-        ? "1 preset found"
-        : $"{_presets.Count} presets found";
+        ? Localizer.T("charmanager.header.one")
+        : Localizer.T("charmanager.header.many", _presets.Count);
+
+    /// <summary>
+    /// The slider names, resolved where they render. ARK's file names none of them: the parser
+    /// reports the raw property name and the index it was written at, and these are RazorReaper's
+    /// own words for those offsets — so they are translated, and named here rather than in the
+    /// parser, where a language switch would need the file read again to be seen.
+    /// </summary>
+    private string SliderLabel(CharPresetSlider slider) => slider.Key switch
+    {
+        "BodyColorSliderValue" => Localizer.T("charmanager.slider.skintone"),
+        "HairColorSliderValue" => Localizer.T("charmanager.slider.haircolor"),
+        "EyeColorSliderValue" => Localizer.T("charmanager.slider.eyecolor"),
+        "Bone0" => Localizer.T("charmanager.slider.headsize"),
+        "Bone1" => Localizer.T("charmanager.slider.necksize"),
+        "Bone2" => Localizer.T("charmanager.slider.necklength"),
+        "Bone3" => Localizer.T("charmanager.slider.chest"),
+        "Bone4" => Localizer.T("charmanager.slider.shoulders"),
+        "Bone5" => Localizer.T("charmanager.slider.armlength"),
+        "Bone6" => Localizer.T("charmanager.slider.upperarm"),
+        "Bone7" => Localizer.T("charmanager.slider.lowerarm"),
+        "Bone8" => Localizer.T("charmanager.slider.hand"),
+        "Bone9" => Localizer.T("charmanager.slider.leglength"),
+        "Bone10" => Localizer.T("charmanager.slider.upperleg"),
+        "Bone11" => Localizer.T("charmanager.slider.lowerleg"),
+        "Bone12" => Localizer.T("charmanager.slider.foot"),
+        "Bone13" => Localizer.T("charmanager.slider.hip"),
+        "Bone14" => Localizer.T("charmanager.slider.torsowidth"),
+        "Bone15" => Localizer.T("charmanager.slider.upperfacesize"),
+        "Bone16" => Localizer.T("charmanager.slider.lowerfacesize"),
+        "Bone17" => Localizer.T("charmanager.slider.torsodepth"),
+        "Bone18" => Localizer.T("charmanager.slider.headheight"),
+        "Bone19" => Localizer.T("charmanager.slider.headwidth"),
+        "Bone20" => Localizer.T("charmanager.slider.headdepth"),
+        "Bone21" => Localizer.T("charmanager.slider.torsoheight"),
+        _ => Localizer.T("charmanager.slider.unnamed", slider.Index + 1)
+    };
 
     protected override void OnInitialized()
     {
@@ -217,7 +258,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load the ARK character preset list");
-            Notifications.ShowError("Could not read the character presets folder — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.readfailed"));
         }
     }
 
@@ -236,7 +277,7 @@
         {
             if (ProcessService.IsProcessRunning("ShooterGame"))
             {
-                Notifications.ShowWarning("ARK is running — reopen the character creation screen to see the change.");
+                Notifications.ShowWarning(Localizer.T("charmanager.toast.arkrunning"));
             }
         }
         catch (Exception ex)
@@ -255,7 +296,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to open the presets folder");
-            Notifications.ShowError("Could not open the presets folder.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.openfolderfailed"));
         }
     }
 
@@ -292,7 +333,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity($"Renamed character preset to '{_renameValue.Trim()}'", "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.renamed", _renameValue.Trim()), "success");
                 if (_editorFile == fileName) CloseEditor();
                 CancelRename();
             }
@@ -304,7 +345,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Renaming preset {FileName} failed", fileName);
-            Notifications.ShowError("Renaming failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.renamefailed"));
         }
         finally
         {
@@ -326,7 +367,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity($"Duplicated character preset '{preset.Name}'", "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.duplicated", preset.Name), "success");
             }
             else
             {
@@ -336,7 +377,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Duplicating preset {FileName} failed", preset.FileName);
-            Notifications.ShowError("Duplicating failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.duplicatefailed"));
         }
         finally
         {
@@ -370,7 +411,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity($"Deleted character preset '{preset.Name}'", "warning");
+                Activity.AddActivity(Localizer.T("charmanager.activity.deleted", preset.Name), "warning");
                 if (_editorFile == preset.FileName) CloseEditor();
             }
             else
@@ -381,7 +422,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Deleting preset {FileName} failed", preset.FileName);
-            Notifications.ShowError("Deleting failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.deletefailed"));
         }
         finally
         {
@@ -406,7 +447,7 @@
             });
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Select a .arkcharactersetting preset file",
+                PickerTitle = Localizer.T("charmanager.picker.import"),
                 FileTypes = fileTypes
             });
             picked = result?.FullPath;
@@ -414,7 +455,7 @@
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Preset file picker failed");
-            Notifications.ShowError("Could not open the file picker.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.pickerfailed"));
             return;
         }
 
@@ -427,7 +468,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity("Imported a character preset", "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.imported"), "success");
             }
             else
             {
@@ -437,7 +478,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Importing preset from {Path} failed", picked);
-            Notifications.ShowError("Importing failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.importfailed"));
         }
         finally
         {
@@ -458,7 +499,7 @@
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Folder picker failed");
-            Notifications.ShowError("Could not open the folder picker.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.folderpickerfailed"));
             return;
         }
 
@@ -471,7 +512,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity($"Exported character preset '{preset.Name}'", "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.exported", preset.Name), "success");
             }
             else
             {
@@ -481,7 +522,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Exporting preset {FileName} failed", preset.FileName);
-            Notifications.ShowError("Exporting failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.exportfailed"));
         }
         finally
         {
@@ -532,7 +573,7 @@
         }
         else
         {
-            Notifications.ShowError(result.Error ?? "Could not read this preset.");
+            Notifications.ShowError(result.Error ?? Localizer.T("charmanager.toast.parsefailed"));
             CloseEditor();
         }
     }
@@ -580,7 +621,9 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity($"Edited character preset '{Path.GetFileNameWithoutExtension(_document.FileName)}'", "success");
+                Activity.AddActivity(
+                    Localizer.T("charmanager.activity.edited", Path.GetFileNameWithoutExtension(_document.FileName)),
+                    "success");
                 _originalValues = _document.ColorSliders.Concat(_document.BoneSliders).Select(s => s.Value).ToList();
                 _editorDirty = false;
             }
@@ -592,7 +635,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Saving preset edits failed");
-            Notifications.ShowError("Saving failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("charmanager.toast.savefailed"));
         }
         finally
         {

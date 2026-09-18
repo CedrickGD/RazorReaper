@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services
 {
@@ -18,10 +19,15 @@ namespace RazorReaper.Services
     /// One editable float slider inside a preset file, anchored to the absolute byte
     /// offset of its little-endian float value so edits can be patched in place.
     /// </summary>
+    /// <remarks>
+    /// The slider is not named here. ARK's file names none of them — the names on the page are
+    /// RazorReaper's own words for these offsets — so the parser reports the raw property name
+    /// and the index it was written at, and Char Manager does the naming where it renders.
+    /// </remarks>
     public class CharPresetSlider
     {
         public string Key { get; init; } = "";
-        public string Label { get; init; } = "";
+        public int Index { get; init; }
         public int ByteOffset { get; init; }
         public float Value { get; set; }
     }
@@ -92,54 +98,38 @@ namespace RazorReaper.Services.Implementations
         private const string PresetExtension = ".arkcharactersetting";
         private const string FileTypeMarker = "PrimalCharacterSetting";
 
-        // ── Slider-label dataset v1 ──────────────────────────────────────────
-        // Order matches the BoneModifierSliderValues array as serialized by the
-        // game, which is the same index order the in-game creation UI and the
-        // SetTargetPlayerBodyVal console command use. Values run 0..1.
-        private static readonly string[] BoneSliderLabels =
-        {
-            "Head Size",        // 0
-            "Neck Size",        // 1
-            "Neck Length",      // 2
-            "Chest",            // 3
-            "Shoulders",        // 4
-            "Arm Length",       // 5
-            "Upper Arm",        // 6
-            "Lower Arm",        // 7
-            "Hand",             // 8
-            "Leg Length",       // 9
-            "Upper Leg",        // 10
-            "Lower Leg",        // 11
-            "Foot",             // 12
-            "Hip",              // 13
-            "Torso Width",      // 14
-            "Upper Face Size",  // 15
-            "Lower Face Size",  // 16
-            "Torso Depth",      // 17
-            "Head Height",      // 18
-            "Head Width",       // 19
-            "Head Depth",       // 20
-            "Torso Height"      // 21
-        };
+        // ── Slider dataset v1 ────────────────────────────────────────────────
+        // The bone sliders are identified by their position in the
+        // BoneModifierSliderValues array as the game serializes it, which is the same index
+        // order the in-game creation UI and the SetTargetPlayerBodyVal console command use.
+        // Values run 0..1. What each index is called is Char Manager's business, not this
+        // parser's — see CharPresetSlider.
 
         // Color-slider properties observed in real files. HairColorSliderValue is
         // part of the format spec but absent from the sampled files — it is shown
         // whenever a file carries it.
-        private static readonly Dictionary<string, string> ColorSliderLabels = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> ColorSliderNames = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["BodyColorSliderValue"] = "Skin Tone",
-            ["HairColorSliderValue"] = "Hair Color",
-            ["EyeColorSliderValue"] = "Eye Color"
+            "BodyColorSliderValue",
+            "HairColorSliderValue",
+            "EyeColorSliderValue"
         };
 
         private readonly ILogger<CharPresetService> _logger;
         private readonly IArkPathProvider _arkPathProvider;
+
+        // Char Manager renders every one of these results verbatim, so the service words them.
+        private readonly ILocalizer _localizer;
         private readonly string _backupRoot;
 
-        public CharPresetService(ILogger<CharPresetService> logger, IArkPathProvider arkPathProvider)
+        public CharPresetService(
+            ILogger<CharPresetService> logger,
+            IArkPathProvider arkPathProvider,
+            ILocalizer localizer)
         {
             _logger = logger;
             _arkPathProvider = arkPathProvider;
+            _localizer = localizer;
             _backupRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "RazorReaper",
@@ -235,28 +225,28 @@ namespace RazorReaper.Services.Implementations
                     var trimmed = (newName ?? "").Trim();
                     if (!IsSafeFileName(trimmed))
                     {
-                        return new CharPresetOperationResult(false, "The new name is empty or contains characters Windows does not allow in file names.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.badname"));
                     }
 
                     var targetPath = Path.Combine(folder!, trimmed + PresetExtension);
                     if (string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase))
                     {
-                        return new CharPresetOperationResult(true, "The preset already has that name.");
+                        return new CharPresetOperationResult(true, _localizer.T("charmanager.result.samename"));
                     }
 
                     if (File.Exists(targetPath))
                     {
-                        return new CharPresetOperationResult(false, $"A preset named '{trimmed}' already exists.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.nameexists", trimmed));
                     }
 
                     File.Move(sourcePath, targetPath);
                     _logger.LogInformation("Renamed character preset {Old} to {New}", fileName, trimmed + PresetExtension);
-                    return new CharPresetOperationResult(true, $"Renamed to '{trimmed}'.");
+                    return new CharPresetOperationResult(true, _localizer.T("charmanager.result.renamed", trimmed));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to rename character preset {FileName}", fileName);
-                    return new CharPresetOperationResult(false, $"Renaming failed: {ex.Message}");
+                    return new CharPresetOperationResult(false, _localizer.T("charmanager.result.renamefailed", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -279,12 +269,12 @@ namespace RazorReaper.Services.Implementations
                     File.Copy(sourcePath, targetPath, overwrite: false);
                     var newName = Path.GetFileNameWithoutExtension(targetPath);
                     _logger.LogInformation("Duplicated character preset {FileName} as {NewName}", fileName, newName);
-                    return new CharPresetOperationResult(true, $"Duplicated as '{newName}'.");
+                    return new CharPresetOperationResult(true, _localizer.T("charmanager.result.duplicated", newName));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to duplicate character preset {FileName}", fileName);
-                    return new CharPresetOperationResult(false, $"Duplicating failed: {ex.Message}");
+                    return new CharPresetOperationResult(false, _localizer.T("charmanager.result.duplicatefailed", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -304,12 +294,13 @@ namespace RazorReaper.Services.Implementations
                     var backupPath = BackupCopy(sourcePath);
                     File.Delete(sourcePath);
                     _logger.LogInformation("Deleted character preset {FileName}, backup at {BackupPath}", fileName, backupPath);
-                    return new CharPresetOperationResult(true, $"Deleted '{Path.GetFileNameWithoutExtension(fileName)}' — a backup copy was kept.");
+                    return new CharPresetOperationResult(true,
+                        _localizer.T("charmanager.result.deleted", Path.GetFileNameWithoutExtension(fileName)));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to delete character preset {FileName}", fileName);
-                    return new CharPresetOperationResult(false, $"Deleting failed: {ex.Message}");
+                    return new CharPresetOperationResult(false, _localizer.T("charmanager.result.deletefailed", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -323,27 +314,27 @@ namespace RazorReaper.Services.Implementations
                     var folder = GetPresetsFolderPath();
                     if (folder is null)
                     {
-                        return new CharPresetOperationResult(false, "ARK installation not found — is the game installed through Steam?");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.noark"));
                     }
 
                     if (!Directory.Exists(folder))
                     {
-                        return new CharPresetOperationResult(false, $"The presets folder is missing: {folder}");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.nofolder", folder));
                     }
 
                     if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
                     {
-                        return new CharPresetOperationResult(false, "The selected file no longer exists.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.sourcemissing"));
                     }
 
                     if (!string.Equals(Path.GetExtension(sourcePath), PresetExtension, StringComparison.OrdinalIgnoreCase))
                     {
-                        return new CharPresetOperationResult(false, $"Character presets use the {PresetExtension} extension.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.wrongextension", PresetExtension));
                     }
 
                     if (!LooksLikePresetFile(sourcePath))
                     {
-                        return new CharPresetOperationResult(false, "That file is not a valid ARK character preset.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.notapreset"));
                     }
 
                     var baseName = Path.GetFileNameWithoutExtension(sourcePath);
@@ -361,12 +352,12 @@ namespace RazorReaper.Services.Implementations
                     File.Copy(sourcePath, targetPath, overwrite: false);
                     var newName = Path.GetFileNameWithoutExtension(targetPath);
                     _logger.LogInformation("Imported character preset {Source} as {NewName}", sourcePath, newName);
-                    return new CharPresetOperationResult(true, $"Imported '{newName}' — it shows up on the character creation screen.");
+                    return new CharPresetOperationResult(true, _localizer.T("charmanager.result.imported", newName));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to import character preset from {SourcePath}", sourcePath);
-                    return new CharPresetOperationResult(false, $"Importing failed: {ex.Message}");
+                    return new CharPresetOperationResult(false, _localizer.T("charmanager.result.importfailed", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -385,7 +376,7 @@ namespace RazorReaper.Services.Implementations
 
                     if (string.IsNullOrWhiteSpace(destinationFolder) || !Directory.Exists(destinationFolder))
                     {
-                        return new CharPresetOperationResult(false, "The chosen destination folder does not exist.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.nodestination"));
                     }
 
                     var baseName = Path.GetFileNameWithoutExtension(fileName);
@@ -397,12 +388,12 @@ namespace RazorReaper.Services.Implementations
 
                     File.Copy(sourcePath, targetPath, overwrite: false);
                     _logger.LogInformation("Exported character preset {FileName} to {TargetPath}", fileName, targetPath);
-                    return new CharPresetOperationResult(true, $"Exported to {targetPath}");
+                    return new CharPresetOperationResult(true, _localizer.T("charmanager.result.exported", targetPath));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to export character preset {FileName}", fileName);
-                    return new CharPresetOperationResult(false, $"Exporting failed: {ex.Message}");
+                    return new CharPresetOperationResult(false, _localizer.T("charmanager.result.exportfailed", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -424,7 +415,7 @@ namespace RazorReaper.Services.Implementations
 
                     if (document.ColorSliders.Count == 0 && document.BoneSliders.Count == 0)
                     {
-                        return new CharPresetParseResult(false, null, "No editable sliders were found in this preset.");
+                        return new CharPresetParseResult(false, null, _localizer.T("charmanager.result.nosliders"));
                     }
 
                     return new CharPresetParseResult(true, document, null);
@@ -432,7 +423,7 @@ namespace RazorReaper.Services.Implementations
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to parse character preset {FileName}", fileName);
-                    return new CharPresetParseResult(false, null, $"This file is not in the expected preset format: {ex.Message}");
+                    return new CharPresetParseResult(false, null, _localizer.T("charmanager.result.badformat", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -452,7 +443,7 @@ namespace RazorReaper.Services.Implementations
                     var bytes = File.ReadAllBytes(sourcePath);
                     if (bytes.Length != document.FileLength)
                     {
-                        return new CharPresetOperationResult(false, "The preset file changed on disk since it was opened — close and reopen the editor.");
+                        return new CharPresetOperationResult(false, _localizer.T("charmanager.result.changedondisk"));
                     }
 
                     var sliders = document.ColorSliders.Concat(document.BoneSliders).ToList();
@@ -460,7 +451,7 @@ namespace RazorReaper.Services.Implementations
                     {
                         if (slider.ByteOffset < 0 || slider.ByteOffset + 4 > bytes.Length)
                         {
-                            return new CharPresetOperationResult(false, "Internal offset mismatch — reopen the editor and try again.");
+                            return new CharPresetOperationResult(false, _localizer.T("charmanager.result.offsetmismatch"));
                         }
                     }
 
@@ -475,12 +466,13 @@ namespace RazorReaper.Services.Implementations
                     File.WriteAllBytes(sourcePath, bytes);
                     _logger.LogInformation("Saved slider edits to character preset {FileName}, backup at {BackupPath}",
                         document.FileName, backupPath);
-                    return new CharPresetOperationResult(true, $"Saved changes to '{Path.GetFileNameWithoutExtension(document.FileName)}'.");
+                    return new CharPresetOperationResult(true,
+                        _localizer.T("charmanager.result.saved", Path.GetFileNameWithoutExtension(document.FileName)));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to save character preset {FileName}", document.FileName);
-                    return new CharPresetOperationResult(false, $"Saving failed: {ex.Message}");
+                    return new CharPresetOperationResult(false, _localizer.T("charmanager.result.savefailed", ex.Message));
                 }
             }, cancellationToken);
         }
@@ -576,12 +568,11 @@ namespace RazorReaper.Services.Implementations
                     switch (type)
                     {
                         case "FloatProperty":
-                            if (ColorSliderLabels.TryGetValue(name, out var colorLabel))
+                            if (ColorSliderNames.Contains(name))
                             {
                                 document.ColorSliders.Add(new CharPresetSlider
                                 {
                                     Key = name,
-                                    Label = colorLabel,
                                     ByteOffset = pos,
                                     Value = ReadFloatAt(pos)
                                 });
@@ -601,7 +592,7 @@ namespace RazorReaper.Services.Implementations
                                     document.BoneSliders.Add(new CharPresetSlider
                                     {
                                         Key = $"Bone{i}",
-                                        Label = i < BoneSliderLabels.Length ? BoneSliderLabels[i] : $"Slider {i + 1}",
+                                        Index = i,
                                         ByteOffset = pos,
                                         Value = ReadFloatAt(pos)
                                     });
@@ -634,23 +625,23 @@ namespace RazorReaper.Services.Implementations
             var folder = GetPresetsFolderPath();
             if (folder is null)
             {
-                return (null, null, "ARK installation not found — is the game installed through Steam?");
+                return (null, null, _localizer.T("charmanager.result.noark"));
             }
 
             if (!Directory.Exists(folder))
             {
-                return (null, null, $"The presets folder is missing: {folder}");
+                return (null, null, _localizer.T("charmanager.result.nofolder", folder));
             }
 
             if (!IsSafePresetFileName(fileName))
             {
-                return (null, null, "Invalid preset file name.");
+                return (null, null, _localizer.T("charmanager.result.badfilename"));
             }
 
             var fullPath = Path.Combine(folder, fileName);
             if (!File.Exists(fullPath))
             {
-                return (null, null, $"{fileName} no longer exists — rescan the list.");
+                return (null, null, _localizer.T("charmanager.result.gone", fileName));
             }
 
             return (folder, fullPath, null);

@@ -1458,6 +1458,102 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/FileModifier/FileModifierService.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Char Manager</h1>",
+            "Manage the appearance presets saved on ARK's character creation screen.",
+            "<h3>ARK installation not found</h3>",
+            "RazorReaper couldn't locate ARK: Survival Evolved",
+            "<h3>Presets folder missing</h3>",
+            "SavedArksLocal doesn't exist yet",
+            ">Rescan</button>",
+            "\"1 preset found\"",
+            "presets found\"",
+            ">Open folder</button>",
+            ">Import…</button>",
+            "Presets are the saved templates",
+            "a copy is kept in",
+            ">No character presets yet.</p>",
+            "Save one in-game from the character creation screen",
+            "placeholder=\"New name\"",
+            ">Save</button>",
+            ">Cancel</button>",
+            ">Delete this preset?</span>",
+            ">Delete</button>",
+            "\"Close\" : \"Edit\"",
+            ">Rename</button>",
+            ">Duplicate</button>",
+            ">Export</button>",
+            ">Reading preset…</div>",
+            ">Colors</div>",
+            ">Body proportions</div>",
+            "A backup copy is saved before changes are written.",
+            ">Reset</button>",
+            "\"Saving…\" : \"Save changes\"",
+            "Could not read the character presets folder",
+            "ARK is running — reopen the character creation screen",
+            "Could not open the presets folder.",
+            "Renamed character preset to",
+            "Renaming failed —",
+            "Duplicated character preset",
+            "Duplicating failed —",
+            "Deleted character preset",
+            "Deleting failed —",
+            "Select a .arkcharactersetting preset file",
+            "Could not open the file picker.",
+            "Imported a character preset",
+            "Importing failed —",
+            "Could not open the folder picker.",
+            "Exported character preset",
+            "Exporting failed —",
+            "Could not read this preset.",
+            "Edited character preset",
+            "Saving failed —",
+        })
+        {
+            data.Add("Components/Pages/CharManager.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"Head Size\"",
+            "\"Torso Height\"",
+            "\"Skin Tone\"",
+            "\"Hair Color\"",
+            "\"Eye Color\"",
+            "Slider {i + 1}",
+            "The new name is empty or contains characters Windows",
+            "The preset already has that name.",
+            "already exists.\"",
+            "Renamed to",
+            "Renaming failed:",
+            "Duplicated as",
+            "Duplicating failed:",
+            "a backup copy was kept.",
+            "Deleting failed:",
+            "ARK installation not found — is the game installed through Steam?",
+            "The presets folder is missing:",
+            "Invalid preset file name.",
+            "no longer exists — rescan the list.",
+            "The selected file no longer exists.",
+            "extension.\"",
+            "That file is not a valid ARK character preset.",
+            "it shows up on the character creation screen.",
+            "Importing failed:",
+            "The chosen destination folder does not exist.",
+            "Exported to",
+            "Exporting failed:",
+            "No editable sliders were found in this preset.",
+            "This file is not in the expected preset format:",
+            "The preset file changed on disk since it was opened",
+            "Internal offset mismatch",
+            "Saved changes to",
+            "Saving failed:",
+        })
+        {
+            data.Add("Services/CharPresetService.cs", literal);
+        }
+
         return data;
     }
 
