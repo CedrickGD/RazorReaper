@@ -200,4 +200,81 @@ public sealed class LanguageSwitchReachesTheChromeTests
 
         Assert.Equal(page.Keywords, PalettePages.ToItem(page, page.Label).Keywords);
     }
+
+    /// <summary>
+    /// The row's supporting line and its badge move with the language too. Leaving either behind
+    /// is the half-translated look in miniature: a German page name over an English description.
+    /// </summary>
+    [Fact]
+    public void APageRowsSubtitleAndBadgeReadInTheActiveLanguage()
+    {
+        var localizer = New();
+        var page = NavCatalog.FindByRoute("/stretched-res")!;
+        var german = TranslationParityTests.Read("de");
+
+        var english = PalettePages.ToItem(page, localizer);
+        Assert.Equal(page.Description, english.Subtitle);
+        Assert.Equal(page.Category, english.Category);
+
+        localizer.SetLanguage(AppLanguages.German);
+        var translated = PalettePages.ToItem(page, localizer);
+
+        Assert.Equal(german[page.DescriptionKey], translated.Subtitle);
+        Assert.Equal(german["nav.group.custom-ark"], translated.Category);
+        Assert.NotEqual(page.Description, translated.Subtitle);
+    }
+
+    /// <summary>
+    /// The English description is the palette's weakest-scoring field and the one people type at
+    /// from memory. Translating the subtitle would have taken it out of the index; it moves into
+    /// the keywords instead.
+    /// </summary>
+    [Fact]
+    public void TheEnglishDescriptionStaysSearchableAfterTheRowIsTranslated()
+    {
+        var page = NavCatalog.FindByRoute("/compact-ark")!;
+        var translated = PalettePages.ToItem(page, "ARK verkleinern", "Andere Worte", "Werkzeuge");
+
+        Assert.Contains(page.Description, translated.Keywords);
+        Assert.Contains(translated, PaletteSearch.Rank([translated], "ntfs compression"));
+    }
+
+    // ---- Deep links and commands --------------------------------------------
+
+    /// <summary>
+    /// A deep link's frame is translated and its contents are not: "Ragnarok" is ARK's spelling
+    /// of a place, in every language, and a row nobody can spell is a row nobody can reach.
+    /// </summary>
+    [Fact]
+    public void ADeepLinkTranslatesItsFrameAndKeepsItsProperNouns()
+    {
+        var localizer = New();
+        localizer.SetLanguage(AppLanguages.German);
+        var german = TranslationParityTests.Read("de");
+
+        var rows = DeepLinkIndex.Items(localizer);
+        var caves = rows.Where(r => r.Category == german["nav.page.map-mods"]).ToArray();
+
+        Assert.NotEmpty(caves);
+        Assert.All(caves, row => Assert.StartsWith(german["nav.page.map-mods"], row.Subtitle, StringComparison.Ordinal));
+        Assert.Contains(rows, r => r.Title == "Ragnarok");
+    }
+
+    /// <summary>Each language gets its own built index, and the English one is not disturbed.</summary>
+    [Fact]
+    public void TheDeepLinkIndexIsBuiltPerLanguage()
+    {
+        var localizer = New();
+
+        var english = DeepLinkIndex.Items(localizer);
+        localizer.SetLanguage(AppLanguages.Russian);
+        var russian = DeepLinkIndex.Items(localizer);
+
+        Assert.Equal(english.Count, russian.Count);
+        Assert.NotEqual(english[0].Subtitle, russian[0].Subtitle);
+        Assert.Equal(english[0].Title, russian[0].Title);
+
+        localizer.SetLanguage(AppLanguages.English);
+        Assert.Same(english, DeepLinkIndex.Items(localizer));
+    }
 }

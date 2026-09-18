@@ -141,9 +141,70 @@ public sealed class TranslatedSurfaceTests
             "new(\"Recent\"",
             "new(\"Jump to\"",
             "Title = page.Label",
+            "<kbd>↑</kbd><kbd>↓</kbd> navigate",
+            "? \"run\" : \"open\"",
+            ">esc</kbd> close",
+            "No results for",
+            "of {_totalMatches}",
+            "result{(_flat.Count == 1",
         })
         {
             data.Add("Components/Shared/GlobalSearch.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Subtitle = \"Automation script",
+            "? \"Running\" : null",
+            "started.\"",
+            "stopped.\"",
+            "Title = \"Stop all scripts\"",
+            "Halts every running automation script",
+            "running\" : null",
+            "No scripts were running.",
+            "Title = \"Toggle crosshair overlay\"",
+            "? \"On\" : null",
+            "\"Crosshair on.\"",
+            "Title = \"Toggle HUD overlay\"",
+            "\"HUD overlay on.\"",
+            "Title = \"Toggle Auto Antidote\"",
+            "_antidote.State.ToString()",
+            "Auto Antidote needs calibration first",
+            "\"Auto Antidote watching.\"",
+            "Title = \"Toggle Fed Suit run\"",
+            "$\"Cycle {_fedSuit.CurrentCycle}\"",
+            "\"Fed Suit stopped.\"",
+            "Fed Suit couldn't start",
+            "$\"Gamma: {name}\"",
+            "$\"Apply gamma",
+            "$\"Gamma set to {name}.\"",
+            "Windows clamped the",
+            "The display driver rejected the",
+            "Title = \"Reset gamma to default\"",
+            "Restores the system gamma ramp",
+            "\"Gamma reset to default.\"",
+            "Title = \"Launch ARK\"",
+            "Starts the game through Steam",
+            "= \"Script\"",
+            "= \"Command\"",
+        })
+        {
+            data.Add("Navigation/PaletteCommandProvider.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "= \"TP Locations\"",
+            "= \"Underwater Drops\"",
+            "= \"Map Mods\"",
+            "= \"Bosses\"",
+            "· {count} locations",
+            "· {count} crates",
+            "· {count} spots",
+            "{map.Bosses.Count} entries",
+        })
+        {
+            data.Add("Navigation/DeepLinkIndex.cs", literal);
         }
 
         foreach (var literal in new[]
@@ -389,6 +450,10 @@ public sealed class TranslatedSurfaceTests
     [InlineData("nav.page.feedback", "Feedback & Support")]
     [InlineData("palette.placeholder", "Search pages, locations and commands...")]
     [InlineData("palette.section.jumpto", "Jump to")]
+    [InlineData("nav.page.home.description", "Dashboard, updates & recent activity")]
+    [InlineData("palette.category.command", "Command")]
+    [InlineData("palette.cmd.launch.title", "Launch ARK")]
+    [InlineData("palette.deeplink.parent", "{0} · {1}")]
     [InlineData("license.buy.renew", "Buy / renew")]
     [InlineData("license.buy.premium", "Buy Premium")]
     [InlineData("license.fact.device.bound", "Bound to this PC")]
@@ -513,27 +578,93 @@ public sealed class TranslatedSurfaceTests
         foreach (var page in RazorReaper.Navigation.NavCatalog.Pages)
         {
             yield return ("NavCatalog.cs", page.LabelKey);
+            yield return ("NavCatalog.cs", page.DescriptionKey);
         }
     }
 
     /// <summary>
-    /// Every key the app spells out, with the file that spells it. Three shapes: the ordinary
+    /// Every key the app spells out, with the file that spells it. Three call shapes: the ordinary
     /// <c>Localizer.T("…")</c>, and the update manager's two, which hold a key and its arguments
     /// so a status line that sits on screen for a session can be re-read after a switch.
+    ///
+    /// Which key a call asks for is not always its first token. <c>T(on ? "a.on" : "a.off")</c> is
+    /// the shape a toggle's two messages take all over the app, and reading only the literal that
+    /// directly follows the bracket declared both of them dead. So the whole argument list is
+    /// read, and every key-shaped literal in it counts as asked for.
     /// </summary>
     private static IEnumerable<(string File, string Key)> UsedKeys()
     {
         var root = Path.Combine(TranslationParityTests.RepositoryRoot(), "RazorReaper");
-        // "Localizer.T(" must match, so only a word character in front rules a T( call out.
-        var pattern = new Regex(@"(?:(?<!\w)T|SetStatus|new StatusLine)\(\s*""(?<key>[^""]+)""");
 
         foreach (var path in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
                      .Where(IsProjectSource))
         {
-            foreach (Match match in pattern.Matches(File.ReadAllText(path)))
+            var source = File.ReadAllText(path);
+
+            foreach (var key in KeysAskedFor(source))
             {
-                yield return (Path.GetFileName(path), match.Groups["key"].Value);
+                yield return (Path.GetFileName(path), key);
             }
+        }
+    }
+
+    /// <summary>"Localizer.T(" must match, so only a word character in front rules a T( call out.</summary>
+    private static readonly Regex CallSite = new(@"(?:(?<!\w)T|SetStatus|new StatusLine)\(");
+
+    /// <summary>
+    /// A dictionary key as it is written: lowercase, dotted, hyphens inside a segment. Tight
+    /// enough that an ordinary argument — a name, a path, a number — is not mistaken for one, so
+    /// a key that really is dead still shows up as dead.
+    /// </summary>
+    private static readonly Regex KeyShaped = new(@"^[a-z][a-z0-9]*(?:\.[a-z0-9\-]+)+$");
+
+    private static IEnumerable<string> KeysAskedFor(string source)
+    {
+        foreach (Match call in CallSite.Matches(source))
+        {
+            foreach (var literal in ArgumentLiterals(source, call.Index + call.Length))
+            {
+                if (KeyShaped.IsMatch(literal)) yield return literal;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The string literals in one argument list, from just after its opening bracket to the
+    /// matching close. Nested brackets are followed so a call inside a call does not end it
+    /// early, and brackets inside a string or a char literal are stepped over rather than
+    /// counted — <c>Split('(')</c> in an argument would otherwise leave the list open and run
+    /// this off the end of the file.
+    /// </summary>
+    private static IEnumerable<string> ArgumentLiterals(string source, int start)
+    {
+        var depth = 1;
+
+        for (var i = start; i < source.Length; i++)
+        {
+            var c = source[i];
+
+            if (c == '"')
+            {
+                // A verbatim string is not used for a key anywhere, so only the ordinary
+                // escape has to be stepped over.
+                var end = i + 1;
+                while (end < source.Length && source[end] != '"') end += source[end] == '\\' ? 2 : 1;
+                if (end >= source.Length) yield break;
+
+                yield return source[(i + 1)..end];
+                i = end;
+            }
+            else if (c == '\'')
+            {
+                var end = i + 1;
+                while (end < source.Length && source[end] != '\'') end += source[end] == '\\' ? 2 : 1;
+                if (end >= source.Length) yield break;
+
+                i = end;
+            }
+            else if (c == '(') depth++;
+            else if (c == ')' && --depth == 0) yield break;
         }
     }
 

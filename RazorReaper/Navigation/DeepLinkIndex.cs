@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using RazorReaper.Components.Pages;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Navigation;
 
@@ -9,34 +11,59 @@ namespace RazorReaper.Navigation;
 /// Everything here is derived from the existing static datasets — adding a cave to
 /// <see cref="CaveDatabase"/> makes it searchable with no change on this side. The pages
 /// themselves read the matching query parameters and preselect what the link points at.
+///
+/// What is translated here is the frame, never the contents: the page a row belongs to and the
+/// count beside it. Map names, cave names, artifacts and bosses are ARK's own proper nouns and
+/// stay exactly as the game spells them — a "Ragnarok" translated into Russian is a row nobody
+/// can find, in either language.
 /// </summary>
 public static class DeepLinkIndex
 {
-    private const string TpLocations = "TP Locations";
-    private const string UnderwaterDrops = "Underwater Drops";
-    private const string MapMods = "Map Mods";
-    private const string Bosses = "Bosses";
+    /// <summary>
+    /// The four parent page names and the two templates that frame a row, resolved once per
+    /// build instead of per row: this index is ~1500 rows and every one of them would otherwise
+    /// take four dictionary lookups.
+    /// </summary>
+    private sealed record Frame(ILocalizer L, string TpLocations, string UnderwaterDrops, string MapMods, string Bosses)
+    {
+        public static Frame For(ILocalizer localizer) => new(
+            localizer,
+            localizer.T("nav.page.tp-locations"),
+            localizer.T("nav.page.underwater-drops"),
+            localizer.T("nav.page.map-mods"),
+            localizer.T("nav.page.bosses"));
 
-    // Built once, on first palette open, rather than at startup — the app launches into
-    // Home and most sessions never need this.
-    private static readonly Lazy<IReadOnlyList<PaletteItem>> Lazy = new(Build);
+        /// <summary>"Page · detail" — the separator lives in the dictionary, not in this file.</summary>
+        public string Sub(string page, string detail) => L.T("palette.deeplink.parent", page, detail);
 
-    public static IReadOnlyList<PaletteItem> Items => Lazy.Value;
+        public string Count(string key, int count) => L.T(key, count);
+    }
 
-    private static IReadOnlyList<PaletteItem> Build()
+    // Built on first palette open rather than at startup — the app launches into Home and most
+    // sessions never need this — and then once more per language that is actually used. Four
+    // cached lists is the worst case and only reached by someone touring the picker.
+    private static readonly ConcurrentDictionary<string, IReadOnlyList<PaletteItem>> Cache = new(StringComparer.Ordinal);
+
+    /// <summary>Every deep link, with its supporting text in the language <paramref name="localizer"/> is on.</summary>
+    public static IReadOnlyList<PaletteItem> Items(ILocalizer localizer)
+        => Cache.GetOrAdd(localizer.Language, _ => Build(Frame.For(localizer)));
+
+    private static IReadOnlyList<PaletteItem> Build(Frame frame)
     {
         var items = new List<PaletteItem>();
-        AddTpLocations(items);
-        AddUnderwaterDrops(items);
-        AddCaves(items);
-        AddBosses(items);
+        AddTpLocations(items, frame);
+        AddUnderwaterDrops(items, frame);
+        AddCaves(items, frame);
+        AddBosses(items, frame);
         return items;
     }
 
     // ---- TP Locations ------------------------------------------------------
 
-    private static void AddTpLocations(List<PaletteItem> items)
+    private static void AddTpLocations(List<PaletteItem> items, Frame frame)
     {
+        var page = frame.TpLocations;
+
         foreach (var map in TpLocationData.Maps)
         {
             var count = TpLocationData.Entries.Count(e => e.Map == map);
@@ -47,8 +74,8 @@ public static class DeepLinkIndex
                 Kind = PaletteKind.DeepLink,
                 Id = $"tp:map:{map}",
                 Title = map,
-                Subtitle = $"{TpLocations} · {count} locations",
-                Category = TpLocations,
+                Subtitle = frame.Sub(page, frame.L.T("palette.deeplink.tp.count", count)),
+                Category = page,
                 IconSvg = NavIcons.MapPin,
                 Route = $"/tp-locations?map={Encode(map)}",
                 Keywords = ["tp", "teleport", "map", "coordinates", "setplayerpos"]
@@ -62,8 +89,8 @@ public static class DeepLinkIndex
                 Kind = PaletteKind.DeepLink,
                 Id = $"tp:{entry.Map}|{entry.Name}",
                 Title = entry.Name,
-                Subtitle = $"{TpLocations} · {entry.Map}",
-                Category = TpLocations,
+                Subtitle = frame.Sub(page, entry.Map),
+                Category = page,
                 IconSvg = NavIcons.TpLocations,
                 Route = $"/tp-locations?map={Encode(entry.Map)}&q={Encode(entry.Name)}",
                 Keywords = [entry.Map, entry.Category, "tp", "teleport", "coordinates"]
@@ -73,8 +100,10 @@ public static class DeepLinkIndex
 
     // ---- Underwater Drops --------------------------------------------------
 
-    private static void AddUnderwaterDrops(List<PaletteItem> items)
+    private static void AddUnderwaterDrops(List<PaletteItem> items, Frame frame)
     {
+        var page = frame.UnderwaterDrops;
+
         foreach (var map in UnderwaterDropsData.Maps)
         {
             var count = UnderwaterDropsData.Drops.Count(d => d.Map == map);
@@ -85,8 +114,8 @@ public static class DeepLinkIndex
                 Kind = PaletteKind.DeepLink,
                 Id = $"uw:map:{map}",
                 Title = map,
-                Subtitle = $"{UnderwaterDrops} · {count} crates",
-                Category = UnderwaterDrops,
+                Subtitle = frame.Sub(page, frame.L.T("palette.deeplink.uw.count", count)),
+                Category = page,
                 IconSvg = NavIcons.MapPin,
                 Route = $"/underwater-drops?map={Encode(map)}",
                 Keywords = ["underwater", "drops", "loot", "deep sea", "ocean", "map"]
@@ -105,8 +134,8 @@ public static class DeepLinkIndex
                 Kind = PaletteKind.DeepLink,
                 Id = id,
                 Title = drop.Area,
-                Subtitle = $"{UnderwaterDrops} · {drop.Map}",
-                Category = UnderwaterDrops,
+                Subtitle = frame.Sub(page, drop.Map),
+                Category = page,
                 IconSvg = NavIcons.UnderwaterDrops,
                 Route = $"/underwater-drops?map={Encode(drop.Map)}&q={Encode(drop.Area)}",
                 Keywords = [drop.Map, drop.Tier.ToString(), "underwater", "drop", "loot", "crate"]
@@ -116,8 +145,10 @@ public static class DeepLinkIndex
 
     // ---- Map Mods (cave database) -----------------------------------------
 
-    private static void AddCaves(List<PaletteItem> items)
+    private static void AddCaves(List<PaletteItem> items, Frame frame)
     {
+        var page = frame.MapMods;
+
         foreach (var map in CaveDatabase.Maps)
         {
             var count = CaveDatabase.All.Count(c => c.Map == map);
@@ -128,8 +159,8 @@ public static class DeepLinkIndex
                 Kind = PaletteKind.DeepLink,
                 Id = $"cave:map:{map}",
                 Title = map,
-                Subtitle = $"{MapMods} · {count} spots",
-                Category = MapMods,
+                Subtitle = frame.Sub(page, frame.L.T("palette.deeplink.cave.count", count)),
+                Category = page,
                 IconSvg = NavIcons.MapPin,
                 Route = $"/map-mods?map={Encode(map)}",
                 Keywords = ["cave", "caves", "spots", "map", "artifact", "poi"]
@@ -148,9 +179,9 @@ public static class DeepLinkIndex
                 Id = $"cave:{cave.Map}|{cave.Name}",
                 Title = cave.Name,
                 Subtitle = string.IsNullOrWhiteSpace(cave.Artifact)
-                    ? $"{MapMods} · {cave.Map}"
-                    : $"{MapMods} · {cave.Map} · {cave.Artifact}",
-                Category = MapMods,
+                    ? frame.Sub(page, cave.Map)
+                    : frame.Sub(page, frame.Sub(cave.Map, cave.Artifact)),
+                Category = page,
                 IconSvg = NavIcons.Caves,
                 Route = $"/map-mods?map={Encode(cave.Map)}&spot={Encode(cave.Name)}",
                 Keywords = keywords
@@ -160,8 +191,10 @@ public static class DeepLinkIndex
 
     // ---- Bosses ------------------------------------------------------------
 
-    private static void AddBosses(List<PaletteItem> items)
+    private static void AddBosses(List<PaletteItem> items, Frame frame)
     {
+        var page = frame.Bosses;
+
         foreach (var map in Components.Pages.Bosses.BossMaps)
         {
             if (map.Bosses.Count == 0) continue;
@@ -171,8 +204,8 @@ public static class DeepLinkIndex
                 Kind = PaletteKind.DeepLink,
                 Id = $"boss:map:{map.Name}",
                 Title = map.Name,
-                Subtitle = $"{Bosses} · {map.Bosses.Count} entries",
-                Category = Bosses,
+                Subtitle = frame.Sub(page, frame.L.T("palette.deeplink.boss.count", map.Bosses.Count)),
+                Category = page,
                 IconSvg = NavIcons.MapPin,
                 Route = $"/bosses?map={Encode(map.Name)}",
                 Keywords = ["boss", "bosses", "tribute", "map", "requirements"]
@@ -189,8 +222,8 @@ public static class DeepLinkIndex
                     Kind = PaletteKind.DeepLink,
                     Id = $"boss:{map.Name}|{boss.Name}",
                     Title = boss.Name,
-                    Subtitle = $"{Bosses} · {map.Name}",
-                    Category = Bosses,
+                    Subtitle = frame.Sub(page, map.Name),
+                    Category = page,
                     IconSvg = NavIcons.Boss,
                     Route = $"/bosses?map={Encode(map.Name)}&boss={Encode(boss.Name)}",
                     Keywords = keywords

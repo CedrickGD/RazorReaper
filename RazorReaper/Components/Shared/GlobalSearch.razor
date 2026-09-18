@@ -81,9 +81,11 @@
 
                 <div class="search-footer">
                     <span class="search-footer-hints">
-                        <kbd>↑</kbd><kbd>↓</kbd> navigate
-                        <kbd>↵</kbd> @(SelectedItem?.Kind == PaletteKind.Command ? "run" : "open")
-                        <kbd>esc</kbd> close
+                        <kbd>↑</kbd><kbd>↓</kbd> @Localizer.T("palette.hint.navigate")
+                        <kbd>↵</kbd> @(SelectedItem?.Kind == PaletteKind.Command
+                            ? Localizer.T("palette.hint.run")
+                            : Localizer.T("palette.hint.open"))
+                        <kbd>esc</kbd> @Localizer.T("palette.hint.close")
                     </span>
                     <span class="search-footer-count">@CountLabel</span>
                 </div>
@@ -91,7 +93,7 @@
             else if (!string.IsNullOrWhiteSpace(_query))
             {
                 <div class="search-empty">
-                    <span>No results for "<strong>@_query</strong>"</span>
+                    <span>@Localizer.T("palette.empty.lead")<strong>@_query</strong>@Localizer.T("palette.empty.rest")</span>
                 </div>
             }
         </div>
@@ -149,8 +151,8 @@
         _selectedIndex >= 0 && _selectedIndex < _flat.Count ? _flat[_selectedIndex] : null;
 
     private string CountLabel => _totalMatches > _flat.Count
-        ? $"{_flat.Count} of {_totalMatches}"
-        : $"{_flat.Count} result{(_flat.Count == 1 ? "" : "s")}";
+        ? Localizer.T("palette.count.capped", _flat.Count, _totalMatches)
+        : Localizer.T(_flat.Count == 1 ? "palette.count.one" : "palette.count.many", _flat.Count);
 
     private static string RowId(int index) => $"rr-search-row-{index}";
 
@@ -312,9 +314,10 @@
 
     private List<PaletteItem> BuildCandidates()
     {
-        var items = new List<PaletteItem>(NavCatalog.Pages.Count + DeepLinkIndex.Items.Count + 32);
+        var deepLinks = DeepLinkIndex.Items(Localizer);
+        var items = new List<PaletteItem>(NavCatalog.Pages.Count + deepLinks.Count + 32);
         items.AddRange(NavCatalog.Pages.Select(ToPaletteItem));
-        items.AddRange(DeepLinkIndex.Items);
+        items.AddRange(deepLinks);
 
         try
         {

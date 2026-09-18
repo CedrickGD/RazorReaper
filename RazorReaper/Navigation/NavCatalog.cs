@@ -25,6 +25,14 @@ public sealed record NavPage(
     /// English original, which is what diagnostics, telemetry and Rich Presence report.
     /// </summary>
     public string LabelKey => "nav.page." + NavCatalog.Normalize(Route).Replace('/', '.');
+
+    /// <summary>
+    /// Where the supporting line under the page's name is read from — the command palette's
+    /// subtitle. Derived the same way as <see cref="LabelKey"/> and for the same reason, and
+    /// <see cref="Description"/> stays the English original: the palette still matches on it,
+    /// so an English phrase someone remembers keeps finding the page in any language.
+    /// </summary>
+    public string DescriptionKey => LabelKey + ".description";
 }
 
 /// <summary>

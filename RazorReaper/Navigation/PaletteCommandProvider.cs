@@ -1,6 +1,8 @@
+using System.Globalization;
 using RazorReaper.Services;
 using RazorReaper.Services.Automation;
 using RazorReaper.Services.Gamma;
+using RazorReaper.Services.Localization;
 using RazorReaper.Services.Overlay;
 
 namespace RazorReaper.Navigation;
@@ -22,8 +24,8 @@ public interface IPaletteCommandProvider
 /// </summary>
 public sealed class PaletteCommandProvider : IPaletteCommandProvider
 {
-    private const string ScriptCategory = "Script";
-    private const string CommandCategory = "Command";
+    private string ScriptCategory => _localizer.T("palette.category.script");
+    private string CommandCategory => _localizer.T("palette.category.command");
 
     private readonly IEnumerable<AutomationScriptBase> _scripts;
     private readonly IGammaService _gamma;
@@ -33,6 +35,7 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
     private readonly IFedSuitMacro _fedSuit;
     private readonly IArkLauncher _launcher;
     private readonly INotificationService _notifications;
+    private readonly ILocalizer _localizer;
 
     public PaletteCommandProvider(
         IEnumerable<AutomationScriptBase> scripts,
@@ -42,7 +45,8 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         IAutoAntidoteService antidote,
         IFedSuitMacro fedSuit,
         IArkLauncher launcher,
-        INotificationService notifications)
+        INotificationService notifications,
+        ILocalizer localizer)
     {
         _scripts = scripts;
         _gamma = gamma;
@@ -52,7 +56,17 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         _fedSuit = fedSuit;
         _launcher = launcher;
         _notifications = notifications;
+        _localizer = localizer;
     }
+
+    /// <summary>
+    /// Shorthand for the dictionary. Resolved when the row is built — the palette rebuilds its
+    /// candidates on every open, so a language switch is picked up the next time it is opened,
+    /// and a Status callback re-reads its own string on every render.
+    /// </summary>
+    private string T(string key) => _localizer.T(key);
+
+    private string T(string key, params object?[] args) => _localizer.T(key, args);
 
     public IReadOnlyList<PaletteItem> GetCommands()
     {
@@ -76,17 +90,17 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
                 Kind = PaletteKind.Command,
                 Id = $"script:{captured.ScriptKey}",
                 Title = captured.DisplayName,
-                Subtitle = "Automation script — Enter to toggle",
+                Subtitle = T("palette.cmd.script.subtitle"),
                 Category = ScriptCategory,
                 IconSvg = NavIcons.ScriptsHub,
                 Keywords = [captured.ScriptKey, "script", "start", "stop", "toggle", "run", "automation"],
-                Status = () => captured.IsRunning ? "Running" : null,
+                Status = () => captured.IsRunning ? T("palette.status.running") : null,
                 Invoke = () =>
                 {
                     captured.Toggle();
-                    _notifications.ShowInfo(captured.IsRunning
-                        ? $"{captured.DisplayName} started."
-                        : $"{captured.DisplayName} stopped.");
+                    _notifications.ShowInfo(T(
+                        captured.IsRunning ? "palette.cmd.script.started" : "palette.cmd.script.stopped",
+                        captured.DisplayName));
                     return Task.CompletedTask;
                 }
             });
@@ -97,15 +111,15 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "script:stop-all",
-            Title = "Stop all scripts",
-            Subtitle = "Halts every running automation script",
+            Title = T("palette.cmd.stopall.title"),
+            Subtitle = T("palette.cmd.stopall.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.Stop,
             Keywords = ["stop", "all", "scripts", "halt", "kill", "panic", "abort"],
             Status = () =>
             {
                 var running = _scripts.Count(s => s.IsRunning);
-                return running > 0 ? $"{running} running" : null;
+                return running > 0 ? T("palette.cmd.stopall.status", running) : null;
             },
             Invoke = () =>
             {
@@ -117,8 +131,10 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
                     stopped++;
                 }
 
-                if (stopped > 0) _notifications.ShowSuccess($"Stopped {stopped} script{(stopped == 1 ? "" : "s")}.");
-                else _notifications.ShowInfo("No scripts were running.");
+                if (stopped > 0)
+                    _notifications.ShowSuccess(T(
+                        stopped == 1 ? "palette.cmd.stopall.done.one" : "palette.cmd.stopall.done.many", stopped));
+                else _notifications.ShowInfo(T("palette.cmd.stopall.none"));
                 return Task.CompletedTask;
             }
         });
@@ -132,16 +148,18 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "cmd:crosshair-toggle",
-            Title = "Toggle crosshair overlay",
-            Subtitle = "Shows or hides the always-on-top crosshair",
+            Title = T("palette.cmd.crosshair.title"),
+            Subtitle = T("palette.cmd.crosshair.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.Crosshair,
             Keywords = ["crosshair", "overlay", "toggle", "reticle", "aim", "dot"],
-            Status = () => _crosshair.IsOverlayActive ? "On" : null,
+            Status = () => _crosshair.IsOverlayActive ? T("palette.status.on") : null,
             Invoke = () =>
             {
                 _crosshair.ToggleOverlay();
-                _notifications.ShowInfo(_crosshair.IsOverlayActive ? "Crosshair on." : "Crosshair off.");
+                _notifications.ShowInfo(T(_crosshair.IsOverlayActive
+                    ? "palette.cmd.crosshair.on"
+                    : "palette.cmd.crosshair.off"));
                 return Task.CompletedTask;
             }
         });
@@ -150,16 +168,16 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "cmd:hud-toggle",
-            Title = "Toggle HUD overlay",
-            Subtitle = "Shows or hides the in-game HUD panel",
+            Title = T("palette.cmd.hud.title"),
+            Subtitle = T("palette.cmd.hud.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.Hud,
             Keywords = ["hud", "overlay", "toggle", "clock", "timer", "osd", "on-screen"],
-            Status = () => _hud.IsRunning ? "On" : null,
+            Status = () => _hud.IsRunning ? T("palette.status.on") : null,
             Invoke = () =>
             {
                 _hud.Toggle();
-                _notifications.ShowInfo(_hud.IsRunning ? "HUD overlay on." : "HUD overlay off.");
+                _notifications.ShowInfo(T(_hud.IsRunning ? "palette.cmd.hud.on" : "palette.cmd.hud.off"));
                 return Task.CompletedTask;
             }
         });
@@ -168,12 +186,17 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "cmd:antidote-toggle",
-            Title = "Toggle Auto Antidote",
-            Subtitle = "Starts or stops the antidote HUD watcher",
+            Title = T("palette.cmd.antidote.title"),
+            Subtitle = T("palette.cmd.antidote.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.Antidote,
             Keywords = ["antidote", "auto", "toggle", "watcher", "debuff", "cure"],
-            Status = () => _antidote.State == AutoAntidoteState.Off ? null : _antidote.State.ToString(),
+            Status = () => _antidote.State switch
+            {
+                AutoAntidoteState.Watching => T("palette.cmd.antidote.state.watching"),
+                AutoAntidoteState.Cooldown => T("palette.cmd.antidote.state.cooldown"),
+                _ => null
+            },
             Invoke = () =>
             {
                 _antidote.Toggle();
@@ -182,13 +205,13 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
                     // Start() refuses when the icon region or reference snapshot is missing,
                     // so say why rather than silently doing nothing.
                     if (!_antidote.HasRegion || !_antidote.HasReference)
-                        _notifications.ShowWarning("Auto Antidote needs calibration first — open the page to set it up.");
+                        _notifications.ShowWarning(T("palette.cmd.antidote.calibrate"));
                     else
-                        _notifications.ShowInfo("Auto Antidote stopped.");
+                        _notifications.ShowInfo(T("palette.cmd.antidote.stopped"));
                 }
                 else
                 {
-                    _notifications.ShowInfo("Auto Antidote watching.");
+                    _notifications.ShowInfo(T("palette.cmd.antidote.watching"));
                 }
                 return Task.CompletedTask;
             }
@@ -198,26 +221,26 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "cmd:fedsuit-toggle",
-            Title = "Toggle Fed Suit run",
-            Subtitle = "Starts or stops the transmitter transfer loop",
+            Title = T("palette.cmd.fedsuit.title"),
+            Subtitle = T("palette.cmd.fedsuit.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.FedSuit,
             Keywords = ["fed suit", "federation", "transmitter", "toggle", "start", "stop", "grind"],
-            Status = () => _fedSuit.IsRunning ? $"Cycle {_fedSuit.CurrentCycle}" : null,
+            Status = () => _fedSuit.IsRunning ? T("palette.cmd.fedsuit.status", _fedSuit.CurrentCycle) : null,
             Invoke = () =>
             {
                 if (_fedSuit.IsRunning)
                 {
                     _fedSuit.Stop();
-                    _notifications.ShowInfo("Fed Suit stopped.");
+                    _notifications.ShowInfo(T("palette.cmd.fedsuit.stopped"));
                 }
                 else if (_fedSuit.Start())
                 {
-                    _notifications.ShowInfo("Fed Suit started.");
+                    _notifications.ShowInfo(T("palette.cmd.fedsuit.started"));
                 }
                 else
                 {
-                    _notifications.ShowWarning("Fed Suit couldn't start — check calibration on its page.");
+                    _notifications.ShowWarning(T("palette.cmd.fedsuit.failed"));
                 }
                 return Task.CompletedTask;
             }
@@ -239,8 +262,8 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
             {
                 Kind = PaletteKind.Command,
                 Id = $"gamma:{id}",
-                Title = $"Gamma: {name}",
-                Subtitle = $"Apply gamma {value:0.00}",
+                Title = T("palette.cmd.gamma.title", name),
+                Subtitle = T("palette.cmd.gamma.subtitle", value.ToString("0.00", CultureInfo.InvariantCulture)),
                 Category = CommandCategory,
                 IconSvg = NavIcons.Gamma,
                 Keywords = [name, "gamma", "brightness", "preset", "apply", "screen", "night", "dark"],
@@ -249,13 +272,13 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
                     switch (_gamma.ApplyPreset(id))
                     {
                         case GammaController.ApplyResult.Success:
-                            _notifications.ShowSuccess($"Gamma set to {name}.");
+                            _notifications.ShowSuccess(T("palette.cmd.gamma.applied", name));
                             break;
                         case GammaController.ApplyResult.ClampedByWindows:
-                            _notifications.ShowWarning($"Windows clamped the {name} curve — the change may be partial.");
+                            _notifications.ShowWarning(T("palette.cmd.gamma.clamped", name));
                             break;
                         default:
-                            _notifications.ShowError($"The display driver rejected the {name} gamma curve.");
+                            _notifications.ShowError(T("palette.cmd.gamma.rejected", name));
                             break;
                     }
                     return Task.CompletedTask;
@@ -267,15 +290,15 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "gamma:reset",
-            Title = "Reset gamma to default",
-            Subtitle = "Restores the system gamma ramp",
+            Title = T("palette.cmd.gamma.reset.title"),
+            Subtitle = T("palette.cmd.gamma.reset.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.Gamma,
             Keywords = ["gamma", "reset", "default", "restore", "normal", "brightness"],
             Invoke = () =>
             {
                 _gamma.ResetToDefault();
-                _notifications.ShowSuccess("Gamma reset to default.");
+                _notifications.ShowSuccess(T("palette.cmd.gamma.reset.done"));
                 return Task.CompletedTask;
             }
         });
@@ -289,8 +312,8 @@ public sealed class PaletteCommandProvider : IPaletteCommandProvider
         {
             Kind = PaletteKind.Command,
             Id = "cmd:launch-ark",
-            Title = "Launch ARK",
-            Subtitle = "Starts the game through Steam, BattlEye intact",
+            Title = T("palette.cmd.launch.title"),
+            Subtitle = T("palette.cmd.launch.subtitle"),
             Category = CommandCategory,
             IconSvg = NavIcons.Play,
             Keywords = ["launch", "start", "play", "ark", "game", "steam", "run"],
