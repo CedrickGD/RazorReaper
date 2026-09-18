@@ -59,12 +59,11 @@ internal static partial class CrosshairRenderer
         g.Clear(Color.Transparent);
         g.CompositingMode = CompositingMode.SourceOver;
 
-        // Translate to center. For an even-width canvas the geometric centre is on the BOUNDARY
-        // between two pixels — using `width/2f` puts the world origin at the right/bottom edge of
-        // the centre pixel, which then shows as a half-pixel down-right drift after the browser
-        // scales the bitmap. Subtracting 0.5 puts the origin on the actual pixel-grid centre.
-        var center = (target.Width - 1) / 2f;
-        g.TranslateTransform(center, center);
+        // Translate to the canvas's geometric centre. See CrosshairPlacement.CanvasOrigin for why
+        // this is the boundary between the two middle pixels and not the centre of one of them.
+        var centerX = CrosshairPlacement.CanvasOrigin(target.Width);
+        var centerY = CrosshairPlacement.CanvasOrigin(target.Height);
+        g.TranslateTransform(centerX, centerY);
 
         var rotation = profile.Rotation;
         if (profile.Animation == CrosshairAnimation.Rotate)

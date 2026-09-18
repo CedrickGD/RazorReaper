@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using RazorReaper.Models;
+using Brush = System.Drawing.Brush;
 using Color = System.Drawing.Color;
 using PointF = System.Drawing.PointF;
 using LineCap = System.Drawing.Drawing2D.LineCap;
@@ -17,24 +18,26 @@ internal static partial class CrosshairRenderer
 {
     private static void DrawCross(Graphics g, CrosshairProfile p, double sizeMul, Color body, Color outline)
     {
-        var len = (float)(p.Size * sizeMul);
+        // Whole-pixel geometry. Arms used to be Pen strokes centred on a zero-width path, which
+        // meant an even-thickness arm straddled a pixel boundary and GDI+ rendered it as
+        // thickness+1 columns with 50 %-alpha fringes — a blurred, apparently off-centre
+        // crosshair. Filling integer rectangles snapped via CrosshairPlacement.StrokeStart keeps
+        // every arm crisp and symmetric about the aim point.
+        var len = Math.Max(1, (int)Math.Round(p.Size * sizeMul, MidpointRounding.AwayFromZero));
         var gap = p.Gap;
         var thick = Math.Max(1, p.Thickness);
+        var ot = Math.Max(0, p.OutlineThickness);
 
-        using var bodyPen = new Pen(body, thick) { StartCap = LineCap.Flat, EndCap = LineCap.Flat };
-
-        // Draw outline first by stroking with a thicker pen of outline color.
-        if (p.OutlineThickness > 0)
+        // Outline first, as one pass over all four arms, so an arm's body is never painted over
+        // by a neighbouring arm's outline.
+        if (ot > 0)
         {
-            using var outlinePen = new Pen(outline, thick + p.OutlineThickness * 2)
-            {
-                StartCap = LineCap.Flat,
-                EndCap = LineCap.Flat
-            };
-            DrawCrossLines(g, p, gap, len, outlinePen);
+            using var outlineBrush = new SolidBrush(outline);
+            DrawCrossArms(g, p, gap, len, thick, ot, outlineBrush);
         }
 
-        DrawCrossLines(g, p, gap, len, bodyPen);
+        using var bodyBrush = new SolidBrush(body);
+        DrawCrossArms(g, p, gap, len, thick, 0, bodyBrush);
 
         if (p.ShowDot)
         {
@@ -42,17 +45,25 @@ internal static partial class CrosshairRenderer
         }
     }
 
-    private static void DrawCrossLines(Graphics g, CrosshairProfile p, int gap, float len, Pen pen)
+    /// <summary>
+    /// Fill the four cardinal arms. Each arm spans <c>gap .. gap+len</c> along its axis and
+    /// <paramref name="thick"/> pixels across it. <paramref name="outlineGrow"/> widens the arm
+    /// perpendicular to its axis only — matching what the old thicker-pen-with-flat-caps approach
+    /// produced, so the outline still hugs the long sides and does not cap the arm ends.
+    /// </summary>
+    private static void DrawCrossArms(Graphics g, CrosshairProfile p, int gap, int len, int thick, int outlineGrow, Brush brush)
     {
-        // Lines are drawn from gap..gap+len in each cardinal direction.
+        var across = CrosshairPlacement.StrokeStart(thick) - outlineGrow;
+        var acrossSize = thick + outlineGrow * 2;
+
         if (p.ShowTopLine)
-            g.DrawLine(pen, 0, -gap, 0, -gap - len);
+            g.FillRectangle(brush, across, -(gap + len), acrossSize, len);
         if (p.ShowBottomLine)
-            g.DrawLine(pen, 0, gap, 0, gap + len);
+            g.FillRectangle(brush, across, gap, acrossSize, len);
         if (p.ShowLeftLine)
-            g.DrawLine(pen, -gap, 0, -gap - len, 0);
+            g.FillRectangle(brush, -(gap + len), across, len, acrossSize);
         if (p.ShowRightLine)
-            g.DrawLine(pen, gap, 0, gap + len, 0);
+            g.FillRectangle(brush, gap, across, len, acrossSize);
     }
 
     private static void DrawDot(Graphics g, CrosshairProfile p, double sizeMul, Color body, Color outline)
@@ -187,9 +198,12 @@ internal static partial class CrosshairRenderer
             // shift the rendered crosshair lands ½-cell down and right of the aim point
             // and the marked centre cell visibly diverges from the rendered centre.
             var halfCells = gridSize / 2;
-            // Shift every cell so cell (halfCells, halfCells) is centred on the origin.
-            var originShiftX = -scale / 2f;
-            var originShiftY = -scale / 2f;
+            // Shift every cell so cell (halfCells, halfCells) is centred on the origin, snapped
+            // to whole pixels the same way a cross arm is: an odd cell size cannot straddle the
+            // aim point symmetrically, and rounding here (rather than leaving a .5 for GDI+ to
+            // resolve) keeps the grid deterministic instead of depending on the fill rule.
+            var originShiftX = (float)CrosshairPlacement.StrokeStart(scale);
+            var originShiftY = originShiftX;
 
             // If the user hasn't painted anything yet, draw a single centre pixel so the
             // crosshair is visible. Same outline-rect logic as a populated grid.

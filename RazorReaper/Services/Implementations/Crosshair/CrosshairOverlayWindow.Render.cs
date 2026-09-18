@@ -93,8 +93,11 @@ internal sealed partial class CrosshairOverlayWindow
         }
         CrosshairRenderer.RenderInto(bmp, profile, phase, imageFrame);
 
-        var screenX = monitor.X + monitor.Width / 2 - bmp.Width / 2 + profile.OffsetX;
-        var screenY = monitor.Y + monitor.Height / 2 - bmp.Height / 2 + profile.OffsetY;
+        // Placement math lives in CrosshairPlacement so it can be unit tested — the previous
+        // inline `monitor.Width / 2 - bmp.Width / 2` truncated twice and mis-placed the overlay
+        // by half a pixel on displays with an odd pixel dimension.
+        var (screenX, screenY) = CrosshairPlacement.ScreenTopLeft(
+            monitor, bmp.Width, bmp.Height, profile.OffsetX, profile.OffsetY);
 
         PushBitmapToWindow(bmp, screenX, screenY);
 
