@@ -391,7 +391,11 @@ html[data-sidebar-resizing] .sidebar {
 /* Plan marker on a row whose page is not in every plan. Same chip as the licence
    overlay's plan pill, sized down to sit inside a nav row — no new colour, and it
    keeps to the accent so it reads as a state and not as a warning. The label gives
-   up its space first, so the marker never gets clipped when the sidebar is narrow. */
+   up its space first, so the marker never gets clipped when the sidebar is narrow:
+   flex-shrink: 0 here, and the label's ellipsis above. Measured rather than assumed —
+   rendered in Chromium, "Lifetime" comes out 57px wide and sits inside the panel both
+   at the default 240px sidebar and at 171px, where its own row's label is down to an
+   ellipsis and 54px of text. */
 .panel-badge {
     flex-shrink: 0;
     margin-left: auto;
