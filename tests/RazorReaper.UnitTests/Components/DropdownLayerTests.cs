@@ -81,6 +81,55 @@ public sealed class DropdownLayerTests
     }
 
     /// <summary>
+    /// The trigger is sized to the label it happens to show, so a list that copied the trigger's
+    /// width was as narrow as whatever was selected: on Settings with English picked the list was
+    /// 82px and "中文 (简体)" read "中文 (…", and picking Chinese grew the same list to 103px. The
+    /// width comes from the list's own content now — the stylesheet grows it to its longest option
+    /// — and the trigger is only a floor, the window only a ceiling.
+    /// </summary>
+    [Fact]
+    public void TheListGrowsToItsLongestOptionInsteadOfCopyingTheTrigger()
+    {
+        var layer = Layer();
+
+        // The content decides the width. Without this the min-width below would be the width.
+        Assert.Contains("width: max-content;", PopRule(), StringComparison.Ordinal);
+
+        Assert.Contains("pop.style.minWidth = Math.round(rect.width) + 'px';", layer, StringComparison.Ordinal);
+        Assert.Contains("pop.style.maxWidth = Math.max(0, Math.round(vw - 2 * MARGIN)) + 'px';", layer, StringComparison.Ordinal);
+
+        // And nothing pins it to a fixed width again — that assignment was the defect. The only
+        // width the layer may write is the empty one that hands the element back to the stylesheet.
+        foreach (Match assignment in Regex.Matches(layer, @"pop\.style\.width\s*=\s*([^;]+);"))
+        {
+            Assert.Equal("''", assignment.Groups[1].Value.Trim());
+        }
+
+        // The horizontal clamp works from the width the list really took, measured after the
+        // min-width lands — the list is wider than the trigger now, and a capped one also grows
+        // its own scrollbar, so the trigger's rectangle is the wrong ruler for it.
+        var measured = layer.IndexOf("var width = pop.getBoundingClientRect().width;", StringComparison.Ordinal);
+        var floor = layer.IndexOf("pop.style.minWidth = Math.round(rect.width) + 'px';", StringComparison.Ordinal);
+        Assert.True(measured > 0 && floor > 0 && floor < measured, "The list's width must be measured after its min-width is applied.");
+        Assert.DoesNotContain("vw - rect.width - MARGIN", layer, StringComparison.Ordinal);
+
+        // Left edges aligned, right edges aligned when growing right would leave the window, and
+        // the clamp has the last word on both edges.
+        Assert.Contains("if (left + width > vw - MARGIN) left = rect.right - width;", layer, StringComparison.Ordinal);
+        Assert.Contains("left = Math.min(Math.max(MARGIN, left), Math.max(MARGIN, vw - width - MARGIN));", layer, StringComparison.Ordinal);
+
+        // A reopen starts from the stylesheet: a floor left over from another trigger would widen
+        // the next list, for the same reason the height reset is there.
+        var openFn = layer[layer.IndexOf("open: function", StringComparison.Ordinal)..layer.IndexOf("reveal: function", StringComparison.Ordinal)];
+        Assert.Contains("pop.style.minWidth = '';", openFn, StringComparison.Ordinal);
+        Assert.Contains("pop.style.maxWidth = '';", openFn, StringComparison.Ordinal);
+
+        // The label keeps its ellipsis: in a window too narrow for the longest option the list is
+        // capped, and a clipped label is the honest outcome there.
+        Assert.Contains("text-overflow: ellipsis;", Rule(".rr-dd-opt-label"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Dismissal moved into the layer, because the element it listens around is no longer painted
     /// inside the component's own card. A click on the trigger is not a dismissal: the trigger's
     /// own click closes the list, and closing here first would let that click reopen it.
@@ -181,11 +230,14 @@ public sealed class DropdownLayerTests
     }
 
     /// <summary>The .rr-dd-pop block in primitives.css, up to its closing brace.</summary>
-    private static string PopRule()
+    private static string PopRule() => Rule(".rr-dd-pop");
+
+    /// <summary>One rule block in primitives.css, from its selector to its closing brace.</summary>
+    private static string Rule(string selector)
     {
         var css = Primitives();
-        var start = css.IndexOf(".rr-dd-pop {", StringComparison.Ordinal);
-        Assert.True(start >= 0, "primitives.css must still style .rr-dd-pop.");
+        var start = css.IndexOf(selector + " {", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"primitives.css must still style {selector}.");
         return css[start..css.IndexOf('}', start)];
     }
 

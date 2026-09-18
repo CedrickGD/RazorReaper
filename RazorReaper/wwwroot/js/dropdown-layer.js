@@ -52,6 +52,15 @@
             return;
         }
 
+        // Width is a floor and a ceiling, never a fixed value. The trigger is content-sized
+        // around the selected label, so copying its width made the list as narrow as whatever
+        // happened to be picked: on Settings, "中文 (简体)" was ellipsized to "中文 (…" while
+        // English was selected, and the list changed width with the language. The stylesheet
+        // keeps the list at width:max-content so it grows to its longest option; here it only
+        // learns that it can never be narrower than the trigger, nor wider than the window.
+        pop.style.minWidth = Math.round(rect.width) + 'px';
+        pop.style.maxWidth = Math.max(0, Math.round(vw - 2 * MARGIN)) + 'px';
+
         // Measure unconstrained first, then cap to whichever side it opens on. state.cap is
         // the design cap read off the stylesheet, so the token stays in CSS.
         pop.style.maxHeight = '';
@@ -65,10 +74,21 @@
         var room = Math.max(MIN_HEIGHT, up ? above : below);
         var height = Math.min(wanted, room);
 
-        var left = Math.min(Math.max(MARGIN, rect.left), Math.max(MARGIN, vw - rect.width - MARGIN));
-
-        pop.style.width = rect.width + 'px';
         pop.style.maxHeight = height + 'px';
+
+        // The width the list actually took, measured with min-width, max-width and the cap all
+        // applied — a capped list grows its own scrollbar, which widens it. The trigger's width
+        // is no longer the list's width, so everything below has to use this one.
+        var width = pop.getBoundingClientRect().width;
+
+        // Left edges aligned is the default. A list wider than its trigger grows to the right,
+        // so a trigger near the right of the window — these pickers are right-aligned in their
+        // rows, and the window narrows — would push it off; align the right edges instead, the
+        // way a menu hangs from the control. The clamp is the last word either way.
+        var left = rect.left;
+        if (left + width > vw - MARGIN) left = rect.right - width;
+        left = Math.min(Math.max(MARGIN, left), Math.max(MARGIN, vw - width - MARGIN));
+
         pop.style.left = Math.round(left) + 'px';
         pop.style.top = Math.round(up ? Math.max(MARGIN, rect.top - GAP - height) : rect.bottom + GAP) + 'px';
         pop.classList.toggle('flip-up', up);
@@ -94,9 +114,13 @@
             // Start from the stylesheet, not from whatever a previous opening left inline:
             // the cap below is read back through getComputedStyle, which would otherwise
             // return the last placement's height and shrink the list a little more each time.
+            // The widths go with it — the placement measures the list's own max-content width,
+            // and a min-width left over from the last trigger would silently widen it.
             pop.style.top = '';
             pop.style.left = '';
             pop.style.width = '';
+            pop.style.minWidth = '';
+            pop.style.maxWidth = '';
             pop.style.maxHeight = '';
             pop.classList.remove('flip-up');
 

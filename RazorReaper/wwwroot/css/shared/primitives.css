@@ -723,14 +723,21 @@ input[type="range"].theme-hue-slider::-webkit-slider-runnable-track {
    card's overflow:hidden never touched the real cause. In the top layer nothing on the
    page can clip or cover it, so no card has to give up its rounded clipping any more.
 
-   top/left/width and the final max-height come from wwwroot/js/dropdown-layer.js, which
-   measures the trigger. max-height here is the design cap it reads and then narrows to
-   whatever room the window leaves. */
+   width: max-content, so the list is as wide as its longest option. The trigger is sized to
+   the label it currently shows, so a list that took the trigger's width was as narrow as
+   whatever was selected: "中文 (简体)" read "中文 (…" on Settings while English was picked,
+   and the list changed width with the language.
+
+   top/left, the min-width floor (the trigger), the max-width ceiling (the window) and the
+   final max-height come from wwwroot/js/dropdown-layer.js, which measures the trigger.
+   max-height here is the design cap it reads and then narrows to whatever room the window
+   leaves. */
 .rr-dd-pop {
     position: fixed;
     z-index: 61;
     margin: 0;
     inset: auto;
+    width: max-content;
     max-height: 280px;
     overflow-y: auto;
     padding: 0.25rem;
