@@ -95,7 +95,7 @@ public sealed class DiagnosticSnapshotServiceTests
             Assert.Contains(key, keys);
         }
 
-        Assert.Equal(17, keys.Count(key => key.StartsWith("script_", StringComparison.Ordinal)));
+        Assert.Equal(18, keys.Count(key => key.StartsWith("script_", StringComparison.Ordinal)));
         Assert.DoesNotContain(reports.SelectMany(report => report.Checks), check => Equals(check.Value, "included"));
     }
 
