@@ -37,6 +37,7 @@ namespace RazorReaper.Services.Overlay;
 internal sealed class HudOverlayWindow : IDisposable
 {
     private readonly ILogger _logger;
+    private readonly RazorReaper.Services.Localization.ILocalizer _localizer;
     /// <summary>Fired after a move-mode drag ends: (monitor-relative panel X, Y).</summary>
     private readonly Action<int, int> _onPanelMoved;
 
@@ -71,9 +72,13 @@ internal sealed class HudOverlayWindow : IDisposable
     private const string WindowClassName = "RazorReaperHudOverlay";
     private bool _classRegistered;
 
-    public HudOverlayWindow(ILogger logger, Action<int, int> onPanelMoved)
+    public HudOverlayWindow(
+        ILogger logger,
+        RazorReaper.Services.Localization.ILocalizer localizer,
+        Action<int, int> onPanelMoved)
     {
         _logger = logger;
+        _localizer = localizer;
         _onPanelMoved = onPanelMoved;
     }
 
@@ -583,24 +588,24 @@ internal sealed class HudOverlayWindow : IDisposable
             switch (m.Id)
             {
                 case HudModuleKind.Clock:
-                    rows.Add((m.Title.ToUpperInvariant(), snap.TimeText, TextValue, Array.Empty<(string, Color)>()));
+                    rows.Add((RowTitle(m), snap.TimeText, TextValue, Array.Empty<(string, Color)>()));
                     break;
                 case HudModuleKind.SessionTimer:
-                    rows.Add((m.Title.ToUpperInvariant(), snap.SessionText, TextValue, Array.Empty<(string, Color)>()));
+                    rows.Add((RowTitle(m), snap.SessionText, TextValue, Array.Empty<(string, Color)>()));
                     break;
                 case HudModuleKind.ServerInfo:
                 {
-                    var name = string.IsNullOrWhiteSpace(snap.Server.Name) ? "No server set" : snap.Server.Name!;
+                    var name = string.IsNullOrWhiteSpace(snap.Server.Name) ? _localizer.T("hud.server.none") : snap.Server.Name!;
                     var nameColor = string.IsNullOrWhiteSpace(snap.Server.Name) ? TextMuted : TextValue;
                     var sub = BuildServerSubSegments(snap.Server);
-                    rows.Add((m.Title.ToUpperInvariant(), name, nameColor, sub));
+                    rows.Add((RowTitle(m), name, nameColor, sub));
                     break;
                 }
                 case HudModuleKind.ToolStatus:
                 {
                     var active = !string.IsNullOrWhiteSpace(snap.ActiveTool);
-                    rows.Add((m.Title.ToUpperInvariant(),
-                        active ? snap.ActiveTool! : "Idle",
+                    rows.Add((RowTitle(m),
+                        active ? snap.ActiveTool! : _localizer.T("hud.tool.idle"),
                         active ? Color.FromArgb(235, accent) : TextMuted,
                         Array.Empty<(string, Color)>()));
                     break;
@@ -608,8 +613,8 @@ internal sealed class HudOverlayWindow : IDisposable
                 case HudModuleKind.Desync:
                 {
                     var active = snap.DesyncSeconds.HasValue;
-                    rows.Add((m.Title.ToUpperInvariant(),
-                        active ? $"Frozen — {snap.DesyncSeconds}s" : "Off",
+                    rows.Add((RowTitle(m),
+                        active ? _localizer.T("hud.desync.frozen", snap.DesyncSeconds!) : _localizer.T("hud.desync.off"),
                         active ? Color.FromArgb(235, StatusOrange) : TextMuted,
                         Array.Empty<(string, Color)>()));
                     break;
@@ -619,7 +624,7 @@ internal sealed class HudOverlayWindow : IDisposable
                     var count = snap.ActiveScripts.Count;
                     if (count == 0)
                     {
-                        rows.Add((m.Title.ToUpperInvariant(), "None", TextMuted, Array.Empty<(string, Color)>()));
+                        rows.Add((RowTitle(m), _localizer.T("hud.scripts.none"), TextMuted, Array.Empty<(string, Color)>()));
                     }
                     else
                     {
@@ -629,8 +634,8 @@ internal sealed class HudOverlayWindow : IDisposable
                             if (i > 0) subs.Add(("  ·  ", TextMuted));
                             subs.Add((snap.ActiveScripts[i], TextValue));
                         }
-                        rows.Add((m.Title.ToUpperInvariant(),
-                            count == 1 ? "1 active" : $"{count} active",
+                        rows.Add((RowTitle(m),
+                            _localizer.T(count == 1 ? "hud.scripts.active.one" : "hud.scripts.active.many", count),
                             Color.FromArgb(220, StatusGreen),
                             subs.ToArray()));
                     }
@@ -639,6 +644,8 @@ internal sealed class HudOverlayWindow : IDisposable
             }
         }
         if (rows.Count == 0) return RectangleF.Empty;
+
+        string RowTitle(HudModule module) => _localizer.T(HudSettings.TitleKey(module.Id)).ToUpperInvariant();
 
         // Brand header: logo + wordmark (full panel only; compact mode shows the logo alone).
         var logo = GetLogo();
@@ -789,10 +796,10 @@ internal sealed class HudOverlayWindow : IDisposable
                     break;
                 case HudModuleKind.ActiveScripts:
                     if (snap.ActiveScripts.Count == 1) parts.Add(snap.ActiveScripts[0]);
-                    else if (snap.ActiveScripts.Count > 1) parts.Add($"{snap.ActiveScripts.Count} scripts");
+                    else if (snap.ActiveScripts.Count > 1) parts.Add(_localizer.T("hud.compact.scripts", snap.ActiveScripts.Count));
                     break;
                 case HudModuleKind.Desync:
-                    if (snap.DesyncSeconds.HasValue) parts.Add($"Desync {snap.DesyncSeconds}s");
+                    if (snap.DesyncSeconds.HasValue) parts.Add(_localizer.T("hud.compact.desync", snap.DesyncSeconds));
                     break;
             }
         }

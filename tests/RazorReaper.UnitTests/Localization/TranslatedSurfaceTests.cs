@@ -318,6 +318,74 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">HUD Overlay</h1>",
+            "A click-through on-screen panel",
+            ">Disable</button>",
+            ">Enable</button>",
+            "\"Move mode: on\" : \"Move mode\"",
+            "Test alert\n",
+            ">Modules</h3>",
+            "Toggle each panel line",
+            "Title=\"@module.Title\"",
+            "title=\"Move up\"",
+            "title=\"Move down\"",
+            ">Placement</h3>",
+            "Title=\"Monitor\"",
+            "Title=\"Placement\"",
+            ">Custom (dragged)</button>",
+            "Title=\"Alert placement\"",
+            ">Free</button>",
+            "Title=\"Alert position\"",
+            "Title=\"Alert margin\"",
+            "Title=\"Offset X\"",
+            "Title=\"Offset Y\"",
+            "Title=\"Opacity\"",
+            "Title=\"Scale\"",
+            "Title=\"Compact mode\"",
+            "The overlay is click-through",
+            "\"On\" : \"Off\"",
+            "Overlay is off — enable it",
+            "modules enabled\"",
+            "move mode on\"",
+            "Current time of day.",
+            "On-screen stack of tool alerts.",
+            "\"Primary display\"",
+            "\" · primary\"",
+        })
+        {
+            data.Add("Components/Pages/HudOverlay.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"No server set\"",
+            "\"Idle\"",
+            "$\"Frozen —",
+            "\"None\", TextMuted",
+            "\"1 active\"",
+            "active\"",
+            "scripts\")",
+            "$\"Desync {snap.DesyncSeconds}s\"",
+            "m.Title.ToUpperInvariant()",
+        })
+        {
+            data.Add("Services/Overlay/HudOverlayWindow.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"Test alert — this is where alerts appear\"",
+            "\"Test alert — success\"",
+            "\"Test alert — warning\"",
+            "\"Test alert — error\"",
+            "HudServerInfo(\"Single Player\"",
+        })
+        {
+            data.Add("Services/Overlay/HudOverlayService.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             "= \"TP Locations\"",
             "= \"Underwater Drops\"",
             "= \"Map Mods\"",
@@ -787,6 +855,18 @@ public sealed class TranslatedSurfaceTests
         {
             yield return ("NavCatalog.cs", page.LabelKey);
             yield return ("NavCatalog.cs", page.DescriptionKey);
+        }
+
+        // The HUD's module titles and placements, the same way: derived from the enum, so the
+        // page and the overlay window cannot ask for a key the other one does not know.
+        foreach (var kind in Enum.GetValues<RazorReaper.Services.Overlay.HudModuleKind>())
+        {
+            yield return ("HudModels.cs", RazorReaper.Services.Overlay.HudSettings.TitleKey(kind));
+        }
+
+        foreach (var anchor in Enum.GetValues<RazorReaper.Services.Overlay.HudAnchor>())
+        {
+            yield return ("HudModels.cs", RazorReaper.Services.Overlay.HudSettings.AnchorKey(anchor));
         }
     }
 

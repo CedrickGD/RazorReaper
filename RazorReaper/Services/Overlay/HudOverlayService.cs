@@ -78,6 +78,7 @@ public sealed class HudOverlayService : IHudOverlayService
 
     private readonly ILogger<HudOverlayService> _logger;
     private readonly IProcessService _process;
+    private readonly RazorReaper.Services.Localization.ILocalizer _localizer;
     private readonly AutomationScriptBase[] _scripts;
     private readonly string _settingsPath;
 
@@ -107,10 +108,12 @@ public sealed class HudOverlayService : IHudOverlayService
     public HudOverlayService(
         ILogger<HudOverlayService> logger,
         IProcessService process,
-        IEnumerable<AutomationScriptBase> scripts)
+        IEnumerable<AutomationScriptBase> scripts,
+        RazorReaper.Services.Localization.ILocalizer localizer)
     {
         _logger = logger;
         _process = process;
+        _localizer = localizer;
         _scripts = scripts.ToArray();
         _settingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -281,10 +284,10 @@ public sealed class HudOverlayService : IHudOverlayService
         var n = Interlocked.Increment(ref _testAlertCounter);
         var (text, severity) = (n % 4) switch
         {
-            1 => ("Test alert — this is where alerts appear", HudAlertSeverity.Info),
-            2 => ("Test alert — success", HudAlertSeverity.Success),
-            3 => ("Test alert — warning", HudAlertSeverity.Warning),
-            _ => ("Test alert — error", HudAlertSeverity.Error),
+            1 => (_localizer.T("hud.testalert.info"), HudAlertSeverity.Info),
+            2 => (_localizer.T("hud.testalert.success"), HudAlertSeverity.Success),
+            3 => (_localizer.T("hud.testalert.warning"), HudAlertSeverity.Warning),
+            _ => (_localizer.T("hud.testalert.error"), HudAlertSeverity.Error),
         };
         PushAlert(text, severity);
     }
@@ -356,7 +359,7 @@ public sealed class HudOverlayService : IHudOverlayService
         // so a server joined outside the app still reads as "Single Player".)
         var server = _server;
         if (string.IsNullOrWhiteSpace(server.Name) && _gameRunning)
-            server = new HudServerInfo("Single Player", null, null, null);
+            server = new HudServerInfo(_localizer.T("hud.server.singleplayer"), null, null, null);
 
         // Script state lives in each script (volatile), not under our lock — cheap to read.
         IReadOnlyList<string> activeScripts = Array.Empty<string>();
@@ -403,7 +406,7 @@ public sealed class HudOverlayService : IHudOverlayService
         {
             if (_window == null)
             {
-                _window = new HudOverlayWindow(_logger, OnPanelMoved);
+                _window = new HudOverlayWindow(_logger, _localizer, OnPanelMoved);
                 _window.Start();
             }
             return _window;

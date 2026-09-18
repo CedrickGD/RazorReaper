@@ -152,6 +152,42 @@ public sealed class HudSettings
 
     public List<HudModule> Modules { get; set; } = DefaultModules();
 
+    /// <summary>
+    /// Where a module's row title is read from. Derived from the kind rather than from the
+    /// stored <see cref="HudModule.Title"/>: that one is in hud-overlay.json, written in
+    /// whatever language the app was in when the file was first made, and it is the panel's
+    /// heading on screen. The stored value stays for file compatibility and is not rendered.
+    /// </summary>
+    public static string TitleKey(HudModuleKind kind) => kind switch
+    {
+        HudModuleKind.Clock => "hud.module.clock",
+        HudModuleKind.SessionTimer => "hud.module.session",
+        HudModuleKind.ServerInfo => "hud.module.server",
+        HudModuleKind.ToolStatus => "hud.module.tool",
+        HudModuleKind.ActiveScripts => "hud.module.scripts",
+        HudModuleKind.Notifier => "hud.module.alerts",
+        _ => "hud.module.desync"
+    };
+
+    /// <summary>
+    /// Where a placement's name is read from. Beside <see cref="TitleKey"/> rather than in the
+    /// page, so the set of keys the HUD asks for can be read off the enum by a test instead of
+    /// grepped out of a razor file.
+    /// </summary>
+    public static string AnchorKey(HudAnchor anchor) => anchor switch
+    {
+        HudAnchor.TopLeft => "hud.anchor.topleft",
+        HudAnchor.TopCenter => "hud.anchor.top",
+        HudAnchor.TopRight => "hud.anchor.topright",
+        HudAnchor.MiddleLeft => "hud.anchor.left",
+        HudAnchor.Center => "hud.anchor.center",
+        HudAnchor.MiddleRight => "hud.anchor.right",
+        HudAnchor.BottomLeft => "hud.anchor.bottomleft",
+        HudAnchor.BottomCenter => "hud.anchor.bottom",
+        HudAnchor.BottomRight => "hud.anchor.bottomright",
+        _ => "hud.anchor.dragged"
+    };
+
     public static List<HudModule> DefaultModules() => new()
     {
         new HudModule(HudModuleKind.Clock, "Time", true, 0),

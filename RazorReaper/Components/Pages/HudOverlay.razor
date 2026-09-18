@@ -3,14 +3,16 @@
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Models
 @using RazorReaper.Services.Overlay
+@using RazorReaper.Services.Localization
 @inject IHudOverlayService Hud
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 @inject ILogger<HudOverlay> Logger
 @implements IDisposable
 
 <header class="page-header">
-    <h1 class="page-title">HUD Overlay</h1>
-    <p class="page-subtitle">A click-through on-screen panel with clock, session timer, server info, tool status and alerts</p>
+    <h1 class="page-title">@Localizer.T("nav.page.hud-overlay")</h1>
+    <p class="page-subtitle">@Localizer.T("hud.subtitle")</p>
 </header>
 
 <div class="hud-page">
@@ -19,18 +21,18 @@
         <Actions>
             @if (Hud.IsRunning)
             {
-                <button class="btn btn-danger" @onclick="() => Hud.Toggle()">Disable</button>
+                <button class="btn btn-danger" @onclick="() => Hud.Toggle()">@Localizer.T("common.disable")</button>
             }
             else
             {
-                <button class="btn btn-primary" @onclick="() => Hud.Toggle()">Enable</button>
+                <button class="btn btn-primary" @onclick="() => Hud.Toggle()">@Localizer.T("common.enable")</button>
             }
             <button class="btn @(Hud.IsMoveMode ? "btn-primary" : "btn-secondary")"
                     disabled="@(!Hud.IsRunning)" @onclick="ToggleMoveMode">
-                @(Hud.IsMoveMode ? "Move mode: on" : "Move mode")
+                @Localizer.T(Hud.IsMoveMode ? "hud.movemode.on" : "hud.movemode")
             </button>
             <button class="btn btn-secondary" disabled="@(!Hud.IsRunning)" @onclick="() => Hud.TestAlert()">
-                Test alert
+                @Localizer.T("hud.testalert")
             </button>
         </Actions>
     </StatusHeader>
@@ -39,8 +41,8 @@
 
         @* ── Modules ─────────────────────────────────────────────────────── *@
         <div class="content-card hud-card">
-            <h3 class="hud-card-title">Modules</h3>
-            <p class="hud-card-desc">Toggle each panel line and reorder it with the arrows.</p>
+            <h3 class="hud-card-title">@Localizer.T("hud.modules.title")</h3>
+            <p class="hud-card-desc">@Localizer.T("hud.modules.description")</p>
 
             <div class="hud-rows">
                 @{
@@ -52,13 +54,13 @@
                     var isFirst = i == 0;
                     var isLast = i == ordered.Count - 1;
 
-                    <SettingRow Title="@module.Title" Description="@ModuleDescription(module.Id)">
+                    <SettingRow Title="@Localizer.T(HudSettings.TitleKey(module.Id))" Description="@ModuleDescription(module.Id)">
                         <div class="hud-mod-controls">
-                            <button class="hud-reorder" title="Move up" disabled="@isFirst"
+                            <button class="hud-reorder" title="@Localizer.T("hud.module.moveup")" disabled="@isFirst"
                                     @onclick="() => MoveModule(module.Id, -1)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
                             </button>
-                            <button class="hud-reorder" title="Move down" disabled="@isLast"
+                            <button class="hud-reorder" title="@Localizer.T("hud.module.movedown")" disabled="@isLast"
                                     @onclick="() => MoveModule(module.Id, 1)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>
                             </button>
@@ -72,27 +74,27 @@
 
         @* ── Placement ───────────────────────────────────────────────────── *@
         <div class="content-card hud-card">
-            <h3 class="hud-card-title">Placement</h3>
-            <p class="hud-card-desc">Choose where the panel sits and how it looks. Changes apply instantly.</p>
+            <h3 class="hud-card-title">@Localizer.T("hud.placement.title")</h3>
+            <p class="hud-card-desc">@Localizer.T("hud.placement.description")</p>
 
             <div class="hud-rows">
 
-                <SettingRow Title="Monitor" Description="Which display the overlay draws on.">
+                <SettingRow Title="@Localizer.T("stretchedres.monitor.label")" Description="@Localizer.T("hud.monitor.description")">
                     <Dropdown Value="@_settings.MonitorDeviceName"
                               ValueChanged="OnMonitorChanged"
                               Options="MonitorOptions" />
                 </SettingRow>
 
-                <SettingRow Title="Placement" Description="Where the panel sits on the screen.">
+                <SettingRow Title="@Localizer.T("hud.anchor.title")" Description="@Localizer.T("hud.anchor.description")">
                     <div class="hud-corner-seg">
                         @foreach (var c in Placements)
                         {
-                            <button class="hud-seg-btn @(_settings.Anchor == c.Anchor ? "active" : "")"
-                                    @onclick="() => SetAnchor(c.Anchor)">@c.Label</button>
+                            <button class="hud-seg-btn @(_settings.Anchor == c ? "active" : "")"
+                                    @onclick="() => SetAnchor(c)">@Localizer.T(HudSettings.AnchorKey(c))</button>
                         }
                         @if (_settings.Anchor == HudAnchor.Custom)
                         {
-                            <button class="hud-seg-btn custom active" disabled>Custom (dragged)</button>
+                            <button class="hud-seg-btn custom active" disabled>@Localizer.T("hud.anchor.dragged")</button>
                         }
                     </div>
                 </SettingRow>
@@ -100,21 +102,21 @@
                 @* Alerts get the same nine placements as the panel plus their own free position:
                    pinned to a corner they only ever grew inwards, so a centred alert ran off the
                    screen and you saw half of it. *@
-                <SettingRow Title="Alert placement" Description="Where notifier alerts stack up. They grow away from the edge they sit on.">
+                <SettingRow Title="@Localizer.T("hud.alertplacement.title")" Description="@Localizer.T("hud.alertplacement.description")">
                     <div class="hud-corner-seg">
                         @foreach (var c in Placements)
                         {
-                            <button class="hud-seg-btn @(_settings.AlertCorner == c.Anchor ? "active" : "")"
-                                    @onclick="() => SetAlertCorner(c.Anchor)">@c.Label</button>
+                            <button class="hud-seg-btn @(_settings.AlertCorner == c ? "active" : "")"
+                                    @onclick="() => SetAlertCorner(c)">@Localizer.T(HudSettings.AnchorKey(c))</button>
                         }
                         <button class="hud-seg-btn custom @(_settings.AlertCorner == HudAnchor.Custom ? "active" : "")"
-                                @onclick="() => SetAlertCorner(HudAnchor.Custom)">Free</button>
+                                @onclick="() => SetAlertCorner(HudAnchor.Custom)">@Localizer.T("hud.anchor.free")</button>
                     </div>
                 </SettingRow>
 
                 @if (_settings.AlertCorner == HudAnchor.Custom)
                 {
-                    <SettingRow Title="Alert position" Description="Top-left of the alert stack, in pixels on the chosen monitor.">
+                    <SettingRow Title="@Localizer.T("hud.alertposition.title")" Description="@Localizer.T("hud.alertposition.description")">
                         <input type="number" class="hud-num" min="0" max="10000" step="1"
                                @bind="_settings.AlertX" @bind:after="Apply" />
                         <span class="hud-unit">x</span>
@@ -125,7 +127,7 @@
                 }
                 else
                 {
-                    <SettingRow Title="Alert margin" Description="Distance from the edge the alerts are anchored to.">
+                    <SettingRow Title="@Localizer.T("hud.alertmargin.title")" Description="@Localizer.T("hud.alertmargin.description")">
                         <input type="number" class="hud-num" min="0" max="2000" step="1"
                                @bind="_settings.AlertOffsetX" @bind:after="Apply" />
                         <span class="hud-unit">x</span>
@@ -135,19 +137,19 @@
                     </SettingRow>
                 }
 
-                <SettingRow Title="Offset X" Description="Horizontal margin from the corner." Disabled="@IsCustom">
+                <SettingRow Title="@Localizer.T("hud.offsetx.title")" Description="@Localizer.T("hud.offsetx.description")" Disabled="@IsCustom">
                     <input type="number" class="hud-num" min="0" max="2000" step="1"
                            @bind="_settings.OffsetX" @bind:after="Apply" disabled="@IsCustom" />
                     <span class="hud-unit">px</span>
                 </SettingRow>
 
-                <SettingRow Title="Offset Y" Description="Vertical margin from the corner." Disabled="@IsCustom">
+                <SettingRow Title="@Localizer.T("hud.offsety.title")" Description="@Localizer.T("hud.offsety.description")" Disabled="@IsCustom">
                     <input type="number" class="hud-num" min="0" max="2000" step="1"
                            @bind="_settings.OffsetY" @bind:after="Apply" disabled="@IsCustom" />
                     <span class="hud-unit">px</span>
                 </SettingRow>
 
-                <SettingRow Title="Opacity" Description="Overall transparency of the overlay.">
+                <SettingRow Title="@Localizer.T("hud.opacity.title")" Description="@Localizer.T("hud.opacity.description")">
                     <div class="hud-slider-wrap">
                         <input type="range" class="hud-slider" min="20" max="100" step="1"
                                @bind="OpacityPercent" @bind:after="Apply" />
@@ -155,7 +157,7 @@
                     </div>
                 </SettingRow>
 
-                <SettingRow Title="Scale" Description="Size of the panel and alert text.">
+                <SettingRow Title="@Localizer.T("hud.scale.title")" Description="@Localizer.T("hud.scale.description")">
                     <div class="hud-slider-wrap">
                         <input type="range" class="hud-slider" min="50" max="200" step="1"
                                @bind="ScalePercent" @bind:after="Apply" />
@@ -163,7 +165,7 @@
                     </div>
                 </SettingRow>
 
-                <SettingRow Title="Compact mode" Description="Collapse every module into one condensed line.">
+                <SettingRow Title="@Localizer.T("hud.compact.title")" Description="@Localizer.T("hud.compact.description")">
                     <Switch Value="@_settings.Compact" ValueChanged="OnCompactChanged" />
                 </SettingRow>
 
@@ -173,28 +175,30 @@
     </div>
 
     <div class="hud-note">
-        <p>The overlay is click-through except in move mode — turn on move mode to drag the panel into place, then turn it back off.</p>
+        <p>@Localizer.T("hud.note")</p>
     </div>
 
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private HudSettings _settings = new();
     private IReadOnlyList<MonitorInfo> _monitors = Array.Empty<MonitorInfo>();
 
     // Reading order, three per row: the segmented control wraps, so this lays out as the
     // nine positions of the screen rather than as a list of names.
-    private static readonly (HudAnchor Anchor, string Label)[] Placements =
+    private static readonly HudAnchor[] Placements =
     {
-        (HudAnchor.TopLeft, "Top left"),
-        (HudAnchor.TopCenter, "Top"),
-        (HudAnchor.TopRight, "Top right"),
-        (HudAnchor.MiddleLeft, "Left"),
-        (HudAnchor.Center, "Center"),
-        (HudAnchor.MiddleRight, "Right"),
-        (HudAnchor.BottomLeft, "Bottom left"),
-        (HudAnchor.BottomCenter, "Bottom"),
-        (HudAnchor.BottomRight, "Bottom right"),
+        HudAnchor.TopLeft, HudAnchor.TopCenter, HudAnchor.TopRight,
+        HudAnchor.MiddleLeft, HudAnchor.Center, HudAnchor.MiddleRight,
+        HudAnchor.BottomLeft, HudAnchor.BottomCenter, HudAnchor.BottomRight,
     };
 
     protected override void OnInitialized()
@@ -220,17 +224,17 @@
 
     private string StatusState => Hud.IsRunning ? "online" : "off";
 
-    private string StatusLabel => Hud.IsRunning ? "On" : "Off";
+    private string StatusLabel => Localizer.T(Hud.IsRunning ? "common.on" : "common.off");
 
     private string StatusDescription
     {
         get
         {
-            if (!Hud.IsRunning) return "Overlay is off — enable it to draw on screen.";
+            if (!Hud.IsRunning) return Localizer.T("hud.status.off");
             var total = _settings.Modules.Count;
             var enabled = _settings.Modules.Count(m => m.Enabled);
-            var text = $"{enabled} of {total} modules enabled";
-            return Hud.IsMoveMode ? text + " · move mode on" : text;
+            var text = Localizer.T("hud.status.enabled", enabled, total);
+            return Hud.IsMoveMode ? text + Localizer.T("hud.status.movemode") : text;
         }
     }
 
@@ -240,15 +244,15 @@
 
     // ── Modules ────────────────────────────────────────────────────────────
 
-    private static string ModuleDescription(HudModuleKind id) => id switch
+    private string ModuleDescription(HudModuleKind id) => id switch
     {
-        HudModuleKind.Clock => "Current time of day.",
-        HudModuleKind.SessionTimer => "Time on the current server, or since RazorReaper launched.",
-        HudModuleKind.ServerInfo => "Auto-detected server: name, players and live ping.",
-        HudModuleKind.ToolStatus => "Shows which RazorReaper tool is currently active.",
-        HudModuleKind.ActiveScripts => "Automation scripts that are currently running.",
-        HudModuleKind.Notifier => "On-screen stack of tool alerts.",
-        _ => ""
+        HudModuleKind.Clock => Localizer.T("hud.module.clock.description"),
+        HudModuleKind.SessionTimer => Localizer.T("hud.module.session.description"),
+        HudModuleKind.ServerInfo => Localizer.T("hud.module.server.description"),
+        HudModuleKind.ToolStatus => Localizer.T("hud.module.tool.description"),
+        HudModuleKind.ActiveScripts => Localizer.T("hud.module.scripts.description"),
+        HudModuleKind.Notifier => Localizer.T("hud.module.alerts.description"),
+        _ => Localizer.T("hud.module.desync.description")
     };
 
     private void SetModuleEnabled(HudModuleKind id, bool enabled)
@@ -297,9 +301,9 @@
     // Empty device name means "whatever Windows calls the primary right now", so it stays
     // correct when displays are re-arranged.
     private IReadOnlyList<Dropdown.Option> MonitorOptions =>
-        new[] { new Dropdown.Option("", "Primary display") }
+        new[] { new Dropdown.Option("", Localizer.T("hud.monitor.primary")) }
             .Concat(_monitors.Select(m => new Dropdown.Option(
-                m.DeviceName, m.FriendlyName + (m.IsPrimary ? " · primary" : ""))))
+                m.DeviceName, m.FriendlyName + (m.IsPrimary ? Localizer.T("hud.monitor.primary.suffix") : ""))))
             .ToList();
 
     private void OnMonitorChanged(string deviceName)
