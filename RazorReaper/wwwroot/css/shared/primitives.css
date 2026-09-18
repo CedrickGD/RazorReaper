@@ -769,7 +769,8 @@ input[type="number"] {
 }
 
 /* The list lives in the browser's top layer (popover), not inside the card. Every
-   .content-card carries backdrop-filter, which makes it a stacking context, so a list
+   .content-card carries backdrop-filter — declared in the base rule in theme.css, and
+   leaked from server-styles.css before that — which makes it a stacking context, so a list
    painted inside one was covered by the next card from that card's top edge down — it
    read as the menu being cut off at the bottom edge of its own card, and lifting the
    card's overflow:hidden never touched the real cause. In the top layer nothing on the

@@ -35,14 +35,11 @@
     min-height: 0;
 }
 
-.content-card {
-    background: rgba(0, 0, 0, 0.15) !important;
-    backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    animation: fadeInUp 0.6s ease-out !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
+/* The bare `.content-card` rule that used to sit here is gone. It was never a Server rule:
+   index.html loads every page stylesheet on every route, so it restyled the cards on all 40
+   of them, and its blur and `all` transition are the ones the app actually ships with. They
+   live in the base `.content-card` rule in shared/theme.css now. Server's own card surface
+   is .server-connection-panel above, which is scoped and stays. */
 
 .connection-form {
     display: flex !important;

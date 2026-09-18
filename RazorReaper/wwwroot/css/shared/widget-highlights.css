@@ -1,20 +1,30 @@
-/* Unified widget highlight styling */
+/* Unified widget highlight styling
+
+   Panels that are NOT .content-card. The card itself is deliberately absent from both lists,
+   and so are .widget-card, .ocbps-card and .ocbps-intro — every element wearing one of those
+   three also wears .content-card. The reason is measured, not assumed: a forced :hover on a
+   card in the shipped app reports border-color rgba(255,255,255,0.1), the resting value, not
+   the 0.22 below. `:where()` costs nothing, so these rules weigh (0,1,0) with the :hover and
+   (0,0,0) without, and the card's own `border` shorthand — !important, (0,1,0) — has always
+   had the last word over them. Naming the card here again once that shorthand moved into
+   theme.css would have switched a hover highlight on across all 40 routes, which is a design
+   change the owner has not asked for and not what the app looks like today.
+
+   .server-connection-panel stays: server-styles.css re-declares its border after this file,
+   so it is in the same position, and removing it would be a claim about a rule that is not
+   moving. Turning the card highlight on is a deliberate decision, not this round's. */
 
 :root {
     --widget-highlight-border: rgba(255, 255, 255, 0.22);
 }
 
 :where(
-    .content-card,
-    .widget-card,
     .pixel-card,
     .filter-card,
     .dino-list-card,
     .settings-status-card,
     .paintings-stats-card,
     .contact-info-card,
-    .ocbps-card,
-    .ocbps-intro,
     .server-connection-panel,
     .troubleshooting-item
 ) {
@@ -22,16 +32,12 @@
 }
 
 :where(
-    .content-card,
-    .widget-card,
     .pixel-card,
     .filter-card,
     .dino-list-card,
     .settings-status-card,
     .paintings-stats-card,
     .contact-info-card,
-    .ocbps-card,
-    .ocbps-intro,
     .server-connection-panel,
     .troubleshooting-item
 ):hover {

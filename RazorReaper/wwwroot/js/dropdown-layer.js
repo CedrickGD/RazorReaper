@@ -1,7 +1,7 @@
 // Places Components/Shared/Dropdown.razor's option list in the browser's top layer.
 //
 // Why it cannot just be a child of the trigger: every .content-card in this app carries
-// backdrop-filter (server-styles.css sets it on the bare .content-card selector, so it
+// backdrop-filter (the base .content-card rule in css/shared/theme.css sets it, so it
 // reaches every page). backdrop-filter makes the card a stacking context and the containing
 // block for fixed descendants, so a list painted inside a card is covered by the next card
 // from that card's top edge downward — which reads as the menu being cut off at the bottom

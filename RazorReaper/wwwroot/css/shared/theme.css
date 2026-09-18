@@ -219,14 +219,26 @@ html[data-sidebar-resizing] .main-content::before {
     font-weight: 400;
 }
 
+/* The one card. Every page stylesheet is loaded globally from index.html, so a bare
+   `.content-card` rule in any of them dresses every card in the app — and server-styles.css
+   had one, which is where the blur and the `all` transition below actually came from. Nobody
+   reading this file could see that: Home even carried `backdrop-filter: none !important` in
+   the belief that it was opting out, while loading one line earlier and losing. The shipped
+   look is blurred cards everywhere, Home included, so the leaked declarations are written
+   out here at their shipped values and the page copies are gone. Page stylesheets may still
+   adjust a card, but only through a page-scoped selector; ContentCardOwnershipTests keeps the
+   bare selector out of them. */
 .content-card {
     background: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: var(--radius-card) !important;
     padding: var(--card-pad) !important;
     margin-bottom: 1rem !important;
     animation: fadeInUp 0.6s ease-out !important;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    /* `all`, not the three named properties this rule used to list: the leaked copy said
+       `all` and loaded later, so `all` is what every card in the app has been animating. */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
     overflow: hidden !important;
     /* NB: do NOT add `will-change: transform` here — it creates a stacking context

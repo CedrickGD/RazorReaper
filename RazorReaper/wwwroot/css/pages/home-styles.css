@@ -1,7 +1,10 @@
-.content-card {
-    background: rgba(0, 0, 0, 0.15) !important;
-    backdrop-filter: none !important;
-}
+/* Home used to open with its own bare `.content-card` rule asking for `backdrop-filter: none`.
+   It never applied: server-styles.css declared the blur on the same selector with the same
+   !important and loads one line later in index.html, so Home's cards have always been blurred
+   like every other card in the app. Deleted rather than honoured — un-blurring Home now would
+   be a new design decision, not a bug fix, and the blur is the look the owner has today. Its
+   `background` line asked for the value theme.css already sets, so nothing is lost with it.
+   The blur itself is declared in shared/theme.css. */
 
 /* Keyframe animations */
 @keyframes fadeInUp {

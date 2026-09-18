@@ -6,8 +6,9 @@ namespace RazorReaper.UnitTests.Components;
 /// <summary>
 /// The Language picker on Settings opened a list that stopped at the bottom of its own card:
 /// English, Deutsch and Русский were there and 中文 (简体) was not. The cause was never
-/// overflow. server-styles.css sets backdrop-filter on the bare <c>.content-card</c> selector,
-/// so every card in the app is a stacking context; a list painted inside one is covered by the
+/// overflow. theme.css sets backdrop-filter in the base <c>.content-card</c> rule (it used to be
+/// leaked from server-styles.css), so every card in the app is a stacking context; a list
+/// painted inside one is covered by the
 /// next card from that card's top edge down. Lifting the card's overflow:hidden — which is what
 /// the old <c>.content-card:has(.rr-dd)</c> rule did — could not help, and quietly cost every
 /// card holding a dropdown its rounded clipping.
