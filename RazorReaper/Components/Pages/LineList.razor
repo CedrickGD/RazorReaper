@@ -4,11 +4,13 @@
 @inject ILineListService LineListService
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="line-list-page">
     <header class="page-header">
-        <h1 class="page-title">Line List</h1>
-        <p class="page-subtitle">Track your breeding lines and build WTS/WTB posts.</p>
+        <h1 class="page-title">@Localizer.T("nav.page.line-list")</h1>
+        <p class="page-subtitle">@Localizer.T("linelist.subtitle")</p>
     </header>
 
     <div class="content-card ll-toolbar">
@@ -18,21 +20,21 @@
             </svg>
             <input type="text"
                    class="ll-search-input"
-                   placeholder="Search species or line name..."
+                   placeholder="@Localizer.T("linelist.search.placeholder")"
                    @bind="searchQuery"
                    @bind:event="oninput" />
         </div>
 
         <div class="ll-filter-group">
-            <button class="ll-filter-btn @(showForSaleOnly ? "" : "active")" @onclick="() => SetFilter(false)">All</button>
-            <button class="ll-filter-btn @(showForSaleOnly ? "active" : "")" @onclick="() => SetFilter(true)">For Sale</button>
+            <button class="ll-filter-btn @(showForSaleOnly ? "" : "active")" @onclick="() => SetFilter(false)">@Localizer.T("common.all")</button>
+            <button class="ll-filter-btn @(showForSaleOnly ? "active" : "")" @onclick="() => SetFilter(true)">@Localizer.T("linelist.filter.forsale")</button>
         </div>
 
-        <span class="ll-count">@FilteredLines.Count / @(store?.Lines.Count ?? 0) lines</span>
+        <span class="ll-count">@Localizer.T("linelist.count", FilteredLines.Count, store?.Lines.Count ?? 0)</span>
 
         <div class="ll-toolbar-actions">
-            <button class="btn btn-secondary" @onclick="OpenPostModal">WTS / WTB Post</button>
-            <button class="btn btn-primary" @onclick="StartAdd">Add Line</button>
+            <button class="btn btn-secondary" @onclick="OpenPostModal">@Localizer.T("linelist.post.button")</button>
+            <button class="btn btn-primary" @onclick="StartAdd">@Localizer.T("linelist.add")</button>
         </div>
     </div>
 
@@ -41,14 +43,14 @@
         var d = draft;
         <section class="content-card ll-editor-card">
             <div class="ll-editor-header">
-                <h3>@(editingId is null ? "Add Line" : "Edit Line")</h3>
-                <p>Stat values are points, not displayed levels.</p>
+                <h3>@Localizer.T(editingId is null ? "linelist.add" : "linelist.edit")</h3>
+                <p>@Localizer.T("linelist.editor.hint")</p>
             </div>
 
             <div class="ll-editor-grid">
                 <div class="ll-field">
-                    <label class="ll-field-label">Species</label>
-                    <input class="ll-input" type="text" list="ll-species-suggestions" placeholder="e.g. Rex" @bind="d.Species" />
+                    <label class="ll-field-label">@Localizer.T("linelist.field.species")</label>
+                    <input class="ll-input" type="text" list="ll-species-suggestions" placeholder="@Localizer.T("linelist.placeholder.species")" @bind="d.Species" />
                     <datalist id="ll-species-suggestions">
                         @foreach (var s in LineListService.SpeciesSuggestions)
                         {
@@ -57,71 +59,71 @@
                     </datalist>
                 </div>
                 <div class="ll-field">
-                    <label class="ll-field-label">Line Name</label>
-                    <input class="ll-input" type="text" placeholder="e.g. Ultron line" @bind="d.Name" />
+                    <label class="ll-field-label">@Localizer.T("linelist.field.name")</label>
+                    <input class="ll-input" type="text" placeholder="@Localizer.T("linelist.placeholder.name")" @bind="d.Name" />
                 </div>
                 <div class="ll-field">
-                    <label class="ll-field-label">Generation</label>
+                    <label class="ll-field-label">@Localizer.T("linelist.field.generation")</label>
                     <input class="ll-input" type="number" min="0" @bind="d.Generation" />
                 </div>
                 <div class="ll-field">
-                    <label class="ll-field-label">Base Level</label>
+                    <label class="ll-field-label">@Localizer.T("linelist.field.baselevel")</label>
                     <input class="ll-input" type="number" min="0" @bind="d.BaseLevel" />
                 </div>
 
                 <div class="ll-stats-row">
                     <div class="ll-field ll-stat-field">
-                        <label class="ll-field-label">Health</label>
+                        <label class="ll-field-label">@Localizer.T("linelist.stat.health")</label>
                         <input class="ll-input" type="number" min="0" @bind="d.Health" />
                     </div>
                     <div class="ll-field ll-stat-field">
-                        <label class="ll-field-label">Stamina</label>
+                        <label class="ll-field-label">@Localizer.T("linelist.stat.stamina")</label>
                         <input class="ll-input" type="number" min="0" @bind="d.Stamina" />
                     </div>
                     <div class="ll-field ll-stat-field">
-                        <label class="ll-field-label">Oxygen</label>
+                        <label class="ll-field-label">@Localizer.T("linelist.stat.oxygen")</label>
                         <input class="ll-input" type="number" min="0" @bind="d.Oxygen" />
                     </div>
                     <div class="ll-field ll-stat-field">
-                        <label class="ll-field-label">Food</label>
+                        <label class="ll-field-label">@Localizer.T("linelist.stat.food")</label>
                         <input class="ll-input" type="number" min="0" @bind="d.Food" />
                     </div>
                     <div class="ll-field ll-stat-field">
-                        <label class="ll-field-label">Weight</label>
+                        <label class="ll-field-label">@Localizer.T("linelist.stat.weight")</label>
                         <input class="ll-input" type="number" min="0" @bind="d.Weight" />
                     </div>
                     <div class="ll-field ll-stat-field">
-                        <label class="ll-field-label">Melee</label>
+                        <label class="ll-field-label">@Localizer.T("linelist.stat.melee")</label>
                         <input class="ll-input" type="number" min="0" @bind="d.Melee" />
                     </div>
                 </div>
 
                 <div class="ll-field">
-                    <label class="ll-field-label">Mutations (Maternal)</label>
+                    <label class="ll-field-label">@Localizer.T("linelist.field.mutations.maternal")</label>
                     <input class="ll-input" type="number" min="0" @bind="d.MaternalMutations" />
                 </div>
                 <div class="ll-field">
-                    <label class="ll-field-label">Mutations (Paternal)</label>
+                    <label class="ll-field-label">@Localizer.T("linelist.field.mutations.paternal")</label>
                     <input class="ll-input" type="number" min="0" @bind="d.PaternalMutations" />
                 </div>
                 <div class="ll-field ll-field-notes">
-                    <label class="ll-field-label">Notes</label>
-                    <input class="ll-input" type="text" placeholder="Optional" @bind="d.Notes" />
+                    <label class="ll-field-label">@Localizer.T("linelist.field.notes")</label>
+                    <input class="ll-input" type="text" placeholder="@Localizer.T("linelist.placeholder.optional")" @bind="d.Notes" />
                 </div>
 
                 <div class="ll-sale-row">
-                    <Switch Label="For sale" Compact="true" Value="@d.ForSale" ValueChanged="@((bool v) => d.ForSale = v)" />
+                    <Switch Label="@Localizer.T("linelist.forsale")" Compact="true" Value="@d.ForSale" ValueChanged="@((bool v) => d.ForSale = v)" />
                     <input class="ll-input ll-price-input"
                            type="text"
-                           placeholder="Price, e.g. 2x mutagen or offer"
+                           placeholder="@Localizer.T("linelist.placeholder.price")"
                            disabled="@(!d.ForSale)"
                            @bind="d.Price" />
                 </div>
             </div>
 
             <div class="ll-editor-actions">
-                <button class="btn btn-secondary" @onclick="CancelEditor">Cancel</button>
-                <button class="btn btn-primary" @onclick="SaveDraftAsync">@(editingId is null ? "Add Line" : "Save Changes")</button>
+                <button class="btn btn-secondary" @onclick="CancelEditor">@Localizer.T("common.cancel")</button>
+                <button class="btn btn-primary" @onclick="SaveDraftAsync">@Localizer.T(editingId is null ? "linelist.add" : "linelist.save")</button>
             </div>
         </section>
     }
@@ -134,8 +136,8 @@
                     <path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" />
                     <path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" />
                 </svg>
-                <h3>No breeding lines yet</h3>
-                <p>Add your first line to start tracking stats and mutations.</p>
+                <h3>@Localizer.T("linelist.empty.title")</h3>
+                <p>@Localizer.T("linelist.empty.text")</p>
             </div>
         }
         else if (FilteredLines.Count == 0)
@@ -144,21 +146,21 @@
                 <svg fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                 </svg>
-                <h3>No matching lines</h3>
-                <p>Try a different search or filter.</p>
+                <h3>@Localizer.T("linelist.nomatch.title")</h3>
+                <p>@Localizer.T("linelist.nomatch.text")</p>
             </div>
         }
         else
         {
             <div class="ll-table">
                 <div class="ll-table-header">
-                    <button class="ll-th ll-th-sort" @onclick="ToggleSort" title="Sort by species">
-                        Species <span class="ll-sort-arrow">@(sortDesc ? "▼" : "▲")</span>
+                    <button class="ll-th ll-th-sort" @onclick="ToggleSort" title="@Localizer.T("linelist.sort.tooltip")">
+                        @Localizer.T("linelist.field.species") <span class="ll-sort-arrow">@(sortDesc ? "▼" : "▲")</span>
                     </button>
-                    <div class="ll-th">Line</div>
-                    <div class="ll-th">Stats</div>
-                    <div class="ll-th">Muts M/P</div>
-                    <div class="ll-th">Gen</div>
+                    <div class="ll-th">@Localizer.T("linelist.th.line")</div>
+                    <div class="ll-th">@Localizer.T("linelist.th.stats")</div>
+                    <div class="ll-th">@Localizer.T("linelist.th.muts")</div>
+                    <div class="ll-th">@Localizer.T("linelist.th.gen")</div>
                     <div class="ll-th ll-th-actions"></div>
                 </div>
 
@@ -169,10 +171,10 @@
 
                         <div class="ll-cell-name">
                             <div class="ll-name-row">
-                                <span class="ll-name">@(string.IsNullOrWhiteSpace(line.Name) ? "Unnamed line" : line.Name)</span>
+                                <span class="ll-name">@(string.IsNullOrWhiteSpace(line.Name) ? Localizer.T("linelist.unnamed") : line.Name)</span>
                                 @if (line.ForSale)
                                 {
-                                    <span class="ll-badge-sale">For sale</span>
+                                    <span class="ll-badge-sale">@Localizer.T("linelist.forsale")</span>
                                 }
                                 @if (line.ForSale && !string.IsNullOrWhiteSpace(line.Price))
                                 {
@@ -185,7 +187,7 @@
                             }
                         </div>
 
-                        <div class="ll-cell-stats" title="Base level @line.BaseLevel">
+                        <div class="ll-cell-stats" title="@Localizer.T("linelist.tooltip.baselevel", line.BaseLevel)">
                             <span class="ll-stat-chip"><span class="ll-stat-key">HP</span>@line.Health</span>
                             <span class="ll-stat-chip"><span class="ll-stat-key">St</span>@line.Stamina</span>
                             <span class="ll-stat-chip"><span class="ll-stat-key">Ox</span>@line.Oxygen</span>
@@ -194,23 +196,23 @@
                             <span class="ll-stat-chip"><span class="ll-stat-key">Me</span>@line.Melee</span>
                         </div>
 
-                        <div class="ll-cell-muts" title="Maternal / paternal mutations">@line.MaternalMutations / @line.PaternalMutations</div>
+                        <div class="ll-cell-muts" title="@Localizer.T("linelist.tooltip.muts")">@line.MaternalMutations / @line.PaternalMutations</div>
                         <div class="ll-cell-gen">@line.Generation</div>
 
                         <div class="ll-cell-actions">
                             @if (pendingDeleteId == line.Id)
                             {
-                                <button class="ll-confirm-btn" @onclick="() => ConfirmDeleteAsync(line)">Delete</button>
-                                <button class="ll-icon-btn" title="Cancel" @onclick="CancelDelete">
+                                <button class="ll-confirm-btn" @onclick="() => ConfirmDeleteAsync(line)">@Localizer.T("common.delete")</button>
+                                <button class="ll-icon-btn" title="@Localizer.T("common.cancel")" @onclick="CancelDelete">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                                 </button>
                             }
                             else
                             {
-                                <button class="ll-icon-btn" title="Edit" @onclick="() => StartEdit(line)">
+                                <button class="ll-icon-btn" title="@Localizer.T("common.edit")" @onclick="() => StartEdit(line)">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
                                 </button>
-                                <button class="ll-icon-btn danger" title="Delete" @onclick="() => RequestDelete(line.Id)">
+                                <button class="ll-icon-btn danger" title="@Localizer.T("common.delete")" @onclick="() => RequestDelete(line.Id)">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                                 </button>
                             }
@@ -226,18 +228,18 @@
         <div class="ll-modal-overlay" @onclick="ClosePostModalAsync">
             <div class="ll-modal" @onclick:stopPropagation="true">
                 <div class="ll-modal-header">
-                    <h3>WTS / WTB Post</h3>
-                    <button class="ll-icon-btn" title="Close" @onclick="ClosePostModalAsync">
+                    <h3>@Localizer.T("linelist.post.button")</h3>
+                    <button class="ll-icon-btn" title="@Localizer.T("common.close")" @onclick="ClosePostModalAsync">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </button>
                 </div>
 
                 <div class="ll-modal-body">
                     <div class="ll-modal-section">
-                        <div class="ll-modal-section-title">WTS <span class="ll-modal-hint">generated from lines marked for sale</span></div>
+                        <div class="ll-modal-section-title">WTS <span class="ll-modal-hint">@Localizer.T("linelist.modal.wts.hint")</span></div>
                         @if (string.IsNullOrEmpty(wtsPreview))
                         {
-                            <p class="ll-modal-empty">No lines are marked for sale yet.</p>
+                            <p class="ll-modal-empty">@Localizer.T("linelist.modal.wts.empty")</p>
                         }
                         else
                         {
@@ -246,19 +248,19 @@
                     </div>
 
                     <div class="ll-modal-section">
-                        <div class="ll-modal-section-title">WTB <span class="ll-modal-hint">free text, saved with your list</span></div>
+                        <div class="ll-modal-section-title">WTB <span class="ll-modal-hint">@Localizer.T("linelist.modal.wtb.hint")</span></div>
                         <textarea class="ll-wtb-input"
                                   rows="4"
-                                  placeholder="e.g. WTB clean Rex females, high melee Shadowmane..."
+                                  placeholder="@Localizer.T("linelist.modal.wtb.placeholder")"
                                   @bind="wtbDraft"
                                   @bind:event="oninput"></textarea>
                     </div>
 
                     <div class="ll-modal-section">
-                        <div class="ll-modal-section-title">Combined post</div>
+                        <div class="ll-modal-section-title">@Localizer.T("linelist.modal.combined")</div>
                         @if (string.IsNullOrEmpty(CombinedPost))
                         {
-                            <p class="ll-modal-empty">Mark lines for sale or write a WTB block to build a post.</p>
+                            <p class="ll-modal-empty">@Localizer.T("linelist.modal.combined.empty")</p>
                         }
                         else
                         {
@@ -268,8 +270,8 @@
                 </div>
 
                 <div class="ll-modal-footer">
-                    <button class="btn btn-secondary" @onclick="ClosePostModalAsync">Close</button>
-                    <button class="btn btn-primary" @onclick="CopyPostAsync">Copy Post</button>
+                    <button class="btn btn-secondary" @onclick="ClosePostModalAsync">@Localizer.T("common.close")</button>
+                    <button class="btn btn-primary" @onclick="CopyPostAsync">@Localizer.T("linelist.modal.copy")</button>
                 </div>
             </div>
         </div>
@@ -277,6 +279,13 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Repaints the page when the language changes; why the cascade rather than a subscription
+    /// of this page's own is explained in MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private LineListStore? store;
 
     private string searchQuery = "";
@@ -364,7 +373,7 @@
 
         if (string.IsNullOrWhiteSpace(draft.Species))
         {
-            NotificationService.ShowWarning("Species is required.");
+            NotificationService.ShowWarning(Localizer.T("linelist.error.species"));
             return;
         }
 
@@ -381,8 +390,8 @@
             ok = await LineListService.AddLineAsync(draft);
             if (ok)
             {
-                NotificationService.ShowSuccess("Line added.");
-                ActivityService.AddActivity($"Added breeding line: {label}", "success");
+                NotificationService.ShowSuccess(Localizer.T("linelist.success.added"));
+                ActivityService.AddActivity(Localizer.T("linelist.activity.added", label), "success");
             }
         }
         else
@@ -390,8 +399,8 @@
             ok = await LineListService.UpdateLineAsync(draft);
             if (ok)
             {
-                NotificationService.ShowSuccess("Line updated.");
-                ActivityService.AddActivity($"Updated breeding line: {label}", "info");
+                NotificationService.ShowSuccess(Localizer.T("linelist.success.updated"));
+                ActivityService.AddActivity(Localizer.T("linelist.activity.updated", label), "info");
             }
         }
 
@@ -401,7 +410,7 @@
         }
         else
         {
-            NotificationService.ShowError("Could not save the line. Check the log for details.");
+            NotificationService.ShowError(Localizer.T("linelist.error.save"));
         }
     }
 
@@ -420,12 +429,12 @@
                 CancelEditor();
 
             var label = string.IsNullOrWhiteSpace(line.Name) ? line.Species : $"{line.Species} — {line.Name}";
-            NotificationService.ShowSuccess("Line deleted.");
-            ActivityService.AddActivity($"Deleted breeding line: {label}", "info");
+            NotificationService.ShowSuccess(Localizer.T("linelist.success.deleted"));
+            ActivityService.AddActivity(Localizer.T("linelist.activity.deleted", label), "info");
         }
         else
         {
-            NotificationService.ShowError("Could not delete the line. Check the log for details.");
+            NotificationService.ShowError(Localizer.T("linelist.error.delete"));
         }
     }
 
@@ -452,7 +461,7 @@
         {
             var ok = await LineListService.SaveWtbTextAsync(wtbDraft);
             if (!ok)
-                NotificationService.ShowError("Could not save the WTB text. Check the log for details.");
+                NotificationService.ShowError(Localizer.T("linelist.error.savewtb"));
         }
     }
 
@@ -535,19 +544,19 @@
         var post = CombinedPost;
         if (string.IsNullOrWhiteSpace(post))
         {
-            NotificationService.ShowWarning("Nothing to copy yet. Mark lines for sale or write a WTB block.");
+            NotificationService.ShowWarning(Localizer.T("linelist.warn.nothingtocopy"));
             return;
         }
 
         try
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(post);
-            NotificationService.ShowSuccess("Post copied to clipboard.");
-            ActivityService.AddActivity("Copied WTS/WTB post to clipboard", "info");
+            NotificationService.ShowSuccess(Localizer.T("linelist.success.copied"));
+            ActivityService.AddActivity(Localizer.T("linelist.activity.copied"), "info");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to copy: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("linelist.error.copy", ex.Message));
         }
     }
 }
