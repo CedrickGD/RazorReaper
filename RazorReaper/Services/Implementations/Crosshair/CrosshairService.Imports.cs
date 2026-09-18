@@ -194,13 +194,16 @@ public partial class CrosshairService
     {
         try
         {
-            var parsed = CrosshairCodeParsers.TryParse(code, ActiveProfile);
-            if (parsed == null)
+            var result = CrosshairCodeParsers.TryParse(code, ActiveProfile);
+            if (result.Profile == null)
             {
-                _notifications.ShowError("Couldn't recognise that code (Valorant or CSGO format expected).");
+                // The parser names the field it choked on — pass that through verbatim instead of
+                // collapsing every failure into one unhelpful "couldn't recognise that code".
+                _notifications.ShowError(result.Error ?? "Couldn't read that crosshair code.");
+                _logger.LogInformation("Crosshair code import rejected ({Format}): {Error}", result.Format, result.Error);
                 return null;
             }
-            return parsed;
+            return result.Profile;
         }
         catch (Exception ex)
         {
