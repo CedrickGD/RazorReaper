@@ -174,6 +174,33 @@ public sealed class NumberFieldTests
     }
 
     /// <summary>
+    /// A wheel over a focused field used to spin it. Chromium does that itself whenever the field
+    /// is focused and the wheel lands on it, so scrolling a page with the pointer resting on a
+    /// field the user had just typed into rewrote it — and on the pages that apply on change, the
+    /// new value was live before anyone noticed. Blurring in the capture phase is what stops it:
+    /// the engine runs its default action after dispatch and asks whether the element is focused.
+    /// </summary>
+    [Fact]
+    public void TheWheelCannotEditANumberField()
+    {
+        var guard = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "wwwroot", "js", "number-field.js"));
+
+        Assert.Contains("if (!focused || focused.type !== 'number') return;", guard, StringComparison.Ordinal);
+        Assert.Contains("focused.blur();", guard, StringComparison.Ordinal);
+
+        // capture, so it runs before anything else can act on the wheel; passive, so the scroll
+        // the user actually asked for stays on the compositor thread — and so that cancelling the
+        // wheel is not even available here, which is the point. Stopping the spin by cancelling
+        // it would stop the scroll with it.
+        Assert.Contains("{ passive: true, capture: true }", guard, StringComparison.Ordinal);
+
+        var index = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "wwwroot", "index.html"));
+        Assert.Contains("js/number-field.js", index, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The nine pages the shared rule reaches. Listed so the blast radius of a change to it is
     /// stated rather than rediscovered — these are the routes to look at after touching it.
     /// </summary>
