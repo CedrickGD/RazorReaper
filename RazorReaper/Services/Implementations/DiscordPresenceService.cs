@@ -30,7 +30,6 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     // GitHub repo/releases: RPC buttons show on every user's profile, and the repo should
     // not be advertised to anyone who happens to hover a player.
     private const string DownloadUrl = "https://dl.razorreaper.app/";
-    private const string ShopUrl = "https://rr.sellhub.cx";
 
     private const string DefaultLabel = "Main Menu";
     private const string FallbackLabel = "Browsing";
@@ -222,7 +221,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 Buttons = new[]
                 {
                     new DiscordRPC.Button { Label = "Download", Url = DownloadUrl },
-                    new DiscordRPC.Button { Label = "Shop", Url = ShopUrl },
+                    new DiscordRPC.Button { Label = "Shop", Url = StoreLinks.Store },
                 },
             });
         }
