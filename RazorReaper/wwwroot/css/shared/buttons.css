@@ -45,6 +45,10 @@
     justify-content: center !important;
     gap: 0.4rem !important;
     padding: 0.45rem 0.8rem !important;
+    /* Repeated from .btn for the same reason the padding is: these classes are meant to render
+       as .btn does, and a height set only there would leave 23 page buttons 1.9px short of the
+       pickers and fields beside them. */
+    min-height: var(--control-h) !important;
     font-size: 0.82rem !important;
     font-weight: 500 !important;
     line-height: 1.2 !important;

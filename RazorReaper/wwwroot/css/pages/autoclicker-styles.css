@@ -207,10 +207,13 @@
 
 /* The input is borderless/transparent INSIDE the chip — the chip is the visible
    control. !important defeats the global input{} rule that would otherwise force a
-   dark fill, its own border, 8px radius and 0.75rem padding inside the chip. */
+   dark fill, its own border, 8px radius and 0.75rem padding inside the chip, and
+   min-height: 0 takes back the shared --control-h floor for the same reason: the chip
+   is what has a height here, the 16.7px field inside it is not. */
 .autoclicker-layout .interval-input {
     width: 100%;
     min-width: 0;
+    min-height: 0;
     background: transparent !important;
     border: none !important;
     outline: none !important;

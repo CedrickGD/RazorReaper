@@ -87,6 +87,19 @@
     --space-5: 1.5rem;
     --space-6: 2rem;
     --space-7: 3rem;
+
+    /* One height for the controls that stand next to each other in a row: the <Dropdown>
+       trigger, .btn / .rr-pill-btn (and the page button classes buttons.css folds onto them),
+       and a standalone text or number field. They used to be 28.84px, 32.13px and 34px, so
+       any row holding two kinds of control stepped. 34px is the number field's own height —
+       the one Round I settled on — because the field is the control whose height is set by
+       readable type and padding rather than by taste, and shrinking it to meet the button
+       would have undone that. Buttons grow ~1.9px, the dropdown trigger ~5.2px.
+
+       This is a floor, not a fixed height: min-height, so a control with more in it than one
+       line still grows, and a control that deliberately differs (the chips inside Crosshair's
+       .num-stepper and Auto clicker's .interval-cell, .rr-pill-btn.sm) opts out by name. */
+    --control-h: 34px;
 }
 
 * {
@@ -260,6 +273,9 @@ html[data-sidebar-resizing] .main-content::before {
     justify-content: center;
     gap: 0.4rem;
     padding: 0.45rem 0.8rem;
+    /* The shared row height, so a button lines up with the picker and the number field it
+       sits beside. A floor only: the tile-sized buttons on Home are far taller and untouched. */
+    min-height: var(--control-h);
     border: 1px solid transparent !important;
     border-radius: var(--radius-control);
     font-weight: 500;

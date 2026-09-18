@@ -90,8 +90,17 @@
     font-size: 0.8rem;
 }
 
+/* The one plain text field in the app that stands in a row of other controls: the filter grid
+   puts it in the first column with three <Dropdown> triggers beside it. It was falling through
+   to the global input{} rule in theme.css at 42px while they rendered 28.8px, so the search box
+   overhung the pickers by 13px. Same padding and type size the other in-row fields use
+   (.script-input, .nt-input), floored at the shared row height. Text fields that do NOT sit in
+   such a row — Server's address, Account's profile fields — keep theme.css's roomier box. */
 .steam-mods-input {
     width: 100%;
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    min-height: var(--control-h);
 }
 
 /* .rr-dd is inline-flex, so without this the filter dropdowns collapse to their label width

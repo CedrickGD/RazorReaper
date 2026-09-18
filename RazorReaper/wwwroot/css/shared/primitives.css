@@ -312,6 +312,7 @@
     justify-content: center;
     gap: 0.4rem;
     padding: 0.45rem 0.8rem;
+    min-height: var(--control-h);
     font-size: 0.82rem;
     font-weight: 500;
     line-height: 1.2;
@@ -345,8 +346,13 @@
         cursor: not-allowed;
     }
 
+    /* The dense variant, and the one button that opts out of the shared row height: at 25.5px
+       it is deliberately smaller than the controls around it (the pixel toolbar on Crosshair,
+       the per-row actions on Scripts), and floring it at 34px would be an 8.5px jump in exactly
+       the places that were made tight on purpose. */
     .rr-pill-btn.sm {
         padding: 0.28rem 0.6rem;
+        min-height: 0;
         font-size: 0.76rem;
     }
 
@@ -540,6 +546,12 @@ input[type="range"].theme-hue-slider::-webkit-slider-runnable-track {
    needs. Both are two-part selectors, so they outrank this one. */
 input[type="number"] {
     padding: var(--space-2) var(--space-3) !important;
+    /* The 34px this padding and type size already produced, said out loud. It is the shared
+       row height now — the buttons and the <Dropdown> trigger are floored at the same token —
+       so the alignment survives the next change to the padding or the font instead of
+       depending on the two happening to add up. The two fields that live inside a chip take
+       it back off (Crosshair's .num-stepper, Auto clicker's .interval-cell). */
+    min-height: var(--control-h);
     font-size: 0.85rem !important;
     /* Digits are the only content these ever hold, and a proportional font re-flows the
        number under the caret as you type. Five of the nine pages had already reached for
@@ -727,6 +739,11 @@ input[type="number"] {
     width: 100%;
     min-width: 0;
     padding: 0.36rem 0.5rem 0.36rem 0.6rem;
+    /* The padding above left the trigger at 28.84px, the shortest control in the app, so the
+       Mode picker on Scripts sat 5px below the field under it and the three filters on Steam
+       mods sat 13px below the search box beside them. The padding is unchanged — the floor is
+       what lines the trigger up, and the label keeps the breathing room it was given. */
+    min-height: var(--control-h);
     border-radius: var(--radius-control);
     border: 1px solid var(--border-color);
     background: var(--surface-inset);

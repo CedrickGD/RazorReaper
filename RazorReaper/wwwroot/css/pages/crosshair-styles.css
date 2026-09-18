@@ -357,6 +357,9 @@
         outline: none !important;
         min-width: 50px;
         height: 100%;
+        /* Opts out of --control-h: the stepper around it is the visible control and sets the
+           height, and a 34px floor on the borderless field inside would push the chip open. */
+        min-height: 0;
     }
 
         .crosshair-layout .num-input.tight {

@@ -73,6 +73,10 @@ input.nt-input {
     padding: var(--space-2) var(--space-3) !important;
     font-size: 0.85rem !important;
     min-width: 0;
+    /* The add row puts two of these beside a <Dropdown>; the mono one measured 34px and the
+       proportional one 33px, because normal line-height differs per typeface. The shared row
+       height settles both on the same number. */
+    min-height: var(--control-h);
 }
 
 input.nt-input-wide {

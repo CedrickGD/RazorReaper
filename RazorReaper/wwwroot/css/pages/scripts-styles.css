@@ -410,6 +410,10 @@
 .script-input {
     width: 120px !important;
     padding: var(--space-2) var(--space-3) !important;
+    /* The text half of the column does not reach input[type="number"]'s rule, so it takes the
+       shared row height from the token directly — otherwise a key-name field and the Mode
+       picker stacked under it would sit at two heights again. */
+    min-height: var(--control-h);
     font-size: 0.85rem !important;
     font-family: var(--font-mono);
     text-align: right;
