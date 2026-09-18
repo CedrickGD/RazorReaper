@@ -229,6 +229,42 @@ public sealed class DropdownLayerTests
         }
     }
 
+    /// <summary>
+    /// And nothing is left of the control it replaced. A native &lt;select&gt; draws its open list
+    /// through the OS, outside the page, so it stays a white system menu in a dark app whatever
+    /// the CSS says — that is why the migration happened. Two stylesheets went on dressing one up
+    /// long after the last element was gone (.settings-select on a page whose picker is a
+    /// &lt;Dropdown&gt;, .convert-select likewise), which is exactly the sort of leftover the next
+    /// page needing a picker copies.
+    /// </summary>
+    [Fact]
+    public void NothingIsLeftOfTheNativeSelect()
+    {
+        var components = Path.Combine(RepositoryRoot(), "RazorReaper", "Components");
+        var markup = Directory.GetFiles(components, "*.razor", SearchOption.AllDirectories)
+            // Comments are read first: two files explain in prose why the element is gone, and
+            // that explanation is the reason nobody puts one back.
+            .Where(path => Regex.IsMatch(WithoutComments(File.ReadAllText(path)), @"<select\b"))
+            .Select(Path.GetFileName)
+            .ToArray();
+
+        Assert.Empty(markup);
+
+        // theme.css's `input, textarea, select` rule may keep naming the element — it is there for
+        // the inputs. What must not survive is a class styled as a picker of its own.
+        var css = Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css");
+        var orphans = Directory.GetFiles(css, "*.css", SearchOption.AllDirectories)
+            .Where(path => Regex.IsMatch(File.ReadAllText(path), @"\.[\w-]*-select\b"))
+            .Select(Path.GetFileName)
+            .ToArray();
+
+        Assert.Empty(orphans);
+    }
+
+    /// <summary>Razor and HTML comments stripped, so prose about markup is not read as markup.</summary>
+    private static string WithoutComments(string markup)
+        => Regex.Replace(Regex.Replace(markup, @"@\*[\s\S]*?\*@", string.Empty), @"<!--[\s\S]*?-->", string.Empty);
+
     /// <summary>The .rr-dd-pop block in primitives.css, up to its closing brace.</summary>
     private static string PopRule() => Rule(".rr-dd-pop");
 

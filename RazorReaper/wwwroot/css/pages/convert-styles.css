@@ -332,33 +332,6 @@
     flex-shrink: 0;
 }
 
-.convert-select {
-    flex: 1;
-    min-width: 0;
-    max-width: 60%;
-    padding: 0.35rem 0.55rem;
-    border-radius: var(--radius-control);
-    border: 1px solid var(--border-color);
-    background: var(--surface-inset);
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-    .convert-select:hover:not(:disabled) {
-        border-color: var(--border-hover);
-    }
-
-    .convert-select:focus-visible {
-        outline: none;
-        border-color: rgba(var(--accent-purple-rgb), 0.6);
-    }
-
-    .convert-select:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-
 /* Only shown once a movie is picked, so it never asks about something you are not doing. */
 .convert-check {
     display: flex;

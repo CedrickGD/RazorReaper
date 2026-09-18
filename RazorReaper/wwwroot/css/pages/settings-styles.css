@@ -30,22 +30,6 @@
 
 /* --- Font + scale ------------------------------------------------------ */
 
-.settings-select {
-    min-width: 190px;
-    padding: 0.4rem 0.6rem;
-    border-radius: var(--radius-control);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 0.84rem;
-}
-
-    .settings-select:focus {
-        outline: none;
-        border-color: rgba(var(--accent-purple-rgb), 0.55);
-    }
-
 .settings-scale {
     display: flex;
     align-items: center;
