@@ -6,6 +6,7 @@
 @using Microsoft.Maui.Storage
 @using RazorReaper.Services
 @using RazorReaper.Models
+@using RazorReaper.Services.Localization
 
 @inject IJSRuntime JSRuntime
 @inject IIniPresetService PresetService
@@ -15,11 +16,12 @@
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ITextureBackupService BackupService
+@inject ILocalizer Localizer
 
 
         <header class="page-header">
-            <h1 class="page-title">INI Configuration</h1>
-            <p class="page-subtitle">Manage & optimize ARK configuration presets</p>
+            <h1 class="page-title">@Localizer.T("inichanger.title")</h1>
+            <p class="page-subtitle">@Localizer.T("inichanger.subtitle")</p>
         </header>
 
         @{
@@ -41,7 +43,7 @@
                             var activeSrc = GetPresetImageSource(activePreset.Name);
                             if (activeSrc != null)
                             {
-                                <img src="@activeSrc" alt="@activePreset.Name preview" onclick="rrZoom(this)" />
+                                <img src="@activeSrc" alt="@Localizer.T("inichanger.preview.alt", activePreset.Name)" onclick="rrZoom(this)" />
                             }
                             else
                             {
@@ -60,7 +62,7 @@
                             }
                             @if (activePreset.IsCustom)
                             {
-                                <span class="ini-active-custom">Custom</span>
+                                <span class="ini-active-custom">@Localizer.T("inichanger.badge.custom")</span>
                             }
                         }
                         else
@@ -73,15 +75,15 @@
                     <div class="ini-active-meta">
                         <div class="ini-active-label">
                             <span class="ini-launcher-stat-dot @(activePreset == null ? "muted" : "live")"></span>
-                            @(activePreset == null ? "No preset applied" : "Active preset")
+                            @Localizer.T(activePreset == null ? "inichanger.active.none" : "inichanger.active.label")
                         </div>
-                        <div class="ini-active-name">@(activePreset?.Name ?? "Pick a preset below")</div>
-                        <p class="ini-active-desc">@(activePreset?.Description ?? "Click any card to apply that preset to your live ARK INI.")</p>
+                        <div class="ini-active-name">@(activePreset?.Name ?? Localizer.T("inichanger.active.pick"))</div>
+                        <p class="ini-active-desc">@(activePreset == null ? Localizer.T("inichanger.active.hint") : PresetDescription(activePreset))</p>
                     </div>
                     <div class="ini-active-stats">
                         <div class="ini-active-stat">
                             <div class="ini-active-stat-value">@PresetService.GetAllPresets().Count</div>
-                            <div class="ini-active-stat-label">Presets</div>
+                            <div class="ini-active-stat-label">@Localizer.T("inichanger.stat.presets")</div>
                         </div>
                     </div>
                 </div>
@@ -90,49 +92,49 @@
 
                 <div class="ini-toolbar-row">
                     <div class="ini-toolbar-group">
-                        <button class="ini-btn" @onclick="OpenIniFile" data-tooltip="Open the live ARK INI" data-tooltip-pos="bottom">
+                        <button class="ini-btn" @onclick="OpenIniFile" data-tooltip="@Localizer.T("inichanger.tooltip.open")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                             </svg>
-                            Open
+                            @Localizer.T("common.open")
                         </button>
-                        <button class="ini-btn" @onclick="CheckIniFileExists" data-tooltip="Verify INI file path" data-tooltip-pos="bottom">
+                        <button class="ini-btn" @onclick="CheckIniFileExists" data-tooltip="@Localizer.T("inichanger.tooltip.check")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                             </svg>
-                            Check
+                            @Localizer.T("inichanger.check")
                         </button>
-                        <button class="ini-btn" @onclick="SaveChanges" data-tooltip="Write current buffer to disk" data-tooltip-pos="bottom">
+                        <button class="ini-btn" @onclick="SaveChanges" data-tooltip="@Localizer.T("inichanger.tooltip.save")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
                             </svg>
-                            Save
+                            @Localizer.T("common.save")
                         </button>
-                        <button class="ini-btn" @onclick="ClearFile" data-tooltip="Empty the live INI" data-tooltip-pos="bottom">
+                        <button class="ini-btn" @onclick="ClearFile" data-tooltip="@Localizer.T("inichanger.tooltip.clear")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                             </svg>
-                            Clear
+                            @Localizer.T("common.clear")
                         </button>
-                        <button class="ini-btn" @onclick="DownloadAllPresets" data-tooltip="Export all presets as a zip" data-tooltip-pos="bottom">
+                        <button class="ini-btn" @onclick="DownloadAllPresets" data-tooltip="@Localizer.T("inichanger.tooltip.export")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
-                            Export
+                            @Localizer.T("inichanger.export")
                         </button>
                     </div>
 
                     <div class="ini-toolbar-sep"></div>
 
                     <div class="ini-toolbar-group">
-                        <button class="ini-btn" @onclick="CheckWaterFiles" data-tooltip="Check water surface files" data-tooltip-pos="bottom">
+                        <button class="ini-btn" @onclick="CheckWaterFiles" data-tooltip="@Localizer.T("inichanger.tooltip.water")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 2a6 6 0 016 6c0 4-6 10-6 10S4 12 4 8a6 6 0 016-6zm0 4a2 2 0 100 4 2 2 0 000-4z" />
                             </svg>
-                            Water
+                            @Localizer.T("inichanger.water")
                         </button>
-                        <button class="ini-btn @(WaterSurfaceRemoved ? "ini-btn-accent" : "ini-btn-danger")" @onclick="ToggleWaterSurface" data-tooltip="@(WaterSurfaceRemoved ? "Restore the water surface" : "Remove the water surface (reversible)")" data-tooltip-pos="bottom">
+                        <button class="ini-btn @(WaterSurfaceRemoved ? "ini-btn-accent" : "ini-btn-danger")" @onclick="ToggleWaterSurface" data-tooltip="@Localizer.T(WaterSurfaceRemoved ? "inichanger.water.restore.tooltip" : "inichanger.water.remove.tooltip")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 @if (WaterSurfaceRemoved)
                                 {
@@ -143,21 +145,21 @@
                                     <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                                 }
                             </svg>
-                            @(WaterSurfaceRemoved ? "Restore Water" : "Remove Water")
+                            @Localizer.T(WaterSurfaceRemoved ? "inichanger.water.restore" : "inichanger.water.remove")
                         </button>
                     </div>
 
                     <div class="ini-toolbar-spacer"></div>
 
                     <div class="ini-toolbar-group">
-                        <button class="ini-btn ini-btn-accent" @onclick="OpenAddPresetDialog" data-tooltip="Save current INI as a custom preset" data-tooltip-pos="bottom">
+                        <button class="ini-btn ini-btn-accent" @onclick="OpenAddPresetDialog" data-tooltip="@Localizer.T("inichanger.tooltip.addpreset")" data-tooltip-pos="bottom">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                             </svg>
-                            Add Preset
+                            @Localizer.T("inichanger.addpreset")
                         </button>
-                        <span data-tooltip="Click a custom preset to remove it" data-tooltip-pos="bottom">
-                            <Switch Value="@isDeleteMode" ValueChanged="@((bool v) => ToggleDeleteMode())" Label="Delete mode" Compact="true" CssClass="rr-switch-danger" />
+                        <span data-tooltip="@Localizer.T("inichanger.tooltip.deletemode")" data-tooltip-pos="bottom">
+                            <Switch Value="@isDeleteMode" ValueChanged="@((bool v) => ToggleDeleteMode())" Label="@Localizer.T("inichanger.deletemode")" Compact="true" CssClass="rr-switch-danger" />
                         </span>
                     </div>
                 </div>
@@ -176,7 +178,7 @@
                                 @{ var gallerySrc = GetPresetImageSource(preset.Name); }
                                 @if (gallerySrc != null)
                                 {
-                                    <img src="@gallerySrc" alt="@preset.Name preview" />
+                                    <img src="@gallerySrc" alt="@Localizer.T("inichanger.preview.alt", preset.Name)" />
                                 }
                                 else
                                 {
@@ -199,17 +201,17 @@
                                         <svg fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                         </svg>
-                                        Active
+                                        @Localizer.T("common.active")
                                     </div>
                                 }
                                 @if (preset.IsCustom)
                                 {
-                                    <div class="preset-gallery-custom-badge">Custom</div>
+                                    <div class="preset-gallery-custom-badge">@Localizer.T("inichanger.badge.custom")</div>
                                 }
                             </div>
                             <div class="preset-gallery-info" @onclick="() => HandleGalleryCardClick(preset)">
                                 <div class="preset-gallery-name">@preset.Name</div>
-                                <div class="preset-gallery-desc">@preset.Description</div>
+                                <div class="preset-gallery-desc">@PresetDescription(preset)</div>
                             </div>
                         </div>
                     }
@@ -221,7 +223,7 @@
                ============================================================ *@
             <section class="content-card ini-editor-collapse @(editorExpanded ? "expanded" : "collapsed")">
                 <button type="button" class="ini-editor-collapse-header" @onclick="ToggleEditor">
-                    <h3>INI Editor</h3>
+                    <h3>@Localizer.T("inichanger.editor.title")</h3>
                     <span class="ini-widget-pill muted">@IniEditorStatusLabel()</span>
                     <svg class="ini-editor-chevron @(editorExpanded ? "open" : "")" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -230,7 +232,7 @@
                 <div class="ini-editor-collapse-body">
                     <textarea @bind="currentIniContent"
                               class="ini-editor-embedded-textarea"
-                              placeholder="Load an INI file or apply a preset to start editing…"
+                              placeholder="@Localizer.T("inichanger.editor.placeholder")"
                               spellcheck="false"></textarea>
                 </div>
             </section>
@@ -243,10 +245,10 @@
         <div class="ini-overlay-container ini-overlay-narrow" @onclick:stopPropagation="true">
             <div class="ini-overlay-header">
                 <div class="ini-overlay-title-block">
-                    <h2 class="ini-overlay-title">Create Preset</h2>
-                    <span class="ini-overlay-subtitle">Save your tuned INI as a reusable preset</span>
+                    <h2 class="ini-overlay-title">@Localizer.T("inichanger.dialog.title")</h2>
+                    <span class="ini-overlay-subtitle">@Localizer.T("inichanger.dialog.subtitle")</span>
                 </div>
-                <button class="ini-overlay-close" @onclick="CloseAddPresetDialog" data-tooltip="Close" data-tooltip-pos="bottom">
+                <button class="ini-overlay-close" @onclick="CloseAddPresetDialog" data-tooltip="@Localizer.T("common.close")" data-tooltip-pos="bottom">
                     <svg fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
@@ -256,22 +258,22 @@
             <div class="ini-overlay-body">
                 <div class="ini-preset-form">
                     <div class="ini-preset-field">
-                        <label class="ini-preset-label" for="preset-name">Preset name</label>
-                        <input id="preset-name" class="ini-preset-input" @bind="newPresetName" placeholder="Enter preset name" />
+                        <label class="ini-preset-label" for="preset-name">@Localizer.T("inichanger.dialog.name")</label>
+                        <input id="preset-name" class="ini-preset-input" @bind="newPresetName" placeholder="@Localizer.T("inichanger.dialog.name.placeholder")" />
                     </div>
 
                     <div class="ini-preset-field">
-                        <label class="ini-preset-label" for="preset-description">Description</label>
-                        <input id="preset-description" class="ini-preset-input" @bind="newPresetDescription" placeholder="Short description" />
+                        <label class="ini-preset-label" for="preset-description">@Localizer.T("inichanger.dialog.description")</label>
+                        <input id="preset-description" class="ini-preset-input" @bind="newPresetDescription" placeholder="@Localizer.T("inichanger.dialog.description.placeholder")" />
                     </div>
 
                     <div class="ini-preset-field">
-                        <label class="ini-preset-label">Preview image <span class="ini-preset-label-optional">optional</span></label>
+                        <label class="ini-preset-label">@Localizer.T("inichanger.dialog.image") <span class="ini-preset-label-optional">@Localizer.T("inichanger.dialog.optional")</span></label>
                         <div class="ini-preset-image-picker">
                             <div class="ini-preset-image-thumb @(newPresetImagePreviewUrl == null ? "is-empty" : "")">
                                 @if (newPresetImagePreviewUrl != null)
                                 {
-                                    <img src="@newPresetImagePreviewUrl" alt="Preset image preview" />
+                                    <img src="@newPresetImagePreviewUrl" alt="@Localizer.T("inichanger.dialog.image.alt")" />
                                 }
                                 else
                                 {
@@ -282,34 +284,34 @@
                             </div>
                             <div class="ini-preset-image-controls">
                                 <button type="button" class="ini-overlay-ghost-btn" @onclick="PickPresetImage">
-                                    @(newPresetImagePreviewUrl != null ? "Change image" : "Choose image…")
+                                    @Localizer.T(newPresetImagePreviewUrl != null ? "inichanger.dialog.image.change" : "inichanger.dialog.image.choose")
                                 </button>
                                 @if (newPresetImagePreviewUrl != null)
                                 {
-                                    <button type="button" class="ini-overlay-ghost-btn" @onclick="ClearPresetImage">Remove</button>
+                                    <button type="button" class="ini-overlay-ghost-btn" @onclick="ClearPresetImage">@Localizer.T("common.remove")</button>
                                 }
                             </div>
                         </div>
                     </div>
 
                     <div class="ini-preset-field">
-                        <label class="ini-preset-label" for="preset-content">INI content</label>
+                        <label class="ini-preset-label" for="preset-content">@Localizer.T("inichanger.dialog.content")</label>
                         <textarea id="preset-content" class="ini-preset-textarea" @bind="newPresetContent" rows="8"
-                                  placeholder="Paste INI content or import a file..."></textarea>
+                                  placeholder="@Localizer.T("inichanger.dialog.content.placeholder")"></textarea>
                     </div>
 
                     <div class="ini-preset-actions">
-                        <button type="button" class="ini-overlay-ghost-btn" @onclick="UseCurrentIniContent">Use Current Editor</button>
-                        <button type="button" class="ini-overlay-ghost-btn" @onclick="ImportPresetFile">Import INI File</button>
+                        <button type="button" class="ini-overlay-ghost-btn" @onclick="UseCurrentIniContent">@Localizer.T("inichanger.dialog.usecurrent")</button>
+                        <button type="button" class="ini-overlay-ghost-btn" @onclick="ImportPresetFile">@Localizer.T("inichanger.dialog.import")</button>
                     </div>
 
-                    <p class="ini-preset-note">Custom presets are saved locally and appear in your preset list.</p>
+                    <p class="ini-preset-note">@Localizer.T("inichanger.dialog.note")</p>
                 </div>
             </div>
 
             <div class="ini-overlay-footer">
-                <button type="button" class="ini-overlay-ghost-btn" @onclick="CloseAddPresetDialog">Cancel</button>
-                <button type="button" class="ini-overlay-ghost-btn ini-overlay-primary-btn" @onclick="SaveCustomPreset" disabled="@IsSavePresetDisabled()">Save Preset</button>
+                <button type="button" class="ini-overlay-ghost-btn" @onclick="CloseAddPresetDialog">@Localizer.T("common.cancel")</button>
+                <button type="button" class="ini-overlay-ghost-btn ini-overlay-primary-btn" @onclick="SaveCustomPreset" disabled="@IsSavePresetDisabled()">@Localizer.T("inichanger.dialog.save")</button>
             </div>
         </div>
     </div>
@@ -317,6 +319,9 @@
 
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     private string currentIniContent = "";
     private string selectedPreset = "";
     private bool showAddPresetDialog = false;
@@ -353,6 +358,15 @@
 
         await RefreshPresetImagesAsync();
     }
+
+    /// <summary>
+    /// A preset's description as the reader sees it. A built-in carries a key; a custom preset
+    /// carries whatever its author typed, and that is their text, not ours.
+    /// </summary>
+    private string PresetDescription(IniPreset preset) =>
+        string.IsNullOrEmpty(preset.DescriptionKey)
+            ? preset.Description
+            : Localizer.T(preset.DescriptionKey);
 
     private string? GetPresetImageSource(string presetName) =>
         presetImageSources.TryGetValue(presetName, out var src) ? src : null;
@@ -411,19 +425,19 @@
             return; // Still resolving (or unavailable) — nothing to zoom yet.
         }
 
-        await JSRuntime.InvokeVoidAsync("rrZoomUrl", src, $"{preset.Name} preview");
+        await JSRuntime.InvokeVoidAsync("rrZoomUrl", src, Localizer.T("inichanger.preview.alt", preset.Name));
     }
 
     private string IniEditorStatusLabel()
     {
         if (string.IsNullOrEmpty(currentIniContent))
         {
-            return "Empty buffer";
+            return Localizer.T("inichanger.editor.empty");
         }
 
         var lineCount = currentIniContent.Count(c => c == '\n') + 1;
         var byteCount = System.Text.Encoding.UTF8.GetByteCount(currentIniContent);
-        return $"{lineCount:N0} lines · {FormatByteCount(byteCount)}";
+        return Localizer.T("inichanger.editor.stats", lineCount.ToString("N0"), FormatByteCount(byteCount));
     }
 
     private static string FormatByteCount(int bytes)
@@ -461,7 +475,7 @@
 
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Pick preset image",
+                PickerTitle = Localizer.T("inichanger.picker.image"),
                 FileTypes = fileTypes
             });
 
@@ -494,7 +508,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error picking preset image");
-            NotificationService.ShowError($"Image pick failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.imagepickfailed", ex.Message));
         }
     }
 
@@ -511,7 +525,7 @@
 
         if (string.IsNullOrWhiteSpace(newPresetContent))
         {
-            NotificationService.ShowWarning("Current INI content is empty.");
+            NotificationService.ShowWarning(Localizer.T("inichanger.toast.emptybuffer"));
         }
     }
 
@@ -526,7 +540,7 @@
 
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Select an INI file",
+                PickerTitle = Localizer.T("inichanger.picker.ini"),
                 FileTypes = fileTypes
             });
 
@@ -544,12 +558,12 @@
                 newPresetName = Path.GetFileNameWithoutExtension(result.FileName);
             }
 
-            NotificationService.ShowSuccess("INI file imported.");
+            NotificationService.ShowSuccess(Localizer.T("inichanger.toast.imported"));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error importing INI file");
-            NotificationService.ShowError($"Import failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.importfailed", ex.Message));
         }
     }
 
@@ -560,19 +574,19 @@
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            NotificationService.ShowWarning("Preset name is required.");
+            NotificationService.ShowWarning(Localizer.T("inichanger.toast.namerequired"));
             return;
         }
 
         if (string.IsNullOrWhiteSpace(newPresetContent))
         {
-            NotificationService.ShowWarning("Preset content is required.");
+            NotificationService.ShowWarning(Localizer.T("inichanger.toast.contentrequired"));
             return;
         }
 
         if (PresetService.GetPresetByName(name) != null)
         {
-            NotificationService.ShowWarning("A preset with this name already exists.");
+            NotificationService.ShowWarning(Localizer.T("inichanger.toast.nameexists"));
             return;
         }
 
@@ -590,7 +604,7 @@
             var saved = await PresetService.AddCustomPresetAsync(preset);
             if (!saved)
             {
-                NotificationService.ShowError("Failed to save preset.");
+                NotificationService.ShowError(Localizer.T("inichanger.toast.savefailed"));
                 return;
             }
 
@@ -607,13 +621,13 @@
                     }
                     else
                     {
-                        NotificationService.ShowWarning("Preset saved, but the image could not be attached.");
+                        NotificationService.ShowWarning(Localizer.T("inichanger.toast.imagenotattached"));
                     }
                 }
                 catch (Exception imgEx)
                 {
                     Logger.LogError(imgEx, "Error attaching image to new preset {Preset}", preset.Name);
-                    NotificationService.ShowWarning("Preset saved, but the image could not be attached.");
+                    NotificationService.ShowWarning(Localizer.T("inichanger.toast.imagenotattached"));
                 }
             }
 
@@ -624,13 +638,13 @@
             ClearPresetImage();
             await RefreshPresetImagesAsync();
 
-            NotificationService.ShowSuccess("Preset saved successfully.");
-            ActivityService.AddActivity($"Custom preset saved: {preset.Name}", "success");
+            NotificationService.ShowSuccess(Localizer.T("inichanger.toast.presetsaved"));
+            ActivityService.AddActivity(Localizer.T("inichanger.activity.presetsaved", preset.Name), "success");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving custom preset");
-            NotificationService.ShowError($"Save failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.saveerror", ex.Message));
         }
         finally
         {
@@ -644,7 +658,7 @@
 
         if (isDeleteMode)
         {
-            NotificationService.ShowInfo("Select a custom preset to delete.");
+            NotificationService.ShowInfo(Localizer.T("inichanger.toast.selectcustom"));
         }
     }
 
@@ -661,11 +675,12 @@
 
         if (!preset.IsCustom)
         {
-            NotificationService.ShowWarning("Only custom presets can be deleted.");
+            NotificationService.ShowWarning(Localizer.T("inichanger.toast.onlycustom"));
             return;
         }
 
-        var confirm = await JSRuntime.InvokeAsync<bool>("confirm", $"Delete custom preset '{preset.Name}'?");
+        var confirm = await JSRuntime.InvokeAsync<bool>(
+            "confirm", Localizer.T("inichanger.confirm.delete", preset.Name));
         if (!confirm)
         {
             return;
@@ -676,7 +691,7 @@
             var removed = await PresetService.RemoveCustomPresetAsync(preset.Name);
             if (!removed)
             {
-                NotificationService.ShowWarning("Unable to remove this preset.");
+                NotificationService.ShowWarning(Localizer.T("inichanger.toast.removefailed"));
                 return;
             }
 
@@ -687,14 +702,14 @@
             }
 
             presetImageSources.Remove(preset.Name);
-            NotificationService.ShowSuccess("Custom preset removed.");
-            ActivityService.AddActivity($"Custom preset removed: {preset.Name}", "warning");
+            NotificationService.ShowSuccess(Localizer.T("inichanger.toast.presetremoved"));
+            ActivityService.AddActivity(Localizer.T("inichanger.activity.presetremoved", preset.Name), "warning");
             StateHasChanged();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error removing custom preset");
-            NotificationService.ShowError($"Remove failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.removeerror", ex.Message));
         }
     }
 
@@ -729,20 +744,20 @@
 
             if (!saved)
             {
-                NotificationService.ShowError("Failed to save preset image.");
+                NotificationService.ShowError(Localizer.T("inichanger.toast.imagesavefailed"));
                 return;
             }
 
             imageVersion++;
             await RefreshPresetImagesAsync();
-            NotificationService.ShowSuccess($"Image updated for '{preset.Name}'.");
-            ActivityService.AddActivity($"Preset image updated: {preset.Name}", "success");
+            NotificationService.ShowSuccess(Localizer.T("inichanger.toast.imageupdated", preset.Name));
+            ActivityService.AddActivity(Localizer.T("inichanger.activity.imageupdated", preset.Name), "success");
             StateHasChanged();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error replacing preset image for {Preset}", preset.Name);
-            NotificationService.ShowError($"Image replace failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.imagereplacefailed", ex.Message));
         }
     }
 
@@ -753,20 +768,20 @@
             var reset = PresetService.ResetPresetImage(preset.Name);
             if (!reset)
             {
-                NotificationService.ShowInfo("No custom image to reset.");
+                NotificationService.ShowInfo(Localizer.T("inichanger.toast.nocustomimage"));
                 return;
             }
 
             imageVersion++;
             await RefreshPresetImagesAsync();
-            NotificationService.ShowSuccess($"Reset image for '{preset.Name}'.");
-            ActivityService.AddActivity($"Preset image reset: {preset.Name}", "info");
+            NotificationService.ShowSuccess(Localizer.T("inichanger.toast.imagereset", preset.Name));
+            ActivityService.AddActivity(Localizer.T("inichanger.activity.imagereset", preset.Name), "info");
             StateHasChanged();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error resetting preset image for {Preset}", preset.Name);
-            NotificationService.ShowError($"Image reset failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.imageresetfailed", ex.Message));
         }
     }
 
@@ -783,21 +798,21 @@
 
                 if (iniPath == null)
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry.")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("inichanger.toast.nosteam"))), Logger);
                     return;
                 }
 
                 if (!File.Exists(iniPath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning("INI file does not exist at expected location.")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning(Localizer.T("inichanger.toast.noini"))), Logger);
                     return;
                 }
 
                 currentIniContent = File.ReadAllText(iniPath, System.Text.Encoding.UTF8);
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess("INI file loaded successfully.");
-                    ActivityService.AddActivity("INI file loaded successfully", "success");
+                    NotificationService.ShowSuccess(Localizer.T("inichanger.toast.iniloaded"));
+                    ActivityService.AddActivity(Localizer.T("inichanger.activity.iniloaded"), "success");
                     StateHasChanged();
                 }), Logger);
                 Logger.LogInformation("INI file loaded from: {Path}", iniPath);
@@ -806,7 +821,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading INI file");
-            NotificationService.ShowError($"Error loading INI file: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.loaderror", ex.Message));
         }
     }
 
@@ -823,7 +838,7 @@
 
                 if (iniPath == null)
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry.")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("inichanger.toast.nosteam"))), Logger);
                     return;
                 }
 
@@ -835,8 +850,8 @@
                 {
                     selectedPreset = "";
                     PresetService.SetLastAppliedPresetName(string.Empty);
-                    NotificationService.ShowSuccess("INI file content cleared successfully.");
-                    ActivityService.AddActivity("INI file cleared", "warning");
+                    NotificationService.ShowSuccess(Localizer.T("inichanger.toast.inicleared"));
+                    ActivityService.AddActivity(Localizer.T("inichanger.activity.inicleared"), "warning");
                     StateHasChanged();
                 }), Logger);
                 Logger.LogInformation("INI file cleared");
@@ -845,7 +860,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error clearing INI file");
-            NotificationService.ShowError($"Error clearing INI file: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.clearerror", ex.Message));
         }
     }
 
@@ -854,7 +869,7 @@
         selectedPreset = preset.Name;
         currentIniContent = preset.Content;
         PresetService.SetLastAppliedPresetName(preset.Name);
-        ActivityService.AddActivity($"Preset selected: {preset.Name}", "info");
+        ActivityService.AddActivity(Localizer.T("inichanger.activity.presetselected", preset.Name), "info");
         Logger.LogInformation("Preset selected: {PresetName}", preset.Name);
     }
 
@@ -903,14 +918,14 @@
 
                 if (iniPath == null)
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry.")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("inichanger.toast.nosteam"))), Logger);
                     return;
                 }
 
                 var directory = Path.GetDirectoryName(iniPath);
                 if (string.IsNullOrEmpty(directory))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Invalid directory path")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("inichanger.toast.badpath"))), Logger);
                     Logger.LogError("Directory path is null or empty for INI file: {Path}", iniPath);
                     return;
                 }
@@ -924,8 +939,12 @@
                 File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess("INI file saved successfully.");
-                    ActivityService.AddActivity($"INI file saved{(string.IsNullOrEmpty(selectedPreset) ? "" : $" (Preset: {selectedPreset})")}", "success");
+                    NotificationService.ShowSuccess(Localizer.T("inichanger.toast.inisaved"));
+                    ActivityService.AddActivity(
+                        string.IsNullOrEmpty(selectedPreset)
+                            ? Localizer.T("inichanger.activity.inisaved")
+                            : Localizer.T("inichanger.activity.inisaved.preset", selectedPreset),
+                        "success");
                 }), Logger);
                 Logger.LogInformation("INI file saved to: {Path}", iniPath);
             });
@@ -933,7 +952,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving INI file");
-            NotificationService.ShowError($"Error saving INI file: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.saveinierror", ex.Message));
         }
     }
 
@@ -944,7 +963,7 @@
             var presets = PresetService.GetAllPresets();
             if (presets.Count == 0)
             {
-                NotificationService.ShowWarning("No presets available to download.");
+                NotificationService.ShowWarning(Localizer.T("inichanger.toast.nopresets"));
                 return;
             }
 
@@ -979,15 +998,15 @@
 
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess($"Presets downloaded to {zipPath}");
-                    ActivityService.AddActivity("INI presets downloaded", "success");
+                    NotificationService.ShowSuccess(Localizer.T("inichanger.toast.downloaded", zipPath));
+                    ActivityService.AddActivity(Localizer.T("inichanger.activity.downloaded"), "success");
                 }), Logger);
             });
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading presets");
-            NotificationService.ShowError($"Download failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.downloadfailed", ex.Message));
         }
     }
 
@@ -1031,13 +1050,13 @@
 
                 if (iniPath == null)
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Steam installation not found in registry. Please ensure Steam is properly installed.")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("inichanger.toast.nosteam.long"))), Logger);
                     return;
                 }
 
                 if (!File.Exists(iniPath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning($"INI file not found at: {iniPath}")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning(Localizer.T("inichanger.toast.ininotfound", iniPath))), Logger);
                     Logger.LogWarning("INI file not found at: {Path}", iniPath);
                 }
                 else
@@ -1046,7 +1065,8 @@
                     var fileSize = fileInfo.Length;
                     var lastModified = fileInfo.LastWriteTime;
 
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowSuccess($"INI file found.\nPath: {iniPath}\nSize: {fileSize} bytes\nModified: {lastModified:yyyy-MM-dd HH:mm}")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowSuccess(Localizer.T(
+                        "inichanger.toast.inifound", iniPath, fileSize, lastModified.ToString("yyyy-MM-dd HH:mm")))), Logger);
                     Logger.LogInformation("INI file found at: {Path}, Size: {Size} bytes", iniPath, fileSize);
                 }
             });
@@ -1054,7 +1074,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error checking INI file");
-            NotificationService.ShowError($"Error checking INI file: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.checkerror", ex.Message));
         }
     }
 
@@ -1071,7 +1091,7 @@
 
                 if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("ARK installation not found. Please ensure ARK is properly installed.")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("inichanger.toast.noark.long"))), Logger);
                     return;
                 }
 
@@ -1079,7 +1099,7 @@
 
                 if (!Directory.Exists(waterFilesPath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning($"Water files directory not found at: {waterFilesPath}")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning(Localizer.T("inichanger.toast.nowaterdir", waterFilesPath))), Logger);
                     return;
                 }
 
@@ -1099,8 +1119,10 @@
                 {
                     this.DispatchRender(() => InvokeAsync(() =>
                     {
-                        NotificationService.ShowSuccess($"All water surface files found ({existingFiles.Count} files)\nPath: {waterFilesPath}");
-                        ActivityService.AddActivity($"Water files check: All {existingFiles.Count} files found", "success");
+                        NotificationService.ShowSuccess(
+                            Localizer.T("inichanger.toast.waterallfound", existingFiles.Count, waterFilesPath));
+                        ActivityService.AddActivity(
+                            Localizer.T("inichanger.activity.waterall", existingFiles.Count), "success");
                     }), Logger);
                     Logger.LogInformation("All water files found at: {Path}", waterFilesPath);
                 }
@@ -1108,8 +1130,10 @@
                 {
                     this.DispatchRender(() => InvokeAsync(() =>
                     {
-                        NotificationService.ShowWarning($"Partial water files found ({existingFiles.Count}/{waterFiles.Length} files)\nPath: {waterFilesPath}");
-                        ActivityService.AddActivity($"Water files check: {existingFiles.Count}/{waterFiles.Length} files found", "warning");
+                        NotificationService.ShowWarning(Localizer.T(
+                            "inichanger.toast.waterpartial", existingFiles.Count, waterFiles.Length, waterFilesPath));
+                        ActivityService.AddActivity(Localizer.T(
+                            "inichanger.activity.waterpartial", existingFiles.Count, waterFiles.Length), "warning");
                     }), Logger);
                     Logger.LogWarning("Partial water files: {Count}/{Total} at {Path}", existingFiles.Count, waterFiles.Length, waterFilesPath);
                 }
@@ -1117,8 +1141,9 @@
                 {
                     this.DispatchRender(() => InvokeAsync(() =>
                     {
-                        NotificationService.ShowInfo($"Water surface already removed (0/{waterFiles.Length} files found)\nPath: {waterFilesPath}");
-                        ActivityService.AddActivity("Water files check: Already removed", "info");
+                        NotificationService.ShowInfo(Localizer.T(
+                            "inichanger.toast.wateralreadyremoved", waterFiles.Length, waterFilesPath));
+                        ActivityService.AddActivity(Localizer.T("inichanger.activity.wateralreadyremoved"), "info");
                     }), Logger);
                     Logger.LogInformation("No water files found - already removed");
                 }
@@ -1127,7 +1152,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error checking water files");
-            NotificationService.ShowError($"Error checking water files: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.watercheckerror", ex.Message));
         }
     }
 
@@ -1158,7 +1183,7 @@
             string? arkBasePath = ArkUtilities.FindArkPath();
             if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
             {
-                NotificationService.ShowError("ARK installation not found.");
+                NotificationService.ShowError(Localizer.T("inichanger.toast.noark"));
                 return;
             }
 
@@ -1167,20 +1192,20 @@
             if (WaterSurfaceRemoved)
             {
                 int restored = await BackupService.RestoreFilesAsync(WaterSurfaceKey, group);
-                NotificationService.ShowSuccess($"Water surface restored ({restored} file(s)) — applies on next map load.");
-                ActivityService.AddActivity("Water surface restored", "success");
+                NotificationService.ShowSuccess(Localizer.T("inichanger.toast.waterrestored", restored));
+                ActivityService.AddActivity(Localizer.T("inichanger.activity.waterrestored"), "success");
             }
             else
             {
                 int removed = await BackupService.BackupFilesAsync(WaterSurfaceKey, group);
                 if (removed > 0)
                 {
-                    NotificationService.ShowSuccess($"Water surface removed ({removed} file(s)) — reversible, applies on next map load.");
-                    ActivityService.AddActivity("Water surface removed", "success");
+                    NotificationService.ShowSuccess(Localizer.T("inichanger.toast.waterremoved", removed));
+                    ActivityService.AddActivity(Localizer.T("inichanger.activity.waterremoved"), "success");
                 }
                 else
                 {
-                    NotificationService.ShowInfo("Water surface files were not found (already removed, or a different ARK version).");
+                    NotificationService.ShowInfo(Localizer.T("inichanger.toast.waternotfound"));
                 }
             }
 
@@ -1189,7 +1214,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error toggling water surface");
-            NotificationService.ShowError($"Error toggling water surface: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inichanger.toast.watertoggleerror", ex.Message));
         }
     }
 

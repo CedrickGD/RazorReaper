@@ -10,32 +10,88 @@ namespace RazorReaper.Services.Implementations;
 /// </summary>
 internal static class IniPresetCatalog
 {
+    /// <remarks>
+    /// A preset's name is its identity as well as its label — it addresses the image override,
+    /// the last-applied preference and the zip entry, and it is what the community calls the
+    /// preset — so it stays as it is in every language, the way the automation scripts' names do.
+    /// Only the line under it is translated.
+    /// </remarks>
     public static List<IniPreset> BuildAll()
     {
         return new List<IniPreset>
         {
-            BuildPreset("Default",           "default.ini",                "Game default."),
-            BuildPreset("Super Hard",        "super-hard.ini",             "Max FPS, minimum visuals."),
-            BuildPreset("Hard Black",        "hard-black.ini",             "Dark theme, perf-tuned."),
-            BuildPreset("Hard Stalker",      "hard-stalker.ini",           "Long-range PvP visibility."),
-            BuildPreset("Soft",              "soft.ini",                   "Balanced look and FPS."),
-            BuildPreset("Black Spyglass",    "black-spyglass.ini",         "Dark with Spyglass tweaks."),
-            BuildPreset("Content Creator",   "content-creator.ini",        "Content creator tuning."),
-            BuildPreset("Stalker",           "stalker.ini",                "Player/dino spotting."),
-            BuildPreset("Black Semi Hard",   "black-semi-hard.ini",        "Black tinted scene."),
-            BuildPreset("Hard",              "hard.ini",                   "Raid-grade FPS."),
-            BuildPreset("Clear Water Snow North", "clear-water-snow-north.ini", "Snow biome with clear water."),
-            BuildPreset("Semi Soft",         "semi-soft.ini",              "Soft visuals, gentle FPS bump."),
-        };
-    }
-
-    private static IniPreset BuildPreset(string name, string fileName, string description)
-    {
-        return new IniPreset
-        {
-            Name = name,
-            Description = description,
-            Content = LoadEmbeddedIni(fileName)
+            new()
+            {
+                Name = "Default",
+                DescriptionKey = "inichanger.preset.default.description",
+                Content = LoadEmbeddedIni("default.ini")
+            },
+            new()
+            {
+                Name = "Super Hard",
+                DescriptionKey = "inichanger.preset.super-hard.description",
+                Content = LoadEmbeddedIni("super-hard.ini")
+            },
+            new()
+            {
+                Name = "Hard Black",
+                DescriptionKey = "inichanger.preset.hard-black.description",
+                Content = LoadEmbeddedIni("hard-black.ini")
+            },
+            new()
+            {
+                Name = "Hard Stalker",
+                DescriptionKey = "inichanger.preset.hard-stalker.description",
+                Content = LoadEmbeddedIni("hard-stalker.ini")
+            },
+            new()
+            {
+                Name = "Soft",
+                DescriptionKey = "inichanger.preset.soft.description",
+                Content = LoadEmbeddedIni("soft.ini")
+            },
+            new()
+            {
+                Name = "Black Spyglass",
+                DescriptionKey = "inichanger.preset.black-spyglass.description",
+                Content = LoadEmbeddedIni("black-spyglass.ini")
+            },
+            new()
+            {
+                Name = "Content Creator",
+                DescriptionKey = "inichanger.preset.content-creator.description",
+                Content = LoadEmbeddedIni("content-creator.ini")
+            },
+            new()
+            {
+                Name = "Stalker",
+                DescriptionKey = "inichanger.preset.stalker.description",
+                Content = LoadEmbeddedIni("stalker.ini")
+            },
+            new()
+            {
+                Name = "Black Semi Hard",
+                DescriptionKey = "inichanger.preset.black-semi-hard.description",
+                Content = LoadEmbeddedIni("black-semi-hard.ini")
+            },
+            new()
+            {
+                Name = "Hard",
+                DescriptionKey = "inichanger.preset.hard.description",
+                Content = LoadEmbeddedIni("hard.ini")
+            },
+            new()
+            {
+                Name = "Clear Water Snow North",
+                DescriptionKey = "inichanger.preset.clear-water-snow-north.description",
+                Content = LoadEmbeddedIni("clear-water-snow-north.ini")
+            },
+            new()
+            {
+                Name = "Semi Soft",
+                DescriptionKey = "inichanger.preset.semi-soft.description",
+                Content = LoadEmbeddedIni("semi-soft.ini")
+            },
         };
     }
 
