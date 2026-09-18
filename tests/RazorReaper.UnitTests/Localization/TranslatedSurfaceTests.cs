@@ -1554,6 +1554,89 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/CharPresetService.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">INI Builder</h1>",
+            "One-click Game.ini",
+            ">Re-check</button>",
+            "\"ARK installation not found\"",
+            "\"ARK is running\"",
+            "\"Ready to apply\"",
+            "ARK install not found — make sure Steam and ARK are installed.",
+            "Close ARK before applying",
+            "Editing INIs in",
+            "<h3>One-Click Presets</h3>",
+            "Each preset edits only its own keys",
+            "Entries.Count keys",
+            "\"Last applied\"",
+            "Applied {lastAppliedAt}",
+            "Apply\n",
+            "<h3>Custom Keys</h3>",
+            "Add your own keys —",
+            "Title=\"Target file\"",
+            "Which INI file the rows below are written to.",
+            "Game.ini does not exist yet",
+            "<span>Section</span>",
+            "<span>Key</span>",
+            "<span>Value</span>",
+            "placeholder=\"e.g. ScalabilityGroups\"",
+            "placeholder=\"e.g. sg.ShadowQuality\"",
+            "title=\"Remove row\"",
+            ">Add Row</button>",
+            "Apply to @TargetFileLabel",
+            "Rows are saved as a draft automatically.",
+            "<h3>Backups</h3>",
+            "backups per file are kept",
+            "No backups yet —",
+            "Restore\n",
+            "Delete\n",
+            "ARK installation not found — cannot write INI files.",
+            "ARK is running. Close the game first",
+            "applied ({result.KeysApplied} keys)",
+            "INI Builder preset applied:",
+            "Failed to apply preset.",
+            "Apply failed:",
+            "Add at least one row with a section and a key.",
+            "key(s) written to",
+            "INI Builder custom keys applied to",
+            "Failed to apply custom keys.",
+            "over the live",
+            "The previous file was snapshotted first.",
+            "INI Builder backup restored:",
+            "Failed to restore backup.",
+            "Restore failed:",
+            "This cannot be undone.",
+            "\"Backup deleted.\"",
+            "INI Builder backup deleted:",
+            "Backup could not be deleted.",
+            "Delete failed:",
+        })
+        {
+            data.Add("Components/Pages/IniBuilder.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Preset contains no keys.",
+            "\"No keys to apply.\"",
+            "\"ARK installation not found.\"",
+            "\"Invalid backup.\"",
+            "Backup path is outside the backup folder.",
+            "Backup file no longer exists.",
+            "Could not snapshot the current file",
+            "Restore failed:",
+            "No valid keys to apply. Each row needs a section and a key.",
+            "Could not create a backup — apply cancelled",
+            "Apply failed:",
+            "Everything at minimum and sky effects fully disabled",
+            "Medium detail with clean performance",
+            "Near-maximum visuals",
+            "Competitive clarity",
+        })
+        {
+            data.Add("Services/Ini/GameIniService.cs", literal);
+        }
+
         return data;
     }
 
@@ -1766,9 +1849,11 @@ public sealed class TranslatedSurfaceTests
     }
 
     /// <summary>
-    /// Every key the app spells out, with the file that spells it. Three call shapes: the ordinary
-    /// <c>Localizer.T("…")</c>, and the update manager's two, which hold a key and its arguments
-    /// so a status line that sits on screen for a session can be re-read after a switch.
+    /// Every key the app spells out, with the file that spells it. Four call shapes: the ordinary
+    /// <c>Localizer.T("…")</c>, the update manager's two, which hold a key and its arguments so a
+    /// status line that sits on screen for a session can be re-read after a switch, and
+    /// <c>GameIniService.Failed("…")</c>, which resolves the key for the reader and keeps the key
+    /// itself for the log — the literal is the key either way.
     ///
     /// Which key a call asks for is not always its first token. <c>T(on ? "a.on" : "a.off")</c> is
     /// the shape a toggle's two messages take all over the app, and reading only the literal that
@@ -1792,7 +1877,7 @@ public sealed class TranslatedSurfaceTests
     }
 
     /// <summary>"Localizer.T(" must match, so only a word character in front rules a T( call out.</summary>
-    private static readonly Regex CallSite = new(@"(?:(?<!\w)T|SetStatus|new StatusLine)\(");
+    private static readonly Regex CallSite = new(@"(?:(?<!\w)(?:T|Failed)|SetStatus|new StatusLine)\(");
 
     /// <summary>
     /// A dictionary key as it is written: lowercase, dotted, hyphens inside a segment. Tight

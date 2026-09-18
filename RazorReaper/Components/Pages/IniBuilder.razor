@@ -4,17 +4,19 @@
 @using Microsoft.Maui.Storage
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
+@using RazorReaper.Services.Localization
 
 @inject IGameIniService GameIni
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@inject ILocalizer Localizer
 @inject ILogger<IniBuilder> Logger
 @inject IJSRuntime JSRuntime
 
 
         <header class="page-header">
-            <h1 class="page-title">INI Builder</h1>
-            <p class="page-subtitle">One-click Game.ini &amp; GameUserSettings.ini presets with automatic backups</p>
+            <h1 class="page-title">@Localizer.T("inibuilder.title")</h1>
+            <p class="page-subtitle">@Localizer.T("inibuilder.subtitle")</p>
         </header>
 
         <div class="inib-page">
@@ -25,7 +27,7 @@
             <section class="content-card inib-status-card">
                 <StatusHeader State="@StatusState" Label="@StatusLabel" Description="@StatusDescription">
                     <Actions>
-                        <button class="btn btn-secondary inib-small-btn" @onclick="RefreshStatus">Re-check</button>
+                        <button class="btn btn-secondary inib-small-btn" @onclick="RefreshStatus">@Localizer.T("inibuilder.recheck")</button>
                     </Actions>
                 </StatusHeader>
             </section>
@@ -34,8 +36,8 @@
                PRESETS — one-click curated GameUserSettings presets
                ============================================================ *@
             <section class="content-card">
-                <h3>One-Click Presets</h3>
-                <p class="inib-card-intro">Each preset edits only its own keys; a backup is created before every apply.</p>
+                <h3>@Localizer.T("inibuilder.presets.title")</h3>
+                <p class="inib-card-intro">@Localizer.T("inibuilder.presets.intro")</p>
 
                 <div class="inib-preset-grid">
                     @foreach (var preset in presets)
@@ -44,10 +46,10 @@
                                             string.Equals(lastAppliedPreset, preset.Name, StringComparison.OrdinalIgnoreCase);
                         <div class="inib-preset-card @(isLastApplied ? "active" : "")" @key="preset.Name">
                             <div class="inib-preset-head">
-                                <span class="inib-preset-name">@preset.Name</span>
-                                <span class="inib-chip">@preset.Entries.Count keys</span>
+                                <span class="inib-preset-name">@Localizer.T(preset.NameKey)</span>
+                                <span class="inib-chip">@Localizer.T("inibuilder.preset.keys", preset.Entries.Count)</span>
                             </div>
-                            <p class="inib-preset-desc">@preset.Description</p>
+                            <p class="inib-preset-desc">@Localizer.T(preset.DescriptionKey)</p>
                             <div class="inib-preset-foot">
                                 @if (isLastApplied)
                                 {
@@ -61,7 +63,7 @@
                                 <button class="btn btn-primary inib-apply-btn"
                                         disabled="@isApplying"
                                         @onclick="() => ApplyPresetAsync(preset)">
-                                    Apply
+                                    @Localizer.T("inibuilder.apply")
                                 </button>
                             </div>
                         </div>
@@ -73,11 +75,11 @@
                CUSTOM EDITOR — (section, key, value) rows with a persisted draft
                ============================================================ *@
             <section class="content-card">
-                <h3>Custom Keys</h3>
-                <p class="inib-card-intro">Add your own keys — existing keys are updated in place, missing keys and sections are created.</p>
+                <h3>@Localizer.T("inibuilder.custom.title")</h3>
+                <p class="inib-card-intro">@Localizer.T("inibuilder.custom.intro")</p>
 
-                <SettingRow Title="Target file"
-                            Description="Which INI file the rows below are written to.">
+                <SettingRow Title="@Localizer.T("inibuilder.target.title")"
+                            Description="@Localizer.T("inibuilder.target.description")">
                     <div class="inib-seg">
                         <button type="button"
                                 class="inib-seg-btn @(currentTarget == GameIniTarget.GameUserSettings ? "is-active" : "")"
@@ -94,26 +96,26 @@
 
                 @if (currentTarget == GameIniTarget.Game && !gameIniExists)
                 {
-                    <p class="inib-note">Game.ini does not exist yet — it will be created when you apply.</p>
+                    <p class="inib-note">@Localizer.T("inibuilder.gameini.note")</p>
                 }
 
                 <div class="inib-rows">
                     <div class="inib-row inib-row-head">
-                        <span>Section</span>
-                        <span>Key</span>
-                        <span>Value</span>
+                        <span>@Localizer.T("inibuilder.column.section")</span>
+                        <span>@Localizer.T("inibuilder.column.key")</span>
+                        <span>@Localizer.T("inibuilder.column.value")</span>
                         <span></span>
                     </div>
                     @foreach (var row in draftRows)
                     {
                         <div class="inib-row" @key="row">
-                            <input class="inib-input" placeholder="e.g. ScalabilityGroups"
+                            <input class="inib-input" placeholder="@Localizer.T("inibuilder.placeholder.section")"
                                    @bind="row.Section" @bind:after="SaveDraftAsync" />
-                            <input class="inib-input" placeholder="e.g. sg.ShadowQuality"
+                            <input class="inib-input" placeholder="@Localizer.T("inibuilder.placeholder.key")"
                                    @bind="row.Key" @bind:after="SaveDraftAsync" />
-                            <input class="inib-input" placeholder="Value"
+                            <input class="inib-input" placeholder="@Localizer.T("inibuilder.column.value")"
                                    @bind="row.Value" @bind:after="SaveDraftAsync" />
-                            <button type="button" class="inib-row-remove" title="Remove row"
+                            <button type="button" class="inib-row-remove" title="@Localizer.T("inibuilder.row.remove")"
                                     @onclick="() => RemoveRowAsync(row)">
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -124,27 +126,27 @@
                 </div>
 
                 <div class="inib-editor-actions">
-                    <button class="btn btn-secondary" @onclick="AddRowAsync">Add Row</button>
+                    <button class="btn btn-secondary" @onclick="AddRowAsync">@Localizer.T("inibuilder.addrow")</button>
                     <button class="btn btn-primary"
                             disabled="@(isApplying || !HasValidRows)"
                             @onclick="ApplyCustomAsync">
-                        Apply to @TargetFileLabel
+                        @Localizer.T("inibuilder.applyto", TargetFileLabel)
                     </button>
                 </div>
 
-                <p class="inib-note">Rows are saved as a draft automatically.</p>
+                <p class="inib-note">@Localizer.T("inibuilder.draftnote")</p>
             </section>
 
             @* ============================================================
                BACKUPS — restore or delete stored snapshots
                ============================================================ *@
             <section class="content-card">
-                <h3>Backups</h3>
-                <p class="inib-card-intro">The last @MaxBackupsShownNote backups per file are kept; restoring snapshots the current file first.</p>
+                <h3>@Localizer.T("inibuilder.backups.title")</h3>
+                <p class="inib-card-intro">@Localizer.T("inibuilder.backups.intro", MaxBackupsShownNote)</p>
 
                 @if (backups.Count == 0)
                 {
-                    <p class="inib-empty">No backups yet — one is created each time you apply.</p>
+                    <p class="inib-empty">@Localizer.T("inibuilder.backups.empty")</p>
                 }
                 else
                 {
@@ -160,12 +162,12 @@
                                     <button class="btn btn-secondary inib-small-btn"
                                             disabled="@isApplying"
                                             @onclick="() => RestoreBackupAsync(backup)">
-                                        Restore
+                                        @Localizer.T("inibuilder.restore")
                                     </button>
                                     <button class="btn btn-danger inib-small-btn"
                                             disabled="@isApplying"
                                             @onclick="() => DeleteBackupAsync(backup)">
-                                        Delete
+                                        @Localizer.T("common.delete")
                                     </button>
                                 </div>
                             </div>
@@ -177,6 +179,9 @@
         </div>
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     private const string LastPresetKey = "inibuilder.lastpreset";
     private const string LastPresetTimeKey = "inibuilder.lastpreset.time";
     private const string MaxBackupsShownNote = "20";
@@ -195,25 +200,25 @@
 
     private string ProductionStatusState => !arkFound ? "error" : arkRunning ? "warning" : "online";
 
-    private string ProductionStatusLabel => !arkFound
-        ? "ARK installation not found"
+    private string ProductionStatusLabel => Localizer.T(!arkFound
+        ? "inibuilder.status.noark"
         : arkRunning
-            ? "ARK is running"
-            : "Ready to apply";
+            ? "inibuilder.status.running"
+            : "inibuilder.status.ready");
 
     private string ProductionStatusDescription => !arkFound
-        ? "ARK install not found — make sure Steam and ARK are installed."
+        ? Localizer.T("inibuilder.status.noark.description")
         : arkRunning
-            ? "Close ARK before applying — it overwrites GameUserSettings.ini on exit."
-            : $"Editing INIs in {configFolder}";
+            ? Localizer.T("inibuilder.status.running.description")
+            : Localizer.T("inibuilder.status.ready.description", configFolder);
 
     private string StatusState => ProductionStatusState;
     private string StatusLabel => ProductionStatusLabel;
     private string StatusDescription => ProductionStatusDescription;
 
     private string LastAppliedLabel => string.IsNullOrEmpty(lastAppliedAt)
-        ? "Last applied"
-        : $"Applied {lastAppliedAt}";
+        ? Localizer.T("inibuilder.lastapplied")
+        : Localizer.T("inibuilder.lastapplied.at", lastAppliedAt);
 
     private string TargetFileLabel => currentTarget == GameIniTarget.Game ? "Game.ini" : "GameUserSettings.ini";
 
@@ -334,13 +339,13 @@
 
         if (!arkFound)
         {
-            NotificationService.ShowError("ARK installation not found — cannot write INI files.");
+            NotificationService.ShowError(Localizer.T("inibuilder.toast.noark"));
             return true;
         }
 
         if (arkRunning)
         {
-            NotificationService.ShowWarning("ARK is running. Close the game first — it overwrites GameUserSettings.ini on exit.");
+            NotificationService.ShowWarning(Localizer.T("inibuilder.toast.arkrunning"));
             return true;
         }
 
@@ -365,19 +370,21 @@
                 Preferences.Set(LastPresetKey, lastAppliedPreset);
                 Preferences.Set(LastPresetTimeKey, lastAppliedAt);
 
-                NotificationService.ShowSuccess($"Preset '{preset.Name}' applied ({result.KeysApplied} keys). A backup was saved first.");
-                ActivityService.AddActivity($"INI Builder preset applied: {preset.Name}", "success");
+                NotificationService.ShowSuccess(Localizer.T(
+                    "inibuilder.toast.presetapplied", Localizer.T(preset.NameKey), result.KeysApplied));
+                ActivityService.AddActivity(
+                    Localizer.T("inibuilder.activity.presetapplied", Localizer.T(preset.NameKey)), "success");
                 await RefreshBackupsAsync();
             }
             else
             {
-                NotificationService.ShowError(result.Error ?? "Failed to apply preset.");
+                NotificationService.ShowError(result.Error ?? Localizer.T("inibuilder.toast.presetfailed"));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error applying INI Builder preset {Preset}", preset.Name);
-            NotificationService.ShowError($"Apply failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inibuilder.toast.applyfailed", ex.Message));
         }
         finally
         {
@@ -394,7 +401,7 @@
 
         if (!HasValidRows)
         {
-            NotificationService.ShowWarning("Add at least one row with a section and a key.");
+            NotificationService.ShowWarning(Localizer.T("inibuilder.toast.norows"));
             return;
         }
 
@@ -406,20 +413,22 @@
             var result = await GameIni.ApplyEntriesAsync(currentTarget, draftRows);
             if (result.Success)
             {
-                NotificationService.ShowSuccess($"{result.KeysApplied} key(s) written to {TargetFileLabel}.");
-                ActivityService.AddActivity($"INI Builder custom keys applied to {TargetFileLabel} ({result.KeysApplied} keys)", "success");
+                NotificationService.ShowSuccess(
+                    Localizer.T("inibuilder.toast.customapplied", result.KeysApplied, TargetFileLabel));
+                ActivityService.AddActivity(
+                    Localizer.T("inibuilder.activity.customapplied", TargetFileLabel, result.KeysApplied), "success");
                 RefreshStatus();
                 await RefreshBackupsAsync();
             }
             else
             {
-                NotificationService.ShowError(result.Error ?? "Failed to apply custom keys.");
+                NotificationService.ShowError(result.Error ?? Localizer.T("inibuilder.toast.customfailed"));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error applying INI Builder custom keys");
-            NotificationService.ShowError($"Apply failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inibuilder.toast.applyfailed", ex.Message));
         }
         finally
         {
@@ -436,7 +445,7 @@
 
         var confirm = await JSRuntime.InvokeAsync<bool>(
             "confirm",
-            $"Restore '{backup.FileName}' over the live {backup.TargetFileName}?");
+            Localizer.T("inibuilder.confirm.restore", backup.FileName, backup.TargetFileName));
         if (!confirm)
         {
             return;
@@ -448,20 +457,20 @@
             var result = await GameIni.RestoreBackupAsync(backup);
             if (result.Success)
             {
-                NotificationService.ShowSuccess($"Backup restored to {backup.TargetFileName}. The previous file was snapshotted first.");
-                ActivityService.AddActivity($"INI Builder backup restored: {backup.FileName}", "success");
+                NotificationService.ShowSuccess(Localizer.T("inibuilder.toast.restored", backup.TargetFileName));
+                ActivityService.AddActivity(Localizer.T("inibuilder.activity.restored", backup.FileName), "success");
                 RefreshStatus();
                 await RefreshBackupsAsync();
             }
             else
             {
-                NotificationService.ShowError(result.Error ?? "Failed to restore backup.");
+                NotificationService.ShowError(result.Error ?? Localizer.T("inibuilder.toast.restorefailed"));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error restoring INI backup {Backup}", backup.FileName);
-            NotificationService.ShowError($"Restore failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inibuilder.toast.restoreerror", ex.Message));
         }
         finally
         {
@@ -473,7 +482,7 @@
     {
         var confirm = await JSRuntime.InvokeAsync<bool>(
             "confirm",
-            $"Delete backup '{backup.FileName}'? This cannot be undone.");
+            Localizer.T("inibuilder.confirm.delete", backup.FileName));
         if (!confirm)
         {
             return;
@@ -484,19 +493,19 @@
             var deleted = GameIni.DeleteBackup(backup);
             if (deleted)
             {
-                NotificationService.ShowSuccess("Backup deleted.");
-                ActivityService.AddActivity($"INI Builder backup deleted: {backup.FileName}", "warning");
+                NotificationService.ShowSuccess(Localizer.T("inibuilder.toast.backupdeleted"));
+                ActivityService.AddActivity(Localizer.T("inibuilder.activity.backupdeleted", backup.FileName), "warning");
                 await RefreshBackupsAsync();
             }
             else
             {
-                NotificationService.ShowWarning("Backup could not be deleted.");
+                NotificationService.ShowWarning(Localizer.T("inibuilder.toast.backupdeletefailed"));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting INI backup {Backup}", backup.FileName);
-            NotificationService.ShowError($"Delete failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("inibuilder.toast.deleteerror", ex.Message));
         }
     }
 

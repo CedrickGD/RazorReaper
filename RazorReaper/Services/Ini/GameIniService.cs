@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services
 {
@@ -42,10 +43,17 @@ namespace RazorReaper.Services
     /// <summary>
     /// A curated, code-defined set of INI keys applied together with one click.
     /// </summary>
+    /// <remarks>
+    /// <see cref="Name"/> is the preset's identity as well as a word: the page remembers which
+    /// preset was applied last by writing this string to Preferences and comparing it back, so a
+    /// translated spelling would lose the badge on the next language switch. The spelling on
+    /// screen lives under <see cref="NameKey"/>, the way NavPage.Label and NavPage.LabelKey do.
+    /// </remarks>
     public sealed class GameIniPreset
     {
         public string Name { get; init; } = string.Empty;
-        public string Description { get; init; } = string.Empty;
+        public string NameKey { get; init; } = string.Empty;
+        public string DescriptionKey { get; init; } = string.Empty;
         public GameIniTarget Target { get; init; } = GameIniTarget.GameUserSettings;
         public IReadOnlyList<GameIniEntry> Entries { get; init; } = Array.Empty<GameIniEntry>();
     }
@@ -80,15 +88,24 @@ namespace RazorReaper.Services
     public sealed class GameIniApplyResult
     {
         public bool Success { get; init; }
+
+        /// <summary>The failure as the page shows it, in the active language.</summary>
         public string? Error { get; init; }
+
+        /// <summary>
+        /// The same failure as a stable key, for the log and for telemetry. A telemetry note in
+        /// whatever language the machine happened to be in is one nobody can group or grep.
+        /// </summary>
+        public string? Reason { get; init; }
+
         public string? BackupPath { get; init; }
         public int KeysApplied { get; init; }
 
         public static GameIniApplyResult Ok(int keysApplied, string? backupPath) =>
             new() { Success = true, KeysApplied = keysApplied, BackupPath = backupPath };
 
-        public static GameIniApplyResult Fail(string error) =>
-            new() { Success = false, Error = error };
+        public static GameIniApplyResult Fail(string error, string? reason = null) =>
+            new() { Success = false, Error = error, Reason = reason };
     }
 
     /// <summary>
@@ -168,6 +185,9 @@ namespace RazorReaper.Services.Implementations
         private readonly IArkPathProvider _arkPathProvider;
         private readonly IProcessService _processService;
         private readonly ITelemetryService _telemetryService;
+
+        // INI Builder shows a failed result's Error verbatim, so the service words it.
+        private readonly ILocalizer _localizer;
         private readonly AppConfiguration _config;
         private readonly SemaphoreSlim _ioGate = new(1, 1);
         private readonly string _backupsDir;
@@ -179,12 +199,14 @@ namespace RazorReaper.Services.Implementations
             IArkPathProvider arkPathProvider,
             IProcessService processService,
             ITelemetryService telemetryService,
+            ILocalizer localizer,
             IOptions<AppConfiguration> config)
         {
             _logger = logger;
             _arkPathProvider = arkPathProvider;
             _processService = processService;
             _telemetryService = telemetryService;
+            _localizer = localizer;
             _config = config.Value;
 
             var appData = Path.Combine(
@@ -197,6 +219,13 @@ namespace RazorReaper.Services.Implementations
 
         /// <inheritdoc/>
         public IReadOnlyList<GameIniPreset> GetBuiltInPresets() => _builtInPresets;
+
+        /// <summary>
+        /// A failure worded for the page and keyed for the log: <see cref="GameIniApplyResult.Error"/>
+        /// follows the language, <see cref="GameIniApplyResult.Reason"/> does not.
+        /// </summary>
+        private GameIniApplyResult Failed(string key, params object?[] args) =>
+            GameIniApplyResult.Fail(_localizer.T(key, args), key);
 
         /// <inheritdoc/>
         public string? GetIniPath(GameIniTarget target)
@@ -254,7 +283,7 @@ namespace RazorReaper.Services.Implementations
         {
             if (preset == null || preset.Entries.Count == 0)
             {
-                return Task.FromResult(GameIniApplyResult.Fail("Preset contains no keys."));
+                return Task.FromResult(Failed("inibuilder.result.presetempty"));
             }
 
             _logger.LogInformation("Applying INI Builder preset: {Preset}", preset.Name);
@@ -266,13 +295,13 @@ namespace RazorReaper.Services.Implementations
         {
             if (entries == null || entries.Count == 0)
             {
-                return GameIniApplyResult.Fail("No keys to apply.");
+                return Failed("inibuilder.result.nokeys");
             }
 
             var path = GetIniPath(target);
             if (path == null)
             {
-                return GameIniApplyResult.Fail("ARK installation not found.");
+                return Failed("inibuilder.result.noark");
             }
 
             await _ioGate.WaitAsync();
@@ -283,7 +312,7 @@ namespace RazorReaper.Services.Implementations
                 _ = _telemetryService.TrackEventAsync(
                     "ini_builder_apply",
                     result.Success ? TelemetryEventStatus.Ok : TelemetryEventStatus.Down,
-                    result.Success ? "INI Builder keys applied." : result.Error,
+                    result.Success ? "INI Builder keys applied." : result.Reason ?? result.Error,
                     new Dictionary<string, object?>
                     {
                         ["target"] = target.ToString(),
@@ -350,12 +379,12 @@ namespace RazorReaper.Services.Implementations
         {
             if (backup == null || string.IsNullOrWhiteSpace(backup.FullPath))
             {
-                return GameIniApplyResult.Fail("Invalid backup.");
+                return Failed("inibuilder.result.badbackup");
             }
 
             if (!IsInsideBackupsDir(backup.FullPath))
             {
-                return GameIniApplyResult.Fail("Backup path is outside the backup folder.");
+                return Failed("inibuilder.result.outsidebackups");
             }
 
             var target = string.Equals(backup.TargetFileName, GameIniFileName, StringComparison.OrdinalIgnoreCase)
@@ -365,7 +394,7 @@ namespace RazorReaper.Services.Implementations
             var livePath = GetIniPath(target);
             if (livePath == null)
             {
-                return GameIniApplyResult.Fail("ARK installation not found.");
+                return Failed("inibuilder.result.noark");
             }
 
             await _ioGate.WaitAsync();
@@ -377,7 +406,7 @@ namespace RazorReaper.Services.Implementations
                     {
                         if (!File.Exists(backup.FullPath))
                         {
-                            return GameIniApplyResult.Fail("Backup file no longer exists.");
+                            return Failed("inibuilder.result.backupgone");
                         }
 
                         string? safetyBackup = null;
@@ -386,7 +415,7 @@ namespace RazorReaper.Services.Implementations
                             safetyBackup = CreateBackup(livePath);
                             if (safetyBackup == null)
                             {
-                                return GameIniApplyResult.Fail("Could not snapshot the current file — restore cancelled to protect your INI.");
+                                return Failed("inibuilder.result.nosnapshot");
                             }
                         }
                         else
@@ -405,14 +434,14 @@ namespace RazorReaper.Services.Implementations
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error restoring INI backup {Backup}", backup.FileName);
-                        return GameIniApplyResult.Fail($"Restore failed: {ex.Message}");
+                        return Failed("inibuilder.result.restorefailed", ex.Message);
                     }
                 });
 
                 _ = _telemetryService.TrackEventAsync(
                     "ini_builder_restore",
                     result.Success ? TelemetryEventStatus.Ok : TelemetryEventStatus.Down,
-                    result.Success ? "INI backup restored." : result.Error,
+                    result.Success ? "INI backup restored." : result.Reason ?? result.Error,
                     new Dictionary<string, object?> { ["backup"] = backup.FileName });
 
                 return result;
@@ -521,7 +550,7 @@ namespace RazorReaper.Services.Implementations
 
                 if (valid.Count == 0)
                 {
-                    return GameIniApplyResult.Fail("No valid keys to apply. Each row needs a section and a key.");
+                    return Failed("inibuilder.result.novalidkeys");
                 }
 
                 string? backupPath = null;
@@ -531,7 +560,7 @@ namespace RazorReaper.Services.Implementations
                     backupPath = CreateBackup(path);
                     if (backupPath == null)
                     {
-                        return GameIniApplyResult.Fail("Could not create a backup — apply cancelled to protect your INI.");
+                        return Failed("inibuilder.result.nobackup");
                     }
 
                     var bytes = File.ReadAllBytes(path);
@@ -580,7 +609,7 @@ namespace RazorReaper.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error applying INI keys to {Path}", path);
-                return GameIniApplyResult.Fail($"Apply failed: {ex.Message}");
+                return Failed("inibuilder.result.applyfailed", ex.Message);
             }
         }
 
@@ -907,7 +936,8 @@ namespace RazorReaper.Services.Implementations
             new GameIniPreset
             {
                 Name = "Max FPS",
-                Description = "Everything at minimum and sky effects fully disabled. The most frames possible for low-end rigs and sweats.",
+                NameKey = "inibuilder.preset.maxfps",
+                DescriptionKey = "inibuilder.preset.maxfps.description",
                 Target = GameIniTarget.GameUserSettings,
                 Entries = new List<GameIniEntry>
                 {
@@ -943,7 +973,8 @@ namespace RazorReaper.Services.Implementations
             new GameIniPreset
             {
                 Name = "Balanced",
-                Description = "Medium detail with clean performance. Sensible everyday settings that still look like ARK.",
+                NameKey = "inibuilder.preset.balanced",
+                DescriptionKey = "inibuilder.preset.balanced.description",
                 Target = GameIniTarget.GameUserSettings,
                 Entries = new List<GameIniEntry>
                 {
@@ -976,7 +1007,8 @@ namespace RazorReaper.Services.Implementations
             new GameIniPreset
             {
                 Name = "Quality",
-                Description = "Near-maximum visuals: full view distance, textures, shadows and sky. For strong hardware and screenshots.",
+                NameKey = "inibuilder.preset.quality",
+                DescriptionKey = "inibuilder.preset.quality.description",
                 Target = GameIniTarget.GameUserSettings,
                 Entries = new List<GameIniEntry>
                 {
@@ -1012,7 +1044,8 @@ namespace RazorReaper.Services.Implementations
             new GameIniPreset
             {
                 Name = "PvP Visibility",
-                Description = "Competitive clarity: foliage and ground clutter minimized, long view distance, no bloom or light shafts hiding players.",
+                NameKey = "inibuilder.preset.pvp",
+                DescriptionKey = "inibuilder.preset.pvp.description",
                 Target = GameIniTarget.GameUserSettings,
                 Entries = new List<GameIniEntry>
                 {
