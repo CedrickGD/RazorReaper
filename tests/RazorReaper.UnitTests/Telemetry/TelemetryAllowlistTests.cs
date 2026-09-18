@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using RazorReaper.Services;
+using RazorReaper.Services.Automation;
 using RazorReaper.Services.Implementations;
 
 namespace RazorReaper.UnitTests.Telemetry;
@@ -60,6 +61,77 @@ public sealed class TelemetryAllowlistTests
         var request = Assert.Single(handler.Requests);
         using var payload = JsonDocument.Parse(request);
         Assert.Equal(eventName, payload.RootElement.GetProperty("service").GetString());
+    }
+
+    /// <summary>
+    /// The three the automation scripts emit. They are the whole visibility story for the
+    /// Scripts page — a run that started, a run that ended, and a run that did nothing — and
+    /// every one of them would have been dropped in <c>SendEventAsync</c> without a word.
+    /// </summary>
+    [Theory]
+    [InlineData("script_start")]
+    [InlineData("script_stop")]
+    [InlineData("script_noop")]
+    public async Task EveryScriptEventTheScaffoldEmitsIsOnTheAllowlist(string eventName)
+    {
+        var handler = new CapturingHandler();
+        var service = CreateService(handler);
+
+        await service.TrackEventAsync(eventName, TelemetryEventStatus.Ok, "test");
+
+        var request = Assert.Single(handler.Requests);
+        using var payload = JsonDocument.Parse(request);
+        Assert.Equal(eventName, payload.RootElement.GetProperty("service").GetString());
+    }
+
+    /// <summary>
+    /// The names are constants on one side and literals on the other only here, where the two
+    /// are compared. Everywhere else both ends read the same constant — the allowlist's silent
+    /// drop is exactly the failure a typo would reproduce.
+    /// </summary>
+    [Fact]
+    public void TheScriptEventNamesAreTheOnesTheScaffoldSpells()
+    {
+        Assert.Equal(
+            new[] { "script_start", "script_stop", "script_noop" },
+            ScriptTelemetryEvents.All);
+    }
+
+    /// <summary>
+    /// A stop event end to end: the numbers arrive, and nothing that could identify a person
+    /// travels with them. The script key is one of seventeen strings the app itself defines.
+    /// </summary>
+    [Fact]
+    public async Task AScriptStopCarriesItsNumbersAndNothingElse()
+    {
+        var handler = new CapturingHandler();
+        var service = CreateService(handler);
+
+        await service.TrackEventAsync(
+            ScriptTelemetryEvents.Stop,
+            TelemetryEventStatus.Ok,
+            metrics: new Dictionary<string, object?>
+            {
+                ["script"] = "yuty",
+                ["duration_s"] = 142,
+                ["effects"] = 28,
+                ["noop"] = false,
+                ["reason"] = "user"
+            });
+
+        var request = Assert.Single(handler.Requests);
+        using var payload = JsonDocument.Parse(request);
+
+        var metrics = payload.RootElement.GetProperty("metrics");
+        Assert.Equal("yuty", metrics.GetProperty("script").GetString());
+        Assert.Equal(142, metrics.GetProperty("duration_s").GetInt32());
+        Assert.Equal(28, metrics.GetProperty("effects").GetInt32());
+        Assert.False(metrics.GetProperty("noop").GetBoolean());
+        Assert.Equal("user", metrics.GetProperty("reason").GetString());
+
+        // No message at all, rather than a message that is merely clean today: the scripts
+        // pass none, and a null one must survive the whole formatting path.
+        Assert.False(payload.RootElement.TryGetProperty("message", out _));
     }
 
     /// <summary>The allowlist still is one: an event nobody added stays off the wire.</summary>

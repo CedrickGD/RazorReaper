@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using RazorReaper.Diagnostics;
+using RazorReaper.Services.Automation;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -49,7 +50,13 @@ public sealed class TelemetryService : ITelemetryService
         "custom_lab.sky_inject",
         "custom_lab.sky_restore",
         "discord_rpc_toggle",
-        "crosshair_overlay"
+        "crosshair_overlay",
+        // What the automation scripts report. Named constants rather than literals: this
+        // allowlist drops an unknown name inside the sender without a log line, so a typo on
+        // either side would be invisible until someone went looking for rows that never came.
+        ScriptTelemetryEvents.Start,
+        ScriptTelemetryEvents.Stop,
+        ScriptTelemetryEvents.Noop
     };
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

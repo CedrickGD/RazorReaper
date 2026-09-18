@@ -84,6 +84,9 @@ public abstract class AutomationScriptBase : IDisposable
     /// <summary>One silent-run warning per run, and this is the flag that keeps it to one.</summary>
     private int _silenceWarned;
 
+    /// <summary>One stop event per run. Several paths reach the end of a run; only one reports it.</summary>
+    private int _runReported;
+
     /// <summary>Last logged gate state, so the scan loop only reports transitions.</summary>
     private bool? _lastGateOpen;
 
@@ -143,7 +146,14 @@ public abstract class AutomationScriptBase : IDisposable
 
     // ─── Lifecycle ─────────────────────────────────────────────────────────────
 
-    public bool Start()
+    public bool Start() => Start(fromHotkey: false);
+
+    /// <summary>
+    /// <paramref name="fromHotkey"/> rides along for the telemetry only: a script started from
+    /// the page and a script started by its global hotkey are the same run, but which of the two
+    /// people actually use is a thing the panel cannot infer from anywhere else.
+    /// </summary>
+    private bool Start(bool fromHotkey)
     {
         if (_disposed) return false;
         if (!CanStart(out var reason))
@@ -169,6 +179,11 @@ public abstract class AutomationScriptBase : IDisposable
 
         Notifications.ShowSuccess(Localizer.T("scripts.toast.started", _displayName));
         TryActivity(Localizer.T("scripts.activity.started", _displayName), "success", "scripts.activity.started");
+        // Before the quota check is dispatched, not after: that check can end the run within
+        // milliseconds, and a stop event arriving ahead of its own start is a row pair the
+        // panel cannot make sense of.
+        ReportRunStarted(fromHotkey);
+
         // Start() must stay synchronous (the global hotkey calls it through Toggle), so the
         // quota check trails the start and stops the script again if the month is used up.
         // Vision scripts and stops never count.
@@ -196,7 +211,10 @@ public abstract class AutomationScriptBase : IDisposable
             var result = await gate.TryConsumeAsync(UsageFeatures.InputScripts);
             if (result.Allowed) return;
 
-            Stop();
+            // Not Stop(): a run cut off by the quota reads on the panel as a run the user
+            // ended, and "people start scripts and immediately stop them" is a very different
+            // conclusion from "people run out of free runs".
+            StopCore(notify: true, ScriptStopReason.Quota);
             Notifications.ShowWarning(Localizer.T("scripts.toast.quota", result.Limit));
         }
         catch (Exception ex)
@@ -205,11 +223,15 @@ public abstract class AutomationScriptBase : IDisposable
         }
     }
 
-    public void Stop() => StopCore(notify: true);
+    public void Stop() => StopCore(notify: true, ScriptStopReason.User);
 
+    /// <summary>
+    /// What the global hotkey is bound to, and the only caller of it. That is what lets the
+    /// start event say the press came from a hotkey rather than from the page.
+    /// </summary>
     public void Toggle()
     {
-        if (_state == ScriptState.Off) Start();
+        if (_state == ScriptState.Off) Start(fromHotkey: true);
         else Stop();
     }
 
@@ -232,7 +254,7 @@ public abstract class AutomationScriptBase : IDisposable
         }
     }
 
-    private void StopCore(bool notify)
+    private void StopCore(bool notify, ScriptStopReason reason)
     {
         CancellationTokenSource? cts;
         lock (_gate)
@@ -257,11 +279,17 @@ public abstract class AutomationScriptBase : IDisposable
             Notifications.ShowInfo(Localizer.T("scripts.toast.stopped", _displayName));
             TryActivity(Localizer.T("scripts.activity.stopped", _displayName), "info", "scripts.activity.stopped");
         }
+
+        // Before the run task has finished unwinding, and that is the point: this call and the
+        // loop's own finally are both ends of the same run, the first one through reports it,
+        // and the reason the caller knows is better than the one the loop can infer.
+        ReportRunEnded(reason);
         RaiseChanged();
     }
 
     private async Task RunGuardedAsync(CancellationToken ct)
     {
+        var faulted = false;
         try
         {
             await RunAsync(ct);
@@ -269,6 +297,7 @@ public abstract class AutomationScriptBase : IDisposable
         catch (OperationCanceledException) { /* normal stop */ }
         catch (Exception ex)
         {
+            faulted = true;
             Logger.LogError(ex, "{Script} run loop error", _displayName);
         }
         finally
@@ -283,6 +312,11 @@ public abstract class AutomationScriptBase : IDisposable
                 if (!ct.IsCancellationRequested)
                     SetStateLocked(ScriptState.Off);
             }
+
+            // A crash reports itself; anything else that reached here without a Stop is a run
+            // that finished the way it was asked to — the one-shots all end this way. When a
+            // Stop did get here first, this is a no-op and its reason is the one that stands.
+            ReportRunEnded(faulted ? ScriptStopReason.Error : ScriptStopReason.User);
             RaiseChanged();
         }
     }
@@ -336,6 +370,7 @@ public abstract class AutomationScriptBase : IDisposable
         Volatile.Write(ref _effectCount, 0);
         Interlocked.Exchange(ref _lastEffectTicks, 0);
         Volatile.Write(ref _silenceWarned, 0);
+        Volatile.Write(ref _runReported, 0);
         Volatile.Write(ref _runStartedTicks, Environment.TickCount64);
     }
 
@@ -377,6 +412,111 @@ public abstract class AutomationScriptBase : IDisposable
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "{Script} silent-run check failed", _displayName);
+        }
+    }
+
+    // ─── Telemetry ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// How a script finds the telemetry sink, resolved late for the same reason the usage gate
+    /// is: the headless test harnesses construct scripts without a MAUI application, and 16
+    /// subclasses mirror the base constructor's signature.
+    /// </summary>
+    internal Func<ITelemetryService?> ResolveTelemetry { get; set; }
+        = static () => IPlatformApplication.Current?.Services?.GetService<ITelemetryService>();
+
+    /// <summary>
+    /// Whether this install is premium, for the start event. Free and premium users run these
+    /// scripts for different lengths of time and hit different walls, and the quota reason on
+    /// the stop event only means something next to it.
+    /// </summary>
+    internal Func<bool> ResolvePremium { get; set; }
+        = static () => IPlatformApplication.Current?.Services?.GetService<ILicenseService>()?.IsPremium ?? false;
+
+    private void ReportRunStarted(bool fromHotkey)
+    {
+        Track(ScriptTelemetryEvents.Start, new Dictionary<string, object?>
+        {
+            ["script"] = _scriptKey,
+            ["premium"] = SafePremium(),
+            ["hotkey"] = fromHotkey
+        });
+    }
+
+    /// <summary>
+    /// One report per run, whichever path reaches the end of it first. A user stop cancels the
+    /// loop, so both the stop and the loop's own unwind arrive here for the same run — counted
+    /// twice, every duration on the panel would be doubled and every run would appear as two.
+    /// </summary>
+    private void ReportRunEnded(ScriptStopReason reason)
+    {
+        if (Interlocked.Exchange(ref _runReported, 1) != 0) return;
+
+        var effects = EffectCount;
+        var seconds = (int)Math.Max(0, (Environment.TickCount64 - Volatile.Read(ref _runStartedTicks)) / 1000);
+        var reasonText = ReasonText(reason);
+
+        Track(ScriptTelemetryEvents.Stop, new Dictionary<string, object?>
+        {
+            ["script"] = _scriptKey,
+            ["duration_s"] = seconds,
+            ["effects"] = effects,
+            ["noop"] = effects == 0,
+            ["reason"] = reasonText
+        });
+
+        // The same fact as noop=true on the row above, as a row of its own: a run that did
+        // nothing is the thing worth counting, and counting rows is cheaper on the panel than
+        // filtering payloads.
+        if (effects == 0)
+        {
+            Track(ScriptTelemetryEvents.Noop, new Dictionary<string, object?>
+            {
+                ["script"] = _scriptKey,
+                ["duration_s"] = seconds,
+                ["reason"] = reasonText
+            });
+        }
+    }
+
+    private static string ReasonText(ScriptStopReason reason) => reason switch
+    {
+        ScriptStopReason.Quota => "quota",
+        ScriptStopReason.Error => "error",
+        _ => "user"
+    };
+
+    private bool SafePremium()
+    {
+        try { return ResolvePremium(); }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "{Script} license lookup failed — reporting as free", _displayName);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Fire-and-forget, and it has to be: <see cref="Start()"/> is called straight from a global
+    /// hotkey callback and must stay synchronous. TrackEventAsync never faults by contract, so
+    /// the discarded task cannot resurface on the finalizer thread; resolving the sink is
+    /// wrapped because a script still running through app shutdown will find nothing there.
+    ///
+    /// The payload is the script's own key, three numbers and two flags. No paths, no names, no
+    /// identifiers — the script key is one of seventeen fixed strings the app itself defines.
+    /// </summary>
+    private void Track(string eventName, Dictionary<string, object?> metrics)
+    {
+        try
+        {
+            var telemetry = ResolveTelemetry();
+            if (telemetry is null) return;
+
+            _ = telemetry.TrackEventAsync(eventName, TelemetryEventStatus.Ok, metrics: metrics);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "{Script} telemetry push failed for {Event}", _displayName, eventName);
         }
     }
 
@@ -573,7 +713,7 @@ public abstract class AutomationScriptBase : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        StopCore(notify: false);
+        StopCore(notify: false, ScriptStopReason.User);
 
         if (_hotkeyId > 0)
         {
