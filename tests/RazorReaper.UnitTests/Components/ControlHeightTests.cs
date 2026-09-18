@@ -14,7 +14,8 @@ namespace RazorReaper.UnitTests.Components;
 /// One token settles it: <c>--control-h</c>, in the same block as the spacing scale, at the number
 /// field's own 34px — the field's height is set by readable type and padding rather than by taste,
 /// so the others move to meet it. It is a floor (min-height), not a fixed height, so a control with
-/// more in it still grows and the tile-sized buttons on Home are untouched.
+/// more in it still grows and the app's one tile-sized button design — .fov-btn-large on Scope and
+/// Custom FOV, padded 1rem 1.5rem — is untouched.
 ///
 /// These pin the token, the controls that take it, and — just as important — the ones that
 /// deliberately do not: the field inside Crosshair's .num-stepper, the one inside Auto clicker's
@@ -76,7 +77,8 @@ public sealed class ControlHeightTests
         Assert.Contains("min-height: var(--control-h) !important;", Buttons(), StringComparison.Ordinal);
 
         // A floor, not a height: a fixed height would clip a button whose label wraps and would
-        // shrink the tile-sized calls to action on Home to a row control.
+        // shrink the padded calls to action on Scope and Custom FOV — .fov-btn-large, which this
+        // very alias list folds onto .btn — to a row control.
         foreach (var css in new[] { Theme(), Primitives(), Buttons() })
         {
             Assert.DoesNotContain("height: var(--control-h)", css.Replace("min-height: var(--control-h)", string.Empty), StringComparison.Ordinal);

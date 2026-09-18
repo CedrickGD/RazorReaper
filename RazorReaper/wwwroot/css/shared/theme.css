@@ -274,7 +274,9 @@ html[data-sidebar-resizing] .main-content::before {
     gap: 0.4rem;
     padding: 0.45rem 0.8rem;
     /* The shared row height, so a button lines up with the picker and the number field it
-       sits beside. A floor only: the tile-sized buttons on Home are far taller and untouched. */
+       sits beside. A floor only: the padded calls to action on the Vision pages
+       (.fov-btn-large, padding 1rem 1.5rem, folded onto this design by buttons.css) are far
+       taller than 34px and a min-height leaves them exactly where they were. */
     min-height: var(--control-h);
     border: 1px solid transparent !important;
     border-radius: var(--radius-control);
