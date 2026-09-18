@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
@@ -323,13 +324,21 @@ public abstract class AutomationScriptBase : IDisposable
     /// Convenience scan loop: runs <paramref name="tickAsync"/> every <paramref name="intervalMs"/> ms,
     /// skipping ticks while ARK isn't the foreground window when <paramref name="foregroundOnly"/> is set.
     /// Per-tick exceptions are logged and swallowed so one bad frame doesn't kill the script.
+    ///
+    /// <paramref name="intervalMs"/> is the period, not a pause: the tick is timed and only the
+    /// remainder is waited out. It used to wait the full interval *after* the tick, so a screen
+    /// grab and a compare that took 30 ms turned the Noglin script's 50 ms scan into 80 ms — the
+    /// number on the settings page and the number the script ran at were different, and the
+    /// slower the machine the wider the gap.
     /// </summary>
     protected async Task RunLoopAsync(int intervalMs, Func<CancellationToken, Task> tickAsync, bool foregroundOnly, CancellationToken ct)
     {
         intervalMs = Math.Clamp(intervalMs, 10, 60000);
         _lastGateOpen = null;   // report the state once per run, whatever it is
+        var tickClock = new Stopwatch();
         while (!ct.IsCancellationRequested)
         {
+            tickClock.Restart();
             try
             {
                 var gateOpen = !foregroundOnly || Foreground.IsGameForeground();
@@ -350,10 +359,19 @@ public abstract class AutomationScriptBase : IDisposable
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { Logger.LogError(ex, "{Script} tick error", _displayName); }
 
-            try { await Task.Delay(intervalMs, ct); }
+            try { await Task.Delay(RemainingDelayMs(intervalMs, tickClock.ElapsedMilliseconds), ct); }
             catch (OperationCanceledException) { return; }
         }
     }
+
+    /// <summary>
+    /// What is left of <paramref name="intervalMs"/> after a tick that took
+    /// <paramref name="tickElapsedMs"/>. A tick that overran its own interval still yields to the
+    /// scheduler for a millisecond rather than spinning: a script that cannot keep up should fall
+    /// behind, not pin a core.
+    /// </summary>
+    internal static int RemainingDelayMs(int intervalMs, long tickElapsedMs)
+        => (int)Math.Clamp(intervalMs - tickElapsedMs, 1L, intervalMs);
 
     // ─── Hotkey ────────────────────────────────────────────────────────────────
 
