@@ -189,15 +189,18 @@ public sealed class DinoLevelGuideTests
     {
         var lockComponent = Component("Shared", "PremiumLock.razor");
 
-        Assert.Contains("<h2 class=\"lifetime-gate-title\">Lifetime only</h2>", lockComponent, StringComparison.Ordinal);
+        // The wording moved to the dictionary; TranslatedSurfaceTests pins the English.
+        Assert.Contains(
+            "<h2 class=\"lifetime-gate-title\">@Localizer.T(\"gate.lifetime.title\")</h2>",
+            lockComponent, StringComparison.Ordinal);
 
-        var buy = Regex.Match(lockComponent, @"<a[^>]*>Buy Premium</a>", RegexOptions.Singleline);
+        var buy = Regex.Match(lockComponent, @"<a[^>]*>@Localizer\.T\(""license\.buy\.premium""\)</a>", RegexOptions.Singleline);
         Assert.True(buy.Success, "\"Buy Premium\" must be a link to the shop.");
         Assert.Contains("href=\"@StoreLinks.Store\"", buy.Value, StringComparison.Ordinal);
         Assert.Contains("target=\"_blank\"", buy.Value, StringComparison.Ordinal);
         Assert.Contains("rel=\"noopener\"", buy.Value, StringComparison.Ordinal);
 
-        var redeem = Regex.Match(lockComponent, @"<button[^>]*>\s*Redeem key\s*</button>", RegexOptions.Singleline);
+        var redeem = Regex.Match(lockComponent, @"<button[^>]*>\s*@Localizer\.T\(""account\.redeemkey""\)\s*</button>", RegexOptions.Singleline);
         Assert.True(redeem.Success, "\"Redeem key\" must be a <button>, not a link.");
         Assert.Contains("aria-haspopup=\"dialog\"", redeem.Value, StringComparison.Ordinal);
         Assert.Contains("@onclick=\"OpenLicenseOverlay\"", redeem.Value, StringComparison.Ordinal);

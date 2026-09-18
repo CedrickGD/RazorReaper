@@ -8,6 +8,8 @@
 @inject IJSRuntime JS
 @inject ILogger<NotificationIndicator> Logger
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @*
     Notification icon
@@ -42,6 +44,14 @@
 </button>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private readonly CancellationTokenSource _stop = new();
 
     // The unread count the plop was last measured against. Null until the inbox has loaded for
@@ -146,23 +156,23 @@
 
             if (Unread > 0)
             {
-                parts.Add(Unread == 1 ? "1 unread reply" : $"{Unread} unread replies");
+                parts.Add(Localizer.T(Unread == 1 ? "inbox.unread.one" : "inbox.unread.many", Unread));
             }
 
             if (UpdateReady)
             {
                 var pending = AutoUpdateManager.PendingVersion;
                 parts.Add(pending is null
-                    ? "update ready — restart to install"
-                    : $"update {WhatsNewService.Format(pending)} ready — restart to install");
+                    ? Localizer.T("notify.update.ready")
+                    : Localizer.T("notify.update.ready.version", WhatsNewService.Format(pending)));
             }
             else if (UnseenRelease is { } release)
             {
                 var label = WhatsNewService.Format(release);
-                parts.Add(HasUpdate ? $"new version {label}" : $"what's new in {label}");
+                parts.Add(Localizer.T(HasUpdate ? "notify.newversion" : "notify.whatsnew", label));
             }
 
-            return parts.Count == 0 ? "What's new & inbox" : string.Join(" · ", parts);
+            return parts.Count == 0 ? Localizer.T("notify.tooltip.idle") : string.Join(" · ", parts);
         }
     }
 

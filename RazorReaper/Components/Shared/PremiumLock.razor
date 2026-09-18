@@ -1,7 +1,9 @@
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @implements IDisposable
 @inject ILicenseService LicenseService
 @inject ILicenseOverlayService LicenseOverlay
+@inject ILocalizer Localizer
 
 @*
     Two gates, not one.
@@ -23,17 +25,15 @@
             <rect x="4" y="10.5" width="16" height="10" rx="2"></rect>
             <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"></path>
         </svg>
-        <h2 class="lifetime-gate-title">Lifetime only</h2>
-        <p class="lifetime-gate-text">
-            This page comes with the Lifetime licence — the monthly plans do not include it.
-        </p>
+        <h2 class="lifetime-gate-title">@Localizer.T("gate.lifetime.title")</h2>
+        <p class="lifetime-gate-text">@Localizer.T("gate.lifetime.text")</p>
         <div class="lifetime-gate-actions">
-            <a class="btn btn-primary" href="@StoreLinks.Store" target="_blank" rel="noopener">Buy Premium</a>
+            <a class="btn btn-primary" href="@StoreLinks.Store" target="_blank" rel="noopener">@Localizer.T("license.buy.premium")</a>
             <button type="button"
                     class="btn btn-secondary"
                     aria-haspopup="dialog"
                     @onclick="OpenLicenseOverlay">
-                Redeem key
+                @Localizer.T("account.redeemkey")
             </button>
         </div>
     </section>
@@ -49,10 +49,10 @@ else
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                     </svg>
-                    <h4>Premium Feature</h4>
-                    <p>This feature requires an active Premium license.</p>
+                    <h4>@Localizer.T("gate.premium.title")</h4>
+                    <p>@Localizer.T("gate.premium.text")</p>
                     <a href="@StoreLinks.Store" target="_blank" rel="noopener" class="btn-primary premium-upgrade-btn">
-                        Upgrade to Premium
+                        @Localizer.T("gate.premium.upgrade")
                     </a>
                 </div>
             </div>
@@ -65,6 +65,14 @@ else
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     [Parameter]
     public RenderFragment ChildContent { get; set; } = default!;
 

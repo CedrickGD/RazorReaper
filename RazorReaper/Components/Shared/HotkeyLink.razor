@@ -3,21 +3,33 @@
    editable in one place (see Components/Pages/GlobalHotkeys.razor).
    Styled in wwwroot/css/shared/primitives.css. *@
 
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
+
 <span class="hk-inline">
     @if (string.IsNullOrWhiteSpace(Value))
     {
-        <span class="hk-inline-unset">Not set</span>
+        <span class="hk-inline-unset">@Localizer.T("hotkey.unset")</span>
     }
     else
     {
         <kbd class="hk-inline-combo">@Value</kbd>
     }
-    <a class="hk-inline-link" href="/hotkeys">@LinkText</a>
+    <a class="hk-inline-link" href="/hotkeys">@(LinkText ?? Localizer.T("hotkey.changelink"))</a>
 </span>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     /// <summary>The current binding, as the HotkeyField combo string.</summary>
     [Parameter] public string? Value { get; set; }
 
-    [Parameter] public string LinkText { get; set; } = "Change in Global Hotkeys";
+    /// <summary>The link's wording. Null takes the general "Change in Global Hotkeys".</summary>
+    [Parameter] public string? LinkText { get; set; }
 }

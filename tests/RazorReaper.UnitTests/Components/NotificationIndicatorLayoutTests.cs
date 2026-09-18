@@ -45,8 +45,8 @@ public sealed class NotificationIndicatorLayoutTests
         Assert.Contains("aria-haspopup=\"dialog\"", indicator, StringComparison.Ordinal);
         Assert.Contains("Inbox.UnreadCount", indicator, StringComparison.Ordinal);
         Assert.Contains("WhatsNew.UnseenRelease(AutoUpdateManager.LastCheckResult, UpdateService.CurrentVersion)", indicator, StringComparison.Ordinal);
-        Assert.Contains("unread replies", indicator, StringComparison.Ordinal);
-        Assert.Contains("new version {label}", indicator, StringComparison.Ordinal);
+        Assert.Contains("inbox.unread.many", indicator, StringComparison.Ordinal);
+        Assert.Contains("\"notify.newversion\" : \"notify.whatsnew\", label", indicator, StringComparison.Ordinal);
         Assert.Contains("WhatsNew.Open()", indicator, StringComparison.Ordinal);
     }
 

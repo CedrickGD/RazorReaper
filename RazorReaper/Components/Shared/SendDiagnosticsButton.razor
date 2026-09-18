@@ -1,17 +1,28 @@
+@using RazorReaper.Services.Localization
 @inject NavigationManager Navigation
+@inject ILocalizer Localizer
 
 <div class="diagnostics-send-control">
     <button type="button" class="@ButtonClass" @onclick="OpenReport">
-        <span>@Label</span>
+        <span>@(Label ?? Localizer.T("diagnostics.report"))</span>
     </button>
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     [Parameter, EditorRequired]
     public string SourceRoute { get; set; } = "unknown";
 
+    /// <summary>The button's wording. Null takes the general "Report an issue".</summary>
     [Parameter]
-    public string Label { get; set; } = "Report an issue";
+    public string? Label { get; set; }
 
     [Parameter]
     public string ButtonClass { get; set; } = "btn btn-primary";

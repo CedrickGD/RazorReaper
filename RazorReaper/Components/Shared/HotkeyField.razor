@@ -1,4 +1,6 @@
 @inject IJSRuntime JS
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @* Shared hotkey capture field. Focus it and press a combination — modifiers + key are
    captured into a display string like "Ctrl + Alt + F" and pushed through ValueChanged.
@@ -27,15 +29,23 @@
     {
         <button type="button"
                 class="hotkey-clear"
-                title="Clear this hotkey"
-                aria-label="Clear this hotkey"
+                title="@Localizer.T("hotkey.clear")"
+                aria-label="@Localizer.T("hotkey.clear")"
                 @onmousedown:preventDefault="true"
                 @onmousedown="ClearAsync">×</button>
     }
 </span>
 
 @code {
-    private const string DefaultPlaceholder = "Press a key…";
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
+    private string DefaultPlaceholder => Localizer.T("hotkey.presskey");
 
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public EventCallback<string> ValueChanged { get; set; }

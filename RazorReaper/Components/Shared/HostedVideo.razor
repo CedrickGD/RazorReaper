@@ -1,5 +1,7 @@
 @inject IHostedMediaService HostedMedia
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @if (resolvedSrc is not null)
 {
@@ -10,8 +12,8 @@
 else if (failed)
 {
     <div class="hosted-media-placeholder hosted-media-video" @attributes="Attributes">
-        <span>Video unavailable</span>
-        <button type="button" class="hosted-media-retry" @onclick="RetryAsync">Retry</button>
+        <span>@Localizer.T("media.video.failed")</span>
+        <button type="button" class="hosted-media-retry" @onclick="RetryAsync">@Localizer.T("common.retry")</button>
     </div>
 }
 else
@@ -19,12 +21,22 @@ else
     <div class="hosted-media-placeholder hosted-media-video" @attributes="Attributes">
         <span class="hosted-media-spinner"></span>
         <span class="hosted-media-note">
-            @(progressPercent is { } percent ? $"Loading video… {percent}%" : "Loading video…")
+            @(progressPercent is { } percent
+                ? Localizer.T("media.video.loading.percent", percent)
+                : Localizer.T("media.video.loading"))
         </span>
     </div>
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     /// <summary>Hosted media path relative to the CDN root, e.g. "videos/raising.mp4".</summary>
     [Parameter, EditorRequired] public string Src { get; set; } = string.Empty;
 

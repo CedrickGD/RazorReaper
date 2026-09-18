@@ -194,6 +194,130 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Lifetime only</h2>",
+            "This page comes with the Lifetime licence",
+            ">Buy Premium</a>",
+            "Redeem key\n",
+            "<h4>Premium Feature</h4>",
+            "This feature requires an active Premium license.",
+            "Upgrade to Premium\n",
+        })
+        {
+            data.Add("Components/Shared/PremiumLock.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "This feature needs administrator rights.",
+            "\"Restarting…\" : \"Restart as Administrator\"",
+            "Could not restart with administrator rights.",
+        })
+        {
+            data.Add("Components/Shared/ElevationPrompt.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "title=\"Pick color\"",
+            ">Done</button>",
+        })
+        {
+            data.Add("Components/Shared/ColorField.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "= \"Choose…\"",
+        })
+        {
+            data.Add("Components/Shared/Dropdown.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Not set</span>",
+            "= \"Change in Global Hotkeys\"",
+        })
+        {
+            data.Add("Components/Shared/HotkeyLink.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "= \"Report an issue\"",
+        })
+        {
+            data.Add("Components/Shared/SendDiagnosticsButton.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "title=\"Clear this hotkey\"",
+            "aria-label=\"Clear this hotkey\"",
+            "= \"Press a key…\"",
+        })
+        {
+            data.Add("Components/Shared/HotkeyField.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "title=\"Dismiss\"",
+        })
+        {
+            data.Add("Components/Shared/AnnouncementBanner.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Image unavailable</span>",
+            ">Retry</button>",
+        })
+        {
+            data.Add("Components/Shared/HostedImg.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Video unavailable</span>",
+            ">Retry</button>",
+            "$\"Loading video…",
+            ": \"Loading video…\"",
+        })
+        {
+            data.Add("Components/Shared/HostedVideo.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"Access permanently revoked\"",
+            "\"Access suspended\"",
+            "Your access to RazorReaper on this machine",
+            ">Reason</div>",
+            "Access returns automatically on",
+            "\"Checking…\" : \"Re-check access\"",
+            "Believe this is a mistake?",
+        })
+        {
+            data.Add("Components/Shared/AccessBlocked.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"1 unread reply\"",
+            "unread replies\"",
+            "\"update ready — restart to install\"",
+            "ready — restart to install\"",
+            "$\"new version {label}\"",
+            "$\"what's new in {label}\"",
+            "\"What's new & inbox\"",
+        })
+        {
+            data.Add("Components/Shared/NotificationIndicator.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             "= \"TP Locations\"",
             "= \"Underwater Drops\"",
             "= \"Map Mods\"",
@@ -454,6 +578,14 @@ public sealed class TranslatedSurfaceTests
     [InlineData("palette.category.command", "Command")]
     [InlineData("palette.cmd.launch.title", "Launch ARK")]
     [InlineData("palette.deeplink.parent", "{0} · {1}")]
+    [InlineData("gate.lifetime.title", "Lifetime only")]
+    [InlineData("gate.premium.title", "Premium Feature")]
+    [InlineData("account.redeemkey", "Redeem key")]
+    [InlineData("elevation.restart", "Restart as Administrator")]
+    [InlineData("hotkey.changelink", "Change in Global Hotkeys")]
+    [InlineData("access.heading.ban", "Access permanently revoked")]
+    [InlineData("notify.update.ready", "update ready — restart to install")]
+    [InlineData("notify.tooltip.idle", "What's new & inbox")]
     [InlineData("license.buy.renew", "Buy / renew")]
     [InlineData("license.buy.premium", "Buy Premium")]
     [InlineData("license.fact.device.bound", "Bound to this PC")]

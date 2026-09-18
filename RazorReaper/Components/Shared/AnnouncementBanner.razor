@@ -5,6 +5,8 @@
 @inject IAnnouncementService AnnouncementService
 @inject IOptions<AppConfiguration> Options
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @if (_visible.Count > 0)
 {
@@ -30,7 +32,7 @@
                     <p class="announcement-title">@a.Title</p>
                     <p class="announcement-body">@a.Body</p>
                 </div>
-                <button class="announcement-close" title="Dismiss" @onclick="() => Dismiss(a)">
+                <button class="announcement-close" title="@Localizer.T("common.dismiss")" @onclick="() => Dismiss(a)">
                     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                 </button>
             </div>
@@ -39,6 +41,14 @@
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     // Dismissed announcement ids persist in Preferences so a dismissed banner stays gone
     // across launches; newly created announcements receive new ids and remain visible.
     private const string DismissedPreferenceKey = "rr.announcements.dismissed";

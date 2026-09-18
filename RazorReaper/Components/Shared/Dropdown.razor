@@ -6,7 +6,9 @@
 
    Keyboard model matches GlobalSearch: Up/Down/Home/End move, Enter picks, Escape closes.
    Outside clicks land on a transparent full-viewport backdrop, same as ColorField. *@
+@using RazorReaper.Services.Localization
 @inject IJSRuntime JS
+@inject ILocalizer Localizer
 
 <div class="rr-dd @(_open ? "open" : "") @(_flipUp ? "flip-up" : "")">
     <button type="button"
@@ -49,13 +51,22 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     public sealed record Option(string Value, string Label, string? Hint = null);
 
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public IReadOnlyList<Option> Options { get; set; } = Array.Empty<Option>();
     [Parameter] public bool Disabled { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Choose…";
+    /// <summary>What the trigger reads with nothing selected. Null takes the general one.</summary>
+    [Parameter] public string? Placeholder { get; set; }
 
     private bool _open;
     private bool _flipUp;
@@ -67,7 +78,9 @@
     private double PopHeight => Math.Min(280, 12 + Options.Count * 30);
 
     private string SelectedLabel =>
-        Options.FirstOrDefault(o => o.Value == Value)?.Label ?? Placeholder;
+        Options.FirstOrDefault(o => o.Value == Value)?.Label
+        ?? Placeholder
+        ?? Localizer.T("dropdown.placeholder");
 
     private async Task Toggle()
     {

@@ -63,7 +63,8 @@ public sealed class UpdateAffordanceTests
 
         Assert.Contains("private bool UpdateReady => AutoUpdateManager.IsInstallerReady;", indicator, StringComparison.Ordinal);
         Assert.Contains("Unread > 0 || UnseenRelease is not null || UpdateReady", indicator, StringComparison.Ordinal);
-        Assert.Contains("ready — restart to install", indicator, StringComparison.Ordinal);
+        // The line itself is a dictionary entry now; TranslatedSurfaceTests pins its English.
+        Assert.Contains("notify.update.ready", indicator, StringComparison.Ordinal);
     }
 
     [Fact]

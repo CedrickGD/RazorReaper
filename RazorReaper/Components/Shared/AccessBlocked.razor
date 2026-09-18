@@ -1,10 +1,12 @@
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @inject IAccessGateService AccessGate
+@inject ILocalizer Localizer
 @implements IDisposable
 
 @{
     var isBan = string.Equals(AccessGate.Mode, "ban", StringComparison.OrdinalIgnoreCase);
-    var heading = isBan ? "Access permanently revoked" : "Access suspended";
+    var heading = Localizer.T(isBan ? "access.heading.ban" : "access.heading.suspend");
 }
 
 <div class="access-blocked-overlay @(isBan ? "is-ban" : "is-suspend")">
@@ -19,34 +21,30 @@
 
         <h1 class="ab-heading">@heading</h1>
 
-        <p class="ab-text">
-            Your access to RazorReaper on this machine has been @(isBan ? "revoked" : "temporarily suspended") by an administrator.
-        </p>
+        <p class="ab-text">@Localizer.T(isBan ? "access.text.ban" : "access.text.suspend")</p>
 
         @if (!string.IsNullOrWhiteSpace(AccessGate.Reason))
         {
             <div class="ab-reason">
-                <div class="ab-reason-label">Reason</div>
+                <div class="ab-reason-label">@Localizer.T("access.reason")</div>
                 <div class="ab-reason-text">@AccessGate.Reason</div>
             </div>
         }
 
         @if (!isBan && AccessGate.BannedUntil is not null)
         {
-            <p class="ab-until">
-                Access returns automatically on <strong>@AccessGate.BannedUntil.Value.ToString("f")</strong>.
-            </p>
+            @* The date is the emphasis, so the sentence is a lead and a tail around it —
+               no dictionary value in the app carries markup. *@
+            <p class="ab-until">@Localizer.T("access.until.lead")<strong>@AccessGate.BannedUntil.Value.ToString("f")</strong>@Localizer.T("access.until.rest")</p>
         }
 
         <div class="ab-actions">
             <button class="btn btn-secondary" @onclick="ReCheck" disabled="@_checking">
-                @(_checking ? "Checking…" : "Re-check access")
+                @Localizer.T(_checking ? "access.rechecking" : "access.recheck")
             </button>
         </div>
 
-        <p class="ab-footnote">
-            Believe this is a mistake? Reach out in the RazorReaper Discord.
-        </p>
+        <p class="ab-footnote">@Localizer.T("access.footnote")</p>
     </div>
 </div>
 
@@ -159,6 +157,14 @@
 </style>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private bool _checking;
 
     protected override void OnInitialized()

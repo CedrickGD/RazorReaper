@@ -1,8 +1,10 @@
 @using RazorReaper.Services
 @using RazorReaper.Services.Elevation
+@using RazorReaper.Services.Localization
 @inject IElevationService Elevation
 @inject INotificationService Notifications
 @inject NavigationManager Navigation
+@inject ILocalizer Localizer
 
 @if (!Elevation.IsElevated)
 {
@@ -12,16 +14,28 @@
             <path d="M10 8v3.2" />
             <path d="M10 6.2h.01" />
         </svg>
-        <div class="elevation-prompt-text">@Message</div>
+        <div class="elevation-prompt-text">@(Message ?? Localizer.T("elevation.reason"))</div>
         <button class="btn btn-primary" @onclick="Relaunch" disabled="@_busy">
-            @(_busy ? "Restarting…" : "Restart as Administrator")
+            @Localizer.T(_busy ? "elevation.restarting" : "elevation.restart")
         </button>
     </div>
 }
 
 @code {
-    /// <summary>Why this feature needs administrator rights (shown next to the button).</summary>
-    [Parameter] public string Message { get; set; } = "This feature needs administrator rights.";
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
+    /// <summary>
+    /// Why this feature needs administrator rights (shown next to the button). Null asks for the
+    /// general reason: a parameter default is baked in at compile time and would be English for
+    /// the life of the process, so the fallback is resolved where it is rendered instead.
+    /// </summary>
+    [Parameter] public string? Message { get; set; }
 
     private bool _busy;
 
@@ -37,7 +51,7 @@
         if (!Elevation.RelaunchAsAdministrator(currentRoute, out var error))
         {
             _busy = false;
-            Notifications.ShowWarning(error ?? "Could not restart with administrator rights.");
+            Notifications.ShowWarning(error ?? Localizer.T("elevation.failed"));
         }
     }
 }
