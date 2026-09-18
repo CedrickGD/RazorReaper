@@ -1946,6 +1946,7 @@
   "notifier.channels.error.badid": "That doesn't look like a valid Discord channel ID (digits only).",
   "notifier.channels.error.status": "The backend returned {0}.",
   "notifier.channels.error.badresponse": "Couldn't read the backend's response.",
+  "notifier.channels.error.transport": "{0} — check the endpoint and your connection.",
 
   "autoclicker.title": "Auto Clicker",
   "autoclicker.subtitle": "Advanced mouse automation tool",

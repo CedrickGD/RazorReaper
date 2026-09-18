@@ -868,24 +868,60 @@ public sealed class NotifierClientService : INotifierClientService
 
     public async Task<IReadOnlyList<NotifierWatchedChannel>> GetWatchedChannelsAsync(CancellationToken ct = default)
     {
-        using var resp = await _http.GetAsync(BuildChannelsUrl(), ct).ConfigureAwait(false);
-        return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+        var url = BuildChannelsUrl();
+        return await SendChannelsRequestAsync(token => _http.GetAsync(url, token), ct).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<NotifierWatchedChannel>> AddWatchedChannelAsync(string channelId, string cluster, string type, CancellationToken ct = default)
     {
+        var url = BuildChannelsUrl();
         var payload = new { channelId = (channelId ?? "").Trim(), cluster = (cluster ?? "").Trim(), type = (type ?? "").Trim() };
         using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        using var resp = await _http.PostAsync(BuildChannelsUrl(), content, ct).ConfigureAwait(false);
-        return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+        return await SendChannelsRequestAsync(token => _http.PostAsync(url, content, token), ct).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<NotifierWatchedChannel>> RemoveWatchedChannelAsync(string channelId, CancellationToken ct = default)
     {
         var url = BuildChannelsUrl("id=" + Uri.EscapeDataString(channelId ?? ""));
         using var req = new HttpRequestMessage(HttpMethod.Delete, url);
-        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
-        return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+        return await SendChannelsRequestAsync(token => _http.SendAsync(req, token), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// One channel request, with the transport half worded like everything else on this page.
+    /// A host that will not answer throws HttpRequestException and one that takes too long
+    /// throws TaskCanceledException; Notifier.razor puts <c>ex.Message</c> straight into its
+    /// channel error line, so either of those escaping showed ".NET English" — "No such host is
+    /// known." — under a German page. The reason is read off the same <see cref="ReasonOf"/>
+    /// map the stream loop words its retries with, and the response is read inside the try so a
+    /// connection that dies mid-body is worded too.
+    ///
+    /// Two throws are passed through untouched: a cancel the caller asked for is not a failure,
+    /// and an InvalidOperationException is already one of this file's own localized refusals.
+    /// </summary>
+    private async Task<IReadOnlyList<NotifierWatchedChannel>> SendChannelsRequestAsync(
+        Func<CancellationToken, Task<HttpResponseMessage>> send,
+        CancellationToken ct)
+    {
+        try
+        {
+            using var resp = await send(ct).ConfigureAwait(false);
+            return await ParseChannelsAsync(resp, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Notifier watched-channel request failed");
+            throw new InvalidOperationException(
+                _localizer.T("notifier.channels.error.transport", ReasonOf(ex)), ex);
+        }
     }
 
     private async Task<IReadOnlyList<NotifierWatchedChannel>> ParseChannelsAsync(HttpResponseMessage resp, CancellationToken ct)

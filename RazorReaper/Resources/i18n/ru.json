@@ -1946,6 +1946,7 @@
   "notifier.channels.error.badid": "Похоже, это не корректный ID канала Discord (только цифры).",
   "notifier.channels.error.status": "Сервер вернул {0}.",
   "notifier.channels.error.badresponse": "Не удалось прочитать ответ сервера.",
+  "notifier.channels.error.transport": "{0} — проверьте адрес и подключение.",
 
   "autoclicker.title": "Автокликер",
   "autoclicker.subtitle": "Продвинутый инструмент автоматизации мыши",

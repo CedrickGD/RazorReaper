@@ -1946,6 +1946,7 @@
   "notifier.channels.error.badid": "这看起来不是有效的 Discord 频道 ID（仅数字）。",
   "notifier.channels.error.status": "后端返回 {0}。",
   "notifier.channels.error.badresponse": "无法读取后端的响应。",
+  "notifier.channels.error.transport": "{0} —— 请检查地址和网络连接。",
 
   "autoclicker.title": "连点器",
   "autoclicker.subtitle": "进阶鼠标自动化工具",

@@ -1946,6 +1946,7 @@
   "notifier.channels.error.badid": "Das sieht nicht nach einer gültigen Discord-Kanal-ID aus (nur Ziffern).",
   "notifier.channels.error.status": "Das Backend antwortete mit {0}.",
   "notifier.channels.error.badresponse": "Die Antwort des Backends war nicht lesbar.",
+  "notifier.channels.error.transport": "{0} — prüf den Endpunkt und deine Verbindung.",
 
   "autoclicker.title": "Autoklicker",
   "autoclicker.subtitle": "Werkzeug für fortgeschrittene Maus-Automatisierung",
