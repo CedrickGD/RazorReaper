@@ -371,16 +371,21 @@ html[data-sidebar-resizing] .sidebar {
     background: var(--accent-purple);
 }
 
+/* The label is the part of the row that gives way. Every translated page name is long
+   somewhere — at the default 240px the panel leaves it about 123px and "Глобальные
+   горячие клавиши" wants 187px — and it has to shrink and ellipsise rather than push the
+   marker out of the row or spill past .nav-panel's overflow: hidden.
+   min-width: 0 states that rather than leaving it to be inferred. Flexbox already lands
+   there on its own: the automatic minimum size only applies to an item whose overflow is
+   visible, and the line below hides it, so `auto` computes to 0 here. Measured in
+   Chromium at 240px and at 171px, auto and 0 render the same rows — this declaration
+   changes nothing today and keeps the row intact if the overflow line ever moves.
+   Unscoped, because it holds for every row: the earlier version applied it only to rows
+   carrying a marker, which is no more true of those rows than of the rest. */
 .panel-label {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-/* A flex item will not shrink below its text by default, so on a row that also carries a
-   marker the label would push the marker out of the panel instead of ellipsising. Scoped
-   to those rows: everywhere else the label keeps the width it has always had. */
-.panel-link:has(.panel-badge) .panel-label {
-    min-width: 0;
 }
 
 /* Plan marker on a row whose page is not in every plan. Same chip as the licence
