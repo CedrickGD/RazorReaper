@@ -405,20 +405,7 @@ internal static class CrosshairCodeParsers
         return CrosshairCodeParseResult.Ok(fmt, profile);
     }
 
-    /// <summary>
-    /// One-line summary of what an import produced, so the success toast shows the values that
-    /// landed instead of just a profile name.
-    /// </summary>
-    public static string Describe(CrosshairProfile p)
-    {
-        var sb = new StringBuilder();
-        sb.Append(p.Type).Append(" · ").Append(p.Color)
-          .Append(" · size ").Append(p.Size)
-          .Append(" · thickness ").Append(p.Thickness)
-          .Append(" · gap ").Append(p.Gap)
-          .Append(" · outline ").Append(p.OutlineThickness)
-          .Append(" · ").Append(p.Opacity).Append('%');
-        if (p.ShowDot) sb.Append(" · dot ").Append(p.DotSize);
-        return sb.ToString();
-    }
+    // Describe() lived here and built the import summary out of English words. It is worded on
+    // the Crosshair page now — this file is a pure decoder with no localizer, and the page was
+    // its only caller.
 }

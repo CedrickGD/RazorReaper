@@ -312,7 +312,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to persist crosshair profiles");
-            _notifications.ShowError($"Saving profile failed: {ex.Message}");
+            _notifications.ShowError(_localizer.T("crosshair.error.saveprofile", ex.Message));
             return false;
         }
     }

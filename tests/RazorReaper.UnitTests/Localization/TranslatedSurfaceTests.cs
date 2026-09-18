@@ -2384,6 +2384,122 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Scripts.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Crosshair</h1>",
+            "Always-on-top overlay with editor, presets",
+            "\"Overlay active\" : \"Overlay off\"",
+            "\"Stop overlay\" : \"Start overlay\"",
+            "<h3>Shape</h3>",
+            ">Image</label>",
+            "\"Choose…\" : \"Replace…\"",
+            "\"Sizing\" : \"Colors\"",
+            ">Body</label>",
+            ">Outline</label>",
+            ">Size: <strong>",
+            ">Thickness: <strong>",
+            ">Gap: <strong>",
+            ">Opacity: <strong>",
+            ">Dot size: <strong>",
+            ">Pixel size: <strong>",
+            ">Rotation: <strong>",
+            ">Speed: <strong>",
+            "<h3>Center dot</h3>",
+            "\"Always on\" : \"Enabled\"",
+            "<h3>Pixel art</h3>",
+            ">Grid:</label>",
+            "title=\"Erase everything\"",
+            "title=\"Flip every cell\"",
+            "title=\"Plus pattern\"",
+            "title=\"Single centre pixel\"",
+            "Click or drag to paint.",
+            "<h3>Lines</h3>",
+            "Label=\"Top\"",
+            "Label=\"Bottom\"",
+            "Label=\"Left\"",
+            "Label=\"Right\"",
+            "<h3>Position</h3>",
+            ">Monitor</label>",
+            ">X offset</label>",
+            ">Y offset</label>",
+            "Hold the up/down chevrons",
+            ">Recenter</button>",
+            "<h3>Motion</h3>",
+            "@a.ToString()",
+            "Label=\"Rainbow color cycle\"",
+            "<h3>Live preview</h3>",
+            "alt=\"Crosshair preview\"",
+            "<h3>Presets</h3>",
+            "\"· Rainbow\"",
+            "<h3>Your profiles</h3>",
+            "No saved profiles yet.",
+            "placeholder=\"New profile name…\"",
+            "<h3>Library</h3>",
+            "title=\"Open the library folder in Windows Explorer\"",
+            "title=\"Copy the imports folder path to clipboard\"",
+            "Imported images appear here.",
+            "title=\"Delete\"",
+            "<h3>Import</h3>",
+            "Import image or video\n",
+            "Import Crosshair X workshop file\n",
+            "Import Crosshair X workshop folder\n",
+            ">From game code (Valorant / CS2)</label>",
+            "placeholder=\"Paste a Valorant string or CSGO-XXXXX-… code\"",
+            ">Import</button>",
+            "Covers color, length, thickness, gap, dot",
+            ">How do I find a crosshair to import?</span>",
+            ">Image file (any game)</div>",
+            "Animated GIFs play frame-by-frame",
+            ">Steam Workshop (Crosshair X)</div>",
+            "Either drag a <code>.png</code>",
+            ">Valorant</div>",
+            "top-right <strong>Export profile code</strong>",
+            ">CS2 / CSGO</div>",
+            "five groups of five",
+            ">Rust</div>",
+            "Facepunch has never published how it's encoded",
+            "<h3>Hotkey</h3>",
+            ">Toggle overlay</span>",
+            "Works globally — even while a game has focus.",
+            "\"static\" : \"animated\"",
+            "$\"Press {",
+            "$\"gap {profile.Gap}\"",
+            "parts.Add(\"rainbow\")",
+            "\" · primary\"",
+            "\"Deleted from library.\"",
+            "$\"Error opening folder:",
+            "$\"Loaded '{p.Name}'.\"",
+            "$\"Saved '{name}'.\"",
+            "\"Image imported.\"",
+            "$\"Image picker failed:",
+            "CrosshairCodeParsers.Describe",
+            "$\"Imported '{imported.Name}'.\"",
+            "$\"Workshop import failed:",
+            "CrosshairType.Cross => \"Cross\"",
+        })
+        {
+            data.Add("Components/Pages/Crosshair.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "$\"Saving profile failed: {ex.Message}\"",
+        })
+        {
+            data.Add("Services/Implementations/Crosshair/CrosshairService.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "public static string Describe(CrosshairProfile p)",
+            "\" · size \"",
+            "\" · thickness \"",
+            "\" · outline \"",
+        })
+        {
+            data.Add("Services/Implementations/CrosshairCodeParsers.cs", literal);
+        }
+
         return data;
     }
 

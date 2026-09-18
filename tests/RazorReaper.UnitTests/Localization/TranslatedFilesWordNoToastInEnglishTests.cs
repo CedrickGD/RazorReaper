@@ -29,13 +29,14 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     /// of docs/i18n.md, and the second test below fails if it stops being a finding — an exemption
     /// that no longer exempts anything is a hole nobody is looking at.
     /// </summary>
+    /// <remarks>
+    /// Empty since the Crosshair page was migrated. CrosshairService was the one entry — it held
+    /// a localizer for the tray tooltip while its own "Saving profile failed" toast stayed
+    /// English, and that toast is a key now. The dictionary stays: the next service that gets a
+    /// localizer ahead of its page belongs in it with a reason, not in a silent pass.
+    /// </remarks>
     private static readonly IReadOnlyDictionary<string, string> KnownEnglishMessages =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["Services/Implementations/Crosshair/CrosshairService.cs"] =
-                "carries a localizer for the tray menu and its tooltip only; these toasts belong to "
-                + "the Crosshair page, which is still listed as untranslated in docs/i18n.md",
-        };
+        new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
     /// A message handed to the notification or activity service. The call may be broken across
