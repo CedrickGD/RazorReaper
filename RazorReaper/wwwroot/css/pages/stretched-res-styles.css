@@ -138,6 +138,26 @@
     margin: 0 0 var(--space-4);
 }
 
+/* ---------------------------------------------------------------- monitor picker
+
+   One per section, above everything it decides. Narrow on purpose: it holds one
+   line of text and a full-width control would read as the section's main event
+   rather than as the target the buttons below are aimed at. */
+
+.stretched-monitor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 320px;
+    margin: 0 0 var(--space-4);
+}
+
+.stretched-monitor-note {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--accent-orange-soft);
+}
+
 .stretched-preset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -319,6 +339,10 @@
     .stretched-confirm-actions {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .stretched-monitor {
+        max-width: none;
     }
 
     .stretched-custom-fields {
