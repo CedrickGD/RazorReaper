@@ -1951,6 +1951,56 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Implementations/Ini/IniPresetCatalog.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Game Fonts</h1>",
+            "Customize ARK: Survival Evolved font settings",
+            "<h3>Font Selection</h3>",
+            "Choose your preferred in-game font",
+            ">Game Default</div>",
+            ">Standard ARK font</div>",
+            ">Asian localization font</div>",
+            ">Enhanced custom font</div>",
+            "Open ARK in Steam",
+            "<h3>Installation</h3>",
+            "Automated or manual setup",
+            "\"Installing...\" : \"Auto Install\"",
+            "Open Font Folder",
+            "Download Only",
+            "<h3>Game Default Font</h3>",
+            "Clean, simple, and built-in.",
+            "<h4>How to Enable</h4>",
+            "<li>Remove any font commands:</li>",
+            "<li>Restart ARK.</li>",
+            "<strong>Tip:</strong>",
+            "Just remove culture commands.",
+            "<h3>Asian Font Setup</h3>",
+            "<h4>Easy Installation</h4>",
+            "Type this:",
+            "<strong>How it works:</strong>",
+            "<h3>Global Font Setup</h3>",
+            "<h4>Manual Installation</h4>",
+            "Place <code>Global</code> folder in:",
+            "<li>In Steam: Right-click ARK → Properties → Launch Options</li>",
+            "=> \"Game Default\"",
+            "$\"Font selected:",
+            "\"ARK installation not found.\"",
+            "\"Extracting Global font...\"",
+            "\"Installing font files...\"",
+            "\"Global font installed\", \"success\"",
+            "$\"Download failed:",
+            "\"Copying localization files...\"",
+            "\"Asian font installed\", \"success\"",
+            "\"Opened font folder in Explorer.\"",
+            "\"Copied to clipboard.\"",
+            "\"Failed to copy.\"",
+            "\"Path copied to clipboard.\"",
+            "\"ARK opened in Steam",
+        })
+        {
+            data.Add("Components/Pages/Fonts.razor", literal);
+        }
+
         return data;
     }
 

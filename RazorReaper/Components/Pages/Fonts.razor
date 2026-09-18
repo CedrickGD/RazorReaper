@@ -8,11 +8,13 @@
 @inject ILogger<Fonts> Logger
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 
         <header class="page-header">
-            <h1 class="page-title">Game Fonts</h1>
-            <p class="page-subtitle">Customize ARK: Survival Evolved font settings</p>
+            <h1 class="page-title">@Localizer.T("fonts.title")</h1>
+            <p class="page-subtitle">@Localizer.T("fonts.subtitle")</p>
         </header>
 
         <div class="fonts-layout">
@@ -25,28 +27,28 @@
                             </svg>
                         </div>
                         <div>
-                            <h3>Font Selection</h3>
-                            <p class="section-description">Choose your preferred in-game font</p>
+                            <h3>@Localizer.T("fonts.selection.title")</h3>
+                            <p class="section-description">@Localizer.T("fonts.selection.description")</p>
                         </div>
                     </div>
 
                     <div class="font-options">
                         <button class="font-option-btn @(selectedFont == "default" ? "active" : "")"
                                 @onclick="@(() => SelectFont("default"))">
-                            <div class="font-option-name">Game Default</div>
-                            <div class="font-option-description">Standard ARK font</div>
+                            <div class="font-option-name">@Localizer.T("fonts.option.default.name")</div>
+                            <div class="font-option-description">@Localizer.T("fonts.option.default.description")</div>
                         </button>
 
                         <button class="font-option-btn @(selectedFont == "chinese" ? "active" : "")"
                                 @onclick="@(() => SelectFont("chinese"))">
-                            <div class="font-option-name">Asian Font</div>
-                            <div class="font-option-description">Asian localization font</div>
+                            <div class="font-option-name">@Localizer.T("fonts.option.asian.name")</div>
+                            <div class="font-option-description">@Localizer.T("fonts.option.asian.description")</div>
                         </button>
 
                         <button class="font-option-btn @(selectedFont == "global" ? "active" : "")"
                                 @onclick="@(() => SelectFont("global"))">
-                            <div class="font-option-name">Global Font</div>
-                            <div class="font-option-description">Enhanced custom font</div>
+                            <div class="font-option-name">@Localizer.T("fonts.option.global.name")</div>
+                            <div class="font-option-description">@Localizer.T("fonts.option.global.description")</div>
                         </button>
                     </div>
 
@@ -54,7 +56,7 @@
                         <svg fill="currentColor" viewBox="0 0 20 20" style="width: 18px; height: 18px;">
                             <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
                         </svg>
-                        Open ARK in Steam
+                        @Localizer.T("fonts.openark")
                     </button>
                 </div>
 
@@ -68,8 +70,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3>Installation</h3>
-                                <p class="section-description">Automated setup</p>
+                                <h3>@Localizer.T("fonts.install.title")</h3>
+                                <p class="section-description">@Localizer.T("fonts.install.auto")</p>
                             </div>
                         </div>
 
@@ -78,14 +80,14 @@
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                                 </svg>
-                                @(isInstalling ? "Installing..." : "Auto Install")
+                                @Localizer.T(isInstalling ? "fonts.installing" : "fonts.autoinstall")
                             </button>
 
                             <button class="fonts-btn" @onclick="OpenFontFolderInExplorer">
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                                 </svg>
-                                Open Font Folder
+                                @Localizer.T("fonts.openfolder")
                             </button>
                         </div>
                     </div>
@@ -100,8 +102,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3>Installation</h3>
-                                <p class="section-description">Automated or manual setup</p>
+                                <h3>@Localizer.T("fonts.install.title")</h3>
+                                <p class="section-description">@Localizer.T("fonts.install.autoormanual")</p>
                             </div>
                         </div>
 
@@ -110,21 +112,21 @@
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                                 </svg>
-                                @(isInstalling ? "Installing..." : "Auto Install")
+                                @Localizer.T(isInstalling ? "fonts.installing" : "fonts.autoinstall")
                             </button>
 
                             <button class="fonts-btn" @onclick="DownloadGlobalFont">
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                                 </svg>
-                                Download Only
+                                @Localizer.T("fonts.downloadonly")
                             </button>
 
                             <button class="fonts-btn" @onclick="OpenFontFolderInExplorer">
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                                 </svg>
-                                Open Font Folder
+                                @Localizer.T("fonts.openfolder")
                             </button>
                         </div>
                     </div>
@@ -135,17 +137,17 @@
                 @if (selectedFont == "default")
                 {
                     <div class="content-card">
-                        <h3>Game Default Font</h3>
+                        <h3>@Localizer.T("fonts.default.title")</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem; line-height: 1.6;">
-                            The standard ARK: Survival Evolved font. Clean, simple, and built-in.
+                            @Localizer.T("fonts.default.text")
                         </p>
 
                         <div class="setup-section">
-                            <h4>How to Enable</h4>
+                            <h4>@Localizer.T("fonts.default.howto")</h4>
                             <ol class="instruction-list" style="margin: 0;">
-                                <li>Open Steam → Right-click ARK → Properties</li>
-                                <li>Under <strong>General</strong> tab, find <strong>Launch Options</strong></li>
-                                <li>Remove any font commands:</li>
+                                <li>@Localizer.T("fonts.step.steamproperties")</li>
+                                <li>@Localizer.T("fonts.step.launchoptions")</li>
+                                <li>@Localizer.T("fonts.default.step.remove")</li>
                             </ol>
 
                             <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
@@ -158,74 +160,74 @@
                             </div>
 
                             <ol class="instruction-list" style="margin-top: 0.75rem;" start="4">
-                                <li>Restart ARK.</li>
+                                <li>@Localizer.T("fonts.step.restart")</li>
                             </ol>
                         </div>
 
                         <div class="info-box" style="margin-top: 1rem;">
-                            <strong>Tip:</strong> You can keep other launch options (like -lowmemory, -nomansky, etc). Just remove culture commands.
+                            <strong>@Localizer.T("fonts.default.tip.label")</strong> @Localizer.T("fonts.default.tip.text")
                         </div>
                     </div>
                 }
                 else if (selectedFont == "chinese")
                 {
                     <div class="content-card">
-                        <h3>Asian Font Setup</h3>
+                        <h3>@Localizer.T("fonts.asian.title")</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem; line-height: 1.6;">
-                            This font uses ARK's Asian localization files to change the in-game font appearance.
+                            @Localizer.T("fonts.asian.text")
                         </p>
 
                         <div class="setup-section">
-                            <h4>Easy Installation</h4>
+                            <h4>@Localizer.T("fonts.easyinstall")</h4>
                             <ol class="instruction-list" style="margin: 0;">
-                                <li>Click <strong>"Auto Install"</strong> button</li>
-                                <li>Open Steam → Right-click ARK → Properties</li>
-                                <li>Under General tab, find <strong>Launch Options</strong></li>
+                                <li>@Localizer.T("fonts.step.clickbutton", Localizer.T("fonts.autoinstall"))</li>
+                                <li>@Localizer.T("fonts.step.steamproperties")</li>
+                                <li>@Localizer.T("fonts.step.launchoptions")</li>
                                 <li>
-                                    Type this:
+                                    @Localizer.T("fonts.step.typethis")
                                     <div class="code-display clickable" @onclick="@(() => CopyChineseLaunchOptionToClipboard())">
                                         <code>-culture=zh-Hans-CN</code>
                                     </div>
                                 </li>
-                                <li>Restart ARK.</li>
+                                <li>@Localizer.T("fonts.step.restart")</li>
                             </ol>
                         </div>
 
                         <div class="info-box" style="margin-top: 1rem;">
-                            <strong>How it works:</strong> This copies English localization files to the Asian locale folder, which changes the font while keeping text in English.
+                            <strong>@Localizer.T("fonts.asian.how.label")</strong> @Localizer.T("fonts.asian.how.text")
                         </div>
                     </div>
                 }
                 else if (selectedFont == "global")
                 {
                     <div class="content-card">
-                        <h3>Global Font Setup</h3>
+                        <h3>@Localizer.T("fonts.global.title")</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem; line-height: 1.6;">
-                            The Global font provides an enhanced visual experience. Follow the steps below to install.
+                            @Localizer.T("fonts.global.text")
                         </p>
 
                         <div class="setup-section">
-                            <h4>Easy Installation</h4>
+                            <h4>@Localizer.T("fonts.easyinstall")</h4>
                             <ol class="instruction-list" style="margin: 0;">
-                                <li>Click <strong>"Auto Install"</strong> button</li>
-                                <li>Open Steam → Right-click ARK → Properties</li>
-                                <li>Under General tab, find <strong>Launch Options</strong></li>
+                                <li>@Localizer.T("fonts.step.clickbutton", Localizer.T("fonts.autoinstall"))</li>
+                                <li>@Localizer.T("fonts.step.steamproperties")</li>
+                                <li>@Localizer.T("fonts.step.launchoptions")</li>
                                 <li>
-                                    Type this:
+                                    @Localizer.T("fonts.step.typethis")
                                     <div class="code-display clickable" @onclick="@(() => CopyLaunchOptionToClipboard())">
                                         <code>culture=Global</code>
                                     </div>
                                 </li>
-                                <li>Restart ARK.</li>
+                                <li>@Localizer.T("fonts.step.restart")</li>
                             </ol>
                         </div>
 
                         <div class="setup-section">
-                            <h4>Manual Installation</h4>
+                            <h4>@Localizer.T("fonts.manualinstall")</h4>
                             <ol class="instruction-list">
-                                <li>Click "Download Only" button</li>
+                                <li>@Localizer.T("fonts.step.clickbutton", Localizer.T("fonts.downloadonly"))</li>
                                 <li>
-                                    Place <code>Global</code> folder in:
+                                    @Localizer.T("fonts.global.placefolder")
                                     <div class="path-display clickable" @onclick="@(() => CopyPathToClipboard())">
                                         @if (!string.IsNullOrEmpty(arkPath))
                                         {
@@ -237,14 +239,14 @@
                                         }
                                     </div>
                                 </li>
-                                <li>In Steam: Right-click ARK → Properties → Launch Options</li>
+                                <li>@Localizer.T("fonts.step.steamlaunchoptions")</li>
                                 <li>
-                                    Type this:
+                                    @Localizer.T("fonts.step.typethis")
                                     <div class="code-display clickable" @onclick="@(() => CopyLaunchOptionToClipboard())">
                                         <code>culture=Global</code>
                                     </div>
                                 </li>
-                                <li>Restart ARK</li>
+                                <li>@Localizer.T("fonts.step.restart")</li>
                             </ol>
                         </div>
 
@@ -257,6 +259,13 @@
 
 
 @code {
+    /// <summary>
+    /// Repaints the page when the language changes; why the cascade rather than a subscription
+    /// of this page's own is explained in MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private string selectedFont = "default";
     private string arkPath = "";
     private bool isInstalling = false;
@@ -269,7 +278,7 @@
     private void SelectFont(string fontType)
     {
         selectedFont = fontType;
-        ActivityService.AddActivity($"Font selected: {GetFontDisplayName(fontType)}", "info");
+        ActivityService.AddActivity(Localizer.T("fonts.activity.selected", GetFontDisplayName(fontType)), "info");
         Logger.LogInformation("Font selected: {FontType}", fontType);
     }
 
@@ -277,9 +286,9 @@
     {
         return fontType switch
         {
-            "default" => "Game Default",
-            "chinese" => "Asian Font",
-            "global" => "Global Font",
+            "default" => Localizer.T("fonts.option.default.name"),
+            "chinese" => Localizer.T("fonts.option.asian.name"),
+            "global" => Localizer.T("fonts.option.global.name"),
             _ => fontType
         };
     }
@@ -297,12 +306,12 @@
             {
                 if (string.IsNullOrEmpty(arkPath))
                 {
-                    await InvokeAsync(() => NotificationService.ShowError("ARK installation not found."));
+                    await InvokeAsync(() => NotificationService.ShowError(Localizer.T("fonts.error.noark")));
                     return;
                 }
 
                 // Extract the bundled Global font
-                await InvokeAsync(() => NotificationService.ShowInfo("Extracting Global font..."));
+                await InvokeAsync(() => NotificationService.ShowInfo(Localizer.T("fonts.status.extracting")));
 
                 string tempPath = Path.Combine(Path.GetTempPath(), "GlobalFont_" + Guid.NewGuid().ToString("N"));
                 if (Directory.Exists(tempPath))
@@ -318,7 +327,7 @@
 
                     if (!File.Exists(zipPath))
                     {
-                        await InvokeAsync(() => NotificationService.ShowError("Global font package not found in app resources. Please ensure Global.zip exists in wwwroot/assets/fonts/"));
+                        await InvokeAsync(() => NotificationService.ShowError(Localizer.T("fonts.error.packagemissing")));
                         Logger.LogError("Global.zip not found at: {Path}", zipPath);
                         return;
                     }
@@ -339,12 +348,12 @@
                         }
                         else
                         {
-                            await InvokeAsync(() => NotificationService.ShowError("Invalid Global font package structure."));
+                            await InvokeAsync(() => NotificationService.ShowError(Localizer.T("fonts.error.packagestructure")));
                             return;
                         }
                     }
 
-                    await InvokeAsync(() => NotificationService.ShowInfo("Installing font files..."));
+                    await InvokeAsync(() => NotificationService.ShowInfo(Localizer.T("fonts.status.installingfiles")));
 
                     // Copy to ARK directory
                     string targetPath = Path.Combine(arkPath, "ShooterGame", "Content", "Localization", "Game", "Global");
@@ -359,8 +368,8 @@
                     // Show simple success notification
                     await InvokeAsync(() =>
                     {
-                        NotificationService.ShowSuccess("Font files installed. Set the Steam launch option next (see instructions).");
-                        ActivityService.AddActivity("Global font installed", "success");
+                        NotificationService.ShowSuccess(Localizer.T("fonts.success.installed.global"));
+                        ActivityService.AddActivity(Localizer.T("fonts.activity.global.installed"), "success");
                         StateHasChanged();
                     });
 
@@ -386,7 +395,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error installing Global font");
-            NotificationService.ShowError($"Installation failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("fonts.error.install", ex.Message));
         }
         finally
         {
@@ -408,7 +417,7 @@
 
                 if (!File.Exists(zipPath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("Global font package not found in app resources. Please ensure Global.zip exists in wwwroot/assets/fonts/")), Logger);
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("fonts.error.packagemissing"))), Logger);
                     Logger.LogError("Global.zip not found at: {Path}", zipPath);
                     return;
                 }
@@ -429,8 +438,8 @@
 
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess($"Global font downloaded to:\n{extractPath}\n\nZip file also saved as:\n{destZipPath}");
-                    ActivityService.AddActivity("Global font downloaded", "success");
+                    NotificationService.ShowSuccess(Localizer.T("fonts.success.downloaded", extractPath, destZipPath));
+                    ActivityService.AddActivity(Localizer.T("fonts.activity.global.downloaded"), "success");
                 }), Logger);
 
                 Logger.LogInformation("Global font downloaded to: {Path}", extractPath);
@@ -439,7 +448,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading Global font");
-            NotificationService.ShowError($"Download failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("fonts.error.download", ex.Message));
         }
     }
 
@@ -456,11 +465,11 @@
             {
                 if (string.IsNullOrEmpty(arkPath))
                 {
-                    await InvokeAsync(() => NotificationService.ShowError("ARK installation not found."));
+                    await InvokeAsync(() => NotificationService.ShowError(Localizer.T("fonts.error.noark")));
                     return;
                 }
 
-                await InvokeAsync(() => NotificationService.ShowInfo("Copying localization files..."));
+                await InvokeAsync(() => NotificationService.ShowInfo(Localizer.T("fonts.status.copying")));
 
                 // Source: ARK > ShooterGame > Content > Localization > Game > en
                 string enFolderPath = Path.Combine(arkPath, "ShooterGame", "Content", "Localization", "Game", "en");
@@ -472,7 +481,7 @@
                 // Validate source files exist
                 if (!File.Exists(archiveFile) || !File.Exists(locresFile))
                 {
-                    await InvokeAsync(() => NotificationService.ShowError("English localization files not found in ARK installation!"));
+                    await InvokeAsync(() => NotificationService.ShowError(Localizer.T("fonts.error.noenglishfiles")));
                     Logger.LogError("Source files not found: {Archive} or {Locres}", archiveFile, locresFile);
                     return;
                 }
@@ -496,8 +505,8 @@
 
                 await InvokeAsync(() =>
                 {
-                    NotificationService.ShowSuccess("Font files installed. Set the Steam launch option to -culture=zh-Hans-CN.");
-                    ActivityService.AddActivity("Asian font installed", "success");
+                    NotificationService.ShowSuccess(Localizer.T("fonts.success.installed.asian"));
+                    ActivityService.AddActivity(Localizer.T("fonts.activity.asian.installed"), "success");
                     StateHasChanged();
                 });
 
@@ -507,7 +516,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error installing Asian font");
-            NotificationService.ShowError($"Installation failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("fonts.error.install", ex.Message));
         }
         finally
         {
@@ -522,7 +531,7 @@
         {
             if (string.IsNullOrEmpty(arkPath))
             {
-                NotificationService.ShowError("ARK installation not found!");
+                NotificationService.ShowError(Localizer.T("fonts.error.noark"));
                 return;
             }
 
@@ -530,7 +539,7 @@
 
             if (!Directory.Exists(fontFolderPath))
             {
-                NotificationService.ShowError($"Font folder not found: {fontFolderPath}");
+                NotificationService.ShowError(Localizer.T("fonts.error.nofolder", fontFolderPath));
                 return;
             }
 
@@ -542,14 +551,14 @@
                 UseShellExecute = true
             });
 
-            NotificationService.ShowSuccess("Opened font folder in Explorer.");
-            ActivityService.AddActivity("Opened font folder", "info");
+            NotificationService.ShowSuccess(Localizer.T("fonts.success.folderopened"));
+            ActivityService.AddActivity(Localizer.T("fonts.activity.folderopened"), "info");
             Logger.LogInformation("Opened font folder: {Path}", fontFolderPath);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening font folder");
-            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("fonts.error.openfolder", ex.Message));
         }
     }
 
@@ -559,14 +568,14 @@
         {
             await Clipboard.Default.SetTextAsync("culture=Global");
 
-            NotificationService.ShowSuccess("Copied to clipboard.");
-            ActivityService.AddActivity("Launch option copied", "success");
+            NotificationService.ShowSuccess(Localizer.T("fonts.success.copied"));
+            ActivityService.AddActivity(Localizer.T("fonts.activity.launchoption.copied"), "success");
             Logger.LogInformation("Launch option copied to clipboard");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying to clipboard");
-            NotificationService.ShowError("Failed to copy.");
+            NotificationService.ShowError(Localizer.T("fonts.error.copy"));
         }
     }
 
@@ -576,14 +585,14 @@
         {
             await Clipboard.Default.SetTextAsync("-culture=zh-Hans-CN");
 
-            NotificationService.ShowSuccess("Copied to clipboard.");
-            ActivityService.AddActivity("Asian font launch option copied", "success");
+            NotificationService.ShowSuccess(Localizer.T("fonts.success.copied"));
+            ActivityService.AddActivity(Localizer.T("fonts.activity.asian.launchoption.copied"), "success");
             Logger.LogInformation("Asian font launch option copied to clipboard");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying to clipboard");
-            NotificationService.ShowError("Failed to copy.");
+            NotificationService.ShowError(Localizer.T("fonts.error.copy"));
         }
     }
 
@@ -597,14 +606,14 @@
 
             await Clipboard.Default.SetTextAsync(pathToCopy);
 
-            NotificationService.ShowSuccess("Path copied to clipboard.");
-            ActivityService.AddActivity("Font path copied", "success");
+            NotificationService.ShowSuccess(Localizer.T("fonts.success.pathcopied"));
+            ActivityService.AddActivity(Localizer.T("fonts.activity.path.copied"), "success");
             Logger.LogInformation("Font path copied to clipboard: {Path}", pathToCopy);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying path to clipboard");
-            NotificationService.ShowError("Failed to copy path.");
+            NotificationService.ShowError(Localizer.T("fonts.error.copypath"));
         }
     }
 
@@ -638,14 +647,14 @@
                 UseShellExecute = true
             });
 
-            NotificationService.ShowSuccess("ARK opened in Steam - Right-click for Properties");
-            ActivityService.AddActivity("Opened ARK in Steam", "info");
+            NotificationService.ShowSuccess(Localizer.T("fonts.success.steamopened"));
+            ActivityService.AddActivity(Localizer.T("fonts.activity.steamopened"), "info");
             Logger.LogInformation("Opened ARK in Steam library");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening Steam");
-            NotificationService.ShowError($"Failed to open Steam: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("fonts.error.opensteam", ex.Message));
         }
     }
 }
