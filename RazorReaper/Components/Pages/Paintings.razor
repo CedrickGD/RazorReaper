@@ -3,31 +3,33 @@
 @using RazorReaper.Services
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 
         <header class="page-header">
-            <h1 class="page-title">Paintings</h1>
-            <p class="page-subtitle">Manage your ingame paintings</p>
+            <h1 class="page-title">@Localizer.T("nav.page.paintings")</h1>
+            <p class="page-subtitle">@Localizer.T("paintings.subtitle")</p>
         </header>
 
         <div style="display: grid; grid-template-columns: 320px 1fr; gap: 2rem; height: calc(100vh - 200px);">
 
             <div class="content-card" style="height: fit-content;">
-                <h3 class="mb-3 text-white">Folder Management</h3>
+                <h3 class="mb-3 text-white">@Localizer.T("paintings.folder.title")</h3>
 
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <button class="btn btn-primary" @onclick="OpenMyPaintingsFolder" style="width: 100%; justify-content: flex-start;">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
-                        Open MyPaintings Folder
+                        @Localizer.T("paintings.folder.open")
                     </button>
 
                     <button class="btn btn-secondary" @onclick="CreateMyPaintingsFolder" style="width: 100%; justify-content: flex-start;">
                         <svg style="width: 16px; height: 16px; margin-right: 0.75rem;" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H9L7 2H5zM8 8a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm1 4a1 1 0 100 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
                         </svg>
-                        Create MyPaintings Folder
+                        @Localizer.T("paintings.folder.create")
                     </button>
                 </div>
 
@@ -41,7 +43,7 @@
                         </div>
                         <div class="stats-content">
                             <div class="stats-value">@fileCount</div>
-                            <div class="stats-label">Canvas Files</div>
+                            <div class="stats-label">@Localizer.T("paintings.canvasfiles")</div>
                         </div>
                     </div>
                 }
@@ -50,20 +52,18 @@
             <div style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
 
                 <div class="content-card">
-                    <h3 class="mb-3 text-white">Get Canvas - Templates By ArkTested</h3>
+                    <h3 class="mb-3 text-white">@Localizer.T("paintings.canvas.title")</h3>
 
                     <div style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center;">
                         <div>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
-                                Organized collection of ARK-themed paintings and canvas images.
-                                Includes labeled icons for dinos, items, structures, and more.
-                                Helps players customize storage, signs, and base visuals.
+                                @Localizer.T("paintings.canvas.text")
                             </p>
 
                             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="feature-tag">Templates</div>
-                                <div class="feature-tag">Sorted Categories</div>
-                                <div class="feature-tag">Label Ready</div>
+                                <div class="feature-tag">@Localizer.T("paintings.tag.templates")</div>
+                                <div class="feature-tag">@Localizer.T("paintings.tag.sorted")</div>
+                                <div class="feature-tag">@Localizer.T("paintings.tag.labelready")</div>
                             </div>
                         </div>
 
@@ -81,25 +81,24 @@
                             <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
-                            Download Canvas Here
+                            @Localizer.T("paintings.canvas.download")
                         </button>
                     </div>
                 </div>
 
                 <div class="content-card" style="flex: 1;">
-                    <h3 class="mb-3 text-white">ARK Canvas Maker Tool</h3>
+                    <h3 class="mb-3 text-white">@Localizer.T("paintings.maker.title")</h3>
 
                     <div style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center; margin-bottom: 2rem;">
                         <div>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
-                                Specialized tool for creating custom canvas paintings in ARK: Survival Evolved.
-                                Convert your artwork into the proper format for in-game canvas items.
+                                @Localizer.T("paintings.maker.text")
                             </p>
 
                             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="feature-tag">ARK Specific</div>
-                                <div class="feature-tag">Game Integration</div>
-                                <div class="feature-tag">Format Conversion</div>
+                                <div class="feature-tag">@Localizer.T("paintings.tag.arkspecific")</div>
+                                <div class="feature-tag">@Localizer.T("paintings.tag.integration")</div>
+                                <div class="feature-tag">@Localizer.T("paintings.tag.conversion")</div>
                             </div>
                         </div>
 
@@ -117,21 +116,21 @@
                             <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
-                            Download ARK Canvas Maker
+                            @Localizer.T("paintings.maker.download")
                         </button>
 
                         <button class="btn btn-secondary" @onclick="ShowArkCanvasInfo">
                             <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                             </svg>
-                            How to Use
+                            @Localizer.T("paintings.maker.howto")
                         </button>
                     </div>
 
                     @if (showArkInfo)
                     {
                         <div class="canvas-guide">
-                            <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">ARK Canvas Setup Guide</h4>
+                            <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">@Localizer.T("paintings.guide.title")</h4>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
                                 <div class="guide-step">
                                     <div class="guide-step-icon">
@@ -140,8 +139,8 @@
                                         </svg>
                                     </div>
                                     <div class="guide-step-body">
-                                        <h5 class="guide-step-label">Step 1: Prepare</h5>
-                                        <p class="guide-step-text">Create your artwork in any image editor. Recommended size: 256x256 pixels.</p>
+                                        <h5 class="guide-step-label">@Localizer.T("paintings.guide.1.title")</h5>
+                                        <p class="guide-step-text">@Localizer.T("paintings.guide.1.text")</p>
                                     </div>
                                 </div>
                                 <div class="guide-step">
@@ -151,8 +150,8 @@
                                         </svg>
                                     </div>
                                     <div class="guide-step-body">
-                                        <h5 class="guide-step-label">Step 2: Convert</h5>
-                                        <p class="guide-step-text">Use ARK Canvas Maker to convert your image to ARK's canvas format (.arkpnt).</p>
+                                        <h5 class="guide-step-label">@Localizer.T("paintings.guide.2.title")</h5>
+                                        <p class="guide-step-text">@Localizer.T("paintings.guide.2.text")</p>
                                     </div>
                                 </div>
                                 <div class="guide-step">
@@ -162,8 +161,8 @@
                                         </svg>
                                     </div>
                                     <div class="guide-step-body">
-                                        <h5 class="guide-step-label">Step 3: Import</h5>
-                                        <p class="guide-step-text">Place the converted file in your ARK game directory and import in-game.</p>
+                                        <h5 class="guide-step-label">@Localizer.T("paintings.guide.3.title")</h5>
+                                        <p class="guide-step-text">@Localizer.T("paintings.guide.3.text")</p>
                                     </div>
                                 </div>
                             </div>
@@ -343,6 +342,14 @@
 </style>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private bool folderExists = false;
     private string folderPath = "";
     private string arkPath = "";
@@ -363,7 +370,7 @@
 
             if (arkBasePath == null)
             {
-                NotificationService.ShowError("ARK installation not found. Please install ARK or check your installation.");
+                NotificationService.ShowError(Localizer.T("paintings.toast.noark"));
                 return;
             }
 
@@ -372,13 +379,13 @@
 
             if (!Directory.Exists(arkPath))
             {
-                NotificationService.ShowError("ARK: Survival Evolved not found in Steam directory. Please verify your ARK installation.");
+                NotificationService.ShowError(Localizer.T("paintings.toast.nosteamark"));
                 return;
             }
 
             if (!Directory.Exists(folderPath))
             {
-                NotificationService.ShowWarning("MyPaintings folder doesn't exist. Create it first or ensure ARK has been launched at least once.");
+                NotificationService.ShowWarning(Localizer.T("paintings.toast.nofolder"));
                 folderExists = false;
                 StateHasChanged();
                 return;
@@ -394,13 +401,13 @@
                 UseShellExecute = true
             });
 
-            NotificationService.ShowSuccess("MyPaintings folder opened.");
-            ActivityService.AddActivity("Opened MyPaintings folder", "success");
+            NotificationService.ShowSuccess(Localizer.T("paintings.toast.opened"));
+            ActivityService.AddActivity(Localizer.T("paintings.activity.opened"), "success");
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error opening folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.open", ex.Message));
         }
     }
 
@@ -411,7 +418,7 @@
             string? arkBasePath = ArkUtilities.FindArkPath();
             if (arkBasePath == null)
             {
-                NotificationService.ShowError("ARK installation not found. Cannot create MyPaintings folder.");
+                NotificationService.ShowError(Localizer.T("paintings.toast.noark.create"));
                 return;
             }
 
@@ -421,7 +428,7 @@
             string arkExePath = Path.Combine(arkBasePath, "ShooterGame", "Binaries", "Win64", "ShooterGame.exe");
             if (!File.Exists(arkExePath))
             {
-                NotificationService.ShowError("ShooterGame.exe not found. Is ARK properly installed?");
+                NotificationService.ShowError(Localizer.T("paintings.toast.noexe"));
                 return;
             }
 
@@ -433,15 +440,15 @@
 
             if (Directory.Exists(folderPath))
             {
-                NotificationService.ShowWarning("MyPaintings folder already exists.");
+                NotificationService.ShowWarning(Localizer.T("paintings.toast.exists"));
                 folderExists = true;
                 CountFiles();
             }
             else
             {
                 Directory.CreateDirectory(folderPath);
-                NotificationService.ShowSuccess("MyPaintings folder created.");
-                ActivityService.AddActivity("MyPaintings folder created", "success");
+                NotificationService.ShowSuccess(Localizer.T("paintings.toast.created"));
+                ActivityService.AddActivity(Localizer.T("paintings.activity.created"), "success");
                 folderExists = true;
                 fileCount = 0;
             }
@@ -450,7 +457,7 @@
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error creating folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("paintings.toast.createfailed", ex.Message));
         }
     }
 
@@ -521,11 +528,11 @@
                 FileName = canvasUrl,
                 UseShellExecute = true
             });
-            NotificationService.ShowSuccess("Opening Canvas download page...");
+            NotificationService.ShowSuccess(Localizer.T("paintings.toast.opencanvas"));
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error opening website: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("paintings.toast.websitefailed", ex.Message));
         }
     }
 
@@ -539,11 +546,11 @@
                 FileName = arkCanvasUrl,
                 UseShellExecute = true
             });
-            NotificationService.ShowSuccess("Opening ARK Canvas Maker download page...");
+            NotificationService.ShowSuccess(Localizer.T("paintings.toast.openmaker"));
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error opening ARK Canvas Maker: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("paintings.toast.makerfailed", ex.Message));
         }
     }
 

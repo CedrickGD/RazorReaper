@@ -8,11 +8,13 @@
 @inject ITextureBackupService BackupService
 @inject INotificationService NotificationService
 @inject ILogger<Pixel> Logger
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 
         <header class="page-header">
-            <h1 class="page-title">Pixel Textures</h1>
-            <p class="page-subtitle">Manage ARK texture files for visual modifications</p>
+            <h1 class="page-title">@Localizer.T("pixel.title")</h1>
+            <p class="page-subtitle">@Localizer.T("pixel.subtitle")</p>
         </header>
 
         <PremiumLock RequiresPremium="true">
@@ -26,8 +28,8 @@
                         </svg>
                     </div>
                     <div>
-                        <h3>Delete Textures</h3>
-                        <p>Remove default texture files</p>
+                        <h3>@Localizer.T("pixel.delete.title")</h3>
+                        <p>@Localizer.T("pixel.delete.subtitle")</p>
                     </div>
                 </div>
 
@@ -40,7 +42,7 @@
                     <div class="category-selector">
                         <div class="selector-header">
                             <label class="selector-label">
-                                <span>Select Categories</span>
+                                <span>@Localizer.T("pixel.selectcategories")</span>
                                 <span class="selector-count">@selectedCategories.Count / @textureCategories.Count</span>
                             </label>
                             <button class="collapse-toggle" @onclick="ToggleCategoryList">
@@ -79,10 +81,10 @@
                                                 </svg>
                                             }
                                         </span>
-                                        <span class="category-name">@StripEmoji(category)</span>
+                                        <span class="category-name">@Localizer.T(PixelTextureCategories.LabelKey(category))</span>
                                         @if (CategoryPreviewImages.ContainsKey(category))
                                         {
-                                            <button class="preview-btn" title="Preview" @onclick:preventDefault="true"
+                                            <button class="preview-btn" title="@Localizer.T("pixel.preview")" @onclick:preventDefault="true"
                                                     @onclick="@(() => OpenPreviewModal(category))">
                                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
@@ -105,7 +107,7 @@
                         <svg fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                         </svg>
-                        Delete @selectedCategories.Count @(selectedCategories.Count == 1 ? "Category" : "Categories")
+                        @Localizer.T(selectedCategories.Count == 1 ? "pixel.deletebutton.one" : "pixel.deletebutton.many", selectedCategories.Count)
                     </button>
 
                 </div>
@@ -120,8 +122,8 @@
                         </svg>
                     </div>
                     <div>
-                        <h3>Restore Files</h3>
-                        <p>Revert textures to default</p>
+                        <h3>@Localizer.T("pixel.restore.title")</h3>
+                        <p>@Localizer.T("pixel.restore.subtitle")</p>
                     </div>
                 </div>
 
@@ -145,15 +147,15 @@
                     <div class="process-steps">
                         <div class="process-step">
                             <div class="step-badge">1</div>
-                            <span>Click verify integrity button</span>
+                            <span>@Localizer.T("pixel.restore.step.1")</span>
                         </div>
                         <div class="process-step">
                             <div class="step-badge">2</div>
-                            <span>Steam scans ARK files</span>
+                            <span>@Localizer.T("pixel.restore.step.2")</span>
                         </div>
                         <div class="process-step">
                             <div class="step-badge">3</div>
-                            <span>Missing files redownload</span>
+                            <span>@Localizer.T("pixel.restore.step.3")</span>
                         </div>
                     </div>
 
@@ -182,7 +184,7 @@
     <div class="pixel-modal-overlay" @onclick="ClosePreviewModal">
         <div class="pixel-modal-content" @onclick:stopPropagation="true">
             <div class="pixel-modal-header">
-                <h2>@StripEmoji(previewCategory)</h2>
+                <h2>@Localizer.T(PixelTextureCategories.LabelKey(previewCategory))</h2>
                 <button class="modal-close-btn" @onclick="ClosePreviewModal">
                     <svg fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -642,6 +644,14 @@
 </style>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private string arkPath = "";
     private HashSet<string> selectedCategories = new HashSet<string>();
     private Dictionary<string, Dictionary<string, string[]>> textureCategories = new();
@@ -660,7 +670,6 @@
     };
 
     private bool IsApplyDisabled() => !selectedCategories.Any() || isProcessing;
-    private string StripEmoji(string text) => System.Text.RegularExpressions.Regex.Replace(text, @"[^\x20-\x7E]", "").Trim();
 
     protected override Task OnInitializedAsync()
     {
@@ -733,14 +742,14 @@
     private MarkupString GetCategoryInfo(string category)
     {
         if (!textureCategories.ContainsKey(category))
-            return new MarkupString("No info available");
+            return new MarkupString(Localizer.T("pixel.noinfo"));
 
         var fileList = new List<string>();
         foreach (var folder in textureCategories[category])
         {
             if (folder.Value.Length == 0)
             {
-                fileList.Add("All .uasset files in directory");
+                fileList.Add(Localizer.T("pixel.allassets"));
                 continue;
             }
             foreach (var fileName in folder.Value)
@@ -751,7 +760,7 @@
         }
 
         if (!fileList.Any())
-            return new MarkupString("No files");
+            return new MarkupString(Localizer.T("pixel.nofiles"));
 
         return new MarkupString(string.Join("<br/>", fileList.Select(f => $"• {f}")));
     }
@@ -762,14 +771,14 @@
         {
             if (!selectedCategories.Any())
             {
-                NotificationService.ShowWarning("Select at least one category");
+                NotificationService.ShowWarning(Localizer.T("pixel.toast.selectone"));
                 return;
             }
 
             string? arkBasePath = ArkUtilities.FindArkPath();
             if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
             {
-                NotificationService.ShowError("ARK installation not found");
+                NotificationService.ShowError(Localizer.T("pixel.toast.noark"));
                 return;
             }
 
@@ -791,7 +800,7 @@
                 int totalFiles = resolvedFiles.Values.Sum(f => f.Length);
                 if (totalFiles == 0)
                 {
-                    skipped.Add(StripEmoji(category));
+                    skipped.Add(Localizer.T(PixelTextureCategories.LabelKey(category)));
                     continue;
                 }
 
@@ -802,15 +811,15 @@
             RefreshGlitchState();
             isProcessing = false;
             int applied = selectedCategories.Count - skipped.Count;
-            NotificationService.ShowSuccess($"Deleted {totalBacked} files from {applied} categories");
+            NotificationService.ShowSuccess(Localizer.T("pixel.toast.deleted", totalBacked, applied));
             if (skipped.Any())
-                NotificationService.ShowWarning($"Skipped {skipped.Count} (no files found): {string.Join(", ", skipped)}");
+                NotificationService.ShowWarning(Localizer.T("pixel.toast.skipped", skipped.Count, string.Join(", ", skipped)));
         }
         catch (Exception ex)
         {
             isProcessing = false;
             Logger.LogError(ex, "Error applying glitch");
-            NotificationService.ShowError($"Error: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("common.error", ex.Message));
         }
     }
 
@@ -826,7 +835,7 @@
             string? arkBasePath = ArkUtilities.FindArkPath();
             if (string.IsNullOrEmpty(arkBasePath) || !Directory.Exists(arkBasePath))
             {
-                NotificationService.ShowError("ARK installation not found");
+                NotificationService.ShowError(Localizer.T("pixel.toast.noark"));
                 isProcessing = false;
                 return;
             }
@@ -846,13 +855,13 @@
 
             RefreshGlitchState();
             isProcessing = false;
-            NotificationService.ShowSuccess($"Restored {totalRestored} files from {toRestore.Count} categories");
+            NotificationService.ShowSuccess(Localizer.T("pixel.toast.restored", totalRestored, toRestore.Count));
         }
         catch (Exception ex)
         {
             isProcessing = false;
             Logger.LogError(ex, "Error restoring texture categories");
-            NotificationService.ShowError($"Error: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("common.error", ex.Message));
         }
     }
 
@@ -861,9 +870,9 @@
         try
         {
             Process.Start(new ProcessStartInfo { FileName = "steam://validate/346110", UseShellExecute = true });
-            NotificationService.ShowInfo("Starting Steam verification...");
+            NotificationService.ShowInfo(Localizer.T("pixel.toast.verifying"));
         }
-        catch (Exception ex) { NotificationService.ShowError($"Error: {ex.Message}"); }
+        catch (Exception ex) { NotificationService.ShowError(Localizer.T("common.error", ex.Message)); }
     }
 
     private void OpenSteamLibrary()
@@ -871,8 +880,8 @@
         try
         {
             Process.Start(new ProcessStartInfo { FileName = "steam://nav/games/details/346110", UseShellExecute = true });
-            NotificationService.ShowInfo("Opening ARK in Steam...");
+            NotificationService.ShowInfo(Localizer.T("pixel.toast.openingsteam"));
         }
-        catch (Exception ex) { NotificationService.ShowError($"Error: {ex.Message}"); }
+        catch (Exception ex) { NotificationService.ShowError(Localizer.T("common.error", ex.Message)); }
     }
 }

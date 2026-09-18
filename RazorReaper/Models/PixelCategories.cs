@@ -2,6 +2,22 @@ namespace RazorReaper.Models
 {
     public static class PixelTextureCategories
     {
+        /// <summary>
+        /// Where a category's name is read from on screen. Derived from the English name rather
+        /// than written out a second time: that name is also this dictionary's own key and the
+        /// backup service's folder key, so it has to keep its spelling — only the label moves.
+        /// "Weapons - Harpoon", emoji and all, becomes "pixel.category.weapons-harpoon".
+        /// </summary>
+        public static string LabelKey(string category)
+        {
+            var ascii = System.Text.RegularExpressions.Regex.Replace(category, @"[^\x20-\x7E]", "").Trim();
+            var slug = System.Text.RegularExpressions.Regex.Replace(ascii.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+            return "pixel.category." + slug;
+        }
+
+        /// <summary>Every category name, for a test that has to know which keys the page asks for.</summary>
+        public static IEnumerable<string> Names => GetCategories("{SHOOTERGAME}").Keys;
+
         public static Dictionary<string, Dictionary<string, string[]>> GetCategories(string shooterGamePath)
         {
             return new Dictionary<string, Dictionary<string, string[]>>

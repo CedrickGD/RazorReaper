@@ -386,6 +386,60 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Paintings</h1>",
+            "Manage your ingame paintings",
+            ">Folder Management</h3>",
+            "Open MyPaintings Folder",
+            "Create MyPaintings Folder",
+            ">Canvas Files</div>",
+            "Get Canvas - Templates By ArkTested",
+            "Organized collection of ARK-themed paintings",
+            ">Templates</div>",
+            "Download Canvas Here",
+            ">ARK Canvas Maker Tool</h3>",
+            "Specialized tool for creating custom canvas",
+            "Download ARK Canvas Maker",
+            "How to Use",
+            ">ARK Canvas Setup Guide</h4>",
+            ">Step 1: Prepare</h5>",
+            "Recommended size: 256x256 pixels.",
+            "MyPaintings folder opened.",
+            "\"MyPaintings folder already exists.\"",
+            "$\"Error creating folder:",
+            "Opening Canvas download page",
+        })
+        {
+            data.Add("Components/Pages/Paintings.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Pixel Textures</h1>",
+            "Manage ARK texture files for visual modifications",
+            "<h3>Delete Textures</h3>",
+            "<p>Remove default texture files</p>",
+            "<span>Select Categories</span>",
+            "title=\"Preview\"",
+            "\"Category\" : \"Categories\"",
+            "<h3>Restore Files</h3>",
+            "<p>Revert textures to default</p>",
+            "<span>Click verify integrity button</span>",
+            "\"No info available\"",
+            "\"All .uasset files in directory\"",
+            "\"No files\"",
+            "\"Select at least one category\"",
+            "\"ARK installation not found\"",
+            "$\"Deleted {totalBacked}",
+            "$\"Restored {totalRestored}",
+            "\"Starting Steam verification...\"",
+            "StripEmoji",
+        })
+        {
+            data.Add("Components/Pages/Pixel.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">Game Management</h1>",
             "Control and monitor ARK: Survival Evolved.</p>",
             ">Launch</button>",
@@ -1384,6 +1438,13 @@ public sealed class TranslatedSurfaceTests
         foreach (var key in RazorReaper.Services.Automation.HotkeyRegistry.Keys)
         {
             yield return ("HotkeyRegistry.cs", key);
+        }
+
+        // The Pixel page derives a label key from each texture category, whose English name is
+        // also the dataset key and the backup folder key and therefore cannot move.
+        foreach (var category in RazorReaper.Models.PixelTextureCategories.Names)
+        {
+            yield return ("PixelCategories.cs", RazorReaper.Models.PixelTextureCategories.LabelKey(category));
         }
 
         // Launch Options derives its prose keys from the flag, so the keys are in no file as
