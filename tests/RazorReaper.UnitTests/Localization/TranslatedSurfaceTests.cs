@@ -2790,17 +2790,6 @@ public sealed class TranslatedSurfaceTests
 
         data.Add("Services/Automation/AutoClickerHotkeyBinder.cs", "for the Auto Clicker — it may be in use");
 
-        foreach (var literal in new[]
-        {
-            "Input recording started",
-            "Input recording stopped (",
-            "Replay of {displayName} completed",
-            "Recording '{recording.Name}' saved",
-        })
-        {
-            data.Add("Services/Automation/InputRecorderService.cs", literal);
-        }
-
         data.Add("Services/Automation/Scripts/AstroScript.cs", "Focus ARK first");
 
         foreach (var literal in new[]

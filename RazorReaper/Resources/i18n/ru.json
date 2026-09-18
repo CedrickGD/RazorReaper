@@ -2734,12 +2734,6 @@
   "macro.activity.stopped": "Макрос «{0}» остановлен",
   "macro.activity.aborted": "Макрос «{0}» прерван — {1}",
   "macro.activity.failed": "Макрос «{0}» не выполнен",
-  "recorder.activity.started": "Запись ввода начата",
-  "recorder.activity.stopped": "Запись ввода остановлена (событий: {0})",
-  "recorder.activity.replaycompleted": "Воспроизведение {0} завершено",
-  "recorder.activity.replaystopped": "Воспроизведение {0} остановлено",
-  "recorder.activity.saved": "Запись «{0}» сохранена",
-  "recorder.activity.deleted": "Запись «{0}» удалена",
 
   "crosshair.subtitle": "Оверлей поверх всех окон — редактор, пресеты, анимации и импорт картинок, управление из трея.",
   "crosshair.overlay.active": "Оверлей включён",

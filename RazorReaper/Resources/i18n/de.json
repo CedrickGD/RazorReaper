@@ -2734,12 +2734,6 @@
   "macro.activity.stopped": "Makro '{0}' gestoppt",
   "macro.activity.aborted": "Makro '{0}' abgebrochen — {1}",
   "macro.activity.failed": "Makro '{0}' fehlgeschlagen",
-  "recorder.activity.started": "Eingabeaufzeichnung gestartet",
-  "recorder.activity.stopped": "Eingabeaufzeichnung gestoppt ({0} Ereignisse)",
-  "recorder.activity.replaycompleted": "Wiedergabe von {0} abgeschlossen",
-  "recorder.activity.replaystopped": "Wiedergabe von {0} gestoppt",
-  "recorder.activity.saved": "Aufzeichnung '{0}' gespeichert",
-  "recorder.activity.deleted": "Aufzeichnung '{0}' gelöscht",
 
   "crosshair.subtitle": "Overlay, das immer obenauf liegt — mit Editor, Presets, Animationen & Bild-Import, gesteuert über den Tray.",
   "crosshair.overlay.active": "Overlay aktiv",

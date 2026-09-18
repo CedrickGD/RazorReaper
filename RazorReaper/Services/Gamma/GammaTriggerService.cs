@@ -5,7 +5,7 @@ namespace RazorReaper.Services.Gamma;
 
 /// <summary>
 /// Installs global low-level keyboard + mouse hooks on a dedicated STA message-pumped thread
-/// (same plumbing as <c>InputRecorderService</c>). While listening it raises
+/// (WH_KEYBOARD_LL / WH_MOUSE_LL need a pump on the installing thread). While listening it raises
 /// <see cref="TriggerFired"/> for bound triggers and PASSES THE INPUT THROUGH (never swallows
 /// it — a deliberate deviation from GammaHotkey; F13–F24 from G HUB have no other effect, and
 /// the user asked for passthrough). In capture mode the next key / mouse button is reported

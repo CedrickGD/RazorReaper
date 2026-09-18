@@ -2734,12 +2734,6 @@
   "macro.activity.stopped": "Macro '{0}' stopped",
   "macro.activity.aborted": "Macro '{0}' aborted — {1}",
   "macro.activity.failed": "Macro '{0}' failed",
-  "recorder.activity.started": "Input recording started",
-  "recorder.activity.stopped": "Input recording stopped ({0} events)",
-  "recorder.activity.replaycompleted": "Replay of {0} completed",
-  "recorder.activity.replaystopped": "Replay of {0} stopped",
-  "recorder.activity.saved": "Recording '{0}' saved",
-  "recorder.activity.deleted": "Recording '{0}' deleted",
 
   "crosshair.subtitle": "Always-on-top overlay with editor, presets, animations & image imports — runs from the tray.",
   "crosshair.overlay.active": "Overlay active",

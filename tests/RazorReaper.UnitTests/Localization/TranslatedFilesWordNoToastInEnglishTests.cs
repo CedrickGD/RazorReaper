@@ -224,7 +224,6 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("Services/Automation/AutoClickerRuntime.cs")]
     [InlineData("Services/Automation/CalibrationService.cs")]
     [InlineData("Services/Automation/FedSuitMacro.cs")]
-    [InlineData("Services/Automation/InputRecorderService.cs")]
     [InlineData("Services/Automation/MacroEngine.cs")]
     [InlineData("Services/Automation/Scripts/CalibratableScriptBase.cs")]
     [InlineData("Services/Automation/Scripts/FlakScript.cs")]

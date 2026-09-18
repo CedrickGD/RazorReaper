@@ -331,7 +331,6 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.IAutoClickerHotkeyBinder, RazorReaper.Services.Automation.AutoClickerHotkeyBinder>();
             services.AddSingleton<RazorReaper.Services.Automation.IMacroEngine, RazorReaper.Services.Automation.MacroEngine>();
             services.AddSingleton<RazorReaper.Services.Automation.ICalibrationService, RazorReaper.Services.Automation.CalibrationService>();
-            services.AddSingleton<RazorReaper.Services.Automation.IInputRecorderService, RazorReaper.Services.Automation.InputRecorderService>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenSampler, RazorReaper.Services.Automation.ScreenSampler>();
             services.AddSingleton<RazorReaper.Services.Automation.IScreenOcr, RazorReaper.Services.Automation.ScreenOcr>();
             services.AddSingleton<RazorReaper.Services.Automation.DurabilityReader>();

@@ -2734,12 +2734,6 @@
   "macro.activity.stopped": "宏“{0}”已停止",
   "macro.activity.aborted": "宏“{0}”已中止 —— {1}",
   "macro.activity.failed": "宏“{0}”执行失败",
-  "recorder.activity.started": "输入录制已开始",
-  "recorder.activity.stopped": "输入录制已停止（{0} 个事件）",
-  "recorder.activity.replaycompleted": "{0} 的回放已完成",
-  "recorder.activity.replaystopped": "{0} 的回放已停止",
-  "recorder.activity.saved": "录制“{0}”已保存",
-  "recorder.activity.deleted": "录制“{0}”已删除",
 
   "crosshair.subtitle": "始终置顶的准星覆盖层 —— 带编辑器、预设、动画和图片导入，从托盘控制。",
   "crosshair.overlay.active": "覆盖层已开启",
