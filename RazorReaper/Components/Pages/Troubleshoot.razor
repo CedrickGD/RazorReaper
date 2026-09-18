@@ -6,16 +6,18 @@
 @using Microsoft.Extensions.Logging
 @inject ILogger<Troubleshoot> Logger
 @inject INotificationService NotificationService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
         <header class="page-header">
-            <h1 class="page-title">Troubleshoot</h1>
-            <p class="page-subtitle">Logging, diagnostics, and quick fixes when something looks off.</p>
+            <h1 class="page-title">@Localizer.T("nav.page.troubleshoot")</h1>
+            <p class="page-subtitle">@Localizer.T("troubleshoot.subtitle")</p>
         </header>
 
         <div class="content-card troubleshoot-send-card">
             <div>
-                <h3>Let support see the useful details</h3>
-                <p>Describe what went wrong in the report form. Windows, ARK, license, feature prerequisites, and recent operation details are attached when you send it.</p>
+                <h3>@Localizer.T("troubleshoot.support.title")</h3>
+                <p>@Localizer.T("troubleshoot.support.text")</p>
             </div>
             <SendDiagnosticsButton SourceRoute="troubleshoot" />
         </div>
@@ -30,22 +32,15 @@
                             </svg>
                         </div>
                         <div class="troubleshoot-title-text">
-                            <h3>Important Notes</h3>
-                            <p class="troubleshoot-subtitle">Things to check before assuming something is broken.</p>
+                            <h3>@Localizer.T("troubleshoot.notes.title")</h3>
+                            <p class="troubleshoot-subtitle">@Localizer.T("troubleshoot.notes.subtitle")</p>
                         </div>
                     </div>
                 </div>
                 <ul class="troubleshoot-tips">
-                    <li>
-                        If Steam is updating or repairing ARK, paths can appear missing or locked.
-                        Wait for Steam to finish, then try again.
-                    </li>
-                    <li>
-                        If files refuse to change, close the game first and rerun the tool.
-                    </li>
-                    <li>
-                        If you ever see a startup error code, note it and share it with support.
-                    </li>
+                    <li>@Localizer.T("troubleshoot.note.1")</li>
+                    <li>@Localizer.T("troubleshoot.note.2")</li>
+                    <li>@Localizer.T("troubleshoot.note.3")</li>
                 </ul>
             </div>
 
@@ -58,25 +53,25 @@
                             </svg>
                         </div>
                         <div class="troubleshoot-title-text">
-                            <h3>Logging</h3>
-                            <p class="troubleshoot-subtitle">Turn on logs to capture issues and share details.</p>
+                            <h3>@Localizer.T("troubleshoot.logging.title")</h3>
+                            <p class="troubleshoot-subtitle">@Localizer.T("troubleshoot.logging.subtitle")</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="troubleshoot-settings">
-                    <SettingRow Title="Enable logging">
+                    <SettingRow Title="@Localizer.T("troubleshoot.logging.enable")">
                         <Switch @bind-Value="loggingEnabled" @bind-Value:after="PersistLoggingSettings" />
                     </SettingRow>
-                    <SettingRow Title="Verbose diagnostics (debug)" Disabled="@(!loggingEnabled)">
+                    <SettingRow Title="@Localizer.T("troubleshoot.logging.verbose")" Disabled="@(!loggingEnabled)">
                         <Switch @bind-Value="verboseLoggingEnabled" @bind-Value:after="PersistLoggingSettings" Disabled="@(!loggingEnabled)" />
                     </SettingRow>
                 </div>
 
                 <div class="troubleshoot-log-section">
-                    <div class="troubleshoot-log-label">Log folder</div>
-                    <SettingRow Title="Current folder" Description="@GetCurrentLogFolder()">
-                        <button type="button" class="troubleshoot-log-open" @onclick="OpenLogFolder" aria-label="Open log folder">
+                    <div class="troubleshoot-log-label">@Localizer.T("troubleshoot.log.folder")</div>
+                    <SettingRow Title="@Localizer.T("troubleshoot.log.current")" Description="@GetCurrentLogFolder()">
+                        <button type="button" class="troubleshoot-log-open" @onclick="OpenLogFolder" aria-label="@Localizer.T("troubleshoot.log.open")">
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v1H2V6z" />
                                 <path d="M2 10h16v5a2 2 0 01-2 2H4a2 2 0 01-2-2v-5z" />
@@ -84,8 +79,8 @@
                         </button>
                     </SettingRow>
                     <div class="troubleshoot-log-actions">
-                        <button class="btn-small" @onclick="PickLogFolderAsync">Change output</button>
-                        <button class="btn-small" @onclick="ResetLogFolder">Reset default</button>
+                        <button class="btn-small" @onclick="PickLogFolderAsync">@Localizer.T("troubleshoot.log.change")</button>
+                        <button class="btn-small" @onclick="ResetLogFolder">@Localizer.T("troubleshoot.log.reset")</button>
                     </div>
                     <div class="troubleshoot-log-note">
                         Log location changes apply after a restart. The logging toggle updates immediately.
@@ -102,18 +97,18 @@
                             </svg>
                         </div>
                         <div class="troubleshoot-title-text">
-                            <h3>Last Error</h3>
-                            <p class="troubleshoot-subtitle">Most recent error captured by the app.</p>
+                            <h3>@Localizer.T("troubleshoot.lasterror.title")</h3>
+                            <p class="troubleshoot-subtitle">@Localizer.T("troubleshoot.lasterror.subtitle")</p>
                         </div>
                     </div>
                     <div class="troubleshoot-card-actions">
-                        <button class="btn-small" @onclick="ClearLastError" disabled="@(lastError == null)">Clear</button>
+                        <button class="btn-small" @onclick="ClearLastError" disabled="@(lastError == null)">@Localizer.T("common.clear")</button>
                     </div>
                 </div>
 
                 @if (lastError == null)
                 {
-                    <div class="troubleshoot-empty">No errors captured yet.</div>
+                    <div class="troubleshoot-empty">@Localizer.T("troubleshoot.lasterror.empty")</div>
                 }
                 else
                 {
@@ -134,8 +129,8 @@
                             </svg>
                         </div>
                         <div class="troubleshoot-title-text">
-                            <h3>Error Codes</h3>
-                            <p class="troubleshoot-subtitle">Short descriptions to help decode failures.</p>
+                            <h3>@Localizer.T("troubleshoot.codes.title")</h3>
+                            <p class="troubleshoot-subtitle">@Localizer.T("troubleshoot.codes.subtitle")</p>
                         </div>
                     </div>
                 </div>
@@ -145,8 +140,8 @@
                     {
                         <div @key="item.Code" class="troubleshoot-code-card">
                             <div class="troubleshoot-code">@item.Code</div>
-                            <div class="troubleshoot-code-title">@item.Title</div>
-                            <div class="troubleshoot-code-desc">@item.Description</div>
+                            <div class="troubleshoot-code-title">@Localizer.T(item.TitleKey)</div>
+                            <div class="troubleshoot-code-desc">@Localizer.T(item.DescriptionKey)</div>
                         </div>
                     }
                 </div>
@@ -154,6 +149,14 @@
         </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private bool loggingEnabled;
     private bool verboseLoggingEnabled;
     private string logFolderInput = string.Empty;
@@ -162,10 +165,18 @@
 
     private static readonly IReadOnlyList<DiagnosticCodeInfo> DiagnosticCodes = new List<DiagnosticCodeInfo>
     {
-        new(AppErrorCodes.UnhandledException, "Unhandled exception", "The app hit an unexpected error. Restart and check the log file."),
-        new(AppErrorCodes.StartupTimeout, "Startup timeout", "The UI did not load in time. Restart or reinstall the app."),
-        new(AppErrorCodes.StartupScriptError, "Startup script error", "A startup script failed before the UI loaded."),
-        new(AppErrorCodes.UnobservedTaskException, "Background task failure", "A background task crashed. Check the log file for details.")
+        new(AppErrorCodes.UnhandledException,
+            TitleKey: "troubleshoot.code.unhandled.title",
+            DescriptionKey: "troubleshoot.code.unhandled.description"),
+        new(AppErrorCodes.StartupTimeout,
+            TitleKey: "troubleshoot.code.timeout.title",
+            DescriptionKey: "troubleshoot.code.timeout.description"),
+        new(AppErrorCodes.StartupScriptError,
+            TitleKey: "troubleshoot.code.script.title",
+            DescriptionKey: "troubleshoot.code.script.description"),
+        new(AppErrorCodes.UnobservedTaskException,
+            TitleKey: "troubleshoot.code.task.title",
+            DescriptionKey: "troubleshoot.code.task.description")
     };
 
     protected override void OnInitialized()
@@ -186,7 +197,7 @@
         AppDiagnostics.SetLoggingEnabled(loggingEnabled);
         AppDiagnostics.SetVerboseLoggingEnabled(verboseLoggingEnabled);
         LoggingControl.ApplySettings(loggingEnabled, verboseLoggingEnabled);
-        NotificationService.ShowSuccess("Logging settings updated.");
+        NotificationService.ShowSuccess(Localizer.T("troubleshoot.toast.saved"));
     }
 
     private async Task PickLogFolderAsync()
@@ -202,12 +213,12 @@
             Directory.CreateDirectory(selectedPath);
             AppDiagnostics.SetLogFolder(selectedPath);
             logFolderInput = selectedPath;
-            NotificationService.ShowSuccess("Log folder updated. Restart to apply.");
+            NotificationService.ShowSuccess(Localizer.T("troubleshoot.toast.folderset"));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to select log folder");
-            NotificationService.ShowError("Unable to select a log folder.");
+            NotificationService.ShowError(Localizer.T("troubleshoot.toast.folderpickfailed"));
         }
     }
 
@@ -221,13 +232,13 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to create default log folder: {Path}", folder);
-            NotificationService.ShowError("Could not create the default log folder.");
+            NotificationService.ShowError(Localizer.T("troubleshoot.toast.foldercreatefailed"));
             return;
         }
 
         AppDiagnostics.SetLogFolder(folder);
         logFolderInput = folder;
-        NotificationService.ShowInfo("Log folder reset to default. Restart to apply.");
+        NotificationService.ShowInfo(Localizer.T("troubleshoot.toast.folderreset"));
     }
 
     private void OpenLogFolder()
@@ -235,7 +246,7 @@
         var folder = GetCurrentLogFolder();
         if (!Directory.Exists(folder))
         {
-            NotificationService.ShowWarning("Log folder does not exist yet.");
+            NotificationService.ShowWarning(Localizer.T("troubleshoot.toast.foldermissing"));
             return;
         }
 
@@ -251,7 +262,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to open log folder: {Path}", folder);
-            NotificationService.ShowError("Unable to open the log folder.");
+            NotificationService.ShowError(Localizer.T("troubleshoot.toast.folderopenfailed"));
         }
     }
 
@@ -265,7 +276,7 @@
         }
 
         lastErrorTimeLabel = lastError.Timestamp == DateTimeOffset.MinValue
-            ? "Time unknown"
+            ? Localizer.T("troubleshoot.time.unknown")
             : lastError.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
     }
 
@@ -277,7 +288,7 @@
         }
 
         return string.IsNullOrWhiteSpace(lastError.Message)
-            ? "No additional details recorded."
+            ? Localizer.T("troubleshoot.nodetails")
             : lastError.Message;
     }
 
@@ -285,7 +296,7 @@
     {
         AppDiagnostics.ClearLastError();
         RefreshLastError();
-        NotificationService.ShowInfo("Last error cleared.");
+        NotificationService.ShowInfo(Localizer.T("troubleshoot.toast.cleared"));
     }
 
     private string GetCurrentLogFolder()
@@ -318,5 +329,5 @@
         return folder?.Path;
     }
 
-    private sealed record DiagnosticCodeInfo(string Code, string Title, string Description);
+    private sealed record DiagnosticCodeInfo(string Code, string TitleKey, string DescriptionKey);
 }

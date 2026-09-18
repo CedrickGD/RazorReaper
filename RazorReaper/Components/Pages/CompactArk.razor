@@ -8,10 +8,12 @@
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ILogger<CompactArk> Logger
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Compact ARK</h1>
-    <p class="page-subtitle">Shrink your ARK install with transparent Windows NTFS compression.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.compact-ark")</h1>
+    <p class="page-subtitle">@Localizer.T("compact.subtitle")</p>
 </header>
 
 <div class="compact-ark-page">
@@ -24,7 +26,7 @@
                         <path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6" />
                         <path d="M16.5 2.5v3h-3" />
                     </svg>
-                    @(isAnalyzing ? "Analyzing..." : "Analyze")
+                    @Localizer.T(isAnalyzing ? "compact.analyzing" : "compact.analyze")
                 </button>
             </Actions>
         </StatusHeader>
@@ -32,23 +34,23 @@
         @if (isAnalyzing)
         {
             <div class="compact-ark-scan-note">
-                Scanning files... @filesScanned.ToString("N0") files, @FormatBytes(scannedLogicalBytes) so far
+                @Localizer.T("compact.scanning", filesScanned.ToString("N0"), FormatBytes(scannedLogicalBytes))
             </div>
         }
 
         <div class="compact-ark-stats">
             <div class="compact-ark-stat">
-                <div class="compact-ark-stat-label">Logical size</div>
+                <div class="compact-ark-stat-label">@Localizer.T("compact.stat.logical")</div>
                 <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(logicalBytes) : "—")</div>
-                <div class="compact-ark-stat-sub">What the game data adds up to</div>
+                <div class="compact-ark-stat-sub">@Localizer.T("compact.stat.logical.sub")</div>
             </div>
             <div class="compact-ark-stat">
-                <div class="compact-ark-stat-label">On disk</div>
+                <div class="compact-ark-stat-label">@Localizer.T("compact.stat.ondisk")</div>
                 <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(onDiskBytes) : "—")</div>
-                <div class="compact-ark-stat-sub">What it actually occupies</div>
+                <div class="compact-ark-stat-sub">@Localizer.T("compact.stat.ondisk.sub")</div>
             </div>
             <div class="compact-ark-stat accent">
-                <div class="compact-ark-stat-label">Saved</div>
+                <div class="compact-ark-stat-label">@Localizer.T("compact.stat.saved")</div>
                 <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(SavedBytes) : "—")</div>
                 <div class="compact-ark-stat-sub">@(HasStats ? $"{SavedPercent:0.0}% of the install" : "Run an analysis to find out")</div>
             </div>
@@ -56,24 +58,24 @@
 
         @if (!string.IsNullOrEmpty(lastAnalyzedLabel) && !isAnalyzing)
         {
-            <div class="compact-ark-analyzed-note">Last analyzed: @lastAnalyzedLabel</div>
+            <div class="compact-ark-analyzed-note">@Localizer.T("compact.lastanalyzed", lastAnalyzedLabel)</div>
         }
     </div>
 
     <div class="content-card">
-        <h3>Actions</h3>
+        <h3>@Localizer.T("compact.actions")</h3>
 
         <div class="compact-ark-actions">
-            <SettingRow Title="Compress with LZX"
-                        Description="Re-packs every game file with NTFS LZX compression — ARK stays fully playable."
+            <SettingRow Title="@Localizer.T("compact.compress.title")"
+                        Description="@Localizer.T("compact.compress.description")"
                         Disabled="@(!CanStart)">
                 <button class="btn btn-primary" @onclick="() => RequestOperation(true)" disabled="@(!CanStart)">
                     Compress
                 </button>
             </SettingRow>
 
-            <SettingRow Title="Uncompress"
-                        Description="Restores all files to their original size — the drive needs enough free space."
+            <SettingRow Title="@Localizer.T("compact.uncompress.title")"
+                        Description="@Localizer.T("compact.uncompress.description")"
                         Disabled="@(!CanStart)">
                 <button class="btn btn-secondary" @onclick="() => RequestOperation(false)" disabled="@(!CanStart)">
                     Uncompress
@@ -87,24 +89,22 @@
                 <div class="compact-ark-confirm-text">
                     @if (pendingCompress == true)
                     {
-                        <strong>Compress the ARK install?</strong>
+                        <strong>@Localizer.T("compact.confirm.compress")</strong>
                         <span>
-                            Runs compact.exe over @totalFiles.ToString("N0") files (@FormatBytes(logicalBytes)).
-                            You can cancel anytime — processed files stay compressed.
+                            @Localizer.T("compact.confirm.compress.text", totalFiles.ToString("N0"), FormatBytes(logicalBytes))
                         </span>
                     }
                     else
                     {
-                        <strong>Uncompress the ARK install?</strong>
+                        <strong>@Localizer.T("compact.confirm.uncompress")</strong>
                         <span>
-                            Restores @totalFiles.ToString("N0") files to their full size
-                            (@FormatBytes(logicalBytes)). You can cancel anytime.
+                            @Localizer.T("compact.confirm.uncompress.text", totalFiles.ToString("N0"), FormatBytes(logicalBytes))
                         </span>
                     }
                 </div>
                 <div class="compact-ark-confirm-buttons">
-                    <button class="btn btn-primary" @onclick="ConfirmOperationAsync">Start</button>
-                    <button class="btn btn-secondary" @onclick="CancelConfirm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="ConfirmOperationAsync">@Localizer.T("compact.start")</button>
+                    <button class="btn btn-secondary" @onclick="CancelConfirm">@Localizer.T("common.cancel")</button>
                 </div>
             </div>
         }
@@ -114,8 +114,8 @@
             <div class="compact-ark-progress">
                 <div class="compact-ark-progress-head">
                     <span class="compact-ark-progress-label">
-                        @(activeOperation == "compress" ? "Compressing" : "Uncompressing")...
-                        @opFilesDone.ToString("N0") / @opTotalFiles.ToString("N0") files
+                        @Localizer.T(activeOperation == "compress" ? "compact.progress.compressing" : "compact.progress.uncompressing")
+                        @Localizer.T("compact.progress.files", opFilesDone.ToString("N0"), opTotalFiles.ToString("N0"))
                     </span>
                     <span class="compact-ark-progress-percent">@($"{ProgressPercent:0}")%</span>
                 </div>
@@ -128,7 +128,7 @@
                 }
                 <div class="compact-ark-progress-actions">
                     <button class="btn btn-danger" @onclick="CancelOperation" disabled="@cancelRequested">
-                        @(cancelRequested ? "Cancelling..." : "Cancel")
+                        @Localizer.T(cancelRequested ? "compact.cancelling" : "common.cancel")
                     </button>
                 </div>
             </div>
@@ -142,17 +142,25 @@
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
             </div>
-            <h3>Before you compact</h3>
+            <h3>@Localizer.T("compact.before.title")</h3>
         </div>
         <ul class="compact-ark-warning-list">
-            <li>Close ARK (and let Steam finish updating) before compressing or uncompressing.</li>
-            <li>Game updates write new files uncompressed — run Compress again after big patches.</li>
+            <li>@Localizer.T("compact.before.1")</li>
+            <li>@Localizer.T("compact.before.2")</li>
         </ul>
     </div>
 
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string PrefLogical = "compactark.logical";
     private const string PrefOnDisk = "compactark.ondisk";
     private const string PrefFiles = "compactark.files";
@@ -223,18 +231,18 @@
     {
         get
         {
-            if (activeOperation == "compress") return "Compressing...";
-            if (activeOperation == "uncompress") return "Uncompressing...";
-            if (isAnalyzing) return "Analyzing install...";
-            if (analysis != null && !analysis.InstallFound) return "ARK install not found";
-            if (analysis != null && !analysis.IsNtfs) return $"Drive is not NTFS ({analysis.DriveFormat ?? "unknown"})";
-            if (analysis is { IsGameRunning: true }) return "ARK is running";
+            if (activeOperation == "compress") return Localizer.T("compact.progress.compressing");
+            if (activeOperation == "uncompress") return Localizer.T("compact.progress.uncompressing");
+            if (isAnalyzing) return Localizer.T("compact.status.analyzing");
+            if (analysis != null && !analysis.InstallFound) return Localizer.T("compact.status.notfound");
+            if (analysis != null && !analysis.IsNtfs) return Localizer.T("compact.status.notntfs", analysis.DriveFormat ?? Localizer.T("common.unknown"));
+            if (analysis is { IsGameRunning: true }) return Localizer.T("compact.status.running");
             return state switch
             {
-                CompactArkState.Compacted => "Compacted",
-                CompactArkState.PartiallyCompacted => "Partially compacted",
-                CompactArkState.NotCompacted => "Not compacted",
-                _ => "Unknown"
+                CompactArkState.Compacted => Localizer.T("compact.state.compacted"),
+                CompactArkState.PartiallyCompacted => Localizer.T("compact.state.partial"),
+                CompactArkState.NotCompacted => Localizer.T("compact.state.not"),
+                _ => Localizer.T("common.unknown")
             };
         }
     }
@@ -244,12 +252,12 @@
         get
         {
             if (analysis != null && !analysis.InstallFound)
-                return "Could not locate a valid ARK: Survival Evolved installation.";
+                return Localizer.T("compact.description.notfound");
             if (analysis != null && !analysis.IsNtfs)
-                return "NTFS compression only works on NTFS-formatted drives.";
+                return Localizer.T("compact.description.notntfs");
             if (analysis is { IsGameRunning: true })
-                return "Close ARK before compressing or uncompressing the install.";
-            return installPath ?? "Install path will appear here after analysis.";
+                return Localizer.T("compact.description.running");
+            return installPath ?? Localizer.T("compact.description.idle");
         }
     }
 

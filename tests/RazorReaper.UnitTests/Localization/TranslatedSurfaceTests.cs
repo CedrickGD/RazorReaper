@@ -386,6 +386,69 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Troubleshoot</h1>",
+            "Logging, diagnostics, and quick fixes",
+            "Let support see the useful details",
+            "<h3>Important Notes</h3>",
+            "If Steam is updating or repairing ARK",
+            "<h3>Logging</h3>",
+            "Title=\"Enable logging\"",
+            "Title=\"Verbose diagnostics (debug)\"",
+            ">Log folder</div>",
+            "Title=\"Current folder\"",
+            "aria-label=\"Open log folder\"",
+            ">Change output</button>",
+            ">Reset default</button>",
+            "<h3>Last Error</h3>",
+            ">Clear</button>",
+            ">No errors captured yet.</div>",
+            "<h3>Error Codes</h3>",
+            "\"Unhandled exception\"",
+            "\"Startup timeout\"",
+            "@item.Title<",
+            "\"Logging settings updated.\"",
+            "\"Log folder updated. Restart to apply.\"",
+            "\"Time unknown\"",
+            "\"Last error cleared.\"",
+        })
+        {
+            data.Add("Components/Pages/Troubleshoot.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Compact ARK</h1>",
+            "Shrink your ARK install with transparent",
+            "\"Analyzing...\" : \"Analyze\"",
+            ">Logical size</div>",
+            ">On disk</div>",
+            ">Saved</div>",
+            "Last analyzed: @lastAnalyzedLabel",
+            "<h3>Actions</h3>",
+            "Title=\"Compress with LZX\"",
+            "Title=\"Uncompress\"",
+            "<strong>Compress the ARK install?</strong>",
+            ">Start</button>",
+            ">Cancel</button>",
+            "\"Compressing\" : \"Uncompressing\"",
+            "ToString(\"N0\") files",
+            "\"Cancelling...\" : \"Cancel\"",
+            "<h3>Before you compact</h3>",
+            "<li>Close ARK (and let Steam finish updating)",
+            "return \"Compressing...\"",
+            "return \"ARK install not found\"",
+            "$\"Drive is not NTFS",
+            "=> \"Compacted\"",
+            "=> \"Partially compacted\"",
+            "Could not locate a valid ARK: Survival Evolved installation.",
+            "Install path will appear here after analysis.",
+        })
+        {
+            data.Add("Components/Pages/CompactArk.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">Map Mods</h1>",
             "Modded map spots — caves, landmarks",
             "spots.Count spots",
