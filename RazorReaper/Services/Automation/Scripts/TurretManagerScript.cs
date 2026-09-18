@@ -44,6 +44,7 @@ public sealed class TurretManagerScript : CalibratableScriptBase
             for (var i = 0; i < Math.Clamp(TransferPresses, 1, 20); i++)
             {
                 await _input.KeyPressAsync(vk, ct: c);
+                ReportEffect();
                 await _input.DelayAsync(120, ct: c);
             }
         }, foregroundOnly: true, ct);

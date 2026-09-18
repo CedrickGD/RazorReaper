@@ -59,6 +59,7 @@ public sealed class NoglinScript : CalibratableScriptBase
             if (present && !_throttled)
             {
                 await _console.SendCommandAsync($"t.maxfps {Math.Clamp(ThrottledFps, 1, 10)}", false, c);
+                ReportEffect();
                 _throttled = true;
                 _cleanScans = 0;
                 TryActivity(Localizer.T("scripts.noglin.activity.throttled"), "warning", "scripts.noglin.activity.throttled");
@@ -69,6 +70,7 @@ public sealed class NoglinScript : CalibratableScriptBase
                 if (++_cleanScans >= Math.Clamp(RestoreAfterCleanScans, 1, 20))
                 {
                     await _console.SendCommandAsync($"t.maxfps {Math.Clamp(NormalFps, 30, 2000)}", false, c);
+                    ReportEffect();
                     _throttled = false;
                     _cleanScans = 0;
                     TryActivity(Localizer.T("scripts.noglin.activity.restored"), "info", "scripts.noglin.activity.restored");

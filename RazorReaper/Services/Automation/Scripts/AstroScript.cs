@@ -42,13 +42,16 @@ public sealed class AstroScript : AutomationScriptBase
     protected override async Task RunAsync(CancellationToken ct)
     {
         await _input.ClickAsync(MouseButton.Left, ct: ct);
+        ReportEffect();
         await _input.DelayAsync(1925, ct: ct);
         await _input.KeyPressAsync(SpaceVk, ct: ct);
+        ReportEffect();
 
         var end = Environment.TickCount64 + 5000;
         while (Environment.TickCount64 < end && !ct.IsCancellationRequested)
         {
             await _input.ClickAsync(MouseButton.Left, ct: ct);
+            ReportEffect();
             await _input.DelayAsync(20, ct: ct);
         }
         // Returning ends the one-shot; the base flips the state back to Off.

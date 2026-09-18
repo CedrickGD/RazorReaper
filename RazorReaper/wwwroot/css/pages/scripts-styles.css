@@ -145,6 +145,17 @@
     text-overflow: ellipsis;
 }
 
+/* How long ago a running script last acted, at the right edge of its row. Tabular digits
+   so a column of them does not shuffle sideways every second, and quiet enough that the
+   name stays the thing you read. */
+.script-item-effect {
+    flex: none;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    opacity: 0.75;
+}
+
 /* --- Detail ------------------------------------------------------------- */
 
 .scripts-detail {
@@ -177,6 +188,15 @@
    for every script, so it shouldn't sit inside the settings card competing with them. */
 .script-hero .status-header {
     padding: 0.65rem 0.85rem;
+}
+
+/* The sentence under the status strip. Indented to the strip's own text column so it
+   reads as a continuation of the description rather than as a second banner. */
+.script-effect-line {
+    padding: 0.35rem 0.85rem 0;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
 }
 
 /* Where ARK is, in the row with the Start button. Built like the quota chip next to it

@@ -60,6 +60,11 @@ public sealed class AutoWalkScript : AutomationScriptBase
                     if (sprint) HoldKey(_input, sprintVk);
                     HoldKey(_input, forwardVk);
                     isDown = true;
+
+                    // The effect of this script is the key going down, not a repeated press:
+                    // it stays down for as long as ARK keeps focus, so one report per leg is
+                    // the honest count. Alt-tabbing out and back reports a second one.
+                    ReportEffect();
                 }
                 else if (!foreground && isDown)
                 {

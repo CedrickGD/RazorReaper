@@ -64,6 +64,26 @@ public abstract class AutomationScriptBase : IDisposable
     private string? _registeredHotkeyText;
     private bool _disposed;
 
+    /// <summary>
+    /// How long a run may go without producing a single effect before the user is told the
+    /// foreground gate is what is holding it. Half a minute: long enough that alt-tabbing back
+    /// into the game after starting a script from the page never trips it, short enough that
+    /// nobody sits watching a "running" script for a whole minute wondering.
+    /// </summary>
+    private const int DefaultSilentRunWarningMs = 30_000;
+
+    /// <summary>Effects produced by the current (or last) run. Reset by <see cref="Start()"/>.</summary>
+    private int _effectCount;
+
+    /// <summary><see cref="Environment.TickCount64"/> of the last effect. Only valid when <see cref="_effectCount"/> is above zero.</summary>
+    private long _lastEffectTicks;
+
+    /// <summary><see cref="Environment.TickCount64"/> at the start of the current run.</summary>
+    private long _runStartedTicks;
+
+    /// <summary>One silent-run warning per run, and this is the flag that keeps it to one.</summary>
+    private int _silenceWarned;
+
     /// <summary>Last logged gate state, so the scan loop only reports transitions.</summary>
     private bool? _lastGateOpen;
 
@@ -137,8 +157,14 @@ public abstract class AutomationScriptBase : IDisposable
             if (_state == ScriptState.Running) return true;
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
+            ResetRunCounters();
             SetStateLocked(ScriptState.Running);
             _task = Task.Run(() => RunGuardedAsync(token));
+
+            // Discarded deliberately: the watchdog catches everything, so there is no fault
+            // for anyone to hold, and awaiting it would keep Start() from returning for half
+            // a minute — with the global hotkey on the other end of it.
+            _ = Task.Run(() => WarnIfSilentAsync(token));
         }
 
         Notifications.ShowSuccess(Localizer.T("scripts.toast.started", _displayName));
@@ -258,6 +284,99 @@ public abstract class AutomationScriptBase : IDisposable
                     SetStateLocked(ScriptState.Off);
             }
             RaiseChanged();
+        }
+    }
+
+    // ─── Effects ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// How many times this run has actually done something. Zero on a run that has been going
+    /// for a while is the number worth reading: it means the script is alive and the game is
+    /// not receiving anything from it.
+    /// </summary>
+    public int EffectCount => Volatile.Read(ref _effectCount);
+
+    /// <summary>
+    /// How long ago this script last acted, or null when it has yet to act at all this run.
+    /// A wall-clock age would be wrong across a sleep; the tick count is not.
+    /// </summary>
+    public TimeSpan? SinceLastEffect
+    {
+        get
+        {
+            // The count is the gate, not the timestamp: TickCount64 is legitimately 0 for the
+            // first millisecond after a boot, and "no effect yet" and "an effect at t=0" must
+            // not be the same answer.
+            if (EffectCount == 0) return null;
+            var at = Interlocked.Read(ref _lastEffectTicks);
+            return TimeSpan.FromMilliseconds(Math.Max(0, Environment.TickCount64 - at));
+        }
+    }
+
+    /// <summary>
+    /// Called by a script at the moment it actually acts — the key goes out, the click lands,
+    /// the console command is sent. Not once per tick: a scan that found nothing is not an
+    /// effect, and telling those two apart is the entire point of the counter.
+    ///
+    /// It deliberately does not <see cref="RaiseChanged"/>. Tek Saddle reports fifty of these a
+    /// second and Take All twenty; a render each would be a render storm in service of a line
+    /// that reads "2 s ago". The Scripts page repaints on its own 1.5 s tick and reads the
+    /// number there.
+    /// </summary>
+    protected void ReportEffect()
+    {
+        // Timestamp first, count second: a reader that sees a non-zero count then always finds
+        // a timestamp that belongs to it rather than to the effect before.
+        Interlocked.Exchange(ref _lastEffectTicks, Environment.TickCount64);
+        Interlocked.Increment(ref _effectCount);
+    }
+
+    private void ResetRunCounters()
+    {
+        Volatile.Write(ref _effectCount, 0);
+        Interlocked.Exchange(ref _lastEffectTicks, 0);
+        Volatile.Write(ref _silenceWarned, 0);
+        Volatile.Write(ref _runStartedTicks, Environment.TickCount64);
+    }
+
+    /// <summary>
+    /// The one thing the page cannot say for itself: a script that has been running for half a
+    /// minute, has never acted, and is looking at a shut gate right now. That is not a script
+    /// finding nothing — it is a script that has never been given a chance to look, and the
+    /// fix is a single alt-tab.
+    ///
+    /// One toast per run, and only that one. The state does not change from tick to tick, so
+    /// repeating it would be the same sentence every interval for as long as the window stays
+    /// where it is.
+    /// </summary>
+    /// <summary>
+    /// The silent-run window, in milliseconds. Settable so a test can prove the warning without
+    /// sitting out half a minute per case — the same reason <see cref="ResolveUsageGate"/> is a
+    /// property rather than a constructor argument.
+    /// </summary>
+    internal int SilentRunWarningMs { get; set; } = DefaultSilentRunWarningMs;
+
+    private async Task WarnIfSilentAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(SilentRunWarningMs, ct);
+
+            if (!IsRunning || EffectCount > 0) return;
+
+            // Asked now rather than tracked across the run: a script with zero effects whose
+            // gate is open at this moment is a script that is scanning and finding nothing,
+            // which is a different sentence and not one to interrupt anybody with.
+            if (Foreground.IsGameForeground()) return;
+
+            if (Interlocked.Exchange(ref _silenceWarned, 1) != 0) return;
+
+            Notifications.ShowWarning(Localizer.T("scripts.toast.waitingforark", _displayName));
+        }
+        catch (OperationCanceledException) { /* stopped inside the window — nothing to say */ }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "{Script} silent-run check failed", _displayName);
         }
     }
 

@@ -33,6 +33,14 @@
             <button class="script-item @(script == _selected ? "active" : "")" @onclick="() => _selected = script">
                 <span class="script-dot @(script.IsRunning ? "on" : "")"></span>
                 <span class="script-item-name">@script.DisplayName</span>
+                @* The short form here, the sentence in the title and in the hero below: a
+                   16-row list has no space for "No action yet — ARK is not in the
+                   foreground", and the list's job is to show which of the running ones has
+                   gone quiet. *@
+                @if (script.IsRunning)
+                {
+                    <span class="script-item-effect" title="@EffectLine(script)">@EffectShort(script)</span>
+                }
             </button>
         }
     </aside>
@@ -77,6 +85,12 @@
                         }
                     </Actions>
                 </StatusHeader>
+                @* "Running" was never the question — "is it doing anything?" was. This is the
+                   line that answers it, and it only exists while there is a run to describe. *@
+                @if (_selected.IsRunning)
+                {
+                    <div class="script-effect-line">@EffectLine(_selected)</div>
+                }
             </div>
 
             <div class="script-panels">
@@ -467,6 +481,37 @@
         if (before != _ark || _scripts.Any(s => s.IsRunning))
             this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
     }
+
+    /// <summary>
+    /// What a running script has actually done, in one sentence. Three answers, because
+    /// "running" on its own was the lie: the gate can be shut, the scan can be finding nothing,
+    /// and from the outside those look identical to each other and to a script that works.
+    /// </summary>
+    private string EffectLine(AutomationScriptBase script)
+    {
+        if (script.SinceLastEffect is { } since)
+            return since.TotalSeconds < 60
+                ? Localizer.T("scripts.effect.ago.seconds", (int)since.TotalSeconds)
+                : Localizer.T("scripts.effect.ago.minutes", (int)since.TotalMinutes);
+
+        // Nothing yet, so why not. The gate first: it is the one the user can fix in one
+        // keystroke, and while it is shut the script has not even looked.
+        if (_ark != ArkPresence.Foreground)
+            return Localizer.T("scripts.effect.none.background");
+
+        // Vision scripts are the ones that sit and watch for something to appear. An
+        // input-only script with the gate open and nothing to show has yet to reach its
+        // first interval.
+        return Localizer.T(script.UsesVision ? "scripts.effect.none.match" : "scripts.effect.none");
+    }
+
+    /// <summary>The same thing in the width of a list row. The sentence rides along as a title.</summary>
+    private string EffectShort(AutomationScriptBase script)
+        => script.SinceLastEffect is { } since
+            ? (since.TotalSeconds < 60
+                ? Localizer.T("scripts.effect.short.seconds", (int)since.TotalSeconds)
+                : Localizer.T("scripts.effect.short.minutes", (int)since.TotalMinutes))
+            : "—";
 
     /// <summary>
     /// The process check first, then the gate. Foreground implies running, but only the process

@@ -44,6 +44,7 @@ public sealed class AutoDownloadScript : AutomationScriptBase
             await _input.TypeTextAsync(Command, ct: c);
             await _input.DelayAsync(120, ct: c);
             await _input.KeyPressAsync(EnterVk, ct: c);    // send
+            ReportEffect();
         }, foregroundOnly: true, ct);
 
     public void SaveSettings()

@@ -37,6 +37,7 @@ public sealed class MammothScript : AutomationScriptBase
             await _input.ClickAsync(MouseButton.Left, ct: c);
             await _input.DelayAsync(150, ct: c);
             await _input.ClickAsync(MouseButton.Right, ct: c);
+            ReportEffect();
         }, foregroundOnly: true, ct);
 
     public void SaveSettings()

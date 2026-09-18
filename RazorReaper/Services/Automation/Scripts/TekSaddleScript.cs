@@ -43,8 +43,10 @@ public sealed class TekSaddleScript : CalibratableScriptBase
         RunLoopAsync(ClickDelayMs, async c =>
         {
             var holdingLeft = (GetAsyncKeyState(VkLButton) & 0x8000) != 0;
-            if (holdingLeft && IsTargetVisible(MatchThresholdPercent))
-                await _input.ClickAsync(MouseButton.Left, ct: c);
+            if (!holdingLeft || !IsTargetVisible(MatchThresholdPercent)) return;
+
+            await _input.ClickAsync(MouseButton.Left, ct: c);
+            ReportEffect();
         }, foregroundOnly: true, ct);
 
     public void SaveSettings()

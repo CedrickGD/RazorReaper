@@ -88,6 +88,7 @@ public sealed class CraftingScript : CalibratableScriptBase
             for (var i = 0; i < Math.Clamp(CraftPresses, 1, 20); i++)
             {
                 await _input.KeyPressAsync(craftVk, ct: c);
+                ReportEffect();
                 await _input.DelayAsync(Pad(150), ct: c);
             }
         }, foregroundOnly: true, ct);
@@ -108,6 +109,7 @@ public sealed class CraftingScript : CalibratableScriptBase
                     HoldKey(_input, fwdVk);
                     await _input.DelayAsync(Math.Clamp(WalkMs, 100, 10000), ct: ct);
                     ReleaseKey(_input, fwdVk);
+                    ReportEffect();
                     await _input.DelayAsync(Pad(250), ct: ct);
 
                     // open, craft, close
@@ -116,6 +118,7 @@ public sealed class CraftingScript : CalibratableScriptBase
                     for (var i = 0; i < Math.Clamp(CraftPresses, 1, 20); i++)
                     {
                         await _input.KeyPressAsync(craftVk, ct: ct);
+                        ReportEffect();
                         await _input.DelayAsync(Pad(150), ct: ct);
                     }
                     await _input.KeyPressAsync(accessVk, ct: ct);

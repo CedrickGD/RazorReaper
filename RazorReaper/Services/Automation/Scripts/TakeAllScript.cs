@@ -46,6 +46,10 @@ public sealed class TakeAllScript : CalibratableScriptBase
             {
                 var target = new Point(region.X + region.Width / 2, region.Y + region.Height / 2);
                 await _input.ClickAsync(MouseButton.Left, target, ct: c);
+
+                // Inside the match, not outside it: a scan that did not find the button is
+                // the state the page needs to be able to show as "waiting for a match".
+                ReportEffect();
             }
         }, foregroundOnly: true, ct);
 

@@ -54,9 +54,13 @@ public sealed class FastTpScript : AutomationScriptBase
     protected override async Task RunAsync(CancellationToken ct)
     {
         await _input.TypeTextAsync(Destination, ct: ct);
+        ReportEffect();
         await _input.DelayAsync(200, ct: ct);
         if (ConfirmWithEnter)
+        {
             await _input.KeyPressAsync(EnterVk, ct: ct);
+            ReportEffect();
+        }
         // one-shot: returns → back to Off
     }
 

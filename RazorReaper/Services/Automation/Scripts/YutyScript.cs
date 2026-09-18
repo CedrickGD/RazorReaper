@@ -40,6 +40,7 @@ public sealed class YutyScript : AutomationScriptBase
         {
             var vk = HotkeyParser.TryParseKey(RoarKey, out var k) ? k : 'C';
             await _input.KeyPressAsync(vk, ct: c);
+            ReportEffect();
         }, foregroundOnly: true, ct);
     }
 

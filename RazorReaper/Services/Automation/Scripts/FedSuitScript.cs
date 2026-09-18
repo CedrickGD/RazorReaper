@@ -16,6 +16,14 @@ public sealed class FedSuitScript : AutomationScriptBase
 
     private readonly IFedSuitMacro _macro;
 
+    /// <summary>
+    /// The macro's cycle number as this script last saw it. <see cref="IFedSuitMacro.Changed"/>
+    /// fires for settings and counters alike, so the cycle is what says input actually went
+    /// out: it steps to N when the Nth cycle's first step starts, and that step is the key
+    /// that opens the transmitter.
+    /// </summary>
+    private int _lastCycle;
+
     public FedSuitScript(
         IFedSuitMacro macro,
         IForegroundGate foreground,
@@ -38,6 +46,8 @@ public sealed class FedSuitScript : AutomationScriptBase
 
     protected override async Task RunAsync(CancellationToken ct)
     {
+        Interlocked.Exchange(ref _lastCycle, _macro.CurrentCycle);
+
         // alreadyMetered: the scaffold's Start() has already charged this run against the shared
         // input-script quota. The macro carries its own fed_suit quota from before the Scripts
         // list existed, and letting both fire meant one toggle of this tile cost a free user two
@@ -64,6 +74,12 @@ public sealed class FedSuitScript : AutomationScriptBase
 
     private void OnMacroChanged()
     {
+        // Above zero only: the macro parks the cycle back at 0 when a run ends, and winding
+        // down is not an action.
+        var cycle = _macro.CurrentCycle;
+        if (Interlocked.Exchange(ref _lastCycle, cycle) != cycle && cycle > 0 && IsRunning)
+            ReportEffect();
+
         if (!_macro.IsRunning && IsRunning)
         {
             Stop();

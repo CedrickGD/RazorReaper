@@ -19,6 +19,15 @@ public sealed class AutoAntidoteScript : AutomationScriptBase
 
     private readonly IAutoAntidoteService _service;
 
+    /// <summary>
+    /// The watcher's trigger count as this script last saw it. <see cref="IAutoAntidoteService.Changed"/>
+    /// carries no reason — it fires for a state change, a counter and every scan's live match
+    /// number alike — so this counter is what says a burst actually went out rather than that a
+    /// scan merely updated a percentage. The watcher's own counter never resets, so the run
+    /// seeds itself from wherever it stands.
+    /// </summary>
+    private int _lastTriggerCount;
+
     public AutoAntidoteScript(
         IAutoAntidoteService service,
         IForegroundGate foreground,
@@ -59,6 +68,8 @@ public sealed class AutoAntidoteScript : AutomationScriptBase
 
     protected override async Task RunAsync(CancellationToken ct)
     {
+        Interlocked.Exchange(ref _lastTriggerCount, _service.TriggerCount);
+
         if (!_service.Start())
         {
             // Start() re-checks its own prerequisites and reports why; nothing to add here.
@@ -83,6 +94,12 @@ public sealed class AutoAntidoteScript : AutomationScriptBase
 
     private void OnServiceChanged()
     {
+        // Exchange rather than read-then-write: this event arrives on the watcher's scan
+        // thread, and two of them overlapping must not report the same burst twice.
+        var triggers = _service.TriggerCount;
+        if (Interlocked.Exchange(ref _lastTriggerCount, triggers) != triggers && IsRunning)
+            ReportEffect();
+
         if (_service.State == AutoAntidoteState.Off && IsRunning)
         {
             Stop();

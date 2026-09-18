@@ -168,6 +168,7 @@ public sealed class FlakScript : CalibratableScriptBase
                     slot + 1, value, DurabilityThreshold, key);
 
                 await _input.KeyPressAsync(vk, ct: c);
+                ReportEffect();
                 LastSwapUtc = DateTime.UtcNow;
                 TryActivity(Localizer.T("scripts.flak.activity.swapped", slot + 1, value), "success", "scripts.flak.activity.swapped");
                 RaiseChanged();

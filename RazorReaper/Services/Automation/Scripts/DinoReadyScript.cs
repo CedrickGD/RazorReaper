@@ -56,6 +56,7 @@ public sealed class DinoReadyScript : CalibratableScriptBase
         for (var i = 0; i < presses && !ct.IsCancellationRequested; i++)
         {
             await _input.ClickAsync(MouseButton.Left, target, ct: ct);
+            ReportEffect();
             await _input.DelayAsync(Math.Clamp(ClickDelayMs, 20, 1000), ct: ct);
         }
         // one-shot

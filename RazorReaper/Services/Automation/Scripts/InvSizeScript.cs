@@ -45,6 +45,7 @@ public sealed class InvSizeScript : AutomationScriptBase
                     HoldKey(_input, VkShift);
                     await _input.ClickAsync(MouseButton.Right, ct: ct);
                     ReleaseKey(_input, VkShift);
+                    ReportEffect();
                 }
                 await Task.Delay(Math.Clamp(IntervalMs, 20, 2000), ct);
             }

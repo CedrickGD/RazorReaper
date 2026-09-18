@@ -47,6 +47,7 @@ public sealed class AntiAfkScript : AutomationScriptBase
             await _input.KeyPressAsync(vk, ct: ct);      // open inventory
             await _input.DelayAsync(600, ct: ct);
             await _input.KeyPressAsync(vk, ct: ct);      // close inventory
+            ReportEffect();
         }
     }
 
