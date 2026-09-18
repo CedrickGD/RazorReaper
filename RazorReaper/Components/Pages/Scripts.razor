@@ -264,7 +264,7 @@
                     <SettingRow Title="@Localizer.T("scripts.turretfill.usefilter")" Description="@Localizer.T("scripts.turretfill.usefilter.desc")">
                         <Switch Value="tf.UseFilter" ValueChanged="SetTurretFillUseFilter" />
                     </SettingRow>
-                    @if (tf.UseFilter)
+                    @if (tf.Filtering)
                     {
                         <SettingRow Title="@Localizer.T("scripts.turretfill.filtertext")" Description="@Localizer.T("scripts.turretfill.filtertext.desc")">
                             <input class="script-input" value="@tf.FilterText" @onchange="SetTurretFillText" />
@@ -274,8 +274,9 @@
                         </SettingRow>
                         @* Two points, and they stay here rather than on the calibration card
                            below: that card is about the rectangle, and these two are only asked
-                           for while the filter is on. The countdown still lands in its status
-                           line, which is the one place this page reports a capture. *@
+                           for while the filter is on — by the switch above or by the mode. The
+                           countdown still lands in its status line, which is the one place this
+                           page reports a capture. *@
                         <SettingRow Title="@Localizer.T("scripts.turretfill.point.search")" Description="@PointLine(tf, TurretFillerScript.SearchPointName)">
                             <button class="btn btn-secondary" @onclick="() => CaptureTurretFillPoint(TurretFillerScript.SearchPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.capture")</button>
                             <button class="btn btn-secondary" @onclick="() => tf.ClearPoint(TurretFillerScript.SearchPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.clear")</button>

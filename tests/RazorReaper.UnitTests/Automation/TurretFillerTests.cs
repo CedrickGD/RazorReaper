@@ -59,6 +59,26 @@ public sealed class TurretFillerTests
     }
 
     /// <summary>
+    /// Filter only is the filter, switch or no switch — so it owes the same two points. Without
+    /// this the mode started happily and then did nothing at all, which is the one outcome a
+    /// hotkey-driven script must never produce.
+    /// </summary>
+    [Fact]
+    public void FilterOnlyAsksForThePointsEvenWithTheSwitchOff()
+    {
+        var (script, calibration, _, _, _) = Filler();
+        script.Mode = TurretFillMode.FilterOnly;
+
+        Assert.False(script.Start());
+
+        calibration.SetPoint(TurretFillerScript.SearchPointName, new Point(400, 200));
+        calibration.SetPoint(TurretFillerScript.SlotPointName, new Point(420, 260));
+        Assert.True(script.Start());
+
+        script.Dispose();
+    }
+
+    /// <summary>
     /// Started from the tile with the game behind the panel, the transfer key would land in
     /// whatever window is in front. This one is hotkey-driven by nature, so refusing is the
     /// honest answer rather than a limitation.
@@ -90,6 +110,28 @@ public sealed class TurretFillerTests
         await Finished(script);
 
         Assert.Empty(input.Events);
+
+        script.Dispose();
+    }
+
+    /// <summary>
+    /// What the mode says on the page: the text lands in the box and the presses stay the user's.
+    /// </summary>
+    [Fact]
+    public async Task FilterOnlyTypesTheTextAndSendsNoTransferKey()
+    {
+        var (script, calibration, _, input, _) = Filler();
+        script.Mode = TurretFillMode.FilterOnly;
+        script.FilterText = "Advanced";
+        calibration.SetPoint(TurretFillerScript.SearchPointName, new Point(400, 200));
+        calibration.SetPoint(TurretFillerScript.SlotPointName, new Point(420, 260));
+
+        Assert.True(script.Start());
+        await Finished(script);
+
+        Assert.Equal("Advanced", input.TypedText);
+        Assert.Equal(0, Presses(input));
+        Assert.Equal(1, script.EffectCount);
 
         script.Dispose();
     }

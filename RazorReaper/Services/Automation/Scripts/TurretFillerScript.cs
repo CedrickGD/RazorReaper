@@ -77,6 +77,12 @@ public sealed class TurretFillerScript : CalibratableScriptBase
 
     public bool UseFilter { get; set; }
 
+    /// <summary>
+    /// Whether this run types the filter text. The switch turns it on beside the other two modes,
+    /// and Filter only <em>is</em> it — a mode that skipped the block would send nothing at all.
+    /// </summary>
+    public bool Filtering => UseFilter || Mode == TurretFillMode.FilterOnly;
+
     /// <summary>Part of the item name as the game spells it, typed into the search box.</summary>
     public string FilterText { get; set; } = "";
 
@@ -129,7 +135,7 @@ public sealed class TurretFillerScript : CalibratableScriptBase
     {
         if (!base.CanStart(out reason)) return false;
         if (!Foreground.IsGameForeground()) { reason = Localizer.T("scripts.cannotstart.turretinventory"); return false; }
-        if (UseFilter && !(HasSearchPoint && HasSlotPoint))
+        if (Filtering && !(HasSearchPoint && HasSlotPoint))
         {
             reason = Localizer.T("scripts.cannotstart.filterpoints");
             return false;
@@ -147,7 +153,7 @@ public sealed class TurretFillerScript : CalibratableScriptBase
             return;
         }
 
-        if (UseFilter) await ApplyFilterAsync(ct);
+        if (Filtering) await ApplyFilterAsync(ct);
         if (Mode == TurretFillMode.FilterOnly) return;
         if (!TryGetRegion(out Rectangle region)) return;
 
@@ -211,6 +217,7 @@ public sealed class TurretFillerScript : CalibratableScriptBase
 
         await _input.ClickAsync(MouseButton.Left, search, ct: ct);
         await _input.DelayAsync(150, ct: ct);
+
         for (var i = 0; i < ClearKeystrokes; i++) await _input.KeyPressAsync(VkBack, ct: ct);
         await _input.TypeTextAsync(FilterText, ct: ct);
         ReportEffect();
