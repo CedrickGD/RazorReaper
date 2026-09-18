@@ -169,6 +169,35 @@ public sealed class ArkKeyScanTests : IDisposable
             service.Resolve(ArkActions.AccessInventory, "F"));
     }
 
+    /// <summary>
+    /// ARK writes Input.ini itself the moment a keybind changes in its options, and the stale
+    /// check now runs on every script start — so a start that lands on the file mid-write is a
+    /// real event, not a theoretical one. It must not cost the player the keys already scanned,
+    /// nor make the page say the file is missing while it sits there.
+    /// </summary>
+    [Fact]
+    public void AFileThatCannotBeReadRightNowKeepsTheKeysItAlreadyGave()
+    {
+        WriteInputIni("ActionMappings=(ActionName=\"AccessInventory\",Key=Y,bShift=False)");
+        var service = Service();
+        Assert.Equal("Y", service.Resolve(ArkActions.AccessInventory, "F"));
+
+        // Stamp moved (so the check reloads), file held open by someone else (so the read fails).
+        File.SetLastWriteTimeUtc(InputIniPath, File.GetLastWriteTimeUtc(InputIniPath).AddMinutes(5));
+        using (File.Open(InputIniPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            service.RefreshIfStale();
+
+            Assert.Equal("Y", service.Resolve(ArkActions.AccessInventory, "F"));
+            Assert.True(service.Status.InputIniFound);
+        }
+
+        // And the retry lands as soon as the writer lets go.
+        WriteInputIni("ActionMappings=(ActionName=\"AccessInventory\",Key=G,bShift=False)");
+        service.RefreshIfStale();
+        Assert.Equal("G", service.Resolve(ArkActions.AccessInventory, "F"));
+    }
+
     // ─── What the page says ────────────────────────────────────────────────────
 
     [Fact]

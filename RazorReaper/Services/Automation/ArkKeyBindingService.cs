@@ -136,10 +136,16 @@ public sealed class ArkKeyBindingService : IArkKeyBindingService
             }
             catch (Exception ex)
             {
-                // A missing or malformed Input.ini must never stop the app starting; the scripts just
-                // keep ARK's stock defaults.
-                _logger.LogWarning(ex, "Reading ARK key bindings failed — falling back to stock defaults");
-                Publish(null, ArkKeyBindingStatus.NotFound, null, default);
+                // The last good scan stays: a read that failed is not a file that is gone. ARK
+                // rewrites Input.ini the moment the player changes a keybind in its options, and
+                // the stale check now runs on every script start, so landing mid-write is a thing
+                // that happens. Throwing the scan away there would drop the player's real keys
+                // back to ARK's stock ones for that run and tell the page the file was never
+                // found. The stored timestamp is still the old one, so the next start retries.
+                //
+                // A first scan that fails has nothing to keep and stays on the stock defaults,
+                // which is where the fields start.
+                _logger.LogWarning(ex, "Reading ARK key bindings failed — keeping the last scan");
             }
         }
     }
