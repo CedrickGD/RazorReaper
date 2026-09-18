@@ -123,6 +123,29 @@ public sealed class CalibrationMonitorTests
     }
 
     /// <summary>
+    /// ARK is not running, so there is no telling which display it will come up on. The capture
+    /// path falls back to the primary because it has to point somewhere; this must not, or a
+    /// reference taken on the second monitor would refuse to start every time the panel is opened
+    /// before the game is.
+    /// </summary>
+    [Fact]
+    public void WithArkNotRunningNothingIsCalledAMismatch()
+    {
+        var (script, calibration, sampler, _) = Calibrated();
+
+        calibration.SetRegionMonitor(RegionKey, MonitorTwo.DeviceName, MonitorTwo.ResolutionKey);
+        calibration.CurrentGameMonitor = null;
+        sampler.TargetVisible = true;
+
+        Assert.Null(((ICalibratableScript)script).Monitor);
+        Assert.Equal(100, ((ICalibratableScript)script).CurrentSimilarityPercent);
+        Assert.True(script.Start());
+
+        script.Stop();
+        script.Dispose();
+    }
+
+    /// <summary>
     /// The snapshot is what gets compared from here on, so taking one records the screen it came
     /// off — the region may well have been calibrated on a different one.
     /// </summary>

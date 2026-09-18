@@ -254,7 +254,10 @@ public sealed class FakeCalibrationService : ICalibrationService
 
     public string CurrentResolutionKey { get; set; } = "1920x1080";
 
-    /// <summary>What the fake says the game's display is. Null reads as "cannot tell".</summary>
+    /// <summary>
+    /// What the fake says the game's display is. Null is "ARK is not running, so there is no
+    /// telling" — the real service answers that too rather than guessing at the primary.
+    /// </summary>
     public AttachedDisplay? CurrentGameMonitor { get; set; } =
         new(@"\\.\DISPLAY1", new Rectangle(0, 0, 1920, 1080), IsPrimary: true);
 

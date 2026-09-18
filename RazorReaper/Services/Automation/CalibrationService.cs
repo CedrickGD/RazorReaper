@@ -89,8 +89,9 @@ public interface ICalibrationService
     string CurrentResolutionKey { get; }
 
     /// <summary>
-    /// The display ARK is on right now, or the primary one when it is not running. Null only when
-    /// Windows reports no displays at all.
+    /// The display ARK is on right now, or null when that cannot be told — the game is not
+    /// running, or its window is not readable yet. Null is the important half: "the primary
+    /// monitor, probably" is a guess, and a guess is not something to refuse a script over.
     /// </summary>
     AttachedDisplay? CurrentGameMonitor { get; }
 
@@ -194,7 +195,20 @@ public sealed class CalibrationService : ICalibrationService
     {
         get
         {
-            try { return _displays?.GameMonitor; }
+            try
+            {
+                if (_displays is null) return null;
+
+                // The capture path falls back to the primary monitor when ARK's window cannot be
+                // read, because it has to point somewhere. Calibration must not inherit that
+                // guess: it would read "ARK is on Monitor 1" while the game is not running at
+                // all, call a perfectly good reference from Monitor 2 a mismatch, and refuse to
+                // start a script the user is about to alt-tab into.
+                var bounds = _displays.GameWindowBounds;
+                if (bounds.Width <= 0 || bounds.Height <= 0) return null;
+
+                return _displays.GameMonitor;
+            }
             catch (Exception ex)
             {
                 _logger.LogDebug(ex, "Could not read the game's display — treating it as unknown");
