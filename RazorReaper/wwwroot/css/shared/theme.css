@@ -756,6 +756,51 @@ h3 {
     box-shadow: 0 6px 16px rgba(var(--accent-purple-rgb), 0.6);
 }
 
+/* The hard gate (PremiumLock RequiresLifetime). It is not an overlay floating over a
+   blurred page — there is no page behind it to blur, so it is an ordinary card that
+   happens to be the only thing on the route. Centred, no glow, no motion of its own:
+   the card's own fade-in is the whole animation. */
+.lifetime-gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    max-width: 30rem;
+    margin-inline: auto;
+    /* .content-card sets padding with !important, so overriding it needs one too. */
+    padding: var(--space-6) var(--space-5) !important;
+    text-align: center;
+}
+
+.lifetime-gate-icon {
+    width: 34px;
+    height: 34px;
+    color: var(--accent-purple);
+}
+
+.lifetime-gate-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lifetime-gate-text {
+    margin: 0;
+    max-width: 26rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.lifetime-gate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
 /* Respect the user's OS-level reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

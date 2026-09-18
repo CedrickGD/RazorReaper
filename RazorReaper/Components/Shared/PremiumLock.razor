@@ -1,28 +1,68 @@
 @using RazorReaper.Services
+@implements IDisposable
 @inject ILicenseService LicenseService
+@inject ILicenseOverlayService LicenseOverlay
 
-<div class="premium-lock-wrapper @(IsActuallyLocked ? "is-locked" : "")">
-    @if (IsActuallyLocked)
-    {
-        <div class="premium-lock-overlay">
-            <div class="premium-lock-content">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="premium-lock-icon">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                <h4>Premium Feature</h4>
-                <p>This feature requires an active Premium license.</p>
-                <a href="https://sellhub.cx/RazorReaper" target="_blank" class="btn-primary premium-upgrade-btn">
-                    Upgrade to Premium
-                </a>
-            </div>
+@*
+    Two gates, not one.
+
+    RequiresPremium is the old soft gate: it blurs the page behind an overlay, and EnforceLock
+    is false everywhere, so today it shows nothing at all. Leave that default alone — the owner
+    wants the premium pages open.
+
+    RequiresLifetime is a real gate, and it is hard: the plan it sells is the perpetual key, so
+    it enforces on its own rather than waiting for EnforceLock, and the locked branch does not
+    render ChildContent at all. A blur is a picture of the text — the text is still in the DOM,
+    selectable, and one devtools toggle from readable. Paid-for content has to be absent.
+*@
+
+@if (IsLifetimeLocked)
+{
+    <section class="content-card lifetime-gate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="lifetime-gate-icon">
+            <rect x="4" y="10.5" width="16" height="10" rx="2"></rect>
+            <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"></path>
+        </svg>
+        <h2 class="lifetime-gate-title">Lifetime only</h2>
+        <p class="lifetime-gate-text">
+            This page comes with the Lifetime licence — the monthly plans do not include it.
+        </p>
+        <div class="lifetime-gate-actions">
+            <a class="btn btn-primary" href="@StoreLinks.Store" target="_blank" rel="noopener">Buy Premium</a>
+            <button type="button"
+                    class="btn btn-secondary"
+                    aria-haspopup="dialog"
+                    @onclick="OpenLicenseOverlay">
+                Redeem key
+            </button>
         </div>
-    }
-    
-    <div class="premium-lock-inner @(IsActuallyLocked ? "blurred" : "")">
-        @ChildContent
+    </section>
+}
+else
+{
+    <div class="premium-lock-wrapper @(IsActuallyLocked ? "is-locked" : "")">
+        @if (IsActuallyLocked)
+        {
+            <div class="premium-lock-overlay">
+                <div class="premium-lock-content">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="premium-lock-icon">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <h4>Premium Feature</h4>
+                    <p>This feature requires an active Premium license.</p>
+                    <a href="@StoreLinks.Store" target="_blank" rel="noopener" class="btn-primary premium-upgrade-btn">
+                        Upgrade to Premium
+                    </a>
+                </div>
+            </div>
+        }
+
+        <div class="premium-lock-inner @(IsActuallyLocked ? "blurred" : "")">
+            @ChildContent
+        </div>
     </div>
-</div>
+}
 
 @code {
     [Parameter]
@@ -35,5 +75,30 @@
     [Parameter]
     public bool EnforceLock { get; set; } = false;
 
+    /// <summary>
+    /// Gates on the perpetual licence instead of on Premium, and does it for real — this one
+    /// ignores <see cref="EnforceLock"/> and withholds <see cref="ChildContent"/> entirely.
+    /// </summary>
+    [Parameter]
+    public bool RequiresLifetime { get; set; } = false;
+
+    private bool IsLifetimeLocked => RequiresLifetime && !LifetimeAccess.IsLifetime(LicenseService);
+
     private bool IsActuallyLocked => RequiresPremium && EnforceLock && !LicenseService.IsPremium;
+
+    // Redeeming a key from the overlay has to open the gate under it. Without this the page keeps
+    // showing "Lifetime only" until the user navigates away and back.
+    protected override void OnInitialized()
+        => LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
+
+    private void OnLicenseStateChangedHandler()
+        => this.DispatchRender(() => InvokeAsync(StateHasChanged));
+
+    private void OpenLicenseOverlay() => LicenseOverlay.Open();
+
+    public void Dispose()
+    {
+        LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
+        this.StopRenderDispatch();
+    }
 }
