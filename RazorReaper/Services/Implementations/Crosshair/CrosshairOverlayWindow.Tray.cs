@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -8,6 +9,12 @@ namespace RazorReaper.Services.Implementations;
 /// WndProc, and host the right-click popup menu. Tray ownership lives here because the icon
 /// is parented to the overlay's hwnd, which means tray callbacks pass through the same
 /// message loop the renderer uses.
+///
+/// This menu is outside the Blazor window and never sees its repaint, so language is handled
+/// by rebuilding rather than by re-rendering. Every item is read from the dictionary while the
+/// menu is being built, and the menu is built fresh on each right-click — which leaves exactly
+/// one string that outlives a language switch, the tray tooltip, and that one is re-set on the
+/// overlay's own thread when the switch happens.
 /// </summary>
 internal sealed partial class CrosshairOverlayWindow
 {
@@ -26,7 +33,7 @@ internal sealed partial class CrosshairOverlayWindow
                 uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
                 uCallbackMessage = WM_USER_TRAY,
                 hIcon = _trayHIcon,
-                szTip = "Razor Reaper — crosshair overlay"
+                szTip = _localizer.T("tray.tooltip")
             };
 
             if (!Shell_NotifyIcon(NIM_ADD, ref nid))
@@ -45,6 +52,39 @@ internal sealed partial class CrosshairOverlayWindow
         {
             _logger.LogWarning(ex, "Failed to register tray icon");
         }
+    }
+
+    /// <summary>
+    /// Re-sends the tooltip after a language switch. Called on the overlay's UI thread, through
+    /// WM_USER_TRAY_RETIP, because the icon belongs to that thread's window.
+    /// </summary>
+    private void UpdateTrayTooltip()
+    {
+        if (!_trayRegistered) return;
+        try
+        {
+            var nid = new NOTIFYICONDATA
+            {
+                cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
+                hWnd = _hwnd,
+                uID = TrayIconUID,
+                uFlags = NIF_TIP,
+                szTip = _localizer.T("tray.tooltip")
+            };
+
+            Shell_NotifyIcon(NIM_MODIFY, ref nid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update tray tooltip");
+        }
+    }
+
+    /// <summary>Wakes the overlay thread to re-read the tooltip. Safe from any thread.</summary>
+    public void RefreshTrayTooltip()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        PostMessage(_hwnd, WM_USER_TRAY_RETIP, IntPtr.Zero, IntPtr.Zero);
     }
 
     private void UnregisterTrayIcon()
@@ -139,15 +179,16 @@ internal sealed partial class CrosshairOverlayWindow
         // would otherwise read "Restart _update".
         if (!string.IsNullOrWhiteSpace(updateLabel))
         {
-            AppendMenu(menu, MF_STRING, CmdApplyUpdate, $"Restart && update (v{updateLabel})");
+            AppendMenu(menu, MF_STRING, CmdApplyUpdate, Mnemonic(_localizer.T("tray.update", updateLabel)));
             AppendMenu(menu, MF_SEPARATOR, 0, null);
         }
 
-        AppendMenu(menu, MF_STRING, CmdOpenApp, "Open Razor Reaper");
+        AppendMenu(menu, MF_STRING, CmdOpenApp, Mnemonic(_localizer.T("tray.open")));
         AppendMenu(menu, MF_SEPARATOR, 0, null);
-        AppendMenu(menu, MF_STRING | (overlayActive ? MF_CHECKED : 0), CmdToggleOverlay, overlayActive ? "Hide overlay" : "Show overlay");
+        AppendMenu(menu, MF_STRING | (overlayActive ? MF_CHECKED : 0), CmdToggleOverlay,
+            Mnemonic(_localizer.T(overlayActive ? "tray.overlay.hide" : "tray.overlay.show")));
         AppendMenu(menu, MF_SEPARATOR, 0, null);
-        AppendMenu(menu, MF_STRING, CmdQuit, "Quit");
+        AppendMenu(menu, MF_STRING, CmdQuit, Mnemonic(_localizer.T("tray.quit")));
 
         GetCursorPos(out POINT pt);
         // Windows quirk — TrackPopupMenu won't dismiss correctly without first focusing the owner.
@@ -156,6 +197,13 @@ internal sealed partial class CrosshairOverlayWindow
         PostMessage(_hwnd, 0x0000 /* WM_NULL */, IntPtr.Zero, IntPtr.Zero);
         DestroyMenu(menu);
     }
+
+    /// <summary>
+    /// Escapes a menu label for AppendMenu, which reads a single &amp; as the mnemonic prefix and
+    /// swallows it. "Restart &amp; update" would otherwise read "Restart _update" — and now that
+    /// the labels come from four dictionaries, an ampersand can arrive from any of them.
+    /// </summary>
+    private static string Mnemonic(string label) => label.Replace("&", "&&", StringComparison.Ordinal);
 
     private void HandleMenuCommand(int id)
     {

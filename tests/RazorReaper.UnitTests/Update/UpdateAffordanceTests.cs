@@ -72,8 +72,9 @@ public sealed class UpdateAffordanceTests
     {
         var tray = File.ReadAllText(CrosshairPath("CrosshairOverlayWindow.Tray.cs"));
 
-        // "&&" because AppendMenu reads a single & as the mnemonic prefix.
-        Assert.Contains("$\"Restart && update (v{updateLabel})\"", tray, StringComparison.Ordinal);
+        // The wording is a dictionary entry now, and Mnemonic() doubles the ampersand AppendMenu
+        // would otherwise eat as a mnemonic prefix. TrayMenuTranslationTests pins both.
+        Assert.Contains("Mnemonic(_localizer.T(\"tray.update\", updateLabel))", tray, StringComparison.Ordinal);
         Assert.Contains("CmdApplyUpdate", tray, StringComparison.Ordinal);
         Assert.Contains("_updateReadyLabel()", tray, StringComparison.Ordinal);
         // The item exists only while something is staged.

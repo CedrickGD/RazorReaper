@@ -22,6 +22,7 @@ internal sealed partial class CrosshairOverlayWindow
     private const int WM_USER_UPDATE = 0x0400 + 1;
     private const int WM_USER_HOTKEY_REGISTER = 0x0400 + 2;
     private const int WM_USER_HOTKEY_UNREGISTER = 0x0400 + 3;
+    private const int WM_USER_TRAY_RETIP = 0x0400 + 4;
     private const int WM_USER_TRAY = 0x0400 + 10;
 
     // ─── Shell_NotifyIcon constants ─────────────────────────────────────────────

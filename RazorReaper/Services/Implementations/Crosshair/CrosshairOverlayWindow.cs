@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Drawing;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 using RazorReaper.Models;
 // Disambiguate from Microsoft.Maui.* implicit usings (Color, Image, etc.).
 using Color = System.Drawing.Color;
@@ -25,6 +26,7 @@ namespace RazorReaper.Services.Implementations;
 internal sealed partial class CrosshairOverlayWindow : IDisposable
 {
     private readonly ILogger _logger;
+    private readonly ILocalizer _localizer;
     private readonly Action _onHotkeyToggle;
     private readonly Action _onTrayShowApp;
     private readonly Action _onTrayQuit;
@@ -67,6 +69,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
 
     public CrosshairOverlayWindow(
         ILogger logger,
+        ILocalizer localizer,
         Action onHotkeyToggle,
         Action onTrayShowApp,
         Action onTrayQuit,
@@ -75,6 +78,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         Func<bool> isOverlayActive)
     {
         _logger = logger;
+        _localizer = localizer;
         _onHotkeyToggle = onHotkeyToggle;
         _onTrayShowApp = onTrayShowApp;
         _onTrayQuit = onTrayQuit;
@@ -311,6 +315,10 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
             case WM_USER_HOTKEY_UNREGISTER:
                 DoHotkeyUnregister();
                 return IntPtr.Zero;
+            case WM_USER_TRAY_RETIP:
+                UpdateTrayTooltip();
+                return IntPtr.Zero;
+
             case WM_USER_TRAY:
                 HandleTrayMessage(lParam);
                 return IntPtr.Zero;

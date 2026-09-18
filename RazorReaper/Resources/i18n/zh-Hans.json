@@ -698,5 +698,12 @@
   "home.paths.error.save": "保存路径出错：{0}",
   "home.paths.error.reset": "重置路径出错：{0}",
 
-  "home.sound.customfile": "自定义文件"
+  "home.sound.customfile": "自定义文件",
+
+  "tray.tooltip": "Razor Reaper —— 准星浮层",
+  "tray.open": "打开 Razor Reaper",
+  "tray.overlay.show": "显示浮层",
+  "tray.overlay.hide": "隐藏浮层",
+  "tray.update": "重启并更新（v{0}）",
+  "tray.quit": "退出"
 }

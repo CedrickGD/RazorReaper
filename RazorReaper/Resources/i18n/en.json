@@ -698,5 +698,12 @@
   "home.paths.error.save": "Error saving path: {0}",
   "home.paths.error.reset": "Error resetting path: {0}",
 
-  "home.sound.customfile": "Custom file"
+  "home.sound.customfile": "Custom file",
+
+  "tray.tooltip": "Razor Reaper — crosshair overlay",
+  "tray.open": "Open Razor Reaper",
+  "tray.overlay.show": "Show overlay",
+  "tray.overlay.hide": "Hide overlay",
+  "tray.update": "Restart & update (v{0})",
+  "tray.quit": "Quit"
 }

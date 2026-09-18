@@ -698,5 +698,12 @@
   "home.paths.error.save": "Ошибка при сохранении пути: {0}",
   "home.paths.error.reset": "Ошибка при сбросе пути: {0}",
 
-  "home.sound.customfile": "Свой файл"
+  "home.sound.customfile": "Свой файл",
+
+  "tray.tooltip": "Razor Reaper — оверлей прицела",
+  "tray.open": "Открыть Razor Reaper",
+  "tray.overlay.show": "Показать оверлей",
+  "tray.overlay.hide": "Скрыть оверлей",
+  "tray.update": "Перезапустить и обновить (v{0})",
+  "tray.quit": "Выйти"
 }

@@ -25,6 +25,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
     private readonly ILogger<CrosshairService> _logger;
     private readonly INotificationService _notifications;
     private readonly ITelemetryService _telemetry;
+    private readonly RazorReaper.Services.Localization.ILocalizer _localizer;
     private readonly VideoFrameExtractor _videoExtractor;
 
     private readonly string _rootDir;
@@ -95,11 +96,16 @@ public partial class CrosshairService : ICrosshairService, IDisposable
     public bool IsOverlayActive => _overlayActive;
     public CrosshairProfile ActiveProfile { get { lock (_lock) return _active; } }
 
-    public CrosshairService(ILogger<CrosshairService> logger, INotificationService notifications, ITelemetryService telemetry)
+    public CrosshairService(
+        ILogger<CrosshairService> logger,
+        INotificationService notifications,
+        ITelemetryService telemetry,
+        RazorReaper.Services.Localization.ILocalizer localizer)
     {
         _logger = logger;
         _notifications = notifications;
         _telemetry = telemetry;
+        _localizer = localizer;
         _videoExtractor = new VideoFrameExtractor(logger);
 
         _rootDir = Path.Combine(
@@ -132,6 +138,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
 
         _overlay = new CrosshairOverlayWindow(
             logger,
+            localizer,
             onHotkeyToggle: OnHotkeyToggle,
             onTrayShowApp: () => ShowAppRequested?.Invoke(),
             onTrayQuit: () => QuitRequested?.Invoke(),
@@ -140,6 +147,17 @@ public partial class CrosshairService : ICrosshairService, IDisposable
             isOverlayActive: () => _overlayActive);
         _overlay.Start();
         _overlay.RegisterHotkey(_hotkeyVk, _hotkeyCtrl, _hotkeyAlt, _hotkeyShift);
+
+        // The tray menu is rebuilt on every right-click, so its items need nothing here. The
+        // tooltip is set once at registration and would otherwise stay in the language the app
+        // started in for the rest of the session.
+        _localizer.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged()
+    {
+        try { _overlay.RefreshTrayTooltip(); }
+        catch (Exception ex) { _logger.LogDebug(ex, "Tray tooltip refresh failed"); }
     }
 
     public IReadOnlyList<CrosshairProfile> GetBuiltInPresets()
@@ -458,6 +476,7 @@ public partial class CrosshairService : ICrosshairService, IDisposable
         }
         catch { /* swallow on shutdown */ }
 
+        try { _localizer.LanguageChanged -= OnLanguageChanged; } catch { /* swallow on shutdown */ }
         try { _overlay.Dispose(); } catch { /* swallow on shutdown */ }
         lock (_previewImageLock)
         {

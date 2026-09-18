@@ -698,5 +698,12 @@
   "home.paths.error.save": "Fehler beim Speichern des Pfads: {0}",
   "home.paths.error.reset": "Fehler beim Zurücksetzen des Pfads: {0}",
 
-  "home.sound.customfile": "Eigene Datei"
+  "home.sound.customfile": "Eigene Datei",
+
+  "tray.tooltip": "Razor Reaper — Fadenkreuz-Overlay",
+  "tray.open": "Razor Reaper öffnen",
+  "tray.overlay.show": "Overlay einblenden",
+  "tray.overlay.hide": "Overlay ausblenden",
+  "tray.update": "Neu starten & aktualisieren (v{0})",
+  "tray.quit": "Beenden"
 }
