@@ -69,7 +69,7 @@
                            beside Start because that is the moment the answer is needed. *@
                         <span class="scripts-ark-pill @ArkPillClass" title="@Localizer.T("scripts.ark.tooltip")">
                             <span class="scripts-ark-dot"></span>
-                            @Localizer.T(ArkStatusKey)
+                            @ArkStatusText
                         </span>
                         @if (!_selected.UsesVision)
                         {
@@ -429,11 +429,17 @@
     /// </summary>
     private static readonly TimeSpan ArkPollInterval = TimeSpan.FromSeconds(1.5);
 
-    private string ArkStatusKey => _ark switch
+    /// <summary>
+    /// Resolved here rather than handed out as a key, because a key returned from a property is
+    /// a key no grep can see — TranslatedSurfaceTests reads the literals out of <c>T(</c> call
+    /// sites, and all three of these would have been declared dead. Read where the pill renders,
+    /// so a language switch repaints it.
+    /// </summary>
+    private string ArkStatusText => _ark switch
     {
-        ArkPresence.Foreground => "scripts.ark.foreground",
-        ArkPresence.Background => "scripts.ark.background",
-        _ => "scripts.ark.notrunning"
+        ArkPresence.Foreground => Localizer.T("scripts.ark.foreground"),
+        ArkPresence.Background => Localizer.T("scripts.ark.background"),
+        _ => Localizer.T("scripts.ark.notrunning")
     };
 
     private string ArkPillClass => _ark switch
