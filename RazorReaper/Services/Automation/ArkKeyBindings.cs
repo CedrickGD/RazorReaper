@@ -30,9 +30,10 @@ public static class ArkActions
 /// <summary>
 /// Where the script key defaults came from, for the one line the Scripts page shows about them.
 /// <paramref name="CustomBindingCount"/> counts only the actions the scripts actually press
-/// (<see cref="ArkKeyBindingParser.StockBindings"/>) whose key differs from ARK's factory one —
-/// the number that decides whether a script presses something other than the stock key, rather
-/// than a total of everything the player ever rebound.
+/// (<see cref="ArkKeyBindingParser.StockBindings"/>) that the player's own Input.ini moved off the
+/// key the install ships with — the number that decides whether a script presses something other
+/// than the stock key, rather than a total of everything the player ever rebound. The install's
+/// DefaultInput.ini is the factory layout, not a change, so nothing in it is ever counted.
 /// </summary>
 public readonly record struct ArkKeyBindingStatus(bool InputIniFound, int CustomBindingCount)
 {
@@ -54,7 +55,8 @@ public interface IArkKeyBindingService
     /// <summary>
     /// The key the player bound to <paramref name="arkAction"/>, in the same label format the
     /// script settings and <see cref="HotkeyParser"/> use ("F", "Y", "0", "Space").
-    /// Falls back to ARK's factory binding, then to <paramref name="fallback"/>.
+    /// Falls back to the install's own DefaultInput.ini, then to
+    /// <see cref="ArkKeyBindingParser.StockBindings"/>, then to <paramref name="fallback"/>.
     /// </summary>
     string Resolve(string arkAction, string fallback);
 
@@ -83,7 +85,9 @@ public interface IArkKeyBindingService
 /// </summary>
 public static class ArkKeyBindingParser
 {
-    // ActionMappings=(ActionName="AccessInventory",Key=F,bShift=False,...)
+    // ActionMappings=(ActionName="AccessInventory",Key=F,bShift=False,...) — and, in the install's
+    // DefaultInput.ini, the same line with Unreal's "+" array-append prefix. Both match: the
+    // pattern is searched for anywhere in the line, not anchored to its start.
     private static readonly Regex ActionLine = new(
         """ActionMappings\s*=\s*\(\s*ActionName\s*=\s*"(?<name>[^"]+)"\s*,\s*Key\s*=\s*(?<key>[^,)\s]+)""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -98,11 +102,17 @@ public static class ArkKeyBindingParser
     /// is also the set the Scripts page counts its "your own bindings" number over. An action in
     /// here that no script resolves would put a rebind on the page that changes nothing a script
     /// does. Craft All was one until it was dropped.
+    ///
+    /// Only the last resort: <see cref="ArkKeyBindingService"/> reads the install's own
+    /// <c>ShooterGame/Config/DefaultInput.ini</c> as the base layer, and this table answers only
+    /// when there is no install to read. Every value here must equal what that file says — a table
+    /// that quietly disagrees hands a script a key the game has bound to something else, which is
+    /// how Access Inventory sat on "E" (ARK's <c>Use</c>) instead of "F" from 554176b to 1.5.2.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, string> StockBindings =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            [ArkActions.AccessInventory] = "E",
+            [ArkActions.AccessInventory] = "F",
             [ArkActions.ShowMyInventory] = "I",
             [ArkActions.TransferItem] = "T",
             [ArkActions.Use] = "E",
@@ -112,7 +122,8 @@ public static class ArkKeyBindingParser
 
     /// <summary>
     /// Extracts action and axis bindings from Input.ini lines. Later lines win, which matches how
-    /// Unreal itself resolves a config file. Gamepad and mouse bindings are ignored — a script can
+    /// Unreal itself resolves a config file — and is what lets the player's file be fed in after
+    /// the install's DefaultInput.ini. Gamepad and mouse bindings are ignored — a script can
     /// only synthesize keyboard keys, and keeping a controller binding would silently shadow the
     /// keyboard one the player actually uses.
     /// </summary>
@@ -124,6 +135,11 @@ public static class ArkKeyBindingParser
         foreach (var line in lines)
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
+
+            // ARK ships commented-out mappings in its own config files and players comment lines
+            // out by hand; reading one as live is the same silent wrong key this whole class exists
+            // to prevent.
+            if (line.TrimStart().StartsWith(';')) continue;
 
             var action = ActionLine.Match(line);
             if (action.Success)

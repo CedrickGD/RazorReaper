@@ -112,6 +112,66 @@ public class ArkKeyBindingParserTests
         Assert.Empty(ArkKeyBindingParser.Parse(["", "   ", "[/Script/Engine.InputSettings]", "junk"]));
     }
 
+    /// <summary>
+    /// The lines for the six actions the scripts press, copied verbatim out of
+    /// <c>ARK/ShooterGame/Config/DefaultInput.ini</c> — "+" prefix, gamepad entries, reversed axis
+    /// and all. Copied rather than read: the install is hundreds of gigabytes, is not on the build
+    /// machine, and a test that skips itself when it is missing proves nothing.
+    /// </summary>
+    private static readonly string[] GameDefaultInputIni =
+    [
+        "[/Script/Engine.InputSettings]",
+        ";+DebugExecBindings=(Key=L,Command=\"ToggleInfiniteAmmo\")",
+        "+ActionMappings=(ActionName=\"Run\",Key=LeftShift,bShift=False,bCtrl=False,bAlt=False,bCmd=False)",
+        "+ActionMappings=(ActionName=\"ShowMyInventory\",Key=I,bShift=False,bCtrl=False,bAlt=False,bCmd=False)",
+        "+ActionMappings=(ActionName=\"Use\",Key=E,bShift=False,bCtrl=False,bAlt=False,bCmd=False)",
+        "+ActionMappings=(ActionName=\"AccessInventory\",Key=F,bShift=False,bCtrl=False,bAlt=False,bCmd=False)",
+        "+ActionMappings=(ActionName=\"TransferItem\",Key=T,bShift=False,bCtrl=False,bAlt=False,bCmd=False)",
+        "+AxisMappings=(AxisName=\"MoveForward\",Key=Gamepad_LeftY,Scale=1.000000)",
+        "+AxisMappings=(AxisName=\"MoveForward\",Key=S,Scale=-1.000000)",
+        "+AxisMappings=(AxisName=\"MoveForward\",Key=W,Scale=1.000000)",
+    ];
+
+    /// <summary>
+    /// The one that would have caught it. Access Inventory sat on "E" — ARK's <c>Use</c> — from
+    /// 554176b through 1.5.2, so every install without an AccessInventory line in Input.ini pressed
+    /// the wrong key and reported a healthy run doing it.
+    /// </summary>
+    [Fact]
+    public void EveryStockBindingIsWhatTheGamesOwnDefaultInputIniSays()
+    {
+        var shipped = ArkKeyBindingParser.Parse(GameDefaultInputIni);
+
+        foreach (var (action, stock) in ArkKeyBindingParser.StockBindings)
+        {
+            Assert.True(shipped.ContainsKey(action), $"{action} is not in ARK's DefaultInput.ini");
+            Assert.Equal(shipped[action], stock);
+        }
+    }
+
+    [Fact]
+    public void UnrealsPlusPrefixedLinesAreReadLikeAnyOther()
+    {
+        // The player's Input.ini writes "ActionMappings="; the install's DefaultInput.ini writes
+        // "+ActionMappings=". Rejecting the second would leave the base layer empty and silent.
+        var bindings = ArkKeyBindingParser.Parse(GameDefaultInputIni);
+
+        Assert.Equal("F", bindings[ArkActions.AccessInventory]);
+        Assert.Equal("W", bindings[ArkActions.MoveForward]);
+    }
+
+    [Fact]
+    public void CommentedOutMappingsAreNotBindings()
+    {
+        string[] ini =
+        [
+            "+ActionMappings=(ActionName=\"AccessInventory\",Key=F,bShift=False)",
+            ";+ActionMappings=(ActionName=\"AccessInventory\",Key=E,bShift=False)",
+        ];
+
+        Assert.Equal("F", ArkKeyBindingParser.Parse(ini)[ArkActions.AccessInventory]);
+    }
+
     [Fact]
     public void StockBindingsCoverEveryActionTheScriptsAskFor()
     {

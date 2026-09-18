@@ -130,6 +130,81 @@ public sealed class ArkKeyScanTests : IDisposable
         Assert.Equal(2, paths.Lookups);
     }
 
+    // ─── The install's own defaults, under the player's file ───────────────────
+
+    /// <summary>
+    /// The hard-coded table is the layer that can drift away from the game without anybody
+    /// noticing — it did, on Access Inventory, for four releases. The install ships its own
+    /// factory layout, so read that instead and let the table answer only when there is no install.
+    /// </summary>
+    [Fact]
+    public void WithNoInputIniTheKeysComeFromTheInstallsDefaultInputIni()
+    {
+        // Deliberately not what StockBindings says: a pass here has to mean the file was read.
+        WriteDefaultInputIni("+ActionMappings=(ActionName=\"AccessInventory\",Key=K,bShift=False)");
+        Directory.CreateDirectory(_arkRoot);
+
+        var service = Service();
+
+        Assert.Equal("K", service.Resolve(ArkActions.AccessInventory, "F"));
+
+        // And the page still says "using ARK's default keys", because that is what they are.
+        Assert.Equal(ArkKeyBindingStatus.NotFound, service.Status);
+        Assert.False(service.HasPlayerBindings);
+    }
+
+    [Fact]
+    public void ThePlayersFileGoesOnTopOfTheInstallsDefaults()
+    {
+        WriteDefaultInputIni(
+            "+ActionMappings=(ActionName=\"AccessInventory\",Key=F,bShift=False)",
+            "+ActionMappings=(ActionName=\"TransferItem\",Key=T,bShift=False)");
+        WriteInputIni("ActionMappings=(ActionName=\"AccessInventory\",Key=Y,bShift=False)");
+
+        var service = Service();
+
+        // Rebound: the player's line wins wherever the two disagree…
+        Assert.Equal("Y", service.Resolve(ArkActions.AccessInventory, "F"));
+        // …and untouched: the base layer still answers, because Input.ini lists only changes.
+        Assert.Equal("T", service.Resolve(ArkActions.TransferItem, "SHOULD-NOT-BE-USED"));
+    }
+
+    [Fact]
+    public void AnInstallWithoutADefaultInputIniFallsBackToTheStockTable()
+    {
+        Directory.CreateDirectory(_arkRoot);
+
+        var service = Service();
+
+        foreach (var (action, stock) in ArkKeyBindingParser.StockBindings)
+        {
+            Assert.Equal(stock, service.Resolve(action, "SHOULD-NOT-BE-USED"));
+        }
+    }
+
+    /// <summary>
+    /// The count on the Scripts page is "keys of yours the scripts follow". The base layer is the
+    /// game's factory layout, not a choice of the player's, so an install where nothing was
+    /// rebound has to read zero — not one per action the default file happens to mention.
+    /// </summary>
+    [Fact]
+    public void TheCustomCountIgnoresEverythingTheInstallShipsWith()
+    {
+        WriteDefaultInputIni(
+            "+ActionMappings=(ActionName=\"AccessInventory\",Key=F,bShift=False)",
+            "+ActionMappings=(ActionName=\"TransferItem\",Key=T,bShift=False)",
+            "+ActionMappings=(ActionName=\"ShowMyInventory\",Key=I,bShift=False)",
+            "+ActionMappings=(ActionName=\"Use\",Key=E,bShift=False)",
+            "+ActionMappings=(ActionName=\"Run\",Key=LeftShift,bShift=False)",
+            "+AxisMappings=(AxisName=\"MoveForward\",Key=W,Scale=1.000000)");
+        WriteInputIni(
+            "ActionMappings=(ActionName=\"AccessInventory\",Key=Y,bShift=False)",
+            // Written out by ARK but left exactly where the install put it: not a rebind.
+            "ActionMappings=(ActionName=\"TransferItem\",Key=T,bShift=False)");
+
+        Assert.Equal(1, Service().Status.CustomBindingCount);
+    }
+
     // ─── Nothing to read ───────────────────────────────────────────────────────
 
     [Fact]
@@ -300,6 +375,14 @@ public sealed class ArkKeyScanTests : IDisposable
         // "the file changed" a fact rather than a race.
         File.WriteAllLines(path, new[] { "[/Script/Engine.InputSettings]" }.Concat(lines));
         File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(Random.Shared.Next(1, 10_000)));
+    }
+
+    /// <summary>The install's own DefaultInput.ini, where ARK ships it.</summary>
+    private void WriteDefaultInputIni(params string[] lines)
+    {
+        var path = Path.Combine(_arkRoot, "ShooterGame", "Config", "DefaultInput.ini");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllLines(path, new[] { "[/Script/Engine.InputSettings]" }.Concat(lines));
     }
 
     private ArkKeyBindingService Service() =>
