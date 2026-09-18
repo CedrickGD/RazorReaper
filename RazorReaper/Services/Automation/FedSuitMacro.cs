@@ -78,8 +78,17 @@ public interface IFedSuitMacro : IDisposable
     /// <summary>Validates, persists, and applies new settings (re-registers hotkeys when they changed).</summary>
     void UpdateSettings(FedSuitSettings settings);
 
-    /// <summary>Starts the loop. Returns false when already running or a configured key is invalid.</summary>
-    bool Start();
+    /// <summary>
+    /// Starts the loop. Returns false when already running or a configured key is invalid.
+    /// </summary>
+    /// <param name="alreadyMetered">
+    /// True when the caller has already charged this start against the user's monthly quota.
+    /// <see cref="Scripts.FedSuitScript"/> passes it: the Scripts list meters every script start
+    /// through the shared scaffold, and this macro predates that, so one toggle of the Fed Suit
+    /// tile used to cost the user two of their free runs — one <c>input_scripts</c> and one
+    /// <c>fed_suit</c>. Starting the macro on its own (the command palette) still meters here.
+    /// </param>
+    bool Start(bool alreadyMetered = false);
 
     /// <summary>Requests a hard stop. Safe from any thread, including hotkey callbacks.</summary>
     void Stop();
@@ -189,7 +198,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         RaiseChanged();
     }
 
-    public bool Start()
+    public bool Start(bool alreadyMetered = false)
     {
         if (_disposed) return false;
 
@@ -220,8 +229,8 @@ public sealed class FedSuitMacro : IFedSuitMacro
         _ = Task.Run(() => RunToCompletionAsync(sequence));
         // Start() must stay synchronous (the global hotkey calls it), so the quota check runs
         // right behind the start and stops the macro again if the month is used up. Stops
-        // themselves never count.
-        _ = Task.Run(EnforceQuotaAsync);
+        // themselves never count — and neither does a start the Scripts list already charged for.
+        if (!alreadyMetered) _ = Task.Run(EnforceQuotaAsync);
         RaiseChanged();
         return true;
     }

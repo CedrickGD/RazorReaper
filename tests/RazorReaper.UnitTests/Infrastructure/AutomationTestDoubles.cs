@@ -333,6 +333,97 @@ public sealed class FakeScreenSampler : IScreenSampler
     public Color AverageColor(Rectangle region) => Color.Black;
 }
 
+/// <summary>
+/// A macro runner that reports a sequence as running without pressing anything, and finishes when
+/// it is stopped. Enough for the lifecycle questions — did this start, did it start twice — with
+/// no input reaching the machine running the tests.
+/// </summary>
+public sealed class FakeMacroRunner : IMacroRunner
+{
+    private volatile TaskCompletionSource? _run;
+
+    public FakeMacroRunner(string name = "fake") => Name = name;
+
+    public string Name { get; }
+
+    public MacroRunnerState State { get; private set; } = MacroRunnerState.Idle;
+
+    public string? CurrentSequenceName { get; private set; }
+
+    public int CurrentLoop { get; private set; }
+
+    public int CurrentStepIndex { get; private set; } = -1;
+
+    public int TotalSteps { get; private set; }
+
+    /// <summary>How many sequences this runner was asked to run.</summary>
+    public int RunCount { get; private set; }
+
+    public event Action<MacroRunnerState>? StateChanged;
+
+    public event Action<int, int>? StepStarted;
+
+    public async Task<bool> RunAsync(MacroSequence sequence, CancellationToken ct = default)
+    {
+        RunCount++;
+        CurrentSequenceName = sequence.Name;
+        TotalSteps = sequence.Steps.Count;
+        SetState(MacroRunnerState.Running);
+
+        var run = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _run = run;
+        StepStarted?.Invoke(0, 1);
+
+        using (ct.Register(() => run.TrySetResult()))
+        {
+            await run.Task;
+        }
+
+        CurrentSequenceName = null;
+        CurrentStepIndex = -1;
+        CurrentLoop = 0;
+        SetState(MacroRunnerState.Idle);
+        return true;
+    }
+
+    public void Stop()
+    {
+        SetState(MacroRunnerState.Stopping);
+        _run?.TrySetResult();
+    }
+
+    private void SetState(MacroRunnerState next)
+    {
+        State = next;
+        StateChanged?.Invoke(next);
+    }
+}
+
+/// <summary>A macro engine that hands out <see cref="FakeMacroRunner"/>s.</summary>
+public sealed class FakeMacroEngine : IMacroEngine
+{
+    private readonly Dictionary<string, FakeMacroRunner> _runners = new(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyCollection<IMacroRunner> Runners => _runners.Values.ToArray();
+
+    public IMacroRunner GetRunner(string name)
+    {
+        if (!_runners.TryGetValue(name, out var runner))
+        {
+            runner = new FakeMacroRunner(name);
+            _runners[name] = runner;
+        }
+        return runner;
+    }
+
+    public FakeMacroRunner Runner(string name) => (FakeMacroRunner)GetRunner(name);
+
+    public void StopAll()
+    {
+        foreach (var r in _runners.Values) r.Stop();
+    }
+}
+
 /// <summary>A usage gate that counts what was charged against which feature.</summary>
 public sealed class CountingUsageGateService : IUsageGateService
 {

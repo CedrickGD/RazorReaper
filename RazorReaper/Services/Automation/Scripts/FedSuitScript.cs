@@ -38,7 +38,11 @@ public sealed class FedSuitScript : AutomationScriptBase
 
     protected override async Task RunAsync(CancellationToken ct)
     {
-        if (!_macro.Start())
+        // alreadyMetered: the scaffold's Start() has already charged this run against the shared
+        // input-script quota. The macro carries its own fed_suit quota from before the Scripts
+        // list existed, and letting both fire meant one toggle of this tile cost a free user two
+        // of their monthly runs.
+        if (!_macro.Start(alreadyMetered: true))
         {
             // Start() reports why (already running, or a key that will not parse).
             return;

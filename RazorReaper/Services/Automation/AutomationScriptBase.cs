@@ -151,13 +151,20 @@ public abstract class AutomationScriptBase : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// How a script finds the usage gate. Resolved late, not via the constructor: the base ctor
+    /// signature is mirrored by 16 scripts, and the headless test harnesses construct them
+    /// without a MAUI application at all. Replaceable so a test can see what was charged — the
+    /// Fed Suit double-charge was invisible precisely because nothing could.
+    /// </summary>
+    internal Func<IUsageGateService?> ResolveUsageGate { get; set; }
+        = static () => IPlatformApplication.Current?.Services?.GetService<IUsageGateService>();
+
     private async Task EnforceInputQuotaAsync()
     {
         try
         {
-            // Resolved late, not via ctor: the base ctor signature is mirrored by 16 scripts,
-            // and the headless test harnesses construct them without a MAUI application at all.
-            var gate = IPlatformApplication.Current?.Services?.GetService<IUsageGateService>();
+            var gate = ResolveUsageGate();
             if (gate is null) return;
 
             var result = await gate.TryConsumeAsync(UsageFeatures.InputScripts);
