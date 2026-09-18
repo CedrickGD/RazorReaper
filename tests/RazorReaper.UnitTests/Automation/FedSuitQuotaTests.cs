@@ -15,7 +15,11 @@ namespace RazorReaper.UnitTests.Automation;
 /// <c>fed_suit</c> quota with it, and the scaffold charges <c>input_scripts</c> for every script
 /// start. Wrapping one in the other meant a free user pressing the Fed Suit tile once spent two
 /// of their monthly runs, and nothing on screen said so — the quota chips just moved twice.
+///
+/// Shares <c>ArkKeyDefaults</c> with <see cref="ArkKeyScanTests"/>: the macro rescans its open and
+/// transfer keys through a process-wide static that those tests swap out. See the note there.
 /// </summary>
+[Collection("ArkKeyDefaults")]
 public sealed class FedSuitQuotaTests
 {
     [Fact]

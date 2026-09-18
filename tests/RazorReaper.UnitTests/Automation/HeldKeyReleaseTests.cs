@@ -16,7 +16,11 @@ namespace RazorReaper.UnitTests.Automation;
 ///
 /// So the scaffold keeps the register of what is down, and every exit — a stop, a run loop that
 /// threw, a Dispose — drains it.
+///
+/// Shares <c>ArkKeyDefaults</c> with <see cref="ArkKeyScanTests"/>: Auto-Walk resolves its forward
+/// and sprint keys through a process-wide static that those tests swap out. See the note there.
 /// </summary>
+[Collection("ArkKeyDefaults")]
 public sealed class HeldKeyReleaseTests
 {
     private const int VkW = 0x57;

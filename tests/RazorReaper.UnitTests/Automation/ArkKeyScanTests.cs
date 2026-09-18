@@ -20,7 +20,13 @@ namespace RazorReaper.UnitTests.Automation;
 /// Real files in a real temp directory rather than a file-system abstraction: the thing under test
 /// is "does it notice the file changed", and a fake whose timestamps we write ourselves would be
 /// testing the fake.
+///
+/// The collection is the isolation for <see cref="ArkKeyDefaults.ResolveService"/>, which is
+/// process-wide: these tests point it at a scan of their own, and xUnit runs test classes in
+/// parallel, so every class that builds a script or macro reading its key defaults through that
+/// static shares this name. Without it a fake Input.ini here decides another class's key.
 /// </summary>
+[Collection("ArkKeyDefaults")]
 public sealed class ArkKeyScanTests : IDisposable
 {
     private readonly string _arkRoot = Path.Combine(
