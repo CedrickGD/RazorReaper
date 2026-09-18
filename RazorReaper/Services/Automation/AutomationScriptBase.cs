@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation;
 
@@ -28,6 +29,16 @@ public abstract class AutomationScriptBase : IDisposable
     protected readonly IAutomationHotkeyService Hotkeys;
     protected readonly INotificationService Notifications;
     protected readonly IActivityService Activity;
+
+    /// <summary>
+    /// The scripts' own words. Every script shares this scaffold, so the localizer lives here
+    /// rather than seventeen times over: a subclass that has something to say resolves it where
+    /// it says it — <see cref="CanStart"/>'s refusal, an activity line — and a language switch
+    /// reaches all of them at once. <see cref="DisplayName"/> is not one of these: Yuty, Noglin
+    /// and Armor Swap are the names the community uses and diagnostics report.
+    /// </summary>
+    protected readonly ILocalizer Localizer;
+
     protected readonly ILogger Logger;
 
     private readonly string _scriptKey;
@@ -53,6 +64,7 @@ public abstract class AutomationScriptBase : IDisposable
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger logger)
     {
         _scriptKey = scriptKey;
@@ -62,6 +74,7 @@ public abstract class AutomationScriptBase : IDisposable
         Hotkeys = hotkeys;
         Notifications = notifications;
         Activity = activity;
+        Localizer = localizer;
         Logger = logger;
 
         StartStopHotkey = LoadHotkey();
@@ -117,8 +130,8 @@ public abstract class AutomationScriptBase : IDisposable
             _task = Task.Run(() => RunGuardedAsync(token));
         }
 
-        Notifications.ShowSuccess($"{_displayName} started.");
-        TryActivity($"{_displayName} started", "success");
+        Notifications.ShowSuccess(Localizer.T("scripts.toast.started", _displayName));
+        TryActivity(Localizer.T("scripts.activity.started", _displayName), "success");
         // Start() must stay synchronous (the global hotkey calls it through Toggle), so the
         // quota check trails the start and stops the script again if the month is used up.
         // Vision scripts and stops never count.
@@ -140,7 +153,7 @@ public abstract class AutomationScriptBase : IDisposable
             if (result.Allowed) return;
 
             Stop();
-            Notifications.ShowWarning($"Free monthly limit reached ({result.Limit} input-script starts across all scripts). Resets next month — Premium is unlimited.");
+            Notifications.ShowWarning(Localizer.T("scripts.toast.quota", result.Limit));
         }
         catch (Exception ex)
         {
@@ -193,8 +206,8 @@ public abstract class AutomationScriptBase : IDisposable
 
         if (notify)
         {
-            Notifications.ShowInfo($"{_displayName} stopped.");
-            TryActivity($"{_displayName} stopped", "info");
+            Notifications.ShowInfo(Localizer.T("scripts.toast.stopped", _displayName));
+            TryActivity(Localizer.T("scripts.activity.stopped", _displayName), "info");
         }
         RaiseChanged();
     }
@@ -225,7 +238,12 @@ public abstract class AutomationScriptBase : IDisposable
     /// <summary>The script body. Loop until <paramref name="ct"/> is cancelled, or return to finish.</summary>
     protected abstract Task RunAsync(CancellationToken ct);
 
-    /// <summary>Override to block <see cref="Start"/> (e.g. missing calibration); set <paramref name="reason"/> to notify the user.</summary>
+    /// <summary>
+    /// Override to block <see cref="Start"/> (e.g. missing calibration); set
+    /// <paramref name="reason"/> to notify the user. It is shown as written, so resolve it
+    /// through <see cref="Localizer"/> here — the refusal is read at the moment Start is
+    /// pressed, which is what keeps it in the language the reader picked.
+    /// </summary>
     protected virtual bool CanStart(out string? reason)
     {
         reason = null;
@@ -309,7 +327,7 @@ public abstract class AutomationScriptBase : IDisposable
 
         if (!HotkeyParser.TryParseHotkey(text, out var vk, out var ctrl, out var alt, out var shift))
         {
-            if (notifyOnFailure) Notifications.ShowWarning($"'{text}' can't be used as a hotkey.");
+            if (notifyOnFailure) Notifications.ShowWarning(Localizer.T("scripts.toast.hotkey.invalid", text));
             StartStopHotkey = _registeredHotkeyText ?? _defaultHotkey;
             return;
         }
@@ -322,7 +340,7 @@ public abstract class AutomationScriptBase : IDisposable
         }
         else if (notifyOnFailure)
         {
-            Notifications.ShowWarning($"Could not register {text} — it may be in use by another app.");
+            Notifications.ShowWarning(Localizer.T("scripts.toast.hotkey.inuse", text));
         }
     }
 

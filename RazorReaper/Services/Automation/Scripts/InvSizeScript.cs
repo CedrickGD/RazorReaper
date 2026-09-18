@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -25,8 +26,9 @@ public sealed class InvSizeScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<InvSizeScript> logger)
-        : base(Key, "Inv Size", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Inv Size", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();

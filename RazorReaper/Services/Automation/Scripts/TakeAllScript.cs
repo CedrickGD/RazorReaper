@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -30,8 +31,9 @@ public sealed class TakeAllScript : CalibratableScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<TakeAllScript> logger)
-        : base(Key, "Take All", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Take All", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();

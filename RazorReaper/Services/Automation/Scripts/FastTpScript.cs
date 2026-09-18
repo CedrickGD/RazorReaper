@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -26,8 +27,9 @@ public sealed class FastTpScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<FastTpScript> logger)
-        : base(Key, "Fast TP", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Fast TP", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();
@@ -37,12 +39,12 @@ public sealed class FastTpScript : AutomationScriptBase
     {
         if (string.IsNullOrWhiteSpace(Destination))
         {
-            reason = "Set a destination name first.";
+            reason = Localizer.T("scripts.cannotstart.destination");
             return false;
         }
         if (!Foreground.IsGameForeground())
         {
-            reason = "Open the teleporter/bed menu in ARK first, then start.";
+            reason = Localizer.T("scripts.cannotstart.tpmenu");
             return false;
         }
         reason = null;

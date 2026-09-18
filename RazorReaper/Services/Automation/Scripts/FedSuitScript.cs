@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -21,8 +22,9 @@ public sealed class FedSuitScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<FedSuitScript> logger)
-        : base(Key, "Fed Suit", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Fed Suit", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _macro = macro;
 

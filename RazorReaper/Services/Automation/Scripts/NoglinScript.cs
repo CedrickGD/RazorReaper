@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -40,8 +41,9 @@ public sealed class NoglinScript : CalibratableScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<NoglinScript> logger)
-        : base(Key, "Noglin", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Noglin", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _console = console;
         LoadSettings();
@@ -59,7 +61,7 @@ public sealed class NoglinScript : CalibratableScriptBase
                 await _console.SendCommandAsync($"t.maxfps {Math.Clamp(ThrottledFps, 1, 10)}", false, c);
                 _throttled = true;
                 _cleanScans = 0;
-                TryActivity("Noglin: FPS throttled (mind-control detected)", "warning");
+                TryActivity(Localizer.T("scripts.noglin.activity.throttled"), "warning");
                 RaiseChanged();
             }
             else if (!present && _throttled)
@@ -69,7 +71,7 @@ public sealed class NoglinScript : CalibratableScriptBase
                     await _console.SendCommandAsync($"t.maxfps {Math.Clamp(NormalFps, 30, 2000)}", false, c);
                     _throttled = false;
                     _cleanScans = 0;
-                    TryActivity("Noglin: FPS restored", "info");
+                    TryActivity(Localizer.T("scripts.noglin.activity.restored"), "info");
                     RaiseChanged();
                 }
             }

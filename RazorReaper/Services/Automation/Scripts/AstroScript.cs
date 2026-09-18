@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -20,8 +21,9 @@ public sealed class AstroScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<AstroScript> logger)
-        : base(Key, "Astro", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Astro", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
     }
@@ -30,7 +32,7 @@ public sealed class AstroScript : AutomationScriptBase
     {
         if (!Foreground.IsGameForeground())
         {
-            reason = "Focus ARK first — Astro fires its sequence immediately on start.";
+            reason = Localizer.T("scripts.cannotstart.astro");
             return false;
         }
         reason = null;

@@ -20,6 +20,15 @@ namespace RazorReaper.UnitTests.Localization;
 /// is a severity token ("success", "warning") that is never read by a person, and only a literal
 /// that still has words in it once its interpolation holes are removed, so
 /// <c>$"{alreadyTranslated} {ex.Message}"</c> — a join, not a sentence — is not a finding.
+///
+/// Two shapes were added when the automation scripts were migrated, because both of them had been
+/// hiding English from this scan. <c>TryActivity("…")</c> is the wrapper a service puts over
+/// <c>Activity.AddActivity</c> so a dead activity feed cannot take a run down — it has no receiver,
+/// so the receiver-first pattern below could not see it, and the Noglin script's two FPS lines sat
+/// behind it. And a file now counts as able to translate when it merely *uses* a localizer, not
+/// only when it names the type: <c>AutomationScriptBase</c> holds one for all seventeen scripts, so
+/// a subclass can word a message through the inherited <c>Localizer</c> without the string
+/// "ILocalizer" ever appearing in it.
 /// </summary>
 public sealed class TranslatedFilesWordNoToastInEnglishTests
 {
@@ -43,10 +52,19 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     /// lines, so the argument is not looked for on the same line as the call.
     /// </summary>
     private static readonly Regex MessageCall = new(
-        @"(?:NotificationService|Notifications|_notifications|ActivityService|_activity)\s*\.\s*"
-        + @"(?:Show(?:Success|Error|Warning|WarningWithCountdown|Info)|AddActivity)\s*\(\s*"
+        @"(?:(?:NotificationService|Notifications|_notifications|ActivityService|_activity)\s*\.\s*"
+        + @"(?:Show(?:Success|Error|Warning|WarningWithCountdown|Info)|AddActivity)"
+        + @"|(?<!\w)TryActivity)\s*\(\s*"
         + @"(?<literal>\$?""(?:[^""\\]|\\.)*"")",
         RegexOptions.Singleline);
+
+    /// <summary>
+    /// A file that knows how to translate. Naming the type covers a service that injects one; the
+    /// second half covers a class that inherited it, which is how the seventeen automation scripts
+    /// word their refusals.
+    /// </summary>
+    private static readonly Regex KnowsHowToTranslate = new(
+        @"ILocalizer|(?<!\w)Localizer\s*\.\s*T\s*\(");
 
     /// <summary>An interpolation hole is not English; what is left around the holes is.</summary>
     private static readonly Regex Hole = new(@"\{[^}]*\}");
@@ -72,7 +90,7 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
                      .OrderBy(p => p, StringComparer.Ordinal))
         {
             var source = File.ReadAllText(path);
-            if (source.Contains("ILocalizer", StringComparison.Ordinal))
+            if (KnowsHowToTranslate.IsMatch(source))
             {
                 yield return (Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/'), source);
             }
@@ -123,9 +141,12 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     }
 
     /// <summary>
-    /// The six files this scan was written for are in range of it. A page that stops injecting
-    /// ILocalizer under its own name, or moves, would drop out of the scan silently and take its
-    /// toasts with it — which is the same silence that let these six ship as "Done".
+    /// The six files this scan was written for are in range of it, and so is the automation layer
+    /// it was widened for. A page that stops injecting ILocalizer under its own name, or moves,
+    /// would drop out of the scan silently and take its toasts with it — which is the same silence
+    /// that let these six ship as "Done", and the same silence that kept two dozen script messages
+    /// English for four waves: nothing under Services/Automation had a localizer at all, so nothing
+    /// in this folder was ever read.
     /// </summary>
     [Theory]
     [InlineData("Components/Pages/CompactArk.razor")]
@@ -135,8 +156,37 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("Components/Shared/AccentColorCard.razor")]
     [InlineData("Components/Shared/FontSettingsCard.razor")]
     [InlineData("Services/Implementations/FeedbackService.cs")]
+    [InlineData("Services/Automation/AutomationScriptBase.cs")]
+    [InlineData("Services/Automation/Scripts/CalibratableScriptBase.cs")]
+    [InlineData("Services/Automation/Scripts/FlakScript.cs")]
+    [InlineData("Services/Automation/Scripts/NoglinScript.cs")]
     public void TheFilesThisScanWasWrittenForAreInRangeOfIt(string relativePath)
         => Assert.Contains(relativePath, FilesWithALocalizer().Select(f => f.Path).ToArray());
+
+    /// <summary>
+    /// Every script is in range, not just the two that happen to word an activity line today. The
+    /// list is read off the real types: a new script added next to them inherits the localizer and
+    /// therefore inherits the obligation, and this fails the moment one of them is written without
+    /// so much as forwarding the constructor parameter.
+    /// </summary>
+    [Fact]
+    public void EveryAutomationScriptIsInRangeOfIt()
+    {
+        var root = Path.Combine(TranslationParityTests.RepositoryRoot(), "RazorReaper");
+        var folder = Path.Combine(root, "Services", "Automation", "Scripts");
+        var inRange = FilesWithALocalizer().Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
+
+        var scripts = Directory.EnumerateFiles(folder, "*.cs")
+            .Where(path => Regex.IsMatch(
+                File.ReadAllText(path),
+                @"sealed class \w+\s*:\s*(?:AutomationScriptBase|CalibratableScriptBase)\b"))
+            .Select(path => Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/'))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(17, scripts.Length);
+        Assert.All(scripts, path => Assert.Contains(path, inRange));
+    }
 
     /// <summary>
     /// The scan has to be able to see the shape it exists for. Two joins that are not sentences
@@ -150,6 +200,8 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("NotificationService.ShowWarning(\n    \"Compression cancelled.\");", true)]
     [InlineData("ActivityService.AddActivity(\"Uncompressed ARK install\", \"success\");", true)]
     [InlineData("ActivityService.AddActivity(Localizer.T(\"compact.activity.failed\"), \"warning\");", false)]
+    [InlineData("TryActivity(\"Noglin: FPS restored\", \"info\");", true)]
+    [InlineData("TryActivity(Localizer.T(\"scripts.activity.stopped\", name), \"info\");", false)]
     public void TheScanFindsASentenceAndLetsAJoinThrough(string snippet, bool expected)
     {
         var match = MessageCall.Match(snippet);

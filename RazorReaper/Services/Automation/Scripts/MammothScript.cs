@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -22,8 +23,9 @@ public sealed class MammothScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<MammothScript> logger)
-        : base(Key, "Mammoth", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Mammoth", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();

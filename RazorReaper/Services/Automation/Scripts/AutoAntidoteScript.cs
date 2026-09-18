@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -24,8 +25,9 @@ public sealed class AutoAntidoteScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<AutoAntidoteScript> logger)
-        : base(Key, "Auto Antidote", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Auto Antidote", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _service = service;
 
@@ -41,13 +43,13 @@ public sealed class AutoAntidoteScript : AutomationScriptBase
     {
         if (!_service.HasRegion)
         {
-            reason = "Calibrate the icon region first.";
+            reason = Localizer.T("scripts.cannotstart.iconregion");
             return false;
         }
 
         if (!_service.HasReference)
         {
-            reason = "Capture a reference with the icon visible first.";
+            reason = Localizer.T("scripts.cannotstart.iconreference");
             return false;
         }
 

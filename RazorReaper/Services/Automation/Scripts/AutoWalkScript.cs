@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -29,8 +30,9 @@ public sealed class AutoWalkScript : AutomationScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<AutoWalkScript> logger)
-        : base(Key, "Auto-Walk", string.Empty, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Auto-Walk", string.Empty, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();

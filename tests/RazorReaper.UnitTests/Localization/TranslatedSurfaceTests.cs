@@ -2401,8 +2401,9 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Scripts.razor", literal);
         }
 
-        // The two calibration-card lines the page words for it. The class has no localizer and
-        // is not migrated — its toasts are still English — so only the summaries are pinned.
+        // The two calibration-card lines the page words for it. The class words its own toasts
+        // now; these two stay the page's, because a line that sits on a card for as long as the
+        // calibration does has to survive a switch, and a sentence built here would not.
         foreach (var literal in new[]
         {
             "px at {r.X}, {r.Y}",
@@ -2637,6 +2638,82 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Building.razor", literal);
         }
 
+        // The automation layer. Not a page — the scripts have no markup of their own — so what is
+        // pinned here is only ever a message: a toast, an activity line, or the reason Start
+        // refused. The log lines beside them stay English on purpose and are not in this list.
+        foreach (var literal in new[]
+        {
+            "{_displayName} started.",
+            "{_displayName} stopped.",
+            "Free monthly limit reached",
+            "can't be used as a hotkey",
+            "it may be in use by another app",
+        })
+        {
+            data.Add("Services/Automation/AutomationScriptBase.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Region set — now capture a reference",
+            "Failed to capture the region.",
+            "Calibrate the region first.",
+            "Could not capture the reference snapshot.",
+            "Reference snapshot captured.",
+            "Capture a reference first.",
+            "Nothing stayed still",
+            "Background ignored",
+            "Calibrate the detection region first.",
+            "Capture a reference snapshot with the target visible.",
+        })
+        {
+            data.Add("Services/Automation/Scripts/CalibratableScriptBase.cs", literal);
+        }
+
+        data.Add("Services/Automation/Scripts/AstroScript.cs", "Focus ARK first");
+
+        foreach (var literal in new[]
+        {
+            "Calibrate the icon region first.",
+            "Capture a reference with the icon visible first.",
+        })
+        {
+            data.Add("Services/Automation/Scripts/AutoAntidoteScript.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Calibrate the stat + button region first.",
+            "Open the dino's inventory in ARK first",
+        })
+        {
+            data.Add("Services/Automation/Scripts/DinoReadyScript.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Set a destination name first.",
+            "Open the teleporter/bed menu in ARK first",
+        })
+        {
+            data.Add("Services/Automation/Scripts/FastTpScript.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Calibrate the durability numbers first.",
+            "Set the hotbar key for at least one armor row.",
+            "Armor swapped — row",
+        })
+        {
+            data.Add("Services/Automation/Scripts/FlakScript.cs", literal);
+        }
+
+        foreach (var literal in new[] { "Noglin: FPS throttled", "Noglin: FPS restored" })
+        {
+            data.Add("Services/Automation/Scripts/NoglinScript.cs", literal);
+        }
+
         return data;
     }
 
@@ -2839,9 +2916,10 @@ public sealed class TranslatedSurfaceTests
             }
         }
 
-        // The two calibration-row titles a vision script can publish. A script has no localizer,
-        // so it hands the Scripts page a key and the page resolves it — neither key is ever a
-        // literal inside a T( call, and a grep would call both of them dead.
+        // The two calibration-row titles a vision script can publish. A script has a localizer of
+        // its own now, but these two lines sit on a card rather than flashing past as a toast, so
+        // the page still resolves them where the row renders — neither key is ever a literal
+        // inside a T( call, and a grep would call both of them dead.
         foreach (var key in RazorReaper.Services.Automation.Scripts.RegionTitles.All)
         {
             yield return ("CalibratableScriptBase.cs", key);

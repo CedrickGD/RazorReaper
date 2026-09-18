@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -30,8 +31,9 @@ public sealed class TekSaddleScript : CalibratableScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<TekSaddleScript> logger)
-        : base(Key, "Tek Saddle", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Tek Saddle", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();

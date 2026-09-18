@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -72,8 +73,9 @@ public sealed class FlakScript : CalibratableScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<FlakScript> logger)
-        : base(Key, "Armor Swap", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Armor Swap", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         _reader = reader;
@@ -88,10 +90,10 @@ public sealed class FlakScript : CalibratableScriptBase
 
     protected override bool CanStart(out string? reason)
     {
-        if (!HasRegion) { reason = "Calibrate the durability numbers first."; return false; }
+        if (!HasRegion) { reason = Localizer.T("scripts.cannotstart.durability"); return false; }
         if (RowKeys.All(string.IsNullOrWhiteSpace))
         {
-            reason = "Set the hotbar key for at least one armor row.";
+            reason = Localizer.T("scripts.cannotstart.armorrow");
             return false;
         }
         reason = null;
@@ -167,7 +169,7 @@ public sealed class FlakScript : CalibratableScriptBase
 
                 await _input.KeyPressAsync(vk, ct: c);
                 LastSwapUtc = DateTime.UtcNow;
-                TryActivity($"Armor swapped — row {slot + 1} was at {value}", "success");
+                TryActivity(Localizer.T("scripts.flak.activity.swapped", slot + 1, value), "success");
                 RaiseChanged();
             }
         }, foregroundOnly: true, ct);

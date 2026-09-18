@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation.Scripts;
 
@@ -30,8 +31,9 @@ public sealed class DinoReadyScript : CalibratableScriptBase
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<DinoReadyScript> logger)
-        : base(Key, "Dino Ready", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, logger)
+        : base(Key, "Dino Ready", string.Empty, sampler, calibration, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         _input = input;
         LoadSettings();
@@ -40,8 +42,8 @@ public sealed class DinoReadyScript : CalibratableScriptBase
     // Only needs the region (the button to click) — no reference snapshot required.
     protected override bool CanStart(out string? reason)
     {
-        if (!HasRegion) { reason = "Calibrate the stat + button region first."; return false; }
-        if (!Foreground.IsGameForeground()) { reason = "Open the dino's inventory in ARK first, then start."; return false; }
+        if (!HasRegion) { reason = Localizer.T("scripts.cannotstart.statregion"); return false; }
+        if (!Foreground.IsGameForeground()) { reason = Localizer.T("scripts.cannotstart.dinoinventory"); return false; }
         reason = null;
         return true;
     }

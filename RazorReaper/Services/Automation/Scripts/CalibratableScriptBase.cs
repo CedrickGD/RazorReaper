@@ -1,4 +1,6 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 using Rectangle = System.Drawing.Rectangle;
 
 namespace RazorReaper.Services.Automation.Scripts;
@@ -41,8 +43,9 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger logger)
-        : base(scriptKey, displayName, defaultHotkey, foreground, hotkeys, notifications, activity, logger)
+        : base(scriptKey, displayName, defaultHotkey, foreground, hotkeys, notifications, activity, localizer, logger)
     {
         Sampler = sampler;
         Calibration = calibration;
@@ -68,8 +71,10 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     /// <summary>
     /// The 312 and the 29,607 behind "312 of 29,607 px compared", once the background has been
     /// masked out; null before that and null while the whole region is still compared, which is
-    /// the state the page shows its hint for. The words are the page's: this class has no
-    /// localizer, and a sentence built here stayed English through a language switch.
+    /// the state the page shows its hint for. The words stay the page's even now that this class
+    /// can translate: the line sits on a card for as long as the calibration does, and a sentence
+    /// built here would keep the language it was built in through a switch. A toast is the other
+    /// case — it is gone before a switch can reach it, so those are worded here.
     /// </summary>
     public (int Kept, int Total)? MaskCoverage
     {
@@ -97,8 +102,8 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
 
     protected override bool CanStart(out string? reason)
     {
-        if (!HasRegion) { reason = "Calibrate the detection region first."; return false; }
-        if (!HasReference) { reason = "Capture a reference snapshot with the target visible."; return false; }
+        if (!HasRegion) { reason = Localizer.T("scripts.cannotstart.region"); return false; }
+        if (!HasReference) { reason = Localizer.T("scripts.cannotstart.reference"); return false; }
         reason = null;
         return true;
     }
@@ -111,7 +116,7 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
             var region = await Calibration.CaptureRegionAsync(_regionKey, 3, progress, ct);
             if (region is null) return false;
             ClearReference();
-            Notifications.ShowInfo("Region set — now capture a reference with the target visible.");
+            Notifications.ShowInfo(Localizer.T("scripts.toast.regionset"));
             RaiseChanged();
             return true;
         }
@@ -119,7 +124,7 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
         catch (Exception ex)
         {
             Logger.LogError(ex, "{Script} region capture failed", DisplayName);
-            Notifications.ShowError("Failed to capture the region.");
+            Notifications.ShowError(Localizer.T("scripts.toast.regionfailed"));
             return false;
         }
     }
@@ -128,17 +133,17 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     {
         if (!Calibration.TryGetRegion(_regionKey, out Rectangle region))
         {
-            Notifications.ShowWarning("Calibrate the region first.");
+            Notifications.ShowWarning(Localizer.T("scripts.toast.needregion"));
             return false;
         }
         var capture = Sampler.CaptureRegion(region);
         if (capture.IsEmpty)
         {
-            Notifications.ShowError("Could not capture the reference snapshot.");
+            Notifications.ShowError(Localizer.T("scripts.toast.referencefailed"));
             return false;
         }
         Sampler.CaptureReference(_regionKey, region);
-        Notifications.ShowSuccess("Reference snapshot captured.");
+        Notifications.ShowSuccess(Localizer.T("scripts.toast.referencecaptured"));
         RaiseChanged();
         return true;
     }
@@ -153,18 +158,18 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     {
         if (!HasReference)
         {
-            Notifications.ShowWarning("Capture a reference first.");
+            Notifications.ShowWarning(Localizer.T("scripts.toast.needreference"));
             return false;
         }
         if (!Calibration.TryGetRegion(_regionKey, out Rectangle region)) return false;
 
         if (!Sampler.RefineReferenceMask(_regionKey, region, out var kept))
         {
-            Notifications.ShowWarning("Nothing stayed still — is the element still on screen?");
+            Notifications.ShowWarning(Localizer.T("scripts.toast.masknothing"));
             return false;
         }
 
-        Notifications.ShowSuccess($"Background ignored — {kept:N0} px left to match on.");
+        Notifications.ShowSuccess(Localizer.T("scripts.toast.maskdone", kept.ToString("N0", CultureInfo.InvariantCulture)));
         RaiseChanged();
         return true;
     }
