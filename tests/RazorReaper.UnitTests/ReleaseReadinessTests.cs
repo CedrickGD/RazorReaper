@@ -79,14 +79,16 @@ public sealed class ReleaseReadinessTests
             "Desync",
             "DesyncService.cs"));
 
+        // The wording moved into the dictionaries, so this reads the keys; the English behind
+        // them is pinned in TranslatedSurfaceTests.TheEnglishWordingIsWhatItWas.
         var deleteCall = source.IndexOf("var del = await RunNetshAsync", StringComparison.Ordinal);
-        var restoredNotice = source.IndexOf("Desync reverted — traffic restored.", deleteCall, StringComparison.Ordinal);
+        var restoredNotice = source.IndexOf("desync.toast.reverted", deleteCall, StringComparison.Ordinal);
         Assert.True(deleteCall >= 0);
         Assert.True(restoredNotice > deleteCall);
 
         var failureBranch = source[deleteCall..restoredNotice];
-        Assert.Contains("Desync failed: firewall rule removal", failureBranch, StringComparison.Ordinal);
-        Assert.Contains("traffic may still be blocked", failureBranch, StringComparison.Ordinal);
+        Assert.Contains("desync.activity.failed.ruleremove", failureBranch, StringComparison.Ordinal);
+        Assert.Contains("desync.toast.removefailed", failureBranch, StringComparison.Ordinal);
         Assert.Contains("return;", failureBranch, StringComparison.Ordinal);
     }
 

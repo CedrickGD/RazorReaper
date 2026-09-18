@@ -3,6 +3,7 @@ using System.Security.Principal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Services.Localization;
 using RazorReaper.Services.Overlay;
 
 namespace RazorReaper.Services.Desync;
@@ -51,6 +52,7 @@ public sealed class DesyncService : IDesyncService
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
     private readonly IUsageGateService _usageGate;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<DesyncService> _logger;
 
     private readonly object _gate = new();
@@ -70,6 +72,7 @@ public sealed class DesyncService : IDesyncService
         INotificationService notifications,
         IActivityService activity,
         IUsageGateService usageGate,
+        ILocalizer localizer,
         ILogger<DesyncService> logger)
     {
         _process = process;
@@ -79,6 +82,9 @@ public sealed class DesyncService : IDesyncService
         _notifications = notifications;
         _activity = activity;
         _usageGate = usageGate;
+        // Resolved where each message is produced, never here: this is a singleton built at app
+        // start, so a sentence worded in the constructor would be right in exactly one language.
+        _localizer = localizer;
         _logger = logger;
 
         // A rule could survive a crash from a previous run — clear it at startup. Kept as a task so an
@@ -138,23 +144,23 @@ public sealed class DesyncService : IDesyncService
 
         if (!IsAdministrator)
         {
-            _notifications.ShowWarning("Desync needs RazorReaper to run as Administrator — restart it elevated.");
-            TryActivity("Desync failed: administrator required", "warning");
+            _notifications.ShowWarning(_localizer.T("desync.toast.admin"));
+            TryActivity(_localizer.T("desync.activity.failed.admin"), "warning");
             return false;
         }
 
         if (!_process.IsProcessRunning(_config.Value.Ark.GameProcessName))
         {
-            _notifications.ShowWarning("ARK isn't running — start the game first.");
-            TryActivity("Desync failed: ARK not running", "warning");
+            _notifications.ShowWarning(_localizer.T("desync.toast.notrunning"));
+            TryActivity(_localizer.T("desync.activity.failed.notrunning"), "warning");
             return false;
         }
 
         var exePath = ResolveArkExecutablePath();
         if (string.IsNullOrWhiteSpace(exePath))
         {
-            _notifications.ShowError("Could not locate ShooterGame.exe — check that ARK is installed where Steam reports it.");
-            TryActivity("Desync failed: executable unavailable", "warning");
+            _notifications.ShowError(_localizer.T("desync.toast.executable"));
+            TryActivity(_localizer.T("desync.activity.failed.executable"), "warning");
             return false;
         }
 
@@ -167,10 +173,12 @@ public sealed class DesyncService : IDesyncService
         if (!add.Success)
         {
             _logger.LogError("Desync could not add the firewall rule for {ExePath}: {Output}", exePath, add.Output);
+            // netsh's own output arrives already worded, in whatever language Windows answers in;
+            // it is passed through the way every other reported reason in the app is.
             _notifications.ShowError(add.Output.Length > 0
-                ? $"Could not create the firewall rule: {add.Output}"
-                : "Could not create the firewall rule (needs Administrator).");
-            TryActivity("Desync failed: firewall rule creation", "warning");
+                ? _localizer.T("desync.toast.rulefailed", add.Output)
+                : _localizer.T("desync.toast.rulefailed.elevation"));
+            TryActivity(_localizer.T("desync.activity.failed.rulecreate"), "warning");
             return false;
         }
 
@@ -181,8 +189,8 @@ public sealed class DesyncService : IDesyncService
         if (!quota.Allowed)
         {
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
-            _notifications.ShowWarning($"Free monthly limit reached ({quota.Limit} desync activations). Resets next month — Premium is unlimited.");
-            TryActivity("Desync failed: monthly usage limit", "warning");
+            _notifications.ShowWarning(_localizer.T("desync.toast.limit", quota.Limit));
+            TryActivity(_localizer.T("desync.activity.failed.limit"), "warning");
             return false;
         }
 
@@ -195,8 +203,8 @@ public sealed class DesyncService : IDesyncService
             _cts = new CancellationTokenSource();
         }
 
-        _notifications.ShowSuccess($"Desync active — auto-reverts in {seconds}s.");
-        TryActivity($"Desync activated ({seconds}s)", "warning");
+        _notifications.ShowSuccess(_localizer.T("desync.toast.active", seconds));
+        TryActivity(_localizer.T("desync.activity.activated", seconds), "warning");
         TryHud(revertAt);
         RaiseChanged();
 
@@ -222,13 +230,13 @@ public sealed class DesyncService : IDesyncService
         if (!del.Success)
         {
             _logger.LogWarning("Desync revert: netsh delete rule reported failure: {Output}", del.Output);
-            _notifications.ShowWarning("Could not remove the Desync firewall rule — traffic may still be blocked. Try again as Administrator.");
-            TryActivity("Desync failed: firewall rule removal", "warning");
+            _notifications.ShowWarning(_localizer.T("desync.toast.removefailed"));
+            TryActivity(_localizer.T("desync.activity.failed.ruleremove"), "warning");
             RaiseChanged();
             return;
         }
-        _notifications.ShowInfo("Desync reverted — traffic restored.");
-        TryActivity("Desync reverted", "info");
+        _notifications.ShowInfo(_localizer.T("desync.toast.reverted"));
+        TryActivity(_localizer.T("desync.activity.reverted"), "info");
         RaiseChanged();
     }
 
@@ -249,7 +257,7 @@ public sealed class DesyncService : IDesyncService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Desync auto-revert failed — forcing rule removal");
-            TryActivity("Desync failed: automatic firewall revert", "warning");
+            TryActivity(_localizer.T("desync.activity.failed.autorevert"), "warning");
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
             TryHud(null);
         }

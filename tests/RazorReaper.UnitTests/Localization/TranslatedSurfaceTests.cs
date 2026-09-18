@@ -2788,6 +2788,31 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Automation/Scripts/NoglinScript.cs", literal);
         }
 
+        // The Desync page's own service: eight toasts and the nine activity lines behind its
+        // TryActivity wrapper, which is the shape that hid the scripts' lines for four waves.
+        foreach (var literal in new[]
+        {
+            "Desync needs RazorReaper to run as Administrator",
+            "Desync failed: administrator required",
+            "ARK isn't running — start the game first.",
+            "Desync failed: ARK not running",
+            "Could not locate ShooterGame.exe",
+            "Desync failed: executable unavailable",
+            "Could not create the firewall rule",
+            "Desync failed: firewall rule creation",
+            "Free monthly limit reached",
+            "Desync failed: monthly usage limit",
+            "Desync active — auto-reverts in",
+            "Desync activated (",
+            "Could not remove the Desync firewall rule",
+            "Desync failed: firewall rule removal",
+            "Desync reverted",
+            "Desync failed: automatic firewall revert",
+        })
+        {
+            data.Add("Services/Desync/DesyncService.cs", literal);
+        }
+
         return data;
     }
 
@@ -2845,6 +2870,12 @@ public sealed class TranslatedSurfaceTests
     [InlineData("stretchedres.confirm.title", "Keep this resolution?")]
     [InlineData("stretchedres.custom.title", "Custom resolution")]
     [InlineData("stretchedres.ark.title", "ARK game resolution")]
+    // ReleaseReadinessTests used to read these two out of DesyncService.cs to prove a failed
+    // removal is the last thing the user hears about. It reads the keys there now, so the
+    // wording itself is pinned here.
+    [InlineData("desync.activity.failed.ruleremove", "Desync failed: firewall rule removal")]
+    [InlineData("desync.toast.removefailed", "Could not remove the Desync firewall rule — traffic may still be blocked. Try again as Administrator.")]
+    [InlineData("desync.toast.reverted", "Desync reverted — traffic restored.")]
     public void TheEnglishWordingIsWhatItWas(string key, string expected)
     {
         Assert.True(TranslationParityTests.Read("en").TryGetValue(key, out var english), $"missing {key}");

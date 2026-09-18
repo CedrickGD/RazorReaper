@@ -147,6 +147,10 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     /// that let these six ship as "Done", and the same silence that kept two dozen script messages
     /// English for four waves: nothing under Services/Automation had a localizer at all, so nothing
     /// in this folder was ever read.
+    ///
+    /// DesyncService is the last file widened into range: nine activity lines behind its own
+    /// TryActivity and eight toasts beside them, on a page docs/i18n.md has called translated
+    /// since the first wave.
     /// </summary>
     [Theory]
     [InlineData("Components/Pages/CompactArk.razor")]
@@ -167,6 +171,7 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("Services/Automation/Scripts/CalibratableScriptBase.cs")]
     [InlineData("Services/Automation/Scripts/FlakScript.cs")]
     [InlineData("Services/Automation/Scripts/NoglinScript.cs")]
+    [InlineData("Services/Desync/DesyncService.cs")]
     public void TheFilesThisScanWasWrittenForAreInRangeOfIt(string relativePath)
         => Assert.Contains(relativePath, FilesWithALocalizer().Select(f => f.Path).ToArray());
 
