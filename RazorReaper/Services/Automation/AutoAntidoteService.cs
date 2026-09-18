@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Maui.Storage;
 using RazorReaper.Configuration;
+using RazorReaper.Services.Localization;
 // Disambiguate from Microsoft.Maui.Graphics implicit usings.
 using Rectangle = System.Drawing.Rectangle;
 
@@ -129,6 +130,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
     private readonly IOptions<AppConfiguration> _config;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<AutoAntidoteService> _logger;
 
     private readonly object _gate = new();
@@ -158,6 +160,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         IOptions<AppConfiguration> config,
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<AutoAntidoteService> logger)
     {
         _sampler = sampler;
@@ -169,6 +172,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         _config = config;
         _notifications = notifications;
         _activity = activity;
+        _localizer = localizer;
         _logger = logger;
 
         LoadSettings();
@@ -201,12 +205,12 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         if (_disposed) return false;
         if (!HasRegion)
         {
-            _notifications.ShowWarning("Capture the HUD icon region first (calibration step 1).");
+            _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.needregion"));
             return false;
         }
         if (!HasReference)
         {
-            _notifications.ShowWarning("Capture a reference snapshot with the icon visible (calibration step 2).");
+            _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.needreference"));
             return false;
         }
 
@@ -219,8 +223,8 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
             _loopTask = Task.Run(() => ScanLoopAsync(token));
         }
 
-        _notifications.ShowSuccess("Auto Antidote is watching.");
-        TryActivity("Auto Antidote started", "success");
+        _notifications.ShowSuccess(_localizer.T("scripts.antidote.toast.watching"));
+        TryActivity(_localizer.T("scripts.antidote.activity.started"), "success");
         RaiseChanged();
         return true;
     }
@@ -255,8 +259,8 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         _lastMatchPercent = null;
         if (notify)
         {
-            _notifications.ShowInfo("Auto Antidote stopped.");
-            TryActivity("Auto Antidote stopped", "info");
+            _notifications.ShowInfo(_localizer.T("scripts.antidote.toast.stopped"));
+            TryActivity(_localizer.T("scripts.antidote.activity.stopped"), "info");
         }
         RaiseChanged();
     }
@@ -274,7 +278,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
 
             // The region moved — any old snapshot now shows different pixels.
             ClearReferenceCore();
-            _notifications.ShowInfo("Region updated — capture a new reference snapshot with the icon visible.");
+            _notifications.ShowInfo(_localizer.T("scripts.antidote.toast.regionupdated"));
             RaiseChanged();
             return true;
         }
@@ -285,7 +289,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Auto Antidote region capture failed");
-            _notifications.ShowError("Failed to capture the icon region.");
+            _notifications.ShowError(_localizer.T("scripts.antidote.toast.regionfailed"));
             return false;
         }
     }
@@ -296,29 +300,29 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         {
             if (!_calibration.TryGetRegion(RegionName, out Rectangle region))
             {
-                _notifications.ShowWarning("Capture the HUD icon region first (calibration step 1).");
+                _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.needregion"));
                 return false;
             }
 
             var capture = _sampler.CaptureRegion(region);
             if (capture.IsEmpty)
             {
-                _notifications.ShowError("Could not capture the reference snapshot.");
+                _notifications.ShowError(_localizer.T("scripts.antidote.toast.referencefailed"));
                 return false;
             }
 
             _reference = capture;
             _sampler.CaptureReference(ReferenceKey, region);
             _lastMatchPercent = null;
-            _notifications.ShowSuccess("Reference snapshot captured.");
-            TryActivity("Auto Antidote reference snapshot captured", "success");
+            _notifications.ShowSuccess(_localizer.T("scripts.antidote.toast.referencecaptured"));
+            TryActivity(_localizer.T("scripts.antidote.activity.referencecaptured"), "success");
             RaiseChanged();
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Auto Antidote reference capture failed");
-            _notifications.ShowError("Failed to capture the reference snapshot.");
+            _notifications.ShowError(_localizer.T("scripts.antidote.toast.referencecapturefailed"));
             return false;
         }
     }
@@ -327,7 +331,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
     {
         if (_state != AutoAntidoteState.Off) Stop();
         ClearReferenceCore();
-        _notifications.ShowInfo("Reference snapshot cleared.");
+        _notifications.ShowInfo(_localizer.T("scripts.antidote.toast.referencecleared"));
         RaiseChanged();
     }
 
@@ -372,7 +376,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         if (!TryParseKey(Settings.BurstKey, out _))
         {
             Settings.BurstKey = "5";
-            _notifications.ShowWarning("That key can't be used for the burst — reset to 5.");
+            _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.badburstkey"));
         }
 
         try
@@ -423,7 +427,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         if (!TryParseHotkey(text, out var vk, out var ctrl, out var alt, out var shift))
         {
             if (notifyOnFailure)
-                _notifications.ShowWarning("That combination can't be used as a toggle hotkey — keeping the previous one.");
+                _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.badhotkey"));
             Settings.ToggleHotkey = _registeredHotkeyText ?? DefaultToggleHotkey;
             return;
         }
@@ -445,7 +449,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         {
             _logger.LogWarning("Auto Antidote toggle hotkey registration failed for '{Hotkey}'", text);
             if (notifyOnFailure)
-                _notifications.ShowWarning($"Could not register {text} — the combination may be in use by another app.");
+                _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.hotkeyinuse", text));
         }
     }
 
@@ -465,8 +469,8 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
                 if (!_calibration.TryGetRegion(RegionName, out Rectangle region))
                 {
                     StopCore(notify: false);
-                    _notifications.ShowWarning("Auto Antidote stopped — no calibrated region for the current resolution.");
-                    TryActivity("Auto Antidote stopped (region missing)", "warning");
+                    _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.noregion"));
+                    TryActivity(_localizer.T("scripts.antidote.activity.noregion"), "warning");
                     return;
                 }
 
@@ -562,7 +566,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         _triggerCount++;
         _lastTriggerAt = DateTime.Now;
         RaiseChanged();
-        TryActivity($"Auto Antidote triggered (#{_triggerCount})", "info");
+        TryActivity(_localizer.T("scripts.antidote.activity.triggered", _triggerCount), "info");
 
         var presses = Math.Clamp(Settings.BurstPresses, 1, MaxBurstPresses);
         var delay = Math.Clamp(Settings.BurstDelayMs, 0, MaxBurstDelayMs);
@@ -584,7 +588,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         }, ct);
 
         if (!completed && !ct.IsCancellationRequested)
-            TryActivity("Auto Antidote burst did not complete (game window unavailable?)", "warning");
+            TryActivity(_localizer.T("scripts.antidote.activity.burstfailed"), "warning");
 
         var cooldown = Math.Clamp(Settings.CooldownSeconds, 0, MaxCooldownSeconds);
         if (cooldown > 0)

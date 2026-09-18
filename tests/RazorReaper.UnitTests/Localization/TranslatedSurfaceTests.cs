@@ -2670,6 +2670,52 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Automation/Scripts/CalibratableScriptBase.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            "Capture the HUD icon region first",
+            "Auto Antidote is watching.",
+            "Auto Antidote stopped.",
+            "Region updated — capture a new reference",
+            "Failed to capture the icon region.",
+            "Reference snapshot cleared.",
+            "That key can't be used for the burst",
+            "That combination can't be used as a toggle hotkey",
+            "no calibrated region for the current resolution",
+            "Auto Antidote triggered (#",
+            "burst did not complete",
+        })
+        {
+            data.Add("Services/Automation/AutoAntidoteService.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Another calibration capture is already running.",
+            "Could not read the cursor position.",
+            "Failed to capture calibration point.",
+            "Region too small (",
+            "Failed to capture calibration region.",
+            "Calibration point '",
+        })
+        {
+            data.Add("Services/Automation/CalibrationService.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Fed-Suit macro started",
+            "Fed-Suit macro stopped",
+            "Fed-Suit macro could not run",
+            "First slot position is not calibrated",
+            "is not a supported key.",
+            "could not be registered — it may be in use by another app.",
+            "\"cycle\" : \"cycles\"",
+            "Fed-Suit run: ",
+        })
+        {
+            data.Add("Services/Automation/FedSuitMacro.cs", literal);
+        }
+
         data.Add("Services/Automation/Scripts/AstroScript.cs", "Focus ARK first");
 
         foreach (var literal in new[]

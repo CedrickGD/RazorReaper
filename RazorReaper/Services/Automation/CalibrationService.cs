@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 // Disambiguate from Microsoft.Maui.Graphics implicit usings.
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
@@ -98,6 +99,7 @@ public sealed class CalibrationService : ICalibrationService
 
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<CalibrationService> _logger;
     private readonly object _storeLock = new();
     private CalibrationStore? _store;
@@ -106,10 +108,12 @@ public sealed class CalibrationService : ICalibrationService
     public CalibrationService(
         INotificationService notifications,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<CalibrationService> logger)
     {
         _notifications = notifications;
         _activity = activity;
+        _localizer = localizer;
         _logger = logger;
     }
 
@@ -124,7 +128,7 @@ public sealed class CalibrationService : ICalibrationService
         if (string.IsNullOrWhiteSpace(name)) return null;
         if (Interlocked.CompareExchange(ref _capturing, 1, 0) != 0)
         {
-            _notifications.ShowWarning("Another calibration capture is already running.");
+            _notifications.ShowWarning(_localizer.T("scripts.cal.toast.busy"));
             return null;
         }
 
@@ -133,7 +137,7 @@ public sealed class CalibrationService : ICalibrationService
             await RunCountdownAsync(countdownSeconds, s => countdown?.Report(s), ct);
             if (!GetCursorPos(out var pt))
             {
-                _notifications.ShowError("Could not read the cursor position.");
+                _notifications.ShowError(_localizer.T("scripts.cal.toast.nocursor"));
                 return null;
             }
 
@@ -146,8 +150,8 @@ public sealed class CalibrationService : ICalibrationService
                 SaveStore(store);
             }
 
-            _notifications.ShowSuccess($"Point '{point.Name}' captured at {point.X}, {point.Y}.");
-            _activity.AddActivity($"Calibration point '{point.Name}' captured", "success");
+            _notifications.ShowSuccess(_localizer.T("scripts.cal.toast.pointcaptured", point.Name, point.X, point.Y));
+            _activity.AddActivity(_localizer.T("scripts.cal.activity.pointcaptured", point.Name), "success");
             return point;
         }
         catch (OperationCanceledException)
@@ -157,7 +161,7 @@ public sealed class CalibrationService : ICalibrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Point capture failed for '{Name}'", name);
-            _notifications.ShowError("Failed to capture calibration point.");
+            _notifications.ShowError(_localizer.T("scripts.cal.toast.pointfailed"));
             return null;
         }
         finally
@@ -172,7 +176,7 @@ public sealed class CalibrationService : ICalibrationService
         if (string.IsNullOrWhiteSpace(name)) return null;
         if (Interlocked.CompareExchange(ref _capturing, 1, 0) != 0)
         {
-            _notifications.ShowWarning("Another calibration capture is already running.");
+            _notifications.ShowWarning(_localizer.T("scripts.cal.toast.busy"));
             return null;
         }
 
@@ -181,14 +185,14 @@ public sealed class CalibrationService : ICalibrationService
             await RunCountdownAsync(countdownSeconds, s => progress?.Report(new RegionCaptureProgress(1, s)), ct);
             if (!GetCursorPos(out var corner1))
             {
-                _notifications.ShowError("Could not read the cursor position.");
+                _notifications.ShowError(_localizer.T("scripts.cal.toast.nocursor"));
                 return null;
             }
 
             await RunCountdownAsync(countdownSeconds, s => progress?.Report(new RegionCaptureProgress(2, s)), ct);
             if (!GetCursorPos(out var corner2))
             {
-                _notifications.ShowError("Could not read the cursor position.");
+                _notifications.ShowError(_localizer.T("scripts.cal.toast.nocursor"));
                 return null;
             }
 
@@ -209,9 +213,10 @@ public sealed class CalibrationService : ICalibrationService
                     "Region capture for '{Name}' rejected: {Width}x{Height} is below the {Min}px minimum",
                     region.Name, region.Right - region.Left, region.Bottom - region.Top,
                     CalibrationRegionRules.MinimumSidePx);
-                _notifications.ShowWarning(
-                    $"Region too small ({region.Right - region.Left}x{region.Bottom - region.Top}). "
-                    + "Hover two opposite corners of the target, not the same spot — the previous calibration was kept.");
+                _notifications.ShowWarning(_localizer.T(
+                    "scripts.cal.toast.regiontoosmall",
+                    region.Right - region.Left,
+                    region.Bottom - region.Top));
                 return null;
             }
 
@@ -223,8 +228,12 @@ public sealed class CalibrationService : ICalibrationService
                 SaveStore(store);
             }
 
-            _notifications.ShowSuccess($"Region '{region.Name}' captured ({region.Right - region.Left}x{region.Bottom - region.Top}).");
-            _activity.AddActivity($"Calibration region '{region.Name}' captured", "success");
+            _notifications.ShowSuccess(_localizer.T(
+                "scripts.cal.toast.regioncaptured",
+                region.Name,
+                region.Right - region.Left,
+                region.Bottom - region.Top));
+            _activity.AddActivity(_localizer.T("scripts.cal.activity.regioncaptured", region.Name), "success");
             return region;
         }
         catch (OperationCanceledException)
@@ -234,7 +243,7 @@ public sealed class CalibrationService : ICalibrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Region capture failed for '{Name}'", name);
-            _notifications.ShowError("Failed to capture calibration region.");
+            _notifications.ShowError(_localizer.T("scripts.cal.toast.regionfailed"));
             return null;
         }
         finally

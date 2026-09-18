@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation;
 
@@ -57,8 +58,13 @@ public interface IFedSuitMacro : IDisposable
     /// <summary>Cycles fully completed in the current (or last) run.</summary>
     int CyclesCompleted { get; }
 
-    /// <summary>Human-readable summary of the last run (e.g. "12 cycles in 3m 40s"), or null.</summary>
-    string? LastRunSummary { get; }
+    /// <summary>
+    /// Cycles completed by the last run and how long it took, or null before the first one. The
+    /// numbers rather than the sentence: this sits on the page for as long as the app is open,
+    /// so a summary worded here would keep the language it was worded in through a switch — the
+    /// same split CalibratableScriptBase.MaskCoverage uses.
+    /// </summary>
+    (int Cycles, TimeSpan Elapsed)? LastRun { get; }
 
     /// <summary>True while the start hotkey holds a live system-wide registration.</summary>
     bool StartHotkeyRegistered { get; }
@@ -93,6 +99,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private readonly ICalibrationService _calibration;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
+    private readonly ILocalizer _localizer;
     private readonly IUsageGateService _usageGate;
     private readonly ILogger<FedSuitMacro> _logger;
     private readonly IMacroRunner _runner;
@@ -107,7 +114,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private int _currentCycle;
     private int _cyclesCompleted;
     private int _lastStepIndex;
-    private string? _lastRunSummary;
+    private (int Cycles, TimeSpan Elapsed)? _lastRun;
     private DateTime _runStartedUtc;
 
     public FedSuitMacro(
@@ -117,6 +124,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         INotificationService notifications,
         IActivityService activity,
         IUsageGateService usageGate,
+        ILocalizer localizer,
         ILogger<FedSuitMacro> logger)
     {
         _engine = engine;
@@ -124,6 +132,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         _calibration = calibration;
         _notifications = notifications;
         _activity = activity;
+        _localizer = localizer;
         _usageGate = usageGate;
         _logger = logger;
 
@@ -150,9 +159,9 @@ public sealed class FedSuitMacro : IFedSuitMacro
         get { lock (_gate) return _cyclesCompleted; }
     }
 
-    public string? LastRunSummary
+    public (int Cycles, TimeSpan Elapsed)? LastRun
     {
-        get { lock (_gate) return _lastRunSummary; }
+        get { lock (_gate) return _lastRun; }
     }
 
     public bool StartHotkeyRegistered => _startHotkeyId > 0;
@@ -205,7 +214,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
             _runStartedUtc = DateTime.UtcNow;
         }
 
-        try { _notifications.ShowInfo($"Fed-Suit macro started — press {snapshot.StopHotkey} to stop."); }
+        try { _notifications.ShowInfo(_localizer.T("scripts.fed.toast.started", snapshot.StopHotkey)); }
         catch { /* notifications are best-effort */ }
 
         _ = Task.Run(() => RunToCompletionAsync(sequence));
@@ -225,7 +234,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
             if (gate.Allowed) return;
 
             Stop();
-            _notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} Fed-Suit starts). Resets next month — Premium is unlimited.");
+            _notifications.ShowWarning(_localizer.T("scripts.fed.toast.quota", gate.Limit));
         }
         catch (Exception ex)
         {
@@ -290,18 +299,23 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 cycles = _cyclesCompleted;
                 _currentCycle = 0;
                 elapsed = DateTime.UtcNow - _runStartedUtc;
-                _lastRunSummary = $"{cycles} {CycleWord(cycles)} in {FormatDuration(elapsed)}";
+                _lastRun = (cycles, elapsed);
             }
 
             try
             {
                 if (stoppedByUser || cycles > 0)
-                    _notifications.ShowInfo($"Fed-Suit macro stopped — {cycles} {CycleWord(cycles)} completed.");
+                    _notifications.ShowInfo(_localizer.T(
+                        cycles == 1 ? "scripts.fed.toast.stopped.one" : "scripts.fed.toast.stopped.many",
+                        cycles));
                 else
-                    _notifications.ShowWarning("Fed-Suit macro could not run — the ARK window was not available.");
+                    _notifications.ShowWarning(_localizer.T("scripts.fed.toast.noark"));
 
                 _activity.AddActivity(
-                    $"Fed-Suit run: {cycles} {CycleWord(cycles)} ({FormatDuration(elapsed)})",
+                    _localizer.T(
+                        cycles == 1 ? "scripts.fed.activity.run.one" : "scripts.fed.activity.run.many",
+                        cycles,
+                        FormatDuration(elapsed)),
                     cycles > 0 ? "success" : "warning");
             }
             catch { /* notifications/activity are best-effort */ }
@@ -335,9 +349,21 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
     private MacroSequence? BuildSequence(FedSuitSettings s)
     {
-        if (!FedSuitKeys.TryParseKey(s.OpenKey, out var openVk)) { NotifyBadKey("Open Transmitter", s.OpenKey); return null; }
-        if (!FedSuitKeys.TryParseKey(s.ExitKey, out var exitVk)) { NotifyBadKey("Exit Transmitter", s.ExitKey); return null; }
-        if (!FedSuitKeys.TryParseKey(s.TransferKey, out var transferVk)) { NotifyBadKey("Transfer", s.TransferKey); return null; }
+        if (!FedSuitKeys.TryParseKey(s.OpenKey, out var openVk))
+        {
+            NotifyBadKey("Open Transmitter", _localizer.T("scripts.fed.toast.badkey.open", s.OpenKey));
+            return null;
+        }
+        if (!FedSuitKeys.TryParseKey(s.ExitKey, out var exitVk))
+        {
+            NotifyBadKey("Exit Transmitter", _localizer.T("scripts.fed.toast.badkey.exit", s.ExitKey));
+            return null;
+        }
+        if (!FedSuitKeys.TryParseKey(s.TransferKey, out var transferVk))
+        {
+            NotifyBadKey("Transfer", _localizer.T("scripts.fed.toast.badkey.transfer", s.TransferKey));
+            return null;
+        }
 
         var steps = new List<MacroStep>
         {
@@ -363,7 +389,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
             }
             else
             {
-                try { _notifications.ShowWarning("First slot position is not calibrated for this resolution — the click step was skipped."); }
+                try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.noslot")); }
                 catch { /* notifications are best-effort */ }
             }
         }
@@ -385,10 +411,16 @@ public sealed class FedSuitMacro : IFedSuitMacro
         };
     }
 
-    private void NotifyBadKey(string label, string value)
+    /// <summary>
+    /// The log keeps the English label — that line is read in a file by whoever is debugging —
+    /// while the toast is a whole sentence per key rather than a translated word dropped into an
+    /// English frame. "{0} key is not supported" cannot be translated once: the three languages
+    /// put the noun somewhere else in the sentence.
+    /// </summary>
+    private void NotifyBadKey(string label, string message)
     {
-        _logger.LogWarning("Fed-Suit {Label} key '{Value}' could not be parsed", label, value);
-        try { _notifications.ShowError($"{label} key \"{value}\" is not a supported key."); }
+        _logger.LogWarning("Fed-Suit {Label} key could not be parsed", label);
+        try { _notifications.ShowError(message); }
         catch { /* notifications are best-effort */ }
     }
 
@@ -415,7 +447,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 _logger.LogWarning("Fed-Suit start hotkey '{Hotkey}' could not be registered", s.StartHotkey);
                 if (notifyFailures)
                 {
-                    try { _notifications.ShowWarning($"Start hotkey {s.StartHotkey} could not be registered — it may be in use by another app."); }
+                    try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.starthotkey", s.StartHotkey)); }
                     catch { /* notifications are best-effort */ }
                 }
             }
@@ -424,7 +456,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 _logger.LogWarning("Fed-Suit stop hotkey '{Hotkey}' could not be registered", s.StopHotkey);
                 if (notifyFailures)
                 {
-                    try { _notifications.ShowWarning($"Stop hotkey {s.StopHotkey} could not be registered — it may be in use by another app."); }
+                    try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.stophotkey", s.StopHotkey)); }
                     catch { /* notifications are best-effort */ }
                 }
             }
@@ -534,8 +566,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         try { Changed?.Invoke(); }
         catch { /* subscriber errors must not kill the macro */ }
     }
-
-    private static string CycleWord(int count) => count == 1 ? "cycle" : "cycles";
 
     private static string FormatDuration(TimeSpan t)
     {
