@@ -339,8 +339,22 @@ public sealed class FakeScreenSampler : IScreenSampler
     /// <summary>Set to make the sampler claim it cannot compare at all (capture failed, size changed).</summary>
     public bool SimilarityUnavailable { get; set; }
 
+    /// <summary>
+    /// Set to make every capture differ from the one before it — a screen that moved between two
+    /// presses. Left off, the captures are all zeroes and every comparison reads "nothing moved",
+    /// which is what the abort paths are tested against.
+    /// </summary>
+    public bool CapturesDiffer { get; set; }
+
+    private int _captures;
+
     public ScreenCapture CaptureRegion(Rectangle region)
-        => new(Math.Max(region.Width, 1), Math.Max(region.Height, 1), new byte[Math.Max(region.Width, 1) * Math.Max(region.Height, 1) * 4]);
+    {
+        int width = Math.Max(region.Width, 1), height = Math.Max(region.Height, 1);
+        var bgra = new byte[width * height * 4];
+        if (CapturesDiffer && Interlocked.Increment(ref _captures) % 2 == 0) Array.Fill(bgra, byte.MaxValue);
+        return new ScreenCapture(width, height, bgra);
+    }
 
     public void CaptureReference(string key, Rectangle region) => References.Add(key);
 

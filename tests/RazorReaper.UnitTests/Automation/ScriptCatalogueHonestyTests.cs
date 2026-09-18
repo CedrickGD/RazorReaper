@@ -35,6 +35,20 @@ public sealed class ScriptCatalogueHonestyTests
     }
 
     /// <summary>
+    /// The Turret Filler checks more than those four — pixels in the calibrated rectangle have to
+    /// move for a press to count — and it is still marked, because what moved and which way is
+    /// exactly what that check cannot say. A stack taken out of the turret scores the same as one
+    /// put in.
+    /// </summary>
+    [Fact]
+    public void AChangeCheckThatCannotSayWhatChangedIsMarkedToo()
+    {
+        using var filler = TurretFiller();
+
+        Assert.True(filler.IsExperimental);
+    }
+
+    /// <summary>
     /// Crafting is the one that is both. Watcher waits until it can see the station inventory
     /// before it crafts; Walk holds forward for a fixed number of milliseconds and presses where
     /// it hopes the next station is. Marking the whole script would be as wrong as marking none
@@ -179,6 +193,11 @@ public sealed class ScriptCatalogueHonestyTests
         new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
         Gate(), Hotkeys(), Toasts(), Activity(), English(),
         NullLogger<TurretManagerScript>.Instance);
+
+    private static TurretFillerScript TurretFiller() => new(
+        new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
+        Gate(), Hotkeys(), Toasts(), Activity(), English(),
+        NullLogger<TurretFillerScript>.Instance);
 
     private static CraftingScript Crafting() => new(
         new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
