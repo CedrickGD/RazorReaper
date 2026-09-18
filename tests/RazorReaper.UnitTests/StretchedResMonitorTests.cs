@@ -465,14 +465,19 @@ public sealed class StretchedResMonitorTests
         .WithMonitor(Display2, 1920, 1080);
 
     private static StretchedResService Build(IDisplayApi display, IPreferencesStore? preferences = null)
-        => new(
+    {
+        var store = preferences ?? new FakePreferencesStore();
+        return new StretchedResService(
             NullLogger<StretchedResService>.Instance,
             new StubNotificationService(),
             new StubActivityService(),
             new StubArkPathProvider(),
             new StubGameIniService(),
             display,
-            preferences ?? new FakePreferencesStore());
+            store,
+            new RazorReaper.Services.Localization.Localizer(
+                store, System.Globalization.CultureInfo.GetCultureInfo("en-US")));
+    }
 
     private sealed class StubNotificationService : INotificationService
     {

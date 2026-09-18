@@ -2813,6 +2813,49 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Desync/DesyncService.cs", literal);
         }
 
+        // Stretched Res's service: the page was finished two waves ago and this was never in
+        // range of the toast scan, because the file held no localizer at all. Six activity lines,
+        // four toasts, the validation and apply refusals, the per-vendor driver guidance and the
+        // nine Win32 display-change outcomes.
+        foreach (var literal in new[]
+        {
+            "Resolution must be at least",
+            "Resolution must not exceed",
+            "Confirm or revert the current change first.",
+            "Could not read the current display mode.",
+            "— confirm to keep",
+            "Apply failed:",
+            "Kept resolution",
+            "Reverted to the previous resolution.",
+            "Reverted resolution",
+            "Restore failed:",
+            "Restored desktop resolution",
+            "No previous resolution to revert to.",
+            "Resolution reverted automatically",
+            "Auto-reverted resolution (no confirmation)",
+            "Auto-revert failed:",
+            "ARK installation not found.",
+            "Failed to write GameUserSettings.ini.",
+            "to ARK's GameUserSettings.ini",
+            "ARK write failed:",
+            "Your display driver rejected",
+            "NVIDIA Control Panel",
+            "AMD Software: Adrenalin Edition",
+            "Intel Graphics Command Center",
+            "your GPU control panel's custom resolution option",
+            "The change requires a restart to take effect.",
+            "The display driver does not support this resolution.",
+            "The display driver failed the requested change.",
+            "Invalid display-change flags.",
+            "Invalid display-change parameters.",
+            "Unable to write the new settings to the registry.",
+            "The change is not supported in a multi-view configuration.",
+            "Display change failed (code",
+        })
+        {
+            data.Add("Services/StretchedResService.cs", literal);
+        }
+
         return data;
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services.Implementations;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services
 {
@@ -219,6 +220,7 @@ namespace RazorReaper.Services
         private readonly IGameIniService _gameIniService;
         private readonly IDisplayApi _display;
         private readonly IPreferencesStore _preferences;
+        private readonly ILocalizer _localizer;
 
         private readonly object _gate = new();
         private System.Threading.Timer? _revertTimer;
@@ -245,7 +247,8 @@ namespace RazorReaper.Services
             IArkPathProvider arkPathProvider,
             IGameIniService gameIniService,
             IDisplayApi display,
-            IPreferencesStore preferences)
+            IPreferencesStore preferences,
+            ILocalizer localizer)
         {
             _logger = logger;
             _notifications = notifications;
@@ -254,6 +257,7 @@ namespace RazorReaper.Services
             _gameIniService = gameIniService;
             _display = display;
             _preferences = preferences;
+            _localizer = localizer;
         }
 
         public event Action? StateChanged;
@@ -484,10 +488,12 @@ namespace RazorReaper.Services
 
         public DisplayChangeResult ValidateResolution(int width, int height)
         {
+            // The same two keys the page's own inline validation renders: one wording, so the
+            // field's error and the refusal a caller gets back cannot drift apart.
             if (width < MinDimension || height < MinDimension)
-                return DisplayChangeResult.Fail($"Resolution must be at least {MinDimension}×{MinDimension}.");
+                return DisplayChangeResult.Fail(_localizer.T("stretchedres.custom.error.min", MinDimension));
             if (width > MaxWidth || height > MaxHeight)
-                return DisplayChangeResult.Fail($"Resolution must not exceed {MaxWidth}×{MaxHeight}.");
+                return DisplayChangeResult.Fail(_localizer.T("stretchedres.custom.error.max", MaxWidth, MaxHeight));
             return DisplayChangeResult.Ok();
         }
 
@@ -507,7 +513,7 @@ namespace RazorReaper.Services
             {
                 if (_isPending)
                 {
-                    return DisplayChangeResult.Fail("Confirm or revert the current change first.");
+                    return DisplayChangeResult.Fail(_localizer.T("stretchedres.service.pending"));
                 }
             }
 
@@ -520,7 +526,7 @@ namespace RazorReaper.Services
                 var current = _display.GetCurrentMode(device);
                 if (current is not { } previous)
                 {
-                    return DisplayChangeResult.Fail("Could not read the current display mode.");
+                    return DisplayChangeResult.Fail(_localizer.T("stretchedres.service.readfailed"));
                 }
 
                 // Only the pixel dimensions change; refresh rate and colour depth are carried over.
@@ -530,13 +536,15 @@ namespace RazorReaper.Services
                 var test = _display.ChangeMode(device, mode, test: true);
                 if (test != DisplayChangeCodes.Successful)
                 {
-                    return DisplayChangeResult.Fail(DescribeMode(test, width, height, GetGpuInfo(device).Vendor));
+                    return DisplayChangeResult.Fail(
+                        DescribeMode(_localizer, test, width, height, GetGpuInfo(device).Vendor));
                 }
 
                 var apply = _display.ChangeMode(device, mode, test: false);
                 if (apply != DisplayChangeCodes.Successful)
                 {
-                    return DisplayChangeResult.Fail(DescribeMode(apply, width, height, GetGpuInfo(device).Vendor));
+                    return DisplayChangeResult.Fail(
+                        DescribeMode(_localizer, apply, width, height, GetGpuInfo(device).Vendor));
                 }
 
                 lock (_gate)
@@ -555,18 +563,24 @@ namespace RazorReaper.Services
                     StartRevertTimer();
                 }
 
-                var where = target.Monitor?.Label ?? device ?? "the primary display";
+                // The screen's name is built here rather than read off DisplayMonitor.Label: that
+                // property is the English one the log lines take, and this sentence is the
+                // reader's.
+                var where = MonitorLabel(target.Monitor) ?? device ?? _localizer.T("stretchedres.monitor.primary");
                 _logger.LogInformation(
                     "Applied stretched resolution {W}x{H} on {Device} (temporary, auto-revert in {S}s)",
                     width, height, device ?? "primary", AutoRevertSeconds);
-                _activity.AddActivity($"Applied {width}×{height} on {where} — confirm to keep", "warning");
+                _activity.AddActivity(
+                    _localizer.T("stretchedres.activity.applied", width, height, where),
+                    "warning",
+                    "stretchedres.activity.applied");
                 RaiseStateChanged();
                 return DisplayChangeResult.Ok();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to apply resolution {W}x{H}", width, height);
-                return DisplayChangeResult.Fail($"Apply failed: {ex.Message}");
+                return DisplayChangeResult.Fail(_localizer.T("stretchedres.service.applyfailed", ex.Message));
             }
         }
 
@@ -615,8 +629,11 @@ namespace RazorReaper.Services
             _logger.LogInformation("User kept stretched resolution {Res}", kept?.Label);
             if (kept != null)
             {
-                _notifications.ShowSuccess($"Kept {kept.Label}.");
-                _activity.AddActivity($"Kept resolution {kept.Label}", "success");
+                _notifications.ShowSuccess(_localizer.T("stretchedres.toast.kept", kept.Label));
+                _activity.AddActivity(
+                    _localizer.T("stretchedres.activity.kept", kept.Label),
+                    "success",
+                    "stretchedres.activity.kept");
             }
             RaiseStateChanged();
         }
@@ -626,8 +643,11 @@ namespace RazorReaper.Services
             var result = RevertInternal("manual");
             if (result.Success)
             {
-                _notifications.ShowInfo("Reverted to the previous resolution.");
-                _activity.AddActivity("Reverted resolution", "info");
+                _notifications.ShowInfo(_localizer.T("stretchedres.toast.reverted"));
+                _activity.AddActivity(
+                    _localizer.T("stretchedres.activity.reverted"),
+                    "info",
+                    "stretchedres.activity.reverted");
             }
             else if (result.Error != null)
             {
@@ -662,9 +682,9 @@ namespace RazorReaper.Services
                 var result = _display.ResetToRegistryMode(device);
                 if (result != DisplayChangeCodes.Successful)
                 {
-                    var msg = DescribeResult(result);
+                    var msg = DescribeResult(_localizer, result);
                     _logger.LogError("RestoreNative failed: {Msg}", msg);
-                    _notifications.ShowError($"Restore failed: {msg}");
+                    _notifications.ShowError(_localizer.T("stretchedres.service.restorefailed", msg));
                     RaiseStateChanged();
                     return DisplayChangeResult.Fail(msg);
                 }
@@ -681,15 +701,18 @@ namespace RazorReaper.Services
 
                 var now = GetCurrentResolution(device);
                 _logger.LogInformation("Restored native/normal desktop resolution ({Res})", now.Label);
-                _notifications.ShowSuccess($"Restored {now.Label}.");
-                _activity.AddActivity($"Restored desktop resolution {now.Label}", "success");
+                _notifications.ShowSuccess(_localizer.T("stretchedres.toast.restored", now.Label));
+                _activity.AddActivity(
+                    _localizer.T("stretchedres.activity.restored", now.Label),
+                    "success",
+                    "stretchedres.activity.restored");
                 RaiseStateChanged();
                 return DisplayChangeResult.Ok();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "RestoreNative threw");
-                _notifications.ShowError($"Restore failed: {ex.Message}");
+                _notifications.ShowError(_localizer.T("stretchedres.service.restorefailed", ex.Message));
                 RaiseStateChanged();
                 return DisplayChangeResult.Fail(ex.Message);
             }
@@ -713,7 +736,7 @@ namespace RazorReaper.Services
 
             if (!hasPrev)
             {
-                return DisplayChangeResult.Fail("No previous resolution to revert to.");
+                return DisplayChangeResult.Fail(_localizer.T("stretchedres.service.noprevious"));
             }
 
             try
@@ -725,7 +748,7 @@ namespace RazorReaper.Services
                     var reset = _display.ResetToRegistryMode(device);
                     if (reset != DisplayChangeCodes.Successful)
                     {
-                        var msg = DescribeResult(result);
+                        var msg = DescribeResult(_localizer, result);
                         _logger.LogError("Revert ({Reason}) failed: {Msg}", reason, msg);
                         return DisplayChangeResult.Fail(msg);
                     }
@@ -797,12 +820,15 @@ namespace RazorReaper.Services
                 var result = RevertInternal("auto-timeout");
                 if (result.Success)
                 {
-                    _notifications.ShowWarning("Resolution reverted automatically — no confirmation received.");
-                    _activity.AddActivity("Auto-reverted resolution (no confirmation)", "warning");
+                    _notifications.ShowWarning(_localizer.T("stretchedres.toast.autoreverted"));
+                    _activity.AddActivity(
+                        _localizer.T("stretchedres.activity.autoreverted"),
+                        "warning",
+                        "stretchedres.activity.autoreverted");
                 }
                 else if (result.Error != null)
                 {
-                    _notifications.ShowError($"Auto-revert failed: {result.Error}");
+                    _notifications.ShowError(_localizer.T("stretchedres.service.autorevertfailed", result.Error));
                 }
             }
 
@@ -933,7 +959,7 @@ namespace RazorReaper.Services
             {
                 if (_arkPathProvider.FindArkPath() == null)
                 {
-                    return DisplayChangeResult.Fail("ARK installation not found.");
+                    return DisplayChangeResult.Fail(_localizer.T("stretchedres.service.arkmissing"));
                 }
 
                 var w = width.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -952,17 +978,22 @@ namespace RazorReaper.Services
                 var result = await _gameIniService.ApplyEntriesAsync(GameIniTarget.GameUserSettings, entries);
                 if (!result.Success)
                 {
-                    return DisplayChangeResult.Fail(result.Error ?? "Failed to write GameUserSettings.ini.");
+                    // GameIniService's own Error arrives already worded for the reader.
+                    return DisplayChangeResult.Fail(
+                        result.Error ?? _localizer.T("stretchedres.service.arkwritefailed"));
                 }
 
                 _logger.LogInformation("Wrote ARK resolution {W}x{H} to GameUserSettings.ini (backup: {Backup})", width, height, result.BackupPath ?? "none");
-                _activity.AddActivity($"Wrote {width}×{height} to ARK's GameUserSettings.ini", "info");
+                _activity.AddActivity(
+                    _localizer.T("stretchedres.activity.arkwritten", width, height),
+                    "info",
+                    "stretchedres.activity.arkwritten");
                 return DisplayChangeResult.Ok();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to write ARK resolution {W}x{H}", width, height);
-                return DisplayChangeResult.Fail($"ARK write failed: {ex.Message}");
+                return DisplayChangeResult.Fail(_localizer.T("stretchedres.ark.toast.failed", ex.Message));
             }
         }
 
@@ -1003,38 +1034,58 @@ namespace RazorReaper.Services
             return a == 0 ? 1 : a;
         }
 
-        internal static string DescribeMode(int code, int width, int height, GpuVendor vendor)
+        /// <summary>
+        /// The screen a message names, in the reader's language — the same two keys the page's own
+        /// picker renders, so the activity line and the dropdown agree on what "monitor 2" is
+        /// called. Null when nothing was resolved, which is the caller's cue to fall back.
+        /// </summary>
+        private string? MonitorLabel(DisplayMonitor? monitor)
+            => monitor is null
+                ? null
+                : _localizer.T(
+                    monitor.IsPrimary ? "stretchedres.monitor.option.primary" : "stretchedres.monitor.option",
+                    monitor.Index, monitor.CurrentMode.Width, monitor.CurrentMode.Height);
+
+        /// <remarks>
+        /// Static with the localizer handed in rather than an instance method: the vendor guidance
+        /// is asserted on its own, and building a display service to read one sentence would make
+        /// that test about everything except the sentence.
+        /// </remarks>
+        internal static string DescribeMode(ILocalizer localizer, int code, int width, int height, GpuVendor vendor)
         {
             if (code == DisplayChangeCodes.BadMode)
             {
-                return $"Your display driver rejected {width}×{height}. Create it first in {DescribeCustomResolutionPath(vendor)}, then try again.";
+                return localizer.T(
+                    "stretchedres.driver.rejected",
+                    width, height, DescribeCustomResolutionPath(localizer, vendor));
             }
-            return DescribeResult(code);
+            return DescribeResult(localizer, code);
         }
 
         /// <summary>
         /// Where a custom resolution is created, per GPU vendor. The single source of truth for
         /// this wording so the driver-rejection message never drifts from the on-page guidance.
         /// </summary>
-        internal static string DescribeCustomResolutionPath(GpuVendor vendor) => vendor switch
-        {
-            GpuVendor.Nvidia => "NVIDIA Control Panel → Change resolution → Customize",
-            GpuVendor.Amd => "AMD Software: Adrenalin Edition → Display → Custom Resolutions",
-            GpuVendor.Intel => "Intel Graphics Command Center → Display → Custom Resolutions",
-            _ => "your GPU control panel's custom resolution option"
-        };
+        internal static string DescribeCustomResolutionPath(ILocalizer localizer, GpuVendor vendor)
+            => localizer.T(vendor switch
+            {
+                GpuVendor.Nvidia => "stretchedres.driver.path.nvidia",
+                GpuVendor.Amd => "stretchedres.driver.path.amd",
+                GpuVendor.Intel => "stretchedres.driver.path.intel",
+                _ => "stretchedres.driver.path.none"
+            });
 
-        private static string DescribeResult(int code) => code switch
+        private static string DescribeResult(ILocalizer localizer, int code) => code switch
         {
-            DisplayChangeCodes.Successful => "Success.",
-            DisplayChangeCodes.Restart => "The change requires a restart to take effect.",
-            DisplayChangeCodes.BadMode => "The display driver does not support this resolution.",
-            DisplayChangeCodes.Failed => "The display driver failed the requested change.",
-            DisplayChangeCodes.BadFlags => "Invalid display-change flags.",
-            DisplayChangeCodes.BadParam => "Invalid display-change parameters.",
-            DisplayChangeCodes.NotUpdated => "Unable to write the new settings to the registry.",
-            DisplayChangeCodes.BadDualView => "The change is not supported in a multi-view configuration.",
-            _ => $"Display change failed (code {code})."
+            DisplayChangeCodes.Successful => localizer.T("stretchedres.result.success"),
+            DisplayChangeCodes.Restart => localizer.T("stretchedres.result.restart"),
+            DisplayChangeCodes.BadMode => localizer.T("stretchedres.result.badmode"),
+            DisplayChangeCodes.Failed => localizer.T("stretchedres.result.failed"),
+            DisplayChangeCodes.BadFlags => localizer.T("stretchedres.result.badflags"),
+            DisplayChangeCodes.BadParam => localizer.T("stretchedres.result.badparam"),
+            DisplayChangeCodes.NotUpdated => localizer.T("stretchedres.result.notupdated"),
+            DisplayChangeCodes.BadDualView => localizer.T("stretchedres.result.baddualview"),
+            _ => localizer.T("stretchedres.result.unknown", code)
         };
 
         public void Dispose()
