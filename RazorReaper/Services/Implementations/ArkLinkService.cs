@@ -8,13 +8,6 @@ public sealed class ArkLinkService : IArkLinkService, IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 
-    /// <summary>
-    /// Consecutive "not running" polls required before a state change is trusted. Process
-    /// enumeration can transiently miss a live process, and a single 3s blip must neither
-    /// tear down the app nor re-trigger the show-window path.
-    /// </summary>
-    private const int ExitConfirmPolls = 2;
-
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "RazorReaper";
 
@@ -146,17 +139,25 @@ public sealed class ArkLinkService : IArkLinkService, IDisposable
     {
         try
         {
-            if (!Preferences.ContainsKey(IArkLinkService.LegacyEnabledPreferenceKey))
+            // What to write is decided by ArkLinkLegacyMigration.Plan, which knows nothing about
+            // Preferences — the rule "a value the user has since set wins over the old toggle" is
+            // the part worth pinning down, and it is unreachable from here.
+            var plan = ArkLinkLegacyMigration.Plan(
+                hasLegacyKey: Preferences.ContainsKey(IArkLinkService.LegacyEnabledPreferenceKey),
+                legacyValue: Preferences.Get(IArkLinkService.LegacyEnabledPreferenceKey, false),
+                hasStartWithArk: Preferences.ContainsKey(IArkLinkService.StartWithArkPreferenceKey),
+                hasCloseWithArk: Preferences.ContainsKey(IArkLinkService.CloseWithArkPreferenceKey));
+
+            if (!plan.RemoveLegacyKey)
                 return;
 
-            if (Preferences.Get(IArkLinkService.LegacyEnabledPreferenceKey, false))
-            {
-                if (!Preferences.ContainsKey(IArkLinkService.StartWithArkPreferenceKey))
-                    Preferences.Set(IArkLinkService.StartWithArkPreferenceKey, true);
-                if (!Preferences.ContainsKey(IArkLinkService.CloseWithArkPreferenceKey))
-                    Preferences.Set(IArkLinkService.CloseWithArkPreferenceKey, true);
+            if (plan.SetStartWithArk)
+                Preferences.Set(IArkLinkService.StartWithArkPreferenceKey, true);
+            if (plan.SetCloseWithArk)
+                Preferences.Set(IArkLinkService.CloseWithArkPreferenceKey, true);
+
+            if (plan.SetStartWithArk || plan.SetCloseWithArk)
                 _logger.LogInformation("Migrated legacy ARK link toggle to split start/close options.");
-            }
 
             Preferences.Remove(IArkLinkService.LegacyEnabledPreferenceKey);
         }
@@ -208,57 +209,40 @@ public sealed class ArkLinkService : IArkLinkService, IDisposable
     {
         var processName = _config.Value.Ark.GameProcessName;
 
-        // Debounced ARK state: null until the first poll settles. Show fires on a
-        // confirmed off → on transition (brings a tray-hidden instance back into view —
-        // fresh launches are the login watcher's job, see Platforms/Windows/ArkWatch.cs);
-        // quit fires on a confirmed on → off transition. The toggles are re-read at each
-        // event so flipping them mid-session takes effect without a watcher restart.
-        bool? arkRunning = null;
-        var missedPolls = 0;
+        // Show fires on a confirmed off → on transition (brings a tray-hidden instance back
+        // into view — fresh launches are the login watcher's job, see
+        // Platforms/Windows/ArkWatch.cs); quit fires on a confirmed on → off transition. Which
+        // poll counts as either is ArkPresenceDebounce's decision, and the only part of this
+        // loop a test can reach. The toggles are re-read at each event so flipping them
+        // mid-session takes effect without a watcher restart.
+        var presence = new ArkPresenceDebounce();
 
         try
         {
             using var timer = new PeriodicTimer(PollInterval);
             while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
             {
-                if (_process.IsProcessRunning(processName))
+                switch (presence.Observe(_process.IsProcessRunning(processName)))
                 {
-                    missedPolls = 0;
-                    if (arkRunning != true)
-                    {
-                        var cameUp = arkRunning == false;
-                        arkRunning = true;
-
-                        if (cameUp && StartWithArk && !token.IsCancellationRequested)
+                    case ArkPresenceChange.CameUp:
+                        if (StartWithArk && !token.IsCancellationRequested)
                         {
                             _logger.LogInformation("ARK detected — bringing RazorReaper into view.");
                             RaiseShowApp();
                         }
-                    }
-                    continue;
+                        break;
+
+                    case ArkPresenceChange.WentDown:
+                        if (CloseWithArk)
+                        {
+                            QuitApp(token);
+                            return;
+                        }
+
+                        // Close-with-ARK is off: keep watching so a later ARK start can still
+                        // bring the window up.
+                        break;
                 }
-
-                if (arkRunning is null)
-                {
-                    arkRunning = false;
-                    continue;
-                }
-
-                if (arkRunning == false || ++missedPolls < ExitConfirmPolls)
-                    continue;
-
-                // Confirmed on → off transition.
-                arkRunning = false;
-                missedPolls = 0;
-
-                if (CloseWithArk)
-                {
-                    QuitApp(token);
-                    return;
-                }
-
-                // Close-with-ARK is off: keep watching so a later ARK start can still
-                // bring the window up.
             }
         }
         catch (OperationCanceledException)
