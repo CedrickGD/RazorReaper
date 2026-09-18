@@ -1,8 +1,10 @@
 @page "/building"
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Building Techniques</h1>
-    <p class="page-subtitle">Foundation, walls, layouts and meta build patterns</p>
+    <h1 class="page-title">@Localizer.T("building.title")</h1>
+    <p class="page-subtitle">@Localizer.T("building.subtitle")</p>
 </header>
 
 <div class="building-layout">
@@ -15,18 +17,18 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 1a1 1 0 011 1v3.586l2.293-2.293a1 1 0 011.414 1.414L11.414 8H15a1 1 0 110 2h-3.586l2.293 2.293a1 1 0 11-1.414 1.414L10 11.414V15a1 1 0 11-2 0v-3.586L5.707 13.707a1 1 0 01-1.414-1.414L6.586 10H3a1 1 0 110-2h3.586L4.293 5.707a1 1 0 011.414-1.414L8 6.586V3a1 1 0 011-1z" /></svg>
                 </div>
                 <div>
-                    <h2>Perfect Foundation Snap</h2>
-                    <p class="building-section-sub">The base of every build — get foundations lined up perfectly.</p>
+                    <h2>@Localizer.T("building.snap.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.snap.sub")</p>
                 </div>
             </div>
 
             <div class="building-dual-grid">
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Foundation Raising</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.snap.raising")</strong></div>
                     <HostedVideo Src="videos/raising.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Foundation Lowering</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.snap.lowering")</strong></div>
                     <HostedVideo Src="videos/lowering.mp4" controls preload="metadata" class="building-video" />
                 </div>
             </div>
@@ -38,68 +40,68 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 1v3h4V5H5zm6 0v3h4V5h-4zM5 10v3h4v-3H5zm6 0v3h4v-3h-4zM5 15h10v-1H5v1z"/></svg>
                 </div>
                 <div>
-                    <h2>How to Build a Wall</h2>
-                    <p class="building-section-sub">Stop your turrets from getting blocked — the #1 reason walls fail.</p>
+                    <h2>@Localizer.T("building.wall.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.wall.sub")</p>
                 </div>
             </div>
 
             <div class="building-callout danger">
-                <p><strong>40% of turrets don't shoot through these wall patterns.</strong> If you've been getting soaked, this is probably why.</p>
+                <p><strong>@Localizer.T("building.wall.callout.bold")</strong> @Localizer.T("building.wall.callout.rest")</p>
             </div>
 
-            <h3 class="building-subhead">Don't build like this</h3>
+            <h3 class="building-subhead">@Localizer.T("building.wall.dont")</h3>
             <div class="building-image-grid two">
                 <figure class="building-figure danger">
-                    <HostedImg Src="images/building/wall-1-bad-basic.jpg" alt="Basic wrong wall" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Basic wall — turrets get blocked</figcaption>
+                    <HostedImg Src="images/building/wall-1-bad-basic.jpg" alt="@Localizer.T("building.wall.alt.bad1")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.bad1")</figcaption>
                 </figure>
                 <figure class="building-figure danger">
-                    <HostedImg Src="images/building/wall-2-bad-triangle.jpg" alt="Triangle snap wall" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Triangle snap — doesn't snap properly</figcaption>
+                    <HostedImg Src="images/building/wall-2-bad-triangle.jpg" alt="@Localizer.T("building.wall.alt.bad2")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.bad2")</figcaption>
                 </figure>
             </div>
 
-            <h3 class="building-subhead">Build like this</h3>
+            <h3 class="building-subhead">@Localizer.T("building.wall.do")</h3>
             <div class="building-image-grid">
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/wall-3-correct.jpg" alt="Correct wall" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Correct pattern — clear shot lanes</figcaption>
+                    <HostedImg Src="images/building/wall-3-correct.jpg" alt="@Localizer.T("building.wall.alt.correct")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.correct")</figcaption>
                 </figure>
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/wall-5-tek-on-ceiling.jpg" alt="Tek on ceiling" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>1 tek + 1 metal. Tek turret on ceiling = more res but small dead angle.</figcaption>
+                    <HostedImg Src="images/building/wall-5-tek-on-ceiling.jpg" alt="@Localizer.T("building.wall.alt.tekceiling")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.tekceiling")</figcaption>
                 </figure>
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/wall-6-tunnel-turrets.jpg" alt="Tunnel turrets" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Turrets shoot into the tunnel entrance</figcaption>
+                    <HostedImg Src="images/building/wall-6-tunnel-turrets.jpg" alt="@Localizer.T("building.wall.alt.tunnel")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.tunnel")</figcaption>
                 </figure>
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/wall-7-gens-vault.jpg" alt="Gens with vault drop" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Many gens with vault drops, one above the entrance</figcaption>
+                    <HostedImg Src="images/building/wall-7-gens-vault.jpg" alt="@Localizer.T("building.wall.alt.gens")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.gens")</figcaption>
                 </figure>
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/wall-9-floating-turret.jpg" alt="Floating turret only-player" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Floating turret in <em>only player</em> for counter-soak</figcaption>
+                    <HostedImg Src="images/building/wall-9-floating-turret.jpg" alt="@Localizer.T("building.wall.alt.floating")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.wall.cap.floating")</figcaption>
                 </figure>
             </div>
 
-            <h3 class="building-subhead">Reference videos</h3>
+            <h3 class="building-subhead">@Localizer.T("building.wall.refvideos")</h3>
             <div class="building-dual-grid">
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Tek + Metal walkthrough</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.wall.vid.tekmetal")</strong></div>
                     <HostedVideo Src="videos/building/wall-4-tek-metal-demo.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Correct build sequence</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.wall.vid.correct")</strong></div>
                     <HostedVideo Src="videos/building/wall-correct-build.mp4" controls preload="metadata" class="building-video" />
                 </div>
             </div>
 
             <ul class="building-checklist">
-                <li>Don't use pillar+ceiling 90% of the time — creates dead angles.</li>
-                <li>Always double-snap your wall with the cliff.</li>
-                <li>Add a gate to counter pushes.</li>
-                <li>Vault drops with gens above and beside the entrance.</li>
+                <li>@Localizer.T("building.wall.check.1")</li>
+                <li>@Localizer.T("building.wall.check.2")</li>
+                <li>@Localizer.T("building.wall.check.3")</li>
+                <li>@Localizer.T("building.wall.check.4")</li>
             </ul>
         </section>
 
@@ -109,8 +111,8 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2 0v4h12V5H4zm0 6v4h7v-4H4zm9 0v4h3v-4h-3z"/></svg>
                 </div>
                 <div>
-                    <h2>Base Layouts</h2>
-                    <p class="building-section-sub">Mainfob, towers, cages — the meta floorplans.</p>
+                    <h2>@Localizer.T("building.layouts.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.layouts.sub")</p>
                 </div>
             </div>
 
@@ -121,7 +123,7 @@
                     </div>
                     <div class="building-layout-meta">
                         <h3>Mainfob</h3>
-                        <p>Fattest to build. Add a TP-Cage and pair it with a warroom/crafting setup.</p>
+                        <p>@Localizer.T("building.layouts.mainfob.text")</p>
                     </div>
                 </article>
 
@@ -131,44 +133,44 @@
                     </div>
                     <div class="building-layout-meta">
                         <h3>Cage TP</h3>
-                        <p>Rename the TP to <code>CAGE</code>, close it, place walls and ceilings everywhere.</p>
+                        <p>@Localizer.T("building.layouts.cage.text")</p>
                     </div>
                 </article>
 
                 <article class="building-layout-card">
                     <div class="building-layout-image-wrap">
-                        <HostedImg Src="images/building/tower-overview.jpg" alt="Tower" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                        <HostedImg Src="images/building/tower-overview.jpg" alt="@Localizer.T("building.layouts.tower.title")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
                     </div>
                     <div class="building-layout-meta">
-                        <h3>Tower</h3>
-                        <p>Turrets on floor, gens on the side. Doorframes go 1/2 — see reference shots below.</p>
+                        <h3>@Localizer.T("building.layouts.tower.title")</h3>
+                        <p>@Localizer.T("building.layouts.tower.text")</p>
                     </div>
                 </article>
 
                 <article class="building-layout-card">
                     <div class="building-layout-image-wrap">
-                        <HostedImg Src="images/building/underwater-1.jpg" alt="Underwater Tower" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                        <HostedImg Src="images/building/underwater-1.jpg" alt="@Localizer.T("building.layouts.underwater.title")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
                     </div>
                     <div class="building-layout-meta">
-                        <h3>Underwater Tower</h3>
-                        <p>Fully-snapped underwater tower with vacuum compartments.</p>
+                        <h3>@Localizer.T("building.layouts.underwater.title")</h3>
+                        <p>@Localizer.T("building.layouts.underwater.text")</p>
                     </div>
                 </article>
             </div>
 
             <details class="building-details">
-                <summary>Tower reference shots</summary>
+                <summary>@Localizer.T("building.layouts.tower.shots")</summary>
                 <div class="building-image-grid">
-                    <figure class="building-figure"><HostedImg Src="images/building/tower-1.jpg" alt="Tower 1" loading="lazy" decoding="async" onclick="rrZoom(this)" /><figcaption>Tower turret floor</figcaption></figure>
-                    <figure class="building-figure"><HostedImg Src="images/building/tower-doorframe.jpg" alt="Tower doorframe" loading="lazy" decoding="async" onclick="rrZoom(this)" /><figcaption>Doorframe 1/2 trick</figcaption></figure>
+                    <figure class="building-figure"><HostedImg Src="images/building/tower-1.jpg" alt="@Localizer.T("building.layouts.tower.alt1")" loading="lazy" decoding="async" onclick="rrZoom(this)" /><figcaption>@Localizer.T("building.layouts.tower.cap1")</figcaption></figure>
+                    <figure class="building-figure"><HostedImg Src="images/building/tower-doorframe.jpg" alt="@Localizer.T("building.layouts.tower.altdoor")" loading="lazy" decoding="async" onclick="rrZoom(this)" /><figcaption>@Localizer.T("building.layouts.tower.capdoor")</figcaption></figure>
                 </div>
             </details>
 
             <details class="building-details">
-                <summary>Underwater Tower reference shots</summary>
+                <summary>@Localizer.T("building.layouts.underwater.shots")</summary>
                 <div class="building-image-grid">
-                    <figure class="building-figure"><HostedImg Src="images/building/underwater-2.jpg" alt="Underwater 2" loading="lazy" decoding="async" onclick="rrZoom(this)" /></figure>
-                    <figure class="building-figure"><HostedImg Src="images/building/underwater-4.jpg" alt="Underwater 4" loading="lazy" decoding="async" onclick="rrZoom(this)" /></figure>
+                    <figure class="building-figure"><HostedImg Src="images/building/underwater-2.jpg" alt="@Localizer.T("building.layouts.underwater.alt2")" loading="lazy" decoding="async" onclick="rrZoom(this)" /></figure>
+                    <figure class="building-figure"><HostedImg Src="images/building/underwater-4.jpg" alt="@Localizer.T("building.layouts.underwater.alt4")" loading="lazy" decoding="async" onclick="rrZoom(this)" /></figure>
                 </div>
             </details>
         </section>
@@ -179,30 +181,30 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M11 17a1 1 0 100-2 1 1 0 000 2zm-7-1a1 1 0 011-1h2a1 1 0 110 2H5a1 1 0 01-1-1zM4 8h12v6H4V8zm2-3a1 1 0 011-1h6a1 1 0 011 1v2H6V5z"/></svg>
                 </div>
                 <div>
-                    <h2>Crafting Setup</h2>
-                    <p class="building-section-sub">Vaults, replicators, hatchframes — clean tek storage layouts.</p>
+                    <h2>@Localizer.T("building.crafting.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.crafting.sub")</p>
                 </div>
             </div>
 
             <div class="building-dual-grid">
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/crafting-template.jpg" alt="Crafting template" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption><strong>Starter pack template</strong> — base reference for a build-it crafting setup.</figcaption>
+                    <HostedImg Src="images/building/crafting-template.jpg" alt="@Localizer.T("building.crafting.alt.template")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption><strong>@Localizer.T("building.crafting.cap.template.bold")</strong> @Localizer.T("building.crafting.cap.template.rest")</figcaption>
                 </figure>
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/crafting-repli.jpg" alt="Repli at 3 dedi" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Replicator at 3 dedi-high spacing.</figcaption>
+                    <HostedImg Src="images/building/crafting-repli.jpg" alt="@Localizer.T("building.crafting.alt.repli")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.crafting.cap.repli")</figcaption>
                 </figure>
             </div>
 
-            <h3 class="building-subhead">Placement walkthroughs</h3>
+            <h3 class="building-subhead">@Localizer.T("building.crafting.walkthroughs")</h3>
             <div class="building-dual-grid">
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Vault on floor</strong> like a cryofridge</div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.crafting.vid.vault.bold")</strong> @Localizer.T("building.crafting.vid.vault.rest")</div>
                     <HostedVideo Src="videos/building/crafting-1-vault-place.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Floor vault method</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.crafting.vid.floorvault")</strong></div>
                     <HostedVideo Src="videos/building/crafting-2-floor-vault.mp4" controls preload="metadata" class="building-video" />
                 </div>
             </div>
@@ -214,54 +216,54 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M3 3h14v3H3V3zm0 5h14v3H3V8zm0 5h14v3H3v-3z"/></svg>
                 </div>
                 <div>
-                    <h2>Spam Tactics</h2>
-                    <p class="building-section-sub">Spam control sizing + structures that hold ground when offline.</p>
+                    <h2>@Localizer.T("building.spam.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.spam.sub")</p>
                 </div>
             </div>
 
-            <h3 class="building-subhead">Sizing reference</h3>
+            <h3 class="building-subhead">@Localizer.T("building.spam.sizing")</h3>
             <div class="building-dual-grid">
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/spam-size-2.jpg" alt="Spam size cliff" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Cliff sizing — drop a gen to estimate your spam radius.</figcaption>
+                    <HostedImg Src="images/building/spam-size-2.jpg" alt="@Localizer.T("building.spam.alt.cliff")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.spam.cap.cliff")</figcaption>
                 </figure>
                 <figure class="building-figure">
-                    <HostedImg Src="images/building/spam-size-3.jpg" alt="Toilette spam" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <figcaption>Toilette can take spam control — same size as foundation.</figcaption>
+                    <HostedImg Src="images/building/spam-size-3.jpg" alt="@Localizer.T("building.spam.alt.toilette")" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <figcaption>@Localizer.T("building.spam.cap.toilette")</figcaption>
                 </figure>
             </div>
 
             <details class="building-details">
-                <summary>Spam structure book (18 images)</summary>
+                <summary>@Localizer.T("building.spam.book", 18)</summary>
                 <div class="building-spam-gallery">
-                    <HostedImg Src="images/building/spam-2.jpg" alt="Spam 2" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-3.jpg" alt="Spam 3" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-4.jpg" alt="Spam 4" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-5.jpg" alt="Spam 5" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-6.jpg" alt="Spam 6" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-7.jpg" alt="Spam 7" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-8.jpg" alt="Spam 8" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-9.jpg" alt="Spam 9" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-10.jpg" alt="Spam 10" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-11.jpg" alt="Spam 11" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-12.jpg" alt="Spam 12" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-13.jpg" alt="Spam 13" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-14.jpg" alt="Spam 14" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-15.jpg" alt="Spam 15" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-16.jpg" alt="Spam 16" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-17.jpg" alt="Spam 17" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-18.jpg" alt="Spam 18" loading="lazy" decoding="async" onclick="rrZoom(this)" />
-                    <HostedImg Src="images/building/spam-19.jpg" alt="Spam 19" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-2.jpg" alt="@Localizer.T("building.spam.alt.n", 2)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-3.jpg" alt="@Localizer.T("building.spam.alt.n", 3)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-4.jpg" alt="@Localizer.T("building.spam.alt.n", 4)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-5.jpg" alt="@Localizer.T("building.spam.alt.n", 5)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-6.jpg" alt="@Localizer.T("building.spam.alt.n", 6)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-7.jpg" alt="@Localizer.T("building.spam.alt.n", 7)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-8.jpg" alt="@Localizer.T("building.spam.alt.n", 8)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-9.jpg" alt="@Localizer.T("building.spam.alt.n", 9)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-10.jpg" alt="@Localizer.T("building.spam.alt.n", 10)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-11.jpg" alt="@Localizer.T("building.spam.alt.n", 11)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-12.jpg" alt="@Localizer.T("building.spam.alt.n", 12)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-13.jpg" alt="@Localizer.T("building.spam.alt.n", 13)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-14.jpg" alt="@Localizer.T("building.spam.alt.n", 14)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-15.jpg" alt="@Localizer.T("building.spam.alt.n", 15)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-16.jpg" alt="@Localizer.T("building.spam.alt.n", 16)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-17.jpg" alt="@Localizer.T("building.spam.alt.n", 17)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-18.jpg" alt="@Localizer.T("building.spam.alt.n", 18)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
+                    <HostedImg Src="images/building/spam-19.jpg" alt="@Localizer.T("building.spam.alt.n", 19)" loading="lazy" decoding="async" onclick="rrZoom(this)" />
                 </div>
             </details>
 
             <ul class="building-checklist">
-                <li>Turret in a vault drop counters M.D.S.M.</li>
-                <li>Pillar in a vault drop = light spam control.</li>
-                <li>Tek bridge: doesn't take spam control while offline.</li>
-                <li>Bubble spam: founda inside takes very long to destroy. Force-shields: size 1 lets you place the second closest one.</li>
-                <li>Founda pillars: need 2 mek or another collision to damage (1 mek isn't enough).</li>
-                <li>Tanster cliff: snap with kav vault, place foundas as high as possible on the cliff with low walls + ceilings underneath, then remove the wall to break the ceilings.</li>
+                <li>@Localizer.T("building.spam.check.1")</li>
+                <li>@Localizer.T("building.spam.check.2")</li>
+                <li>@Localizer.T("building.spam.check.3")</li>
+                <li>@Localizer.T("building.spam.check.4")</li>
+                <li>@Localizer.T("building.spam.check.5")</li>
+                <li>@Localizer.T("building.spam.check.6")</li>
             </ul>
         </section>
 
@@ -271,8 +273,8 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 3l2-2 2 2v2h2V3l2-2 2 2v2h2V3l2-2v18l-2-1h-2v-2h-2v2H8v-2H6v2H4V3z"/></svg>
                 </div>
                 <div>
-                    <h2>Fence Pillars</h2>
-                    <p class="building-section-sub">Cheap to push, easy to destroy — pick your spots wisely.</p>
+                    <h2>@Localizer.T("building.fence.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.fence.sub")</p>
                 </div>
             </div>
 
@@ -286,10 +288,10 @@
                     <figcaption>Metal Pillar</figcaption>
                 </figure>
                 <div class="building-fence-copy">
-                    <p>Perfect for push. Build wherever — they're easy to destroy, so use <strong>Tek Crop Plots</strong> when you need them to survive.</p>
-                    <p>Great for soaking with an FFA Teleporter or pushing with turrets. For turret caps, use <strong>Tek Fence Pillars</strong>.</p>
-                    <p class="building-warning-line">Method 2 can count as a floating structure — use carefully.</p>
-                    <a class="building-link" href="https://youtu.be/PjcnB4XYO2k" target="_blank" rel="noopener">How to fence-pillar (YouTube)</a>
+                    <p>@Localizer.T("building.fence.copy1")</p>
+                    <p>@Localizer.T("building.fence.copy2")</p>
+                    <p class="building-warning-line">@Localizer.T("building.fence.warning")</p>
+                    <a class="building-link" href="https://youtu.be/PjcnB4XYO2k" target="_blank" rel="noopener">@Localizer.T("building.fence.link")</a>
                 </div>
             </div>
         </section>
@@ -300,54 +302,54 @@
                     <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v8.586l2.293-2.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 11.586V3a1 1 0 011-1zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"/></svg>
                 </div>
                 <div>
-                    <h2>Floating Structures</h2>
-                    <p class="building-section-sub">Hatchframe / Transmi / Cryobreeder placement videos.</p>
+                    <h2>@Localizer.T("building.floating.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.floating.sub")</p>
                 </div>
             </div>
 
             <div class="building-triple-grid">
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Floating turrets</strong> via hatchframe</div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.floating.vid.turrets")</strong> @Localizer.T("building.floating.viahatchframe")</div>
                     <HostedVideo Src="videos/building/floating-1-turrets.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Floating vault drop</strong> via hatchframe</div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.floating.vid.vault")</strong> @Localizer.T("building.floating.viahatchframe")</div>
                     <HostedVideo Src="videos/building/floating-2-vault.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Floating hatchframe</strong> with Transmi/Cryobreeder</div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.floating.vid.hatch")</strong> @Localizer.T("building.floating.vid.hatch.rest")</div>
                     <HostedVideo Src="videos/building/floating-3-hatchframe.mp4" controls preload="metadata" class="building-video" />
                 </div>
             </div>
-            <p class="building-section-copy">Adding turrets to a floating hatchframe can flip it into <em>illegal</em> floating — see below.</p>
+            <p class="building-section-copy">@Localizer.T("building.floating.copy")</p>
         </section>
 
         <section id="illegal" class="content-card building-section building-section-danger">
             <div class="building-section-header">
                 <div class="building-section-icon illegal-icon">
-                    <HostedImg Src="images/building/illegal-icon.png" alt="Illegal" />
+                    <HostedImg Src="images/building/illegal-icon.png" alt="@Localizer.T("building.illegal.alt")" />
                 </div>
                 <div>
-                    <h2>Illegal Floating Methods</h2>
-                    <p class="building-section-sub">Pillar + fish net, hatchframe + trapdoor, kav/S+ fridge snaps.</p>
+                    <h2>@Localizer.T("building.illegal.title")</h2>
+                    <p class="building-section-sub">@Localizer.T("building.illegal.sub")</p>
                 </div>
             </div>
 
             <div class="building-callout danger">
-                <p>Server rules vary. These methods abuse snap-points and may be wiped by admins. Reference only.</p>
+                <p>@Localizer.T("building.illegal.callout")</p>
             </div>
 
             <div class="building-triple-grid">
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Pillar + fish net</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.illegal.vid.fishnet")</strong></div>
                     <HostedVideo Src="videos/building/illegal-1-pillar-fishnet.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Hatchframe + trapdoor</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.illegal.vid.trapdoor")</strong></div>
                     <HostedVideo Src="videos/building/illegal-2-hatchframe.mp4" controls preload="metadata" class="building-video" />
                 </div>
                 <div class="building-media-card">
-                    <div class="building-media-label"><strong>Snap with Kav / S+ fridge</strong></div>
+                    <div class="building-media-label"><strong>@Localizer.T("building.illegal.vid.kav")</strong></div>
                     <HostedVideo Src="videos/building/illegal-3-snap-kav.mp4" controls preload="metadata" class="building-video" />
                 </div>
             </div>
@@ -358,18 +360,28 @@
     <div class="building-sidebar">
 
         <div class="content-card building-nav-card">
-            <h3>On this page</h3>
+            <h3>@Localizer.T("building.nav.title")</h3>
             <nav class="building-nav">
-                <a href="javascript:void(0)" onclick="document.getElementById('snap').scrollIntoView({behavior:'smooth',block:'start'})">Perfect Foundation Snap</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('wall').scrollIntoView({behavior:'smooth',block:'start'})">How to Build a Wall</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('layouts').scrollIntoView({behavior:'smooth',block:'start'})">Base Layouts</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('crafting').scrollIntoView({behavior:'smooth',block:'start'})">Crafting Setup</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('spam').scrollIntoView({behavior:'smooth',block:'start'})">Spam Tactics</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('fence').scrollIntoView({behavior:'smooth',block:'start'})">Fence Pillars</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('floating').scrollIntoView({behavior:'smooth',block:'start'})">Floating Structures</a>
-                <a href="javascript:void(0)" onclick="document.getElementById('illegal').scrollIntoView({behavior:'smooth',block:'start'})" class="danger">Illegal Methods</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('snap').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.snap.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('wall').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.wall.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('layouts').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.layouts.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('crafting').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.crafting.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('spam').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.spam.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('fence').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.fence.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('floating').scrollIntoView({behavior:'smooth',block:'start'})">@Localizer.T("building.floating.title")</a>
+                <a href="javascript:void(0)" onclick="document.getElementById('illegal').scrollIntoView({behavior:'smooth',block:'start'})" class="danger">@Localizer.T("building.nav.illegal")</a>
             </nav>
         </div>
 
     </div>
 </div>
+
+@code {
+    /// <summary>
+    /// Repaints the page when the language changes; why the cascade rather than a subscription
+    /// of this page's own is explained in MainLayout. This page has no other C# at all — it is
+    /// a guide — so the parameter is the whole code block.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+}

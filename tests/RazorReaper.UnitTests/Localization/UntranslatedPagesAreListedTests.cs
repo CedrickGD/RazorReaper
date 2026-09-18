@@ -3,13 +3,17 @@ using System.Text.RegularExpressions;
 namespace RazorReaper.UnitTests.Localization;
 
 /// <summary>
-/// The migration is not finished, and the half-done state is the one worth writing down.
-/// docs/i18n.md carries a table of the pages that are still English end to end; this keeps that
-/// table honest in both directions.
+/// docs/i18n.md carries a list of the pages that are still English end to end; this keeps that
+/// list honest in both directions.
 ///
-/// Both directions matter. A page that gets migrated and stays in the table sends the next
+/// Both directions matter. A page that gets migrated and stays on the list sends the next
 /// reader to do work that is already done. A page that never gets migrated and is quietly
-/// dropped from the table reads as finished, and nobody goes looking for it again.
+/// dropped from the list reads as finished, and nobody goes looking for it again.
+///
+/// The list is **empty** as of the third wave: every page under Components/Pages renders
+/// <c>Localizer.T</c>. That is a state this test has to be able to describe, so it no longer
+/// insists the list has entries — the direction that still catches something is the second one,
+/// and it is what a page added tomorrow will run into.
 ///
 /// What this test cannot tell you is how much of a page is migrated: one <c>Localizer.T(</c> is
 /// enough to take a page off the list, and six pages came off it with every toast still in
@@ -65,12 +69,15 @@ public sealed class UntranslatedPagesAreListedTests
                 relativePath.Replace('/', Path.DirectorySeparatorChar)))
             .Contains("Localizer.T(", StringComparison.Ordinal);
 
+    /// <summary>
+    /// Whatever the list names has to be a real file. It may name nothing at all — it does today —
+    /// but a path on it that no longer exists is a reader sent to a file that is not there.
+    /// </summary>
     [Fact]
-    public void TheDocumentedRemainderIsNotEmptyAndEveryEntryExists()
+    public void EveryDocumentedRemainderEntryExists()
     {
         var listed = DocumentedRemainder();
 
-        Assert.NotEmpty(listed);
         Assert.All(listed, path => Assert.True(
             File.Exists(Path.Combine(TranslationParityTests.RepositoryRoot(), "RazorReaper",
                 path.Replace('/', Path.DirectorySeparatorChar))),
