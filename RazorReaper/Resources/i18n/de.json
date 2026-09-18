@@ -62,6 +62,13 @@
   "nav.page.troubleshoot": "Fehlersuche",
   "nav.page.credits": "Credits",
 
+  "palette.placeholder": "Seiten, Orte und Befehle durchsuchen...",
+  "palette.section.pages": "Seiten",
+  "palette.section.locations": "Orte",
+  "palette.section.commands": "Befehle",
+  "palette.section.recent": "Zuletzt verwendet",
+  "palette.section.jumpto": "Direkt zu",
+
   "home.welcome": "Willkommen, {0}",
   "home.subtitle": "Konfigurations- und Serververwaltung für ARK: Survival Evolved",
   "home.status.title": "Status",

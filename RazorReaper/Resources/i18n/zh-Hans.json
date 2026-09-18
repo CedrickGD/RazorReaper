@@ -62,6 +62,13 @@
   "nav.page.troubleshoot": "疑难解答",
   "nav.page.credits": "制作人员",
 
+  "palette.placeholder": "搜索页面、地点和命令...",
+  "palette.section.pages": "页面",
+  "palette.section.locations": "地点",
+  "palette.section.commands": "命令",
+  "palette.section.recent": "最近",
+  "palette.section.jumpto": "快速跳转",
+
   "home.welcome": "欢迎，{0}",
   "home.subtitle": "ARK: Survival Evolved 配置与服务器管理工具",
   "home.status.title": "状态",

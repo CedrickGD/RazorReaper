@@ -1,7 +1,9 @@
 @using RazorReaper.Navigation
+@using RazorReaper.Services.Localization
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject IPaletteCommandProvider CommandProvider
+@inject ILocalizer Localizer
 @implements IAsyncDisposable
 
 @*
@@ -31,7 +33,7 @@
                 <input @ref="_inputRef"
                        type="text"
                        class="search-input"
-                       placeholder="Search pages, locations and commands..."
+                       placeholder="@Localizer.T("palette.placeholder")"
                        @bind-value="Query"
                        @bind-value:event="oninput"
                        @onkeydown="HandleKeyDown"
@@ -169,7 +171,7 @@
     /// Sections follow first appearance in the ranked list, so whichever kind holds the best
     /// match leads — and ranking order is preserved inside each section.
     /// </summary>
-    private static List<PaletteSection> GroupByKind(List<PaletteItem> ranked)
+    private List<PaletteSection> GroupByKind(List<PaletteItem> ranked)
     {
         var sections = new List<PaletteSection>();
 
@@ -188,11 +190,11 @@
         return sections;
     }
 
-    private static string KindLabel(PaletteKind kind) => kind switch
+    private string KindLabel(PaletteKind kind) => kind switch
     {
-        PaletteKind.Page => "Pages",
-        PaletteKind.DeepLink => "Locations",
-        _ => "Commands"
+        PaletteKind.Page => Localizer.T("palette.section.pages"),
+        PaletteKind.DeepLink => Localizer.T("palette.section.locations"),
+        _ => Localizer.T("palette.section.commands")
     };
 
     // ---- Empty-query state ------------------------------------------------
@@ -208,8 +210,8 @@
     {
         var recent = DefaultRecent();
         return recent.Count > 0
-            ? new List<PaletteSection> { new("Recent", recent) }
-            : new List<PaletteSection> { new("Jump to", DefaultFallback()) };
+            ? new List<PaletteSection> { new(Localizer.T("palette.section.recent"), recent) }
+            : new List<PaletteSection> { new(Localizer.T("palette.section.jumpto"), DefaultFallback()) };
     }
 
     private List<PaletteItem> DefaultRecent()
@@ -220,24 +222,20 @@
             .ToList();
 
     /// <summary>Shown on a first run, before anything has been visited.</summary>
-    private static List<PaletteItem> DefaultFallback()
+    private List<PaletteItem> DefaultFallback()
         => NavCatalog.Groups
             .First()
             .Pages
             .Select(ToPaletteItem)
             .ToList();
 
-    private static PaletteItem ToPaletteItem(NavPage page) => new()
-    {
-        Kind = PaletteKind.Page,
-        Id = $"page:{page.Route}",
-        Title = page.Label,
-        Subtitle = page.Description,
-        Category = page.Category,
-        IconSvg = page.IconSvg,
-        Keywords = page.Keywords,
-        Route = page.Route
-    };
+    /// <summary>
+    /// The row reads in the active language, and stays findable under its English name —
+    /// see <see cref="PalettePages"/>. Nothing here subscribes to the switch: every row and
+    /// every section label is built in <see cref="OpenAsync"/>, and the palette cannot be open
+    /// while the language picker on the settings page is being used.
+    /// </summary>
+    private PaletteItem ToPaletteItem(NavPage page) => PalettePages.ToItem(page, Localizer);
 
     // ---- Lifecycle --------------------------------------------------------
 

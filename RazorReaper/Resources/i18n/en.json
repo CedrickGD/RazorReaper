@@ -62,6 +62,13 @@
   "nav.page.troubleshoot": "Troubleshoot",
   "nav.page.credits": "Credits",
 
+  "palette.placeholder": "Search pages, locations and commands...",
+  "palette.section.pages": "Pages",
+  "palette.section.locations": "Locations",
+  "palette.section.commands": "Commands",
+  "palette.section.recent": "Recent",
+  "palette.section.jumpto": "Jump to",
+
   "home.welcome": "Welcome, {0}",
   "home.subtitle": "ARK: Survival Evolved Configuration & Server Management Tool",
   "home.status.title": "Status",

@@ -68,6 +68,20 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            "placeholder=\"Search pages, locations and commands...\"",
+            "=> \"Pages\"",
+            "=> \"Locations\"",
+            "=> \"Commands\"",
+            "new(\"Recent\"",
+            "new(\"Jump to\"",
+            "Title = page.Label",
+        })
+        {
+            data.Add("Components/Shared/GlobalSearch.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             "Welcome, @userName",
             "ARK: Survival Evolved Configuration & Server Management Tool",
             "<h3>Status</h3>",
@@ -241,6 +255,8 @@ public sealed class TranslatedSurfaceTests
     [InlineData("notfound.title", "Page not found")]
     [InlineData("notfound.back", "Back to Home")]
     [InlineData("nav.page.feedback", "Feedback & Support")]
+    [InlineData("palette.placeholder", "Search pages, locations and commands...")]
+    [InlineData("palette.section.jumpto", "Jump to")]
     [InlineData("license.buy.renew", "Buy / renew")]
     [InlineData("license.buy.premium", "Buy Premium")]
     [InlineData("license.fact.device.bound", "Bound to this PC")]

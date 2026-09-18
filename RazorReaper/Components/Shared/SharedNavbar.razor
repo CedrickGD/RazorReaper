@@ -152,11 +152,23 @@
     {
         LicenseService.OnLicenseStateChanged += OnLicenseStateChangedHandler;
         LicenseOverlay.OnStateChanged += OnLicenseOverlayStateChangedHandler;
+        Localizer.LanguageChanged += OnLanguageChangedHandler;
         Navigation.LocationChanged += HandleLocationChanged;
         SyncPanelToCurrentPage();
     }
 
     private void OnLicenseStateChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
+
+    /// <summary>
+    /// The sidebar has to hear the language switch itself.
+    ///
+    /// MainLayout subscribes as well, and its render does not reach here: this component takes no
+    /// parameters, and Blazor's diff skips a retained child whose parameters are unchanged, so the
+    /// layout's render stops at the layout. Every label above is already looked up at render time
+    /// — the rows simply never re-rendered, and kept their English until the next navigation or
+    /// license event happened to push one through.
+    /// </summary>
+    private void OnLanguageChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
 
     // Keeps aria-expanded on the tier button truthful while the overlay is open.
     private void OnLicenseOverlayStateChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
@@ -334,6 +346,7 @@
         this.StopRenderDispatch();
         LicenseService.OnLicenseStateChanged -= OnLicenseStateChangedHandler;
         LicenseOverlay.OnStateChanged -= OnLicenseOverlayStateChangedHandler;
+        Localizer.LanguageChanged -= OnLanguageChangedHandler;
         Navigation.LocationChanged -= HandleLocationChanged;
 
         try

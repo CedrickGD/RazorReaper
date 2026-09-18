@@ -108,8 +108,12 @@
 
     /// <summary>
     /// A language switch has to reach the whole window, not just the settings row that made it.
-    /// Re-rendering the layout re-renders the sidebar, the overlays and the routed page it holds
-    /// in one pass, which is why the subscription lives here and nowhere else.
+    /// This re-renders the layout's own markup.
+    ///
+    /// It does <i>not</i> reach the components the layout holds. They take no parameters, and
+    /// Blazor's diff skips a retained child whose parameters are unchanged — so a subscription
+    /// here is the start of the repaint, never the whole of it. Every child with translated text
+    /// of its own subscribes as well (SharedNavbar does), and a new one has to.
     /// </summary>
     private void SubscribeLanguage()
     {
