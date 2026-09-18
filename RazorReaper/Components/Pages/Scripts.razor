@@ -1,8 +1,12 @@
 @page "/scripts"
+@using Microsoft.Extensions.Logging
 @using RazorReaper.Services
 @using RazorReaper.Services.Automation
 @using RazorReaper.Services.Automation.Scripts
 @inject IEnumerable<AutomationScriptBase> AllScripts
+@inject IGameIniService GameIni
+@inject IForegroundGate Foreground
+@inject ILogger<Scripts> Logger
 @implements IDisposable
 @using RazorReaper.Services.Localization
 @inject ILocalizer Localizer
@@ -51,6 +55,14 @@
                               Label="@_selected.DisplayName"
                               Description="@Describe(_selected)">
                     <Actions>
+                        @* Every script here is gated on ARK being the window in front, and until
+                           now the page never said so: a script the gate was holding shut looked
+                           exactly like a script that was running and doing nothing. The pill sits
+                           beside Start because that is the moment the answer is needed. *@
+                        <span class="scripts-ark-pill @ArkPillClass" title="@Localizer.T("scripts.ark.tooltip")">
+                            <span class="scripts-ark-dot"></span>
+                            @Localizer.T(ArkStatusKey)
+                        </span>
                         @if (!_selected.UsesVision)
                         {
                             <UsageChip Feature="@UsageFeatures.InputScripts" />
@@ -382,11 +394,94 @@
     private readonly List<AutomationScriptBase> _scripts = new();
     private AutomationScriptBase? _selected;
 
+    /// <summary>Where ARK is, as far as a script is concerned. The three answers are different.</summary>
+    private enum ArkPresence
+    {
+        /// <summary>No game process at all — nothing any script does can land anywhere.</summary>
+        NotRunning,
+        /// <summary>Running, but behind this window: the foreground gate is shut and ticks are skipped.</summary>
+        Background,
+        /// <summary>The game has focus. This is the only state in which a script actually acts.</summary>
+        Foreground
+    }
+
+    private ArkPresence _ark = ArkPresence.NotRunning;
+    private Timer? _arkTimer;
+
+    /// <summary>
+    /// 1.5 s. Fast enough that alt-tabbing back is reflected before the hand reaches Start, slow
+    /// enough that the process lookup behind it costs nothing — and it only runs while this page
+    /// is mounted, because <see cref="Dispose"/> takes the timer down with it.
+    /// </summary>
+    private static readonly TimeSpan ArkPollInterval = TimeSpan.FromSeconds(1.5);
+
+    private string ArkStatusKey => _ark switch
+    {
+        ArkPresence.Foreground => "scripts.ark.foreground",
+        ArkPresence.Background => "scripts.ark.background",
+        _ => "scripts.ark.notrunning"
+    };
+
+    private string ArkPillClass => _ark switch
+    {
+        ArkPresence.Foreground => "live",
+        ArkPresence.Background => "warn",
+        _ => "off"
+    };
+
     protected override void OnInitialized()
     {
         _scripts.AddRange(AllScripts);
         _selected = _scripts.FirstOrDefault();
         foreach (var s in _scripts) s.Changed += OnScriptChanged;
+
+        ReadArkPresence();
+        _arkTimer = new Timer(_ => ArkTick(), null, ArkPollInterval, ArkPollInterval);
+    }
+
+    // A TimerCallback has no caller to hand a fault to: on .NET 10 anything escaping here is
+    // rethrown on the pool thread as an unhandled exception and takes the process down. Same
+    // shape as Game.razor's status tick, for the same reason.
+    private void ArkTick()
+    {
+        try
+        {
+            ArkTickCore();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Scripts ARK status tick failed");
+        }
+    }
+
+    private void ArkTickCore()
+    {
+        if (this.IsRenderStopped()) return;
+
+        var before = _ark;
+        ReadArkPresence();
+
+        // Not conditional on the state having moved: a running script's "last action" line ages
+        // between ticks, and a line that only refreshes when ARK changes windows would sit at
+        // "2 s ago" for a minute.
+        if (before != _ark || _scripts.Any(s => s.IsRunning))
+            this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
+    }
+
+    /// <summary>
+    /// The process check first, then the gate. Foreground implies running, but only the process
+    /// check tells "ARK was never started" apart from "ARK is behind this window" — and those two
+    /// are fixed by completely different actions.
+    /// </summary>
+    private void ReadArkPresence()
+    {
+        if (!GameIni.IsArkRunning())
+        {
+            _ark = ArkPresence.NotRunning;
+            return;
+        }
+
+        _ark = Foreground.IsGameForeground() ? ArkPresence.Foreground : ArkPresence.Background;
     }
 
     // Not static: the description is looked up where the header renders, so a switch re-words
@@ -841,6 +936,8 @@
     public void Dispose()
     {
         this.StopRenderDispatch();
+        _arkTimer?.Dispose();
+        _arkTimer = null;
         foreach (var s in _scripts) s.Changed -= OnScriptChanged;
     }
 }

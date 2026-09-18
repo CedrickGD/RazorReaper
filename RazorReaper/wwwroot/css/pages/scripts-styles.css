@@ -179,6 +179,53 @@
     padding: 0.65rem 0.85rem;
 }
 
+/* Where ARK is, in the row with the Start button. Built like the quota chip next to it
+   (see autoclicker-styles.css) so the two read as one family rather than as a warning
+   banner: this is a fact about the machine, not an alarm. */
+.scripts-ark-pill {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: var(--radius-round);
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    /* Headings in a host card can gradient-fill their text and would make this invisible. */
+    -webkit-text-fill-color: var(--text-secondary);
+}
+
+.scripts-ark-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+/* ARK has focus — the only state in which a script actually acts. */
+.scripts-ark-pill.live {
+    background: rgba(var(--accent-purple-rgb), 0.14);
+    border-color: rgba(var(--accent-purple-rgb), 0.4);
+    color: var(--accent-purple-soft);
+    -webkit-text-fill-color: var(--accent-purple-soft);
+}
+
+/* Running but behind this window: the gate is shut and every tick is skipped. Amber
+   rather than red — nothing is broken, the window is just in the way. */
+.scripts-ark-pill.warn {
+    background: rgba(var(--accent-orange-rgb), 0.12);
+    border-color: rgba(var(--accent-orange-rgb), 0.35);
+    color: var(--accent-orange-soft);
+    -webkit-text-fill-color: var(--accent-orange-soft);
+}
+
 /* Settings and Calibration side by side. Stacked, the calibratable scripts ran off the
    bottom; the settings side takes the wider share because it holds up to eight rows. */
 .script-panels {
