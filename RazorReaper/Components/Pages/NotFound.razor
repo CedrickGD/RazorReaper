@@ -8,3 +8,16 @@
     <p class="page-subtitle">@Localizer.T("notfound.subtitle")</p>
     <a class="rr-pill-btn ghost sm" href="/home">@Localizer.T("notfound.back")</a>
 </header>
+
+@code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    ///
+    /// This page is rendered by the router's NotFound branch rather than by a route, and the
+    /// branch is inside the same layout, so the cascade reaches it like any other page.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+}

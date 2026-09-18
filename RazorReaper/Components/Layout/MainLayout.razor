@@ -19,35 +19,59 @@
 @inject ILocalizer Localizer
 @inject IJSRuntime JS
 
-<NotificationContainer />
-<GlobalSearch />
-<ImageLightbox />
-@* Plays the full-window "Premium unlocked" moment. Lives here rather than on Home so it
-   covers the whole app and fires wherever the activation happened. *@
-<LicenseActivated />
-@* Full-window license view (tier, key, expiry, activation), opened from the sidebar's
-   tier line. Rendered here for the same reason: it has to cover the nav as well. *@
-<LicenseOverlay />
-@* Full-window "What's new & inbox" view (release notes, update action, latest support
-   replies), opened from the sidebar's notification icon. Mounted here for the same reason. *@
-<WhatsNewOverlay />
+@* The language switch, carried to every component that renders translated text.
+   ------------------------------------------------------------------------
+   A parent's render does not reach a child whose parameters are unchanged: Blazor's diff
+   compares them, finds them DefinitelyEqual — trivially so for the many components here that
+   take none at all — and keeps the child as it stands. So this layout re-rendering in German
+   left <AccentColorCard /> and every other parameterless child in English until something
+   unrelated happened to repaint it.
 
-<div class="app-container">
-    <SharedNavbar />
+   A cascading value is the framework's own answer to that. When it changes, every component
+   holding a matching [CascadingParameter] gets SetParametersAsync and a render — and only
+   those. The value is the language tag itself, read straight off the localizer rather than
+   mirrored into a field, so there is one answer to "what language is this" in the app.
 
-    <main class="main-content">
-        @Body
-    </main>
+   The tree below is the whole app: the router renders every page into @Body, and the overlays
+   above it are mounted here for the same reason. A component that renders Localizer.T declares
 
-</div>
+       [CascadingParameter(Name = "Language")] public string? Language { get; set; }
 
-@* Full-screen access gate: covers the entire app (nav included) whenever this machine is
-   suspended or banned. Rendered last so it sits on top; it fails open, so it only appears when
-   the server has affirmatively reported a suspension. *@
-@if (AccessGate.IsSuspended)
-{
-    <AccessBlocked />
-}
+   and needs nothing else — no subscription, no disposal. LanguageCascadeTests scans for the
+   ones that forgot. *@
+<CascadingValue Value="@Localizer.Language" Name="Language">
+
+    <NotificationContainer />
+    <GlobalSearch />
+    <ImageLightbox />
+    @* Plays the full-window "Premium unlocked" moment. Lives here rather than on Home so it
+       covers the whole app and fires wherever the activation happened. *@
+    <LicenseActivated />
+    @* Full-window license view (tier, key, expiry, activation), opened from the sidebar's
+       tier line. Rendered here for the same reason: it has to cover the nav as well. *@
+    <LicenseOverlay />
+    @* Full-window "What's new & inbox" view (release notes, update action, latest support
+       replies), opened from the sidebar's notification icon. Mounted here for the same reason. *@
+    <WhatsNewOverlay />
+
+    <div class="app-container">
+        <SharedNavbar />
+
+        <main class="main-content">
+            @Body
+        </main>
+
+    </div>
+
+    @* Full-screen access gate: covers the entire app (nav included) whenever this machine is
+       suspended or banned. Rendered last so it sits on top; it fails open, so it only appears when
+       the server has affirmatively reported a suspension. *@
+    @if (AccessGate.IsSuspended)
+    {
+        <AccessBlocked />
+    }
+
+</CascadingValue>
 
 @code {
     protected override async Task OnInitializedAsync()
@@ -107,13 +131,17 @@
     }
 
     /// <summary>
-    /// A language switch has to reach the whole window, not just the settings row that made it.
-    /// This re-renders the layout's own markup.
+    /// The one subscription the language switch needs in the whole app.
     ///
-    /// It does <i>not</i> reach the components the layout holds. They take no parameters, and
-    /// Blazor's diff skips a retained child whose parameters are unchanged — so a subscription
-    /// here is the start of the repaint, never the whole of it. Every child with translated text
-    /// of its own subscribes as well (SharedNavbar does), and a new one has to.
+    /// It re-renders the layout, which re-renders the <c>&lt;CascadingValue Name="Language"&gt;</c>
+    /// above with the new tag, and that is what reaches the children: a changed cascading value
+    /// forces SetParametersAsync and a render on every component holding the matching
+    /// <c>[CascadingParameter]</c>, however deep and however parameterless it is. Nothing else
+    /// subscribes — a component that renders translated text declares the parameter instead.
+    ///
+    /// A component rendered outside this tree would still need its own subscription, because a
+    /// cascade reaches only what is below it. There is none today: the router renders every page
+    /// into <c>@Body</c>, and the overlays are mounted here.
     /// </summary>
     private void SubscribeLanguage()
     {

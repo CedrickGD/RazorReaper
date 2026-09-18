@@ -94,6 +94,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string FontDefaultPresetId = "system";
     private const string DefaultUiStack = "\"Segoe UI Variable\", \"Segoe UI\", \"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif";
     private const string DefaultMonoStack = "\"Cascadia Code\", \"JetBrainsMono Nerd Font\", \"FiraCode Nerd Font\", Consolas, \"Courier New\", monospace";

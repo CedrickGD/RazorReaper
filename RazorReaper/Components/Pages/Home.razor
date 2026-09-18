@@ -452,6 +452,14 @@
         <!-- End of Home Content -->
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private DateTime currentTime = DateTime.Now;
     private string userName = "";
     private System.Timers.Timer? updateTimer; // Consolidated timer for clock and session

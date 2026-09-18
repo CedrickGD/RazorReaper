@@ -99,6 +99,14 @@
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     /// <summary>Rows rendered at once. Anything beyond this is reported in the footer, never dropped silently.</summary>
     private const int MaxResults = 50;
 

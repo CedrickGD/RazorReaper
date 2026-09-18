@@ -11,11 +11,12 @@ namespace RazorReaper.UnitTests.Localization;
 /// Picking "Deutsch" on Settings turned that page German and left the sidebar English until some
 /// later render pushed it through. The lookups were never the problem — the sidebar already
 /// resolved every label at render time — so this pins the two halves that were: the labels
-/// really do follow the language, and the sidebar really is subscribed to hear it change.
+/// really do follow the language, and the sidebar really does hear it change.
 ///
-/// MainLayout subscribing is not enough and cannot be: <c>&lt;SharedNavbar /&gt;</c> takes no
-/// parameters, and Blazor's diff skips a retained child whose parameters are unchanged, so a
-/// layout render stops at the layout.
+/// The sidebar heard it through a subscription of its own, once. It now hears it the way every
+/// other component in the app does, through MainLayout's Language cascade; the mechanism and the
+/// scan that keeps it honest live in <see cref="LanguageCascadeTests"/>, and what stays here is
+/// the sidebar's own end of it.
 /// </summary>
 public sealed class LanguageSwitchReachesTheChromeTests
 {
@@ -82,36 +83,44 @@ public sealed class LanguageSwitchReachesTheChromeTests
 
     // ---- The sidebar hears the switch --------------------------------------
 
+    /// <summary>
+    /// The sidebar declares the cascading parameter, and nothing else. Its own subscription was
+    /// correct and is now redundant — it renders inside MainLayout, which is where the cascade is
+    /// published — and a second path to the same repaint is what left the last reader guessing
+    /// which of the two was carrying the switch.
+    /// </summary>
     [Fact]
-    public void TheSidebarSubscribesToTheLanguageAndUnsubscribes()
+    public void TheSidebarTakesTheSwitchFromTheCascadeAndNotFromAnEventOfItsOwn()
     {
         var navbar = Source("Components", "Shared", "SharedNavbar.razor");
 
-        Assert.Contains("Localizer.LanguageChanged += OnLanguageChangedHandler", navbar, StringComparison.Ordinal);
-        Assert.Contains("Localizer.LanguageChanged -= OnLanguageChangedHandler", navbar, StringComparison.Ordinal);
+        Assert.Contains("[CascadingParameter(Name = \"Language\")]", navbar, StringComparison.Ordinal);
+        Assert.DoesNotContain("Localizer.LanguageChanged +=", navbar, StringComparison.Ordinal);
+        Assert.DoesNotContain("Localizer.LanguageChanged -=", navbar, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// The switch arrives on whatever thread called SetLanguage, so the re-render goes through
-    /// the gate rather than a bare InvokeAsync — an unobserved faulted dispatch here is RR-E1003,
-    /// and the sidebar is mounted for the whole session.
+    /// The gate is still there for the subscriptions the sidebar does keep — the license state and
+    /// the overlay both arrive off the renderer's thread, and an unobserved faulted dispatch from a
+    /// component mounted for the whole session is RR-E1003.
     /// </summary>
     [Fact]
-    public void TheSidebarRepaintsThroughTheGuardedDispatch()
+    public void TheSidebarsRemainingSubscriptionsStillRepaintThroughTheGuardedDispatch()
     {
         var navbar = Source("Components", "Shared", "SharedNavbar.razor");
 
         Assert.Contains(
-            "private void OnLanguageChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));",
+            "private void OnLicenseStateChangedHandler() => this.DispatchRender(() => InvokeAsync(StateHasChanged));",
             navbar,
             StringComparison.Ordinal);
         Assert.Contains("this.StopRenderDispatch();", navbar, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// The layout's subscription stays — it repaints the layout's own markup — but it may no
-    /// longer be described as the one that covers the sidebar, because that is the belief that
-    /// left the sidebar English.
+    /// The layout's subscription stays, and it is now the only one in the app: it repaints the
+    /// layout, and the layout's render is what hands the cascade its new value. It may still not
+    /// be described as reaching the sidebar directly, because that is the belief that left the
+    /// sidebar English.
     /// </summary>
     [Fact]
     public void TheLayoutNoLongerClaimsItRepaintsTheSidebar()
