@@ -169,11 +169,39 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
     /// <summary>Per-reference pixel filter: false = moved between captures, so it is background.</summary>
     private readonly ConcurrentDictionary<string, bool[]> _referenceMasks = new(StringComparer.OrdinalIgnoreCase);
 
-    public ScreenSampler(ILogger<ScreenSampler> logger)
+    /// <summary>Which of the two capture paths served the last grab.</summary>
+    private enum CapturePath
+    {
+        /// <summary>Nothing has been captured yet this run.</summary>
+        None,
+        /// <summary>Desktop Duplication — the only path that can see a fullscreen game.</summary>
+        Duplication,
+        /// <summary>GDI BitBlt. Fine for a windowed game, blind to a fullscreen one.</summary>
+        Gdi
+    }
+
+    private CapturePath _path = CapturePath.None;
+
+    /// <summary>
+    /// Both dependencies are optional so the on-device capture harnesses can still build a
+    /// sampler out of a logger alone (Platforms/Windows/FlakTest). Without the display service
+    /// the duplication falls back to the output the region is on, which is what it did before
+    /// there was one.
+    /// </summary>
+    public ScreenSampler(
+        ILogger<ScreenSampler> logger,
+        IGameDisplayService? displays = null,
+        ITelemetryService? telemetry = null)
     {
         _logger = logger;
-        _duplicator = new Lazy<DesktopDuplicator>(() => new DesktopDuplicator(_logger));
+        _displays = displays;
+        _telemetry = telemetry;
+        _duplicator = new Lazy<DesktopDuplicator>(
+            () => new DesktopDuplicator(_logger, () => _displays?.GameWindowBounds ?? Rectangle.Empty));
     }
+
+    private readonly IGameDisplayService? _displays;
+    private readonly ITelemetryService? _telemetry;
 
     /// <summary>Releases the D3D11 device and the duplication the sampler may have created.</summary>
     public void Dispose()
@@ -191,12 +219,20 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
         try
         {
             if (_duplicator.Value.TryCapture(region, out var duped))
+            {
+                ReportPath(CapturePath.Duplication);
                 return new ScreenCapture(region.Width, region.Height, duped);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Duplication capture threw — using GDI");
         }
+
+        // Everything below is GDI. Said once per switch, never per tick: a scan loop calls this
+        // a hundred times a second, and the fact worth knowing is which path is serving — not
+        // that it served again.
+        ReportPath(CapturePath.Gdi);
 
         // Per-monitor DPI awareness for the duration of the capture, restored afterwards, so
         // physical coordinates map 1:1 even when this runs on a thread with a different context.
@@ -268,6 +304,50 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
                 try { SetThreadDpiAwarenessContext(oldCtx); }
                 catch { /* restore is best-effort */ }
             }
+        }
+    }
+
+    /// <summary>
+    /// Says which path is serving, once per change. The GDI fallback is the failure nobody could
+    /// see: it returns plausible desktop pixels for a fullscreen game, so a script calibrated
+    /// against the HUD simply never matches and nothing anywhere says why. The telemetry row is
+    /// the other half — how many installs are stuck on the blind path is not a thing a log on
+    /// one machine can answer.
+    /// </summary>
+    private void ReportPath(CapturePath path)
+    {
+        if (_path == path) return;
+        _path = path;
+
+        var monitor = _displays?.GameMonitor;
+        if (path == CapturePath.Duplication)
+        {
+            _logger.LogInformation(
+                "Screen capture is using Desktop Duplication on {Device}", _duplicator.Value.ActiveOutputDevice ?? "?");
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Screen capture fell back to GDI — a fullscreen ARK cannot be seen this way (Monitor {Index})",
+                monitor?.Index ?? 0);
+        }
+
+        try
+        {
+            // Fire-and-forget by contract: TrackEventAsync never faults, and a capture must not
+            // wait on the network. Two fixed strings and a monitor number — nothing identifying.
+            _ = _telemetry?.TrackEventAsync(
+                ScriptTelemetryEvents.Capture,
+                TelemetryEventStatus.Ok,
+                metrics: new Dictionary<string, object?>
+                {
+                    ["path"] = path == CapturePath.Duplication ? "duplication" : "gdi",
+                    ["monitor"] = monitor?.Index ?? 0
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Capture-path telemetry push failed");
         }
     }
 

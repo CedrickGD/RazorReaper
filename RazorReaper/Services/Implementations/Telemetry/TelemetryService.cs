@@ -56,7 +56,8 @@ public sealed class TelemetryService : ITelemetryService
         // either side would be invisible until someone went looking for rows that never came.
         ScriptTelemetryEvents.Start,
         ScriptTelemetryEvents.Stop,
-        ScriptTelemetryEvents.Noop
+        ScriptTelemetryEvents.Noop,
+        ScriptTelemetryEvents.Capture
     };
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

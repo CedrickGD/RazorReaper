@@ -72,6 +72,7 @@ public sealed class TelemetryAllowlistTests
     [InlineData("script_start")]
     [InlineData("script_stop")]
     [InlineData("script_noop")]
+    [InlineData("script_capture")]
     public async Task EveryScriptEventTheScaffoldEmitsIsOnTheAllowlist(string eventName)
     {
         var handler = new CapturingHandler();
@@ -93,7 +94,7 @@ public sealed class TelemetryAllowlistTests
     public void TheScriptEventNamesAreTheOnesTheScaffoldSpells()
     {
         Assert.Equal(
-            new[] { "script_start", "script_stop", "script_noop" },
+            new[] { "script_start", "script_stop", "script_noop", "script_capture" },
             ScriptTelemetryEvents.All);
     }
 

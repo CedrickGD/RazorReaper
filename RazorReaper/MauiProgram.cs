@@ -336,6 +336,9 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.IScreenOcr, RazorReaper.Services.Automation.ScreenOcr>();
             services.AddSingleton<RazorReaper.Services.Automation.DurabilityReader>();
             services.AddSingleton<RazorReaper.Services.Automation.IForegroundGate, RazorReaper.Services.Automation.ForegroundGate>();
+            // Which monitor ARK is on. The sampler duplicates that output and the calibration
+            // store stamps it onto every reference, so both have to agree on one answer.
+            services.AddSingleton<RazorReaper.Services.Automation.IGameDisplayService, RazorReaper.Services.Automation.GameDisplayService>();
             services.AddSingleton<RazorReaper.Services.Automation.IFastTransferMacro, RazorReaper.Services.Automation.FastTransferMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IFedSuitMacro, RazorReaper.Services.Automation.FedSuitMacro>();
             services.AddSingleton<RazorReaper.Services.Automation.IAutoAntidoteService, RazorReaper.Services.Automation.AutoAntidoteService>();

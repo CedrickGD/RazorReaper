@@ -39,6 +39,15 @@ public static class ScriptTelemetryEvents
     /// </summary>
     public const string Noop = "script_noop";
 
-    /// <summary>All three, for the allowlist and for the test that pins it.</summary>
-    public static IReadOnlyList<string> All { get; } = new[] { Start, Stop, Noop };
+    /// <summary>
+    /// Which screen-capture path is serving the vision scripts: <c>duplication</c>, which can see
+    /// a fullscreen ARK, or <c>gdi</c>, which cannot and hands back the desktop instead. Sent on
+    /// the switch, not per capture. How many installs are stuck on the blind path is the one
+    /// question a log file on one machine cannot answer, and until the output was picked by where
+    /// the game actually is, every second-monitor user was on it.
+    /// </summary>
+    public const string Capture = "script_capture";
+
+    /// <summary>All four, for the allowlist and for the test that pins it.</summary>
+    public static IReadOnlyList<string> All { get; } = new[] { Start, Stop, Noop, Capture };
 }

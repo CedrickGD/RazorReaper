@@ -15,13 +15,21 @@ namespace RazorReaper.Services.Automation;
 /// composed output the display controller is actually scanning out, so it sees the game.
 ///
 /// Written against the raw COM vtables rather than through an interop package: the project has no
-/// D3D dependency and this needs exactly six calls. Every failure path returns false so the caller
+/// D3D dependency and this needs exactly eight calls. Every failure path returns false so the caller
 /// can fall back to GDI — a wrong picture is worse than a missing one, but no picture at all must
 /// never take the app down.
+///
+/// It duplicates the output ARK is on, not output 0. A duplication covers exactly one monitor, and
+/// for its whole life this one was pinned to the first output of the first adapter: with the game
+/// on a second screen every capture asked the primary monitor what the game's HUD looked like,
+/// found the region outside its frame, refused, and handed the job to a GDI fallback that cannot
+/// see a fullscreen game at all. Which output that is gets re-decided whenever the window moves.
 /// </summary>
 internal sealed unsafe class DesktopDuplicator : IDisposable
 {
     private readonly ILogger _logger;
+    private readonly Func<Rectangle> _gameWindowBounds;
+    private readonly IReadOnlyList<AttachedDisplay> _noMonitors = Array.Empty<AttachedDisplay>();
     private readonly object _gate = new();
 
     private IntPtr _device;
@@ -31,7 +39,21 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
 
     private int _width;
     private int _height;
-    private byte[]? _frame;      // last full desktop frame, BGRA
+    private byte[]? _frame;      // last full duplicated output frame, BGRA
+
+    /// <summary>
+    /// Where the duplicated output sits on the virtual desktop. Capture regions are virtual-desktop
+    /// coordinates and the frame is output-local, so every grab is offset by this. It used to be
+    /// assumed to be (0,0) — true only for output 0 of a single-monitor machine, and silently
+    /// wrong by the whole width of the primary screen for anyone else.
+    /// </summary>
+    private Rectangle _outputBounds = Rectangle.Empty;
+
+    /// <summary>Device path of the duplicated output, so a move to another monitor is noticed.</summary>
+    private string _outputDevice = string.Empty;
+
+    /// <summary>What the last capture asked for, so a mid-pump rebuild targets the same output.</summary>
+    private Rectangle _lastTarget = Rectangle.Empty;
 
     /// <summary>When the cached frame was last confirmed current (new frame or an explicit timeout).</summary>
     private DateTime _confirmedUtc = DateTime.MinValue;
@@ -50,11 +72,28 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
     /// <summary>Backs off after a transient setup failure instead of retrying every single tick.</summary>
     private DateTime _retryAfterUtc = DateTime.MinValue;
 
-    public DesktopDuplicator(ILogger logger) => _logger = logger;
+    /// <param name="gameWindowBounds">
+    /// Where ARK's window is, in virtual-desktop pixels, or an empty rectangle when the game is not
+    /// running. A function rather than a value because the window moves and this object does not:
+    /// it is asked again on every capture, which is what makes dragging the game to the other
+    /// screen mid-run follow rather than break.
+    /// </param>
+    public DesktopDuplicator(ILogger logger, Func<Rectangle>? gameWindowBounds = null)
+    {
+        _logger = logger;
+        _gameWindowBounds = gameWindowBounds ?? (static () => Rectangle.Empty);
+    }
+
+    /// <summary>The output being duplicated right now, or null when none is.</summary>
+    public string? ActiveOutputDevice
+    {
+        get { lock (_gate) return _duplication == IntPtr.Zero ? null : _outputDevice; }
+    }
 
     /// <summary>
-    /// Copies <paramref name="region"/> out of the latest desktop frame. False when duplication is
-    /// unavailable or no frame has ever arrived — the caller then uses its GDI path.
+    /// Copies <paramref name="region"/> (virtual-desktop pixels) out of the latest frame of the
+    /// output ARK is on. False when duplication is unavailable, no frame has ever arrived, or the
+    /// region is not on that output — the caller then uses its GDI path.
     /// </summary>
     public bool TryCapture(Rectangle region, out byte[] bgra)
     {
@@ -65,7 +104,20 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
         {
             try
             {
-                if (_duplication == IntPtr.Zero && !Initialize()) return false;
+                // The game's window decides the output; the region only decides it when ARK is
+                // not running, which is every calibration taken from the desktop.
+                var gameBounds = SafeGameBounds();
+                var target = gameBounds.Width > 0 && gameBounds.Height > 0 ? gameBounds : region;
+                _lastTarget = target;
+
+                if (_duplication != IntPtr.Zero && !StillOnTheRightOutput(target))
+                {
+                    _logger.LogInformation(
+                        "ARK moved off {Old} — rebuilding the duplication for its new display", _outputDevice);
+                    Teardown();
+                }
+
+                if (_duplication == IntPtr.Zero && !Initialize(target)) return false;
 
                 PumpFrame();
                 if (_frame is null) return false;
@@ -80,19 +132,22 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
                     return false;
                 }
 
+                // Virtual-desktop coordinates in, output-local coordinates out. On a single
+                // monitor the offset is zero and this reads like the old code; on a second
+                // monitor it is the whole difference between the HUD and the wrong screen.
+                var w = region.Width;
+                var h = region.Height;
+                var left = region.Left - _outputBounds.Left;
+                var top = region.Top - _outputBounds.Top;
+
                 // No clamping: only this one output is duplicated, so a region reaching past it
                 // belongs to another monitor or to a stale calibration. Returning the nearest
                 // edge would be a confident lie about both the size and the content — the caller
                 // gets false and uses GDI, which at least covers the windowed case.
-                var w = region.Width;
-                var h = region.Height;
-                if (region.Left < 0 || region.Top < 0 || region.Right > _width || region.Bottom > _height
-                    || w <= 0 || h <= 0)
+                if (left < 0 || top < 0 || left + w > _width || top + h > _height || w <= 0 || h <= 0)
                 {
                     return false;
                 }
-                var left = region.Left;
-                var top = region.Top;
 
                 var outBuf = new byte[w * h * 4];
                 for (var y = 0; y < h; y++)
@@ -132,7 +187,7 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
                 // Routine and transient: mode switch, UAC desktop, or another duplicating
                 // process took over. Rebuild rather than giving up on duplication for good.
                 Teardown();
-                Initialize();
+                Initialize(_lastTarget);
                 return;
             }
 
@@ -206,13 +261,91 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
 
     // ── Setup ───────────────────────────────────────────────────────────────────────────────
 
+    /// <summary>ARK's window, never throwing into a capture: a bad bounds read must cost a frame, not the app.</summary>
+    private Rectangle SafeGameBounds()
+    {
+        try { return _gameWindowBounds(); }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Game window bounds lookup threw — choosing the output by region instead");
+            return Rectangle.Empty;
+        }
+    }
+
     /// <summary>
-    /// Builds device + duplication. Distinguishes "this machine cannot do it" (latched in
-    /// <see cref="_unavailable"/>) from "not right now" (backed off via <see cref="_retryAfterUtc"/>),
-    /// because DuplicateOutput legitimately fails while the secure desktop is up or during a
-    /// mode switch, and those must not cost the app its only fullscreen-capable capture path.
+    /// True when the duplication already covers the output <paramref name="target"/> belongs to.
+    /// Enumerating outputs costs a DXGI factory, so this compares against the cheap GDI monitor
+    /// list: both report the same <c>\\.\DISPLAYn</c> device names.
     /// </summary>
-    private bool Initialize()
+    private bool StillOnTheRightOutput(Rectangle target)
+    {
+        var monitors = SafeMonitorList();
+        if (monitors.Count == 0) return true;   // nothing to compare against — leave it alone
+
+        var wanted = MonitorSelection.Choose(monitors, target);
+        return wanted is null || string.Equals(wanted.DeviceName, _outputDevice, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private IReadOnlyList<AttachedDisplay> SafeMonitorList()
+    {
+        IntPtr factory = IntPtr.Zero;
+        try
+        {
+            var iidFactory = IID_IDXGIFactory1;
+            if (CreateDXGIFactory1(ref iidFactory, out factory) < 0) return _noMonitors;
+            return EnumerateOutputs(factory).Select(o => o.Monitor).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Output enumeration threw — keeping the current duplication");
+            return _noMonitors;
+        }
+        finally
+        {
+            if (factory != IntPtr.Zero) Marshal.Release(factory);
+        }
+    }
+
+    /// <summary>An output of an adapter, and where it sits on the virtual desktop.</summary>
+    private sealed record OutputSlot(int AdapterIndex, int OutputIndex, AttachedDisplay Monitor);
+
+    /// <summary>
+    /// Every attached output of every adapter. Both indices are kept because duplication needs
+    /// them: the D3D11 device has to be created on the adapter that owns the output, or
+    /// DuplicateOutput refuses it — which is the trap behind "just pass a different index".
+    /// </summary>
+    private List<OutputSlot> EnumerateOutputs(IntPtr factory)
+    {
+        var slots = new List<OutputSlot>();
+        for (var a = 0u; a < 8; a++)
+        {
+            if (EnumAdapters1(factory, a, out var adapter) < 0 || adapter == IntPtr.Zero) break;
+            try
+            {
+                for (var o = 0u; o < 8; o++)
+                {
+                    if (EnumOutputs(adapter, o, out var output) < 0 || output == IntPtr.Zero) break;
+                    try
+                    {
+                        if (TryGetOutputInfo(output, out var device, out var bounds, out var attached) && attached)
+                            slots.Add(new OutputSlot((int)a, (int)o, new AttachedDisplay(device, bounds, bounds.Left == 0 && bounds.Top == 0)));
+                    }
+                    finally { Marshal.Release(output); }
+                }
+            }
+            finally { Marshal.Release(adapter); }
+        }
+        return slots;
+    }
+
+    /// <summary>
+    /// Builds device + duplication for the output <paramref name="target"/> is on. Distinguishes
+    /// "this machine cannot do it" (latched in <see cref="_unavailable"/>) from "not right now"
+    /// (backed off via <see cref="_retryAfterUtc"/>), because DuplicateOutput legitimately fails
+    /// while the secure desktop is up or during a mode switch, and those must not cost the app
+    /// its only fullscreen-capable capture path.
+    /// </summary>
+    private bool Initialize(Rectangle target)
     {
         if (DateTime.UtcNow < _retryAfterUtc) return false;
 
@@ -220,9 +353,34 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
         var transient = false;
         try
         {
+            var iidFactory = IID_IDXGIFactory1;
+            if (CreateDXGIFactory1(ref iidFactory, out factory) < 0) { _unavailable = true; return false; }
+
+            var slots = EnumerateOutputs(factory);
+            if (slots.Count == 0)
+            {
+                // No attached output at all: a remote session or a laptop with the lid shut.
+                // Transient, not a verdict on the machine.
+                _logger.LogDebug("No attached DXGI output — retrying shortly, GDI meanwhile");
+                transient = true;
+                return false;
+            }
+
+            var wanted = MonitorSelection.Choose(slots.Select(s => s.Monitor).ToList(), target);
+            var slot = slots.FirstOrDefault(s => s.Monitor == wanted) ?? slots[0];
+
+            if (EnumAdapters1(factory, (uint)slot.AdapterIndex, out adapter) < 0 || adapter == IntPtr.Zero)
+            {
+                _unavailable = true;
+                return false;
+            }
+
+            // The device must live on the adapter that owns the output, and a non-null adapter
+            // means the driver type has to be UNKNOWN — passing HARDWARE alongside one is an
+            // outright E_INVALIDARG.
             var levels = stackalloc uint[] { 0xb000 /* 11_0 */, 0xa100 /* 10_1 */, 0xa000 /* 10_0 */ };
             var hr = D3D11CreateDevice(
-                IntPtr.Zero, 1 /* HARDWARE */, IntPtr.Zero, 0x20 /* BGRA_SUPPORT */,
+                adapter, 0 /* UNKNOWN */, IntPtr.Zero, 0x20 /* BGRA_SUPPORT */,
                 levels, 3, 7 /* SDK_VERSION */, out _device, out _, out _context);
             if (hr < 0 || _device == IntPtr.Zero)
             {
@@ -231,14 +389,11 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
                 return false;
             }
 
-            var iidFactory = IID_IDXGIFactory1;
-            if (CreateDXGIFactory1(ref iidFactory, out factory) < 0) { _unavailable = true; return false; }
-
-            // Adapter 0 / output 0. TryCapture refuses any region outside this output's frame,
-            // so a HUD on a second monitor falls back to GDI rather than reading the wrong
-            // screen — picking the output by DesktopCoordinates is the next step if that comes up.
-            if (EnumAdapters1(factory, 0, out adapter) < 0) { _unavailable = true; return false; }
-            if (EnumOutputs(adapter, 0, out output) < 0) { _unavailable = true; return false; }
+            if (EnumOutputs(adapter, (uint)slot.OutputIndex, out output) < 0 || output == IntPtr.Zero)
+            {
+                _unavailable = true;
+                return false;
+            }
 
             var iidOutput1 = IID_IDXGIOutput1;
             if (Marshal.QueryInterface(output, in iidOutput1, out output1) < 0) { _unavailable = true; return false; }
@@ -260,7 +415,12 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
             _staging = CreateStagingTexture(_width, _height);
             if (_staging == IntPtr.Zero) { _unavailable = true; return false; }
 
-            _logger.LogInformation("Desktop duplication ready ({W}x{H})", _width, _height);
+            _outputBounds = slot.Monitor.Bounds;
+            _outputDevice = slot.Monitor.DeviceName;
+
+            _logger.LogInformation(
+                "Desktop duplication ready on {Device} (Monitor {Index}, {W}x{H} at {X},{Y})",
+                _outputDevice, slot.Monitor.Index, _width, _height, _outputBounds.Left, _outputBounds.Top);
             return true;
         }
         catch (Exception ex)
@@ -315,6 +475,14 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
         if (_device != IntPtr.Zero) { Marshal.Release(_device); _device = IntPtr.Zero; }
         _frame = null;
         _confirmedUtc = DateTime.MinValue;
+
+        // The offset belongs to the torn-down duplication. Leaving it behind would translate the
+        // next output's regions by the last output's origin — pixels from the right monitor at
+        // the wrong place, which is harder to spot than no pixels at all.
+        _outputBounds = Rectangle.Empty;
+        _outputDevice = string.Empty;
+        _width = 0;
+        _height = 0;
     }
 
     public void Dispose()
@@ -349,6 +517,30 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
     {
         fixed (IntPtr* p = &output)
             return ((delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)Vtbl(adapter, 7))(adapter, index, p);
+    }
+
+    // IDXGIOutput::GetDesc — slot 7 (IUnknown 0-2, IDXGIObject 3-6). Same index as
+    // IDXGIAdapter::EnumOutputs above, and for the same reason: both derive from IDXGIObject.
+    private static bool TryGetOutputInfo(IntPtr output, out string deviceName, out Rectangle bounds, out bool attached)
+    {
+        DXGI_OUTPUT_DESC desc;
+        var hr = ((delegate* unmanaged[Stdcall]<IntPtr, DXGI_OUTPUT_DESC*, int>)Vtbl(output, 7))(output, &desc);
+        if (hr < 0)
+        {
+            deviceName = string.Empty;
+            bounds = Rectangle.Empty;
+            attached = false;
+            return false;
+        }
+
+        // desc is a stack local, so its fixed buffer is already pinned and converts straight to
+        // a char*; the string runs to the first NUL, which is how DXGI writes it.
+        deviceName = new string(desc.DeviceName);
+        bounds = Rectangle.FromLTRB(
+            desc.DesktopCoordinates.Left, desc.DesktopCoordinates.Top,
+            desc.DesktopCoordinates.Right, desc.DesktopCoordinates.Bottom);
+        attached = desc.AttachedToDesktop != 0 && bounds.Width > 0 && bounds.Height > 0;
+        return true;
     }
 
     // IDXGIOutput1::DuplicateOutput — slot 22.
@@ -424,6 +616,21 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
         public uint Rotation;
         public int DesktopImageInSystemMemory;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DXGI_OUTPUT_DESC
+    {
+        // WCHAR[32] inline, not a marshalled string: this struct is written through a raw
+        // function pointer, where no marshaller runs.
+        public fixed char DeviceName[32];
+        public NATIVERECT DesktopCoordinates;
+        public int AttachedToDesktop;
+        public uint Rotation;
+        public IntPtr Monitor;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NATIVERECT { public int Left, Top, Right, Bottom; }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct DXGI_MODE_DESC
