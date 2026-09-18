@@ -29,6 +29,7 @@ RazorReaper bundles the entire day-to-day ARK workflow into a single desktop app
 - **One app, 35+ tools** — organized into searchable sections with instant global search (`Ctrl+K`)
 - **Self-contained installer** — bundles the .NET runtime; download, install, play (no prerequisites)
 - **Updates on your schedule** — new versions download silently in the background; the restart that installs them is yours to trigger, from the sidebar or the tray
+- **Four languages** — English, German, Russian and Simplified Chinese, switched live from Settings; the first wave of pages is translated, the rest stay English (see [`docs/i18n.md`](docs/i18n.md))
 - **Fully themeable** — recolor the entire app with a built-in accent color picker
 - **Tray-native** — minimizes to the system tray and stays out of your way while you play
 - **Discord Rich Presence** — shows the tool you're using as your Discord activity (optional)
