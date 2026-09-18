@@ -2,8 +2,10 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @inject IJSRuntime JSRuntime
 @inject IActivityService ActivityService
+@inject ILocalizer Localizer
 @inject ILogger<AccentColorCard> Logger
 @implements IDisposable
 
@@ -16,12 +18,12 @@
 <div class="content-card theme-settings-card collapsible-card">
     <div class="theme-settings-header">
         <div>
-            <h3>Accent Color</h3>
-            <p class="theme-settings-subtitle">Recolor the whole app. Pick any color and every purple accent updates instantly — your choice is saved until you change it.</p>
+            <h3>@Localizer.T("settings.accent.title")</h3>
+            <p class="theme-settings-subtitle">@Localizer.T("settings.accent.description")</p>
         </div>
         <div class="collapsible-actions">
             <div class="theme-current">
-                <span class="theme-current-label">Active</span>
+                <span class="theme-current-label">@Localizer.T("common.active")</span>
                 <span class="theme-current-swatch" style="background:@selectedAccentColor" title="@selectedAccentColor"></span>
             </div>
             <button type="button"
@@ -29,7 +31,7 @@
                     @onclick="ToggleOpen"
                     aria-expanded="@isOpen"
                     aria-controls="theme-settings-content">
-                <span class="collapsible-toggle-label">@(isOpen ? "Collapse" : "Expand")</span>
+                <span class="collapsible-toggle-label">@(isOpen ? Localizer.T("common.collapse") : Localizer.T("common.expand"))</span>
                 <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
                 </svg>
@@ -49,16 +51,16 @@
             <input type="range" class="theme-hue-slider" min="0" max="360" step="1"
                    value="@FormatNum(_pickerHue)"
                    @oninput="OnHueInput" @onchange="OnHueChange"
-                   aria-label="Hue" />
+                   aria-label="@Localizer.T("settings.accent.hue.aria")" />
             <div class="theme-picker-controls">
                 <span class="theme-live-swatch" style="background:@selectedAccentColor" title="@selectedAccentColor"></span>
                 <input type="text" class="theme-hex-input" spellcheck="false" maxlength="7"
-                       value="@selectedAccentColor" @onchange="OnHexInputChange" aria-label="Hex color" />
-                <button class="btn btn-secondary theme-reset-btn" @onclick="ResetThemeAsync" disabled="@IsThemeDefault" title="Reset to default purple">
+                       value="@selectedAccentColor" @onchange="OnHexInputChange" aria-label="@Localizer.T("settings.accent.hex.aria")" />
+                <button class="btn btn-secondary theme-reset-btn" @onclick="ResetThemeAsync" disabled="@IsThemeDefault" title="@Localizer.T("settings.accent.reset.tooltip")">
                     <svg fill="currentColor" viewBox="0 0 20 20" style="width:15px;height:15px;">
                         <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                     </svg>
-                    Reset
+                    @Localizer.T("common.reset")
                 </button>
             </div>
         </div>
@@ -70,7 +72,7 @@
             <svg class="theme-advanced-icon" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
             </svg>
-            <span>Advanced — override individual shades</span>
+            <span>@Localizer.T("settings.accent.advanced.toggle")</span>
         </button>
 
         @if (isAdvancedOpen)
@@ -78,25 +80,30 @@
             <div class="theme-advanced-grid">
                 @foreach (var shade in AdvancedShades)
                 {
-                    var auto = IsShadeAuto(shade.Key);
-                    var shadeVal = GetShadeValue(shade.Key);
+                    var auto = IsShadeAuto(shade);
+                    var shadeVal = GetShadeValue(shade);
+                    var shadeName = ShadeLabel(shade);
                     <div class="theme-shade-field">
                         <div class="theme-shade-head">
-                            <span class="theme-shade-name">@shade.Label</span>
-                            <span class="theme-shade-state @(auto ? "auto" : "custom")">@(auto ? "Auto" : "Custom")</span>
+                            <span class="theme-shade-name">@shadeName</span>
+                            <span class="theme-shade-state @(auto ? "auto" : "custom")">@(auto ? Localizer.T("settings.accent.shade.auto") : Localizer.T("settings.accent.shade.custom"))</span>
                         </div>
-                        <div class="theme-shade-desc">@shade.Description</div>
+                        <div class="theme-shade-desc">@ShadeDescription(shade)</div>
                         <div class="theme-shade-pick">
                             <input type="color" class="theme-shade-native" value="@shadeVal"
-                                   @onchange="@(e => OnAdvancedShadeChanged(shade.Key, e.Value?.ToString() ?? string.Empty))" />
+                                   @onchange="@(e => OnAdvancedShadeChanged(shade, e.Value?.ToString() ?? string.Empty))" />
                             <input type="text" class="theme-shade-hex" spellcheck="false" maxlength="7" value="@shadeVal"
-                                   @onchange="@(e => OnAdvancedShadeChanged(shade.Key, e.Value?.ToString() ?? string.Empty))" aria-label="@(shade.Label) hex" />
+                                   @onchange="@(e => OnAdvancedShadeChanged(shade, e.Value?.ToString() ?? string.Empty))" aria-label="@Localizer.T("settings.accent.shade.hex.aria", shadeName)" />
                         </div>
-                        <button class="theme-shade-auto" @onclick="@(() => ClearAdvancedShadeAsync(shade.Key))" disabled="@auto">Reset to auto</button>
+                        <button class="theme-shade-auto" @onclick="@(() => ClearAdvancedShadeAsync(shade))" disabled="@auto">@Localizer.T("settings.accent.shade.reset")</button>
                     </div>
                 }
             </div>
-            <p class="theme-advanced-note">Each shade left on <strong>Auto</strong> is derived from the accent color. Pin a shade to lock it; "Reset to auto" hands it back to the accent.</p>
+            @* The emphasised word is a key of its own rather than markup inside the sentence:
+               not one dictionary value in the app carries HTML, and the day one did it would
+               either show as literal text or have to be trusted as markup. The lead and the
+               tail carry their own spacing, so a language that wants none can leave it out. *@
+            <p class="theme-advanced-note">@Localizer.T("settings.accent.advanced.note.lead")<strong>@Localizer.T("settings.accent.shade.auto")</strong>@Localizer.T("settings.accent.advanced.note.rest")</p>
         }
     </div>
 </div>
@@ -124,14 +131,30 @@
     private double _pickerSat = 0.63;
     private double _pickerVal = 0.96;
 
-    private sealed record AdvancedShade(string Key, string Label, string Description);
+    /// <summary>
+    /// The four ramp stops, by the key the stored theme settings hold them under. The name and
+    /// the one-line description are looked up per render instead of living in this list: a static
+    /// field is built once, before anyone has picked a language, and would keep the English it
+    /// was built with for the rest of the session.
+    /// </summary>
+    private static readonly string[] AdvancedShades = ["light", "dark", "darker", "soft"];
 
-    private static readonly IReadOnlyList<AdvancedShade> AdvancedShades = new List<AdvancedShade>
+    private string ShadeLabel(string key) => key switch
     {
-        new("light", "Light", "Hover / highlight accents"),
-        new("dark", "Dark", "Gradient end, pressed states"),
-        new("darker", "Darker", "Deep gradient / shadow tone"),
-        new("soft", "Soft", "Subtle tinted text"),
+        "light" => Localizer.T("settings.accent.shade.light"),
+        "dark" => Localizer.T("settings.accent.shade.dark"),
+        "darker" => Localizer.T("settings.accent.shade.darker"),
+        "soft" => Localizer.T("settings.accent.shade.soft"),
+        _ => key
+    };
+
+    private string ShadeDescription(string key) => key switch
+    {
+        "light" => Localizer.T("settings.accent.shade.light.description"),
+        "dark" => Localizer.T("settings.accent.shade.dark.description"),
+        "darker" => Localizer.T("settings.accent.shade.darker.description"),
+        "soft" => Localizer.T("settings.accent.shade.soft.description"),
+        _ => string.Empty
     };
 
     /// <summary>

@@ -180,7 +180,12 @@ public static class NavCatalog
 
             // The one page in the app that is not in every plan. It sits with the other ARK
             // knowledge pages rather than in a section of its own — a paywall is not a category.
-            new NavPage("Higher dino levels", "/guides/dino-level", "Mods & Intel", NavIcons.DinoLevels,
+            //
+            // "Dino levels", not the page's own "Higher dino levels": this row is the only one
+            // carrying a marker, so its label has the least room of any in the sidebar, and the
+            // longer name clipped to "High…" beside the chip at the default width. The heading on
+            // the page keeps the full name, where there is room for it.
+            new NavPage("Dino levels", "/guides/dino-level", "Mods & Intel", NavIcons.DinoLevels,
                 "How to push a tamed creature's level higher",
                 new[] { "dino", "dinos", "level", "levels", "higher", "tame", "taming", "retame", "re-tame",
                         "noglin", "unclaim", "transmitter", "upload", "guide", "lifetime" },

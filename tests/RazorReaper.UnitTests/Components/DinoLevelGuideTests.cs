@@ -44,7 +44,7 @@ public sealed class DinoLevelGuideTests
         var intel = catalog.IndexOf("new NavGroup(\"Mods & Intel\"", StringComparison.Ordinal);
         var nextGroup = catalog.IndexOf("new NavGroup(\"Utilities\"", StringComparison.Ordinal);
         var entry = catalog.IndexOf(
-            "new NavPage(\"Higher dino levels\", \"" + Route + "\", \"Mods & Intel\"",
+            "new NavPage(\"Dino levels\", \"" + Route + "\", \"Mods & Intel\"",
             StringComparison.Ordinal);
 
         Assert.True(intel > 0, "the Mods & Intel group must exist");
@@ -56,7 +56,7 @@ public sealed class DinoLevelGuideTests
     public void TheNavRowCarriesTheLifetimeMarker()
     {
         var catalog = Catalog();
-        var entry = catalog.IndexOf("new NavPage(\"Higher dino levels\"", StringComparison.Ordinal);
+        var entry = catalog.IndexOf("new NavPage(\"Dino levels\"", StringComparison.Ordinal);
         var end = catalog.IndexOf("new NavPage(\"TP Locations\"", entry, StringComparison.Ordinal);
 
         Assert.Contains("Badge: \"Lifetime\"", catalog[entry..end], StringComparison.Ordinal);
@@ -191,7 +191,7 @@ public sealed class DinoLevelGuideTests
 
         // The nav row and the palette hit are visible to everyone, so they must not leak it either.
         var catalog = Catalog();
-        var start = catalog.IndexOf("new NavPage(\"Higher dino levels\"", StringComparison.Ordinal);
+        var start = catalog.IndexOf("new NavPage(\"Dino levels\"", StringComparison.Ordinal);
         var description = catalog[start..catalog.IndexOf("new[]", start, StringComparison.Ordinal)];
         Assert.DoesNotContain("Noglin", description, StringComparison.OrdinalIgnoreCase);
     }

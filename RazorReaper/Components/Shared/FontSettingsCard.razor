@@ -1,10 +1,12 @@
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @inject IJSRuntime JSRuntime
 @inject IFontInstaller FontInstaller
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject IUsageGateService UsageGate
+@inject ILocalizer Localizer
 @inject ILogger<FontSettingsCard> Logger
 @implements IDisposable
 
@@ -17,13 +19,13 @@
 <div class="content-card font-settings-card collapsible-card">
     <div class="font-settings-header">
         <div>
-            <h3>Interface Font</h3>
-            <p class="font-settings-subtitle">Switch the UI font preset. Fonts auto-install in the background.</p>
+            <h3>@Localizer.T("settings.font.title")</h3>
+            <p class="font-settings-subtitle">@Localizer.T("settings.font.description")</p>
         </div>
         <div class="collapsible-actions">
             <UsageChip Feature="@UsageFeatures.Fonts" />
             <div class="font-current">
-                <span class="font-current-label">Active</span>
+                <span class="font-current-label">@Localizer.T("common.active")</span>
                 <span class="font-current-value">@GetFontPresetName(selectedFontPresetId)</span>
             </div>
             <button type="button"
@@ -31,7 +33,7 @@
                     @onclick="ToggleOpen"
                     aria-expanded="@isOpen"
                     aria-controls="font-settings-content">
-                <span class="collapsible-toggle-label">@(isOpen ? "Collapse" : "Expand")</span>
+                <span class="collapsible-toggle-label">@(isOpen ? Localizer.T("common.collapse") : Localizer.T("common.expand"))</span>
                 <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
                 </svg>
@@ -51,20 +53,26 @@
                         <span class="font-preset-name">@preset.Name</span>
                         <span class="font-preset-status">@statusLabel</span>
                     </div>
-                    <div class="font-preset-description">@preset.Description</div>
+                    <div class="font-preset-description">@PresetDescription(preset.Id)</div>
+                    @* A specimen line per language, not one translated sentence: what the card is
+                       showing is letterforms, and a Latin pangram says nothing about the shapes a
+                       Cyrillic or Chinese reader will actually see. *@
                     <div class="font-preset-preview" style="font-family: @preset.UiStack">
-                        The quick brown fox jumps over the lazy dog 0123456789.
+                        @Localizer.T("settings.font.preview")
                     </div>
                 </button>
             }
         </div>
         <div class="font-manual-install">
-            <div class="font-manual-title">Manual install (if auto-install fails)</div>
+            <div class="font-manual-title">@Localizer.T("settings.font.manual.title")</div>
             <ol class="font-manual-steps">
-                <li>Download the font from the official link below.</li>
-                <li>If you get a zip, extract it.</li>
-                <li>Right-click the .ttf file and choose <strong>Install</strong> (or double-click and install).</li>
-                <li>Return here and select the preset again. Switching updates the UI instantly.</li>
+                <li>@Localizer.T("settings.font.manual.download")</li>
+                <li>@Localizer.T("settings.font.manual.unzip")</li>
+                @* The bolded word is Windows' own menu item, so it is a key of its own rather
+                   than markup inside the sentence — the dictionaries carry no HTML. Its lead
+                   and tail bring their own spacing. *@
+                <li>@Localizer.T("settings.font.manual.install.lead")<strong>@Localizer.T("settings.font.manual.install.action")</strong>@Localizer.T("settings.font.manual.install.rest")</li>
+                <li>@Localizer.T("settings.font.manual.return")</li>
             </ol>
             <div class="font-manual-links">
                 @foreach (var preset in FontPresets)
@@ -81,7 +89,7 @@
                 }
             </div>
         </div>
-        <div class="font-settings-note">Fonts install per-user in the background. Switching updates the UI instantly.</div>
+        <div class="font-settings-note">@Localizer.T("settings.font.note")</div>
     </div>
 </div>
 
@@ -98,13 +106,17 @@
     private bool _hasInitialized;
     private bool _isDisposed;
 
+    /// <summary>
+    /// The presets, by id. Names stay here — a typeface is called what it is called in every
+    /// language — but the one-line descriptions do not: this list is built once, before anyone
+    /// has picked a language, so anything in it would keep the English it was built with.
+    /// </summary>
     private static readonly IReadOnlyList<FontPreset> FontPresets = new List<FontPreset>
     {
         new()
         {
             Id = "system",
             Name = "System UI",
-            Description = "Windows UI stack with a clean sans look.",
             UiStack = DefaultUiStack,
             MonoStack = DefaultMonoStack
         },
@@ -112,7 +124,6 @@
         {
             Id = "space-grotesk",
             Name = "Space Grotesk",
-            Description = "Wide, modern sans with a tech edge.",
             UiStack = $"\"Space Grotesk\", \"SpaceGrotesk\", {DefaultUiStack}",
             MonoStack = DefaultMonoStack,
             InstallerId = "space-grotesk",
@@ -122,7 +133,6 @@
         {
             Id = "manrope",
             Name = "Manrope",
-            Description = "Smooth sans with balanced geometry.",
             UiStack = $"\"Manrope\", {DefaultUiStack}",
             MonoStack = DefaultMonoStack,
             InstallerId = "manrope",
@@ -132,7 +142,6 @@
         {
             Id = "jetbrains-mono-nerd",
             Name = "JetBrains Mono Nerd",
-            Description = "Compact mono with nerd glyphs.",
             UiStack = "\"JetBrainsMono Nerd Font\", \"JetBrainsMono Nerd Font Mono\", \"JetBrains Mono\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
             MonoStack = "\"JetBrainsMono Nerd Font\", \"JetBrainsMono Nerd Font Mono\", \"JetBrains Mono\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
             InstallerId = "jetbrains-mono-nerd",
@@ -142,7 +151,6 @@
         {
             Id = "fira-code-nerd",
             Name = "Fira Code Nerd",
-            Description = "Ligature-friendly mono with nerd glyphs.",
             UiStack = "\"FiraCode Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
             MonoStack = "\"FiraCode Nerd Font\", \"FiraCode Nerd Font Mono\", \"Fira Code\", \"Cascadia Code\", Consolas, \"Courier New\", monospace",
             InstallerId = "fira-code-nerd",
@@ -207,7 +215,7 @@
                 var gate = await UsageGate.TryConsumeAsync(UsageFeatures.Fonts);
                 if (!gate.Allowed)
                 {
-                    NotificationService.ShowWarning($"Free monthly limit reached ({gate.Limit} font switches). The default font is always free — Premium is unlimited.");
+                    NotificationService.ShowWarning(Localizer.T("settings.font.limit", gate.Limit));
                     return;
                 }
             }
@@ -267,7 +275,7 @@
         // one in the finally below has an observer if the renderer goes away mid-install.
         this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
 
-        NotificationService.ShowInfo($"Installing {preset.Name}...");
+        NotificationService.ShowInfo(Localizer.T("settings.font.toast.installing", preset.Name));
 
         try
         {
@@ -277,33 +285,33 @@
 
             if (installed)
             {
-                NotificationService.ShowSuccess($"{preset.Name} installed.");
+                NotificationService.ShowSuccess(Localizer.T("settings.font.toast.installed", preset.Name));
                 await PersistFontSettingsAsync(preset);
             }
             else
             {
-                NotificationService.ShowWarning($"{preset.Name} installation pending. Try the preset again in a few seconds.");
+                NotificationService.ShowWarning(Localizer.T("settings.font.toast.pending", preset.Name));
             }
         }
         catch (InvalidDataException ex)
         {
             Logger.LogError(ex, "Invalid font package for preset {PresetId}", preset.Id);
-            NotificationService.ShowError("Font package is invalid or blocked. Use the manual install links below.");
+            NotificationService.ShowError(Localizer.T("settings.font.error.package"));
         }
         catch (InvalidOperationException ex)
         {
             Logger.LogError(ex, "Font files could not be installed for preset {PresetId}", preset.Id);
-            NotificationService.ShowError("Font files are in use. Close other apps using the font and try again.");
+            NotificationService.ShowError(Localizer.T("settings.font.error.inuse"));
         }
         catch (System.Net.Http.HttpRequestException ex)
         {
             Logger.LogError(ex, "Font download failed for preset {PresetId}", preset.Id);
-            NotificationService.ShowError("Font download failed. Check your network or add the font zip to wwwroot/assets/fonts.");
+            NotificationService.ShowError(Localizer.T("settings.font.error.download"));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error installing font preset {PresetId}", preset.Id);
-            NotificationService.ShowError($"Font installation failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("settings.font.error.install", ex.Message));
         }
         finally
         {
@@ -348,19 +356,36 @@
         return fontInstallStatus.TryGetValue(preset.Id, out var installed) && installed;
     }
 
+    /// <summary>
+    /// Spelled out one branch per id rather than composed from it. A key built by concatenation
+    /// is a key no search finds and no test can see, and the dictionaries are checked for keys
+    /// nothing renders.
+    /// </summary>
+    private string PresetDescription(string presetId) => presetId switch
+    {
+        "system" => Localizer.T("settings.font.preset.system.description"),
+        "space-grotesk" => Localizer.T("settings.font.preset.space-grotesk.description"),
+        "manrope" => Localizer.T("settings.font.preset.manrope.description"),
+        "jetbrains-mono-nerd" => Localizer.T("settings.font.preset.jetbrains-mono-nerd.description"),
+        "fira-code-nerd" => Localizer.T("settings.font.preset.fira-code-nerd.description"),
+        _ => string.Empty
+    };
+
     private string GetFontPresetStatus(FontPreset preset)
     {
         if (string.IsNullOrWhiteSpace(preset.InstallerId))
         {
-            return "System";
+            return Localizer.T("settings.font.status.system");
         }
 
         if (IsFontPresetInstalling(preset))
         {
-            return "Installing";
+            return Localizer.T("settings.font.status.installing");
         }
 
-        return IsFontPresetInstalled(preset) ? "Installed" : "Auto-install";
+        return IsFontPresetInstalled(preset)
+            ? Localizer.T("settings.font.status.installed")
+            : Localizer.T("settings.font.status.autoinstall");
     }
 
     private string GetFontPresetName(string presetId)
@@ -383,12 +408,12 @@
         try
         {
             await Clipboard.Default.SetTextAsync(preset.DownloadUrl);
-            NotificationService.ShowSuccess($"Copied download link for {preset.Name}");
+            NotificationService.ShowSuccess(Localizer.T("settings.font.toast.linkcopied", preset.Name));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying font download link for {PresetId}", preset.Id);
-            NotificationService.ShowError("Failed to copy download link.");
+            NotificationService.ShowError(Localizer.T("settings.font.error.linkcopy"));
         }
     }
 
@@ -418,7 +443,6 @@
     {
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
-        public string Description { get; set; } = "";
         public string UiStack { get; set; } = "";
         public string MonoStack { get; set; } = "";
         public string? InstallerId { get; set; }

@@ -78,6 +78,27 @@ public sealed class NavigationTranslationTests
     }
 
     /// <summary>
+    /// The Lifetime row has the least room of any label in the sidebar, because it is the only
+    /// one carrying a marker and the marker takes its space first. Measured in Chromium at the
+    /// default 226px sidebar: 54px rail + 1px rail rule leave a 171px panel, the list's 0.5rem
+    /// padding leaves 155px, the row's 0.6rem padding leaves 135.8px, and a 17px icon plus a
+    /// 0.6rem gap leave 109.2px for label and marker together. "LIFETIME" renders 57.4px wide
+    /// (0.62rem, 0.05em tracking, 0.34rem padding, 1px border), and a second gap takes 9.6px,
+    /// so the label is left with 42.2px. "Higher dino levels" wanted 107.5px of that and the
+    /// row read "High…", which names nothing.
+    ///
+    /// These are the short spellings, one per language. The page's own heading keeps the full
+    /// name — a heading has a column to itself.
+    /// </summary>
+    [Theory]
+    [InlineData("en", "Dino levels")]
+    [InlineData("de", "Dino-Level")]
+    [InlineData("ru", "Уровни дино")]
+    [InlineData("zh-Hans", "恐龙等级")]
+    public void TheMarkedRowsLabelIsTheShortSpelling(string code, string expected)
+        => Assert.Equal(expected, TranslationParityTests.Read(code)["nav.page.guides.dino-level"]);
+
+    /// <summary>
     /// The group's English name is its identity: the sidebar remembers the open group by it and
     /// NavPage.Category is matched against it. A translated Name would break both silently.
     /// </summary>

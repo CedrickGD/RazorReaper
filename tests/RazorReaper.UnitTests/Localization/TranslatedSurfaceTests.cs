@@ -53,6 +53,72 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            "<h3>Accent Color</h3>",
+            "Recolor the whole app",
+            ">Active</span>",
+            "\"Collapse\" : \"Expand\"",
+            "aria-label=\"Hue\"",
+            "aria-label=\"Hex color\"",
+            "title=\"Reset to default purple\"",
+            "Advanced — override individual shades",
+            "\"Auto\" : \"Custom\"",
+            ">Reset to auto</button>",
+            "Each shade left on",
+            "is derived from the accent color",
+            "\"light\", \"Light\"",
+            "Hover / highlight accents",
+            "Gradient end, pressed states",
+            "Deep gradient / shadow tone",
+            "Subtle tinted text",
+            " hex\"",
+        })
+        {
+            data.Add("Components/Shared/AccentColorCard.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "<h3>Interface Font</h3>",
+            "Switch the UI font preset",
+            ">Active</span>",
+            "\"Collapse\" : \"Expand\"",
+            "The quick brown fox",
+            "Manual install (if auto-install fails)",
+            "Download the font from the official link below.",
+            "If you get a zip, extract it.",
+            "<strong>Install</strong>",
+            "Return here and select the preset again.",
+            "Fonts install per-user in the background.",
+            "Description = \"",
+            "return \"System\"",
+            "\"Installing\"",
+            "\"Installed\" : \"Auto-install\"",
+            "Free monthly limit reached",
+            "$\"Installing {preset.Name}",
+            "{preset.Name} installed.",
+            "installation pending. Try the preset again",
+            "Font package is invalid or blocked",
+            "Font files are in use.",
+            "Font download failed.",
+            "Font installation failed:",
+            "Copied download link for",
+            "Failed to copy download link.",
+        })
+        {
+            data.Add("Components/Shared/FontSettingsCard.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "left this month",
+            "Free monthly quota",
+        })
+        {
+            data.Add("Components/Shared/UsageChip.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">Search</span>",
             "title=\"Search pages, locations and commands (Ctrl+K)\"",
             "title=\"Drag to resize\"",
@@ -251,6 +317,15 @@ public sealed class TranslatedSurfaceTests
     /// </summary>
     [Theory]
     [InlineData("settings.title", "Settings")]
+    [InlineData("settings.accent.title", "Accent Color")]
+    [InlineData("settings.accent.description", "Recolor the whole app. Pick any color and every purple accent updates instantly — your choice is saved until you change it.")]
+    [InlineData("settings.accent.advanced.toggle", "Advanced — override individual shades")]
+    [InlineData("settings.accent.shade.reset", "Reset to auto")]
+    [InlineData("settings.font.title", "Interface Font")]
+    [InlineData("settings.font.manual.title", "Manual install (if auto-install fails)")]
+    [InlineData("settings.font.status.autoinstall", "Auto-install")]
+    [InlineData("usage.remaining", "{0}/{1} left this month")]
+    [InlineData("common.active", "Active")]
     [InlineData("settings.updates.description", "Updates install themselves and restart the app. There is no opt-out.")]
     [InlineData("notfound.title", "Page not found")]
     [InlineData("notfound.back", "Back to Home")]
@@ -273,6 +348,36 @@ public sealed class TranslatedSurfaceTests
     {
         Assert.True(TranslationParityTests.Read("en").TryGetValue(key, out var english), $"missing {key}");
         Assert.Equal(expected, english);
+    }
+
+    /// <summary>
+    /// Two sentences on Settings put one emphasised word in the middle of themselves, and no
+    /// dictionary value in the app carries markup — so each is three keys: a lead, the word the
+    /// razor file wraps in &lt;strong&gt;, and the tail. The spacing around the word lives in the
+    /// lead and the tail, because Chinese wants none where English wants one. That makes a
+    /// trimmed value a real bug and an invisible one, so it is pinned here: these are the only
+    /// entries in the dictionaries whose leading or trailing space is load-bearing.
+    /// </summary>
+    [Theory]
+    [InlineData("settings.accent.advanced.note.lead", "settings.accent.shade.auto", "settings.accent.advanced.note.rest",
+        "Each shade left on Auto is derived from the accent color. Pin a shade to lock it; \"Reset to auto\" hands it back to the accent.")]
+    [InlineData("settings.font.manual.install.lead", "settings.font.manual.install.action", "settings.font.manual.install.rest",
+        "Right-click the .ttf file and choose Install (or double-click and install).")]
+    public void ASentenceSplitAroundAnEmphasisedWordStillReadsAsOneSentence(
+        string lead, string word, string rest, string english)
+    {
+        foreach (var code in new[] { "en", "de", "ru", "zh-Hans" })
+        {
+            var dictionary = TranslationParityTests.Read(code);
+            var joined = dictionary[lead] + dictionary[word] + dictionary[rest];
+
+            Assert.DoesNotContain("  ", joined, StringComparison.Ordinal);
+            Assert.DoesNotContain(" ,", joined, StringComparison.Ordinal);
+            Assert.Equal(joined.Trim(), joined);
+        }
+
+        var en = TranslationParityTests.Read("en");
+        Assert.Equal(english, en[lead] + en[word] + en[rest]);
     }
 
     [Theory]

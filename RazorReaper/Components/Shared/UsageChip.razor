@@ -1,5 +1,7 @@
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @inject IUsageGateService UsageGate
+@inject ILocalizer Localizer
 @implements IDisposable
 
 @* Free-tier quota pill: "3/5 left this month". Renders nothing for premium users (the
@@ -12,8 +14,8 @@
        button height. Opacity marks an exhausted quota without inventing a new color. *@
     <span class="ini-widget-pill"
           style="-webkit-text-fill-color: var(--text-secondary); align-self: center; white-space: nowrap; @(Remaining == 0 ? "opacity: 0.55;" : null)"
-          title="Free monthly quota — resets each month. Premium is unlimited.">
-        @Remaining/@_usage.Limit left this month
+          title="@Localizer.T("usage.quota.tooltip")">
+        @Localizer.T("usage.remaining", Remaining, _usage.Limit)
     </span>
 }
 
