@@ -272,13 +272,31 @@ internal sealed unsafe class DesktopDuplicator : IDisposable
         }
     }
 
+    /// <summary>When the output choice was last re-derived, so a scan loop does not re-derive it per tick.</summary>
+    private DateTime _outputCheckedUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Twice a second. Dragging a window between monitors takes far longer than that, and a
+    /// capture served from the previous output for one extra frame is a frame, not a fault.
+    /// </summary>
+    private static readonly TimeSpan OutputRecheckAfter = TimeSpan.FromMilliseconds(500);
+
     /// <summary>
     /// True when the duplication already covers the output <paramref name="target"/> belongs to.
-    /// Enumerating outputs costs a DXGI factory, so this compares against the cheap GDI monitor
-    /// list: both report the same <c>\\.\DISPLAYn</c> device names.
     /// </summary>
     private bool StillOnTheRightOutput(Rectangle target)
     {
+        // The cheap answer, and it is the answer on almost every tick: a target wholly inside the
+        // duplicated output cannot belong to a different one. A fullscreen game matches the
+        // output exactly and never gets past this line.
+        if (_outputBounds.Contains(target)) return true;
+
+        // Everything below enumerates adapters and outputs through a fresh DXGI factory. At the
+        // Auto Clicker's 10 ms floor that would cost more than the capture it is guarding.
+        var now = DateTime.UtcNow;
+        if (now - _outputCheckedUtc < OutputRecheckAfter) return true;
+        _outputCheckedUtc = now;
+
         var monitors = SafeMonitorList();
         if (monitors.Count == 0) return true;   // nothing to compare against — leave it alone
 
