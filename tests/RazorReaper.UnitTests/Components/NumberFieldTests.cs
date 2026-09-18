@@ -99,15 +99,24 @@ public sealed class NumberFieldTests
     /// Scripts is the one page that has to repeat the box, and for a reason worth pinning: its
     /// .script-input class is worn by 31 number fields AND by 16 text fields holding a key name
     /// or a console command. The shared rule can only reach the number half, so without this the
-    /// two halves of the same column would sit at two different heights.
+    /// two halves of the same column would sit at two different heights — and in two different
+    /// typefaces, since the shared rule carries the mono stack as well as the box. The two kinds
+    /// are stacked directly on top of each other, so every declaration the shared rule makes has
+    /// to be repeated here or the repeat is only half done.
     /// </summary>
     [Fact]
     public void ScriptsRepeatsTheBoxOnlyBecauseItsTextFieldsShareTheClass()
     {
+        var shared = Rule("input[type=\"number\"]");
         var rule = Rule(PageCss("scripts-styles.css"), ".script-input");
 
         Assert.Contains("padding: var(--space-2) var(--space-3) !important;", rule, StringComparison.Ordinal);
         Assert.Contains("font-size: 0.85rem !important;", rule, StringComparison.Ordinal);
+        Assert.Contains("font-family: var(--font-mono);", rule, StringComparison.Ordinal);
+
+        // Stated against the shared rule rather than against a literal, so that changing the
+        // stack there and not here fails instead of silently splitting the column again.
+        Assert.Contains("font-family: var(--font-mono);", shared, StringComparison.Ordinal);
 
         var page = File.ReadAllText(Path.Combine(
             RepositoryRoot(), "RazorReaper", "Components", "Pages", "Scripts.razor"));

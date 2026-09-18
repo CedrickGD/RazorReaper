@@ -388,14 +388,20 @@
 
 /* One class, two input types: 31 of these are type="number" and 16 hold a key name or a
    command as text. The number ones take their box from input[type="number"] in
-   shared/primitives.css, so the padding and type size are repeated here for the text ones
-   — without it the two halves of the same column would sit at 34px and 43px. This is also
-   what brings the page down to the height the rest of the app's fields use; a script row's
-   field was the tallest control in the app before. */
+   shared/primitives.css, so the padding, type size and mono stack are repeated here for the
+   text ones — a rule keyed on type="number" reaches only half the column. Without the
+   padding the two halves would sit at 34px and 43px; without the font they would sit in two
+   different typefaces, and they are stacked directly on top of each other (the Yuty's roar
+   key at 120px right-aligned, its interval right under it). The content is the same kind of
+   thing either way: a key name, a console command, a number of milliseconds. .script-reading,
+   the OCR readout at the foot of the same column, has always been mono for that reason.
+   The padding is also what brings the page down to the height the rest of the app's fields
+   use; a script row's field was the tallest control in the app before. */
 .script-input {
     width: 120px !important;
     padding: var(--space-2) var(--space-3) !important;
     font-size: 0.85rem !important;
+    font-family: var(--font-mono);
     text-align: right;
 }
 
