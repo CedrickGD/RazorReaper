@@ -152,7 +152,7 @@ public static class NavCatalog
             new NavPage("Scripts", "/scripts", "Automation", NavIcons.ScriptsHub,
                 "Premade automation that runs natively — no external tools",
                 new[] { "scripts", "script", "automation", "macro", "macros", "ahk", "autohotkey", "jitbit", "crafting",
-                        "yuty", "auto walk", "mammoth", "turret", "farm", "afk", "anti afk", "exo", "noglin", "flak", "take all", "astro", "tek saddle", "dino ready", "fast tp", "download", "inv size",
+                        "yuty", "auto walk", "mammoth", "turret", "turret filler", "ammo", "filler", "fill", "farm", "afk", "anti afk", "exo", "noglin", "flak", "take all", "astro", "tek saddle", "dino ready", "fast tp", "download", "inv size",
                         // The armor script is called "Armor Swap" now and works with riot and tek
                         // too — "flak" stays above because that is what people still type.
                         "armor swap", "armor", "riot", "durability" }),

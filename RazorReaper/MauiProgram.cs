@@ -357,6 +357,7 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.InvSizeScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.AntiAfkScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.TurretManagerScript>();
+            services.AddSingleton<RazorReaper.Services.Automation.Scripts.TurretFillerScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.FlakScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.DinoReadyScript>();
             services.AddSingleton<RazorReaper.Services.Automation.Scripts.CraftingScript>();
@@ -377,6 +378,7 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.InvSizeScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.AntiAfkScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.TurretManagerScript>());
+            services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.TurretFillerScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.FlakScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.DinoReadyScript>());
             services.AddSingleton<RazorReaper.Services.Automation.AutomationScriptBase>(sp => sp.GetRequiredService<RazorReaper.Services.Automation.Scripts.CraftingScript>());
