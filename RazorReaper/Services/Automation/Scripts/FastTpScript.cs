@@ -35,6 +35,13 @@ public sealed class FastTpScript : AutomationScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// Types the destination and presses Enter on fixed delays. It cannot see the list it is
+    /// filtering, so a slow menu means the name lands somewhere else entirely and the Enter
+    /// confirms whatever was highlighted.
+    /// </summary>
+    public override bool IsExperimental => true;
+
     protected override bool CanStart(out string? reason)
     {
         if (string.IsNullOrWhiteSpace(Destination))

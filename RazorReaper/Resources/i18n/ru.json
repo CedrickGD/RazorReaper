@@ -2646,6 +2646,8 @@
   "scripts.ark.background": "ARK запущен, но не на переднем плане",
   "scripts.ark.foreground": "ARK на переднем плане",
   "scripts.ark.tooltip": "Скрипты действуют, только пока ARK — активное окно.",
+  "scripts.experimental": "Экспериментально",
+  "scripts.experimental.note": "Работает по фиксированным задержкам и не проверяет результат — если игра или сервер подтормаживают, те же клавиши уходят впустую.",
   "scripts.effect.ago.seconds": "Последнее действие {0} с назад.",
   "scripts.effect.ago.minutes": "Последнее действие {0} мин назад.",
   "scripts.effect.none": "Действий пока нет.",

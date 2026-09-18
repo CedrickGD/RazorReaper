@@ -2646,6 +2646,8 @@
   "scripts.ark.background": "ARK running, not in foreground",
   "scripts.ark.foreground": "ARK in foreground",
   "scripts.ark.tooltip": "Scripts only act while ARK is the window in front.",
+  "scripts.experimental": "Experimental",
+  "scripts.experimental.note": "Runs on fixed timings and cannot verify the result — if the game or the server is slow, it sends the same keys and nothing happens.",
   "scripts.effect.ago.seconds": "Last action {0} s ago.",
   "scripts.effect.ago.minutes": "Last action {0} min ago.",
   "scripts.effect.none": "No action yet.",

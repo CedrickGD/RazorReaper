@@ -67,6 +67,14 @@ public sealed class CraftingScript : CalibratableScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// Only in Walk mode. Watcher waits until it can see the station inventory before it crafts;
+    /// Walk holds forward for a fixed number of milliseconds and presses the access key where it
+    /// hopes the next station is. One step out of place and the rest of the row is pressed into
+    /// thin air, and nothing in the loop can notice.
+    /// </summary>
+    public override bool IsExperimental => Mode == CraftingMode.Walk;
+
     // Watcher needs the calibrated region+reference; Walk drives blind, so it needs no calibration.
     protected override bool CanStart(out string? reason)
     {

@@ -138,6 +138,17 @@ public abstract class AutomationScriptBase : IDisposable
     /// </summary>
     public virtual bool UsesVision => false;
 
+    /// <summary>
+    /// True for the scripts that send their sequence on fixed timings and never check that any of
+    /// it landed: Astro, Turret Manager, Auto Download, Fast TP and Crafting in Walk mode. They
+    /// work when the server keeps up and silently do nothing useful when it does not, and the
+    /// catalogue said nothing about the difference — sixteen tiles, all presented alike, five of
+    /// them unable to tell success from a wasted keypress. The page marks these.
+    ///
+    /// Not a field, because Crafting is only one of them in one of its two modes.
+    /// </summary>
+    public virtual bool IsExperimental => false;
+
     /// <summary>Raised whenever state or a script-specific stat changes. May fire on a background thread.</summary>
     public event Action? Changed;
 

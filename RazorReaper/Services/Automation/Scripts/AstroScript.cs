@@ -28,6 +28,13 @@ public sealed class AstroScript : AutomationScriptBase
         _input = input;
     }
 
+    /// <summary>
+    /// Fixed timings from start to finish: a click, 1.925 s, space, then five seconds of
+    /// clicking. Nothing reads the screen, so a server that lags through the window produces
+    /// the same keystrokes and no teleport, and the script cannot tell the two apart.
+    /// </summary>
+    public override bool IsExperimental => true;
+
     protected override bool CanStart(out string? reason)
     {
         if (!Foreground.IsGameForeground())

@@ -36,6 +36,13 @@ public sealed class TurretManagerScript : CalibratableScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// The scan proves the turret inventory is open; nothing proves the transfer went through.
+    /// A full turret, a laggy server or a stack that would not move all look like a successful
+    /// run from in here.
+    /// </summary>
+    public override bool IsExperimental => true;
+
     protected override Task RunAsync(CancellationToken ct) =>
         RunLoopAsync(ScanIntervalMs, async c =>
         {

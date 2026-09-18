@@ -36,6 +36,12 @@ public sealed class AutoDownloadScript : AutomationScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// Types the command into chat on a timer and never looks at what came back. Whether the
+    /// download actually started is a thing only the screen knows, and this does not read it.
+    /// </summary>
+    public override bool IsExperimental => true;
+
     protected override Task RunAsync(CancellationToken ct) =>
         RunLoopAsync(DelayMs, async c =>
         {

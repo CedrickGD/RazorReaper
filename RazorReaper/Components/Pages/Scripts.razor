@@ -71,6 +71,13 @@
                             <span class="scripts-ark-dot"></span>
                             @ArkStatusText
                         </span>
+                        @* Sixteen tiles presented alike, five of them unable to tell a landed
+                           step from a wasted keypress. The chip sits beside Start because that
+                           is the moment the difference is worth knowing. *@
+                        @if (_selected.IsExperimental)
+                        {
+                            <span class="scripts-exp-chip" title="@Localizer.T("scripts.experimental.note")">@Localizer.T("scripts.experimental")</span>
+                        }
                         @if (!_selected.UsesVision)
                         {
                             <UsageChip Feature="@UsageFeatures.InputScripts" />
@@ -90,6 +97,12 @@
                 @if (_selected.IsRunning)
                 {
                     <div class="script-effect-line">@EffectLine(_selected)</div>
+                }
+                @* The one line behind the chip. A tooltip would have been the cheap way out, and
+                   a caveat nobody hovers is a caveat nobody reads. *@
+                @if (_selected.IsExperimental)
+                {
+                    <div class="script-effect-line script-experimental-line">@Localizer.T("scripts.experimental.note")</div>
                 }
             </div>
 

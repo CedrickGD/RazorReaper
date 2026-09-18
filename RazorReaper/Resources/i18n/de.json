@@ -2646,6 +2646,8 @@
   "scripts.ark.background": "ARK läuft, aber nicht im Vordergrund",
   "scripts.ark.foreground": "ARK im Vordergrund",
   "scripts.ark.tooltip": "Skripte handeln nur, solange ARK das vorderste Fenster ist.",
+  "scripts.experimental": "Experimentell",
+  "scripts.experimental.note": "Läuft nach festen Zeiten und kann das Ergebnis nicht prüfen — wenn Spiel oder Server hängen, gehen dieselben Tasten raus und es passiert nichts.",
   "scripts.effect.ago.seconds": "Letzte Aktion vor {0} s.",
   "scripts.effect.ago.minutes": "Letzte Aktion vor {0} min.",
   "scripts.effect.none": "Noch keine Aktion.",
