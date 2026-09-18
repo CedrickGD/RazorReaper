@@ -261,6 +261,30 @@
                                value="@tf.ChangeThresholdPercent.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                                @onchange="SetTurretFillChange" />
                     </SettingRow>
+                    <SettingRow Title="@Localizer.T("scripts.turretfill.usefilter")" Description="@Localizer.T("scripts.turretfill.usefilter.desc")">
+                        <Switch Value="tf.UseFilter" ValueChanged="SetTurretFillUseFilter" />
+                    </SettingRow>
+                    @if (tf.UseFilter)
+                    {
+                        <SettingRow Title="@Localizer.T("scripts.turretfill.filtertext")" Description="@Localizer.T("scripts.turretfill.filtertext.desc")">
+                            <input class="script-input" value="@tf.FilterText" @onchange="SetTurretFillText" />
+                        </SettingRow>
+                        <SettingRow Title="@Localizer.T("scripts.turretfill.settle")" Description="@Localizer.T("scripts.turretfill.settle.desc")">
+                            <input class="script-input" type="number" min="100" max="2000" value="@tf.FilterSettleMs" @onchange="SetTurretFillSettle" />
+                        </SettingRow>
+                        @* Two points, and they stay here rather than on the calibration card
+                           below: that card is about the rectangle, and these two are only asked
+                           for while the filter is on. The countdown still lands in its status
+                           line, which is the one place this page reports a capture. *@
+                        <SettingRow Title="@Localizer.T("scripts.turretfill.point.search")" Description="@PointLine(tf, TurretFillerScript.SearchPointName)">
+                            <button class="btn btn-secondary" @onclick="() => CaptureTurretFillPoint(TurretFillerScript.SearchPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.capture")</button>
+                            <button class="btn btn-secondary" @onclick="() => tf.ClearPoint(TurretFillerScript.SearchPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.clear")</button>
+                        </SettingRow>
+                        <SettingRow Title="@Localizer.T("scripts.turretfill.point.slot")" Description="@PointLine(tf, TurretFillerScript.SlotPointName)">
+                            <button class="btn btn-secondary" @onclick="() => CaptureTurretFillPoint(TurretFillerScript.SlotPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.capture")</button>
+                            <button class="btn btn-secondary" @onclick="() => tf.ClearPoint(TurretFillerScript.SlotPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.clear")</button>
+                        </SettingRow>
+                    }
                 }
                 else if (_selected is FlakScript flak)
                 {
@@ -1041,6 +1065,16 @@
         }
     }
 
+    private void SetTurretFillUseFilter(bool value) { if (_selected is TurretFillerScript t) { t.UseFilter = value; t.SaveSettings(); } }
+    private void SetTurretFillText(ChangeEventArgs e) { if (_selected is TurretFillerScript t) { t.FilterText = e.Value?.ToString() ?? ""; t.SaveSettings(); } }
+    private void SetTurretFillSettle(ChangeEventArgs e) { if (_selected is TurretFillerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.FilterSettleMs = v; t.SaveSettings(); } }
+
+    /// <summary>Where a calibrated point sits, or what to do about it not existing yet.</summary>
+    private string PointLine(TurretFillerScript filler, string name)
+        => filler.TryGetPoint(name, out var point)
+            ? Localizer.T("scripts.turretfill.point.set", point.X, point.Y)
+            : Localizer.T("scripts.turretfill.point.notset");
+
     /// <summary>The line under "Last read": what was seen, and what the script made of it.</summary>
     private string FlakReadingHint(FlakScript f)
     {
@@ -1134,6 +1168,27 @@
             this.DispatchRender(() => InvokeAsync(StateHasChanged));
         });
         try { await cal.CalibrateRegionAsync(progress); }
+        finally
+        {
+            _calibrating = false;
+            _calStatus = "";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // The region flow one control down, with the countdown in the same status line: a point is
+    // captured where the cursor is standing when it runs out, so the only thing on screen has to
+    // be how long is left.
+    private async Task CaptureTurretFillPoint(string name)
+    {
+        if (_selected is not TurretFillerScript filler) return;
+        _calibrating = true;
+        var countdown = new Progress<int>(seconds =>
+        {
+            _calStatus = Localizer.T("scripts.turretfill.point.countdown", seconds);
+            this.DispatchRender(() => InvokeAsync(StateHasChanged));
+        });
+        try { await filler.CapturePointAsync(name, countdown); }
         finally
         {
             _calibrating = false;
