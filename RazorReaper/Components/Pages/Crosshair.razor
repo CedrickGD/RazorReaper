@@ -386,7 +386,7 @@
             </div>
 
             <div class="code-import">
-                <label class="field-label code-import-label">From game code (Valorant / CSGO)</label>
+                <label class="field-label code-import-label">From game code (Valorant / CS2)</label>
                 <div class="row-flex gap-sm align-center">
                     <input type="text" class="rr-input code-input"
                            placeholder="Paste a Valorant string or CSGO-XXXXX-… code"
@@ -395,7 +395,8 @@
                     <button class="rr-pill-btn primary" @onclick="ImportCode" disabled="@string.IsNullOrWhiteSpace(codeInput)">Import</button>
                 </div>
                 <p class="muted-line">
-                    Best-effort parse — covers color, length, thickness, gap, dot &amp; outline. Press <kbd>Enter</kbd> to import.
+                    Covers color, length, thickness, gap, dot &amp; outline. Press <kbd>Enter</kbd> to import.
+                    Rust's own export code isn't readable — use <strong>Import Crosshair X workshop file</strong> for Rust.
                 </p>
             </div>
 
@@ -427,8 +428,19 @@
                     <div class="guide-item">
                         <div class="guide-title">CS2 / CSGO</div>
                         <div class="guide-text">
-                            In-game: console → <code>cl_crosshair_sharecode</code> shows your code (<code>CSGO-XXXXX-XXXXX-…</code>).
-                            Or grab one from <em>csgo-stats.net</em> / <em>pro crosshair</em> sites and paste above.
+                            In-game: Settings → Crosshair → <strong>Share or Import</strong> gives you a code
+                            (<code>CSGO-XXXXX-XXXXX-…</code>, five groups of five). Or grab one from a pro-crosshair
+                            site and paste it above. Match share codes look identical but aren't crosshairs — we tell
+                            you if you paste one.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-title">Rust</div>
+                        <div class="guide-text">
+                            Rust's Export gives a code too, but Facepunch has never published how it's encoded, so
+                            we'd only be guessing at what it says. Use <strong>Import Crosshair X workshop file</strong>
+                            instead — Crosshair X ships Rust profiles and those import exactly. An
+                            <strong>image import</strong> of the crosshair PNG works for any game as well.
                         </div>
                     </div>
                 </div>
@@ -977,8 +989,7 @@
         codeInput = "";
         // Surface the parsed values so it's obvious what landed (and easy to spot when a code
         // parses but values look wrong).
-        Notifications.ShowSuccess(
-            $"Saved '{saveName}' · {imported.Type} · {imported.Color} · size {imported.Size} · thick {imported.Thickness} · gap {imported.Gap} · {imported.Opacity}%");
+        Notifications.ShowSuccess($"Saved '{saveName}' · {RazorReaper.Services.Implementations.CrosshairCodeParsers.Describe(imported)}");
     }
 
     private async Task OnCodeKeyDown(KeyboardEventArgs e)
