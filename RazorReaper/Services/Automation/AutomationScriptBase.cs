@@ -46,6 +46,16 @@ public abstract class AutomationScriptBase : IDisposable
     private readonly string _defaultHotkey;
 
     private readonly object _gate = new();
+
+    /// <summary>
+    /// Keys this script currently holds down, with the simulator that pressed them. A held key is
+    /// the one piece of script state that outlives the script: if the run loop dies between the
+    /// down and the up — a thrown tick, a hard Dispose, a stop while the character is sprinting —
+    /// the game keeps the key down forever and the user is left running into a wall. Every exit
+    /// path drains this.
+    /// </summary>
+    private readonly HashSet<(IInputSimulator Input, int VirtualKey)> _heldKeys = new();
+
     private CancellationTokenSource? _cts;
     private Task? _task;
     private volatile ScriptState _state = ScriptState.Off;
@@ -204,6 +214,10 @@ public abstract class AutomationScriptBase : IDisposable
         try { OnStopped(); }
         catch (Exception ex) { Logger.LogWarning(ex, "{Script} OnStopped threw", _displayName); }
 
+        // After OnStopped, not before: a subclass may release its own keys there, and releasing
+        // twice is harmless while releasing too early is not.
+        ReleaseHeldKeys();
+
         if (notify)
         {
             Notifications.ShowInfo(Localizer.T("scripts.toast.stopped", _displayName));
@@ -225,6 +239,10 @@ public abstract class AutomationScriptBase : IDisposable
         }
         finally
         {
+            // Whatever ended the run — a stop, a crash, the body simply returning — no key of
+            // ours may still be down once the loop is gone.
+            ReleaseHeldKeys();
+
             // A self-terminated run (returned without a Stop) must reflect Off too.
             lock (_gate)
             {
@@ -232,6 +250,54 @@ public abstract class AutomationScriptBase : IDisposable
                     SetStateLocked(ScriptState.Off);
             }
             RaiseChanged();
+        }
+    }
+
+    // ─── Held keys ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Presses a key and remembers that it is down, so <see cref="Stop"/>, <see cref="Dispose"/>
+    /// or a run loop that dies mid-hold all release it. Pair with <see cref="ReleaseKey"/>.
+    /// </summary>
+    protected void HoldKey(IInputSimulator input, int virtualKey)
+    {
+        // Recorded before the press: a KeyDown that throws after the key went down would
+        // otherwise be forgotten, and an unremembered held key is exactly the bug. A release
+        // for a key that never went down is a no-op the game ignores.
+        lock (_gate) _heldKeys.Add((input, virtualKey));
+        input.KeyDown(virtualKey);
+    }
+
+    /// <summary>Releases a key taken with <see cref="HoldKey"/>. Safe to call twice.</summary>
+    protected void ReleaseKey(IInputSimulator input, int virtualKey)
+    {
+        lock (_gate) _heldKeys.Remove((input, virtualKey));
+        try { input.KeyUp(virtualKey); }
+        catch (Exception ex) { Logger.LogWarning(ex, "{Script} release of key {Key} failed", _displayName, virtualKey); }
+    }
+
+    /// <summary>True while this script holds <paramref name="virtualKey"/> down.</summary>
+    protected bool IsKeyHeld(IInputSimulator input, int virtualKey)
+    {
+        lock (_gate) return _heldKeys.Contains((input, virtualKey));
+    }
+
+    /// <summary>Releases every key this script still holds. Idempotent.</summary>
+    protected void ReleaseHeldKeys()
+    {
+        (IInputSimulator Input, int VirtualKey)[] held;
+        lock (_gate)
+        {
+            if (_heldKeys.Count == 0) return;
+            held = _heldKeys.ToArray();
+            _heldKeys.Clear();
+        }
+
+        foreach (var (input, vk) in held)
+        {
+            // Each release is its own attempt: one that throws must not strand the others.
+            try { input.KeyUp(vk); }
+            catch (Exception ex) { Logger.LogWarning(ex, "{Script} release of held key {Key} failed", _displayName, vk); }
         }
     }
 

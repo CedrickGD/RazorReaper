@@ -29,7 +29,11 @@ public interface IInputSimulator
     /// <summary>Releases the given virtual key.</summary>
     void KeyUp(int virtualKey);
 
-    /// <summary>Presses and releases a virtual key with a short, optionally jittered hold time.</summary>
+    /// <summary>
+    /// Presses and releases a virtual key with a short, optionally jittered hold time. The hold is
+    /// raised to <see cref="InputSimulator.MinHoldMs"/> if the caller asks for less — a down and an
+    /// up inside the same frame is a press the game never samples.
+    /// </summary>
     /// <param name="virtualKey">Win32 virtual-key code.</param>
     /// <param name="holdMs">Milliseconds between down and up.</param>
     /// <param name="jitter">0..1 fractional randomization applied to <paramref name="holdMs"/>.</param>
@@ -74,12 +78,25 @@ public interface IInputSimulator
 /// <summary>SendInput-backed implementation of <see cref="IInputSimulator"/>.</summary>
 public sealed class InputSimulator : IInputSimulator
 {
+    /// <summary>
+    /// The shortest hold a press is allowed to have. ARK samples input once per rendered frame,
+    /// so anything shorter than a frame is a press the game can miss entirely; 30 ms clears two
+    /// frames at 60 Hz and one at 30 Hz, and is short enough that nothing feels sluggish.
+    /// </summary>
+    public const int MinHoldMs = 30;
+
     private readonly ILogger<InputSimulator> _logger;
 
     public InputSimulator(ILogger<InputSimulator> logger)
     {
         _logger = logger;
     }
+
+    /// <summary>
+    /// The hold a press actually gets. Exposed so the floor can be checked without putting a
+    /// keystroke on the tester's desktop.
+    /// </summary>
+    public static int EffectiveHoldMs(int requestedMs) => Math.Max(requestedMs, MinHoldMs);
 
     // ─── Keyboard ──────────────────────────────────────────────────────────────
 
@@ -92,7 +109,7 @@ public sealed class InputSimulator : IInputSimulator
         KeyDown(virtualKey);
         try
         {
-            await DelayAsync(holdMs, jitter, ct);
+            await DelayAsync(EffectiveHoldMs(holdMs), jitter, ct);
         }
         finally
         {
@@ -130,8 +147,8 @@ public sealed class InputSimulator : IInputSimulator
         if (keyUp) SynthesizedInput.Released(virtualKey);
         else SynthesizedInput.Pressed(virtualKey);
 
-        uint flags = keyUp ? KEYEVENTF_KEYUP : 0u;
-        if (IsExtendedKey(virtualKey)) flags |= KEYEVENTF_EXTENDEDKEY;
+        var scan = (ushort)MapVirtualKey((uint)virtualKey, MAPVK_VK_TO_VSC);
+        var (_, flags) = BuildKeyFlags(virtualKey, scan, keyUp);
 
         var input = new INPUT
         {
@@ -140,9 +157,11 @@ public sealed class InputSimulator : IInputSimulator
             {
                 ki = new KEYBDINPUT
                 {
+                    // Both halves are filled in. wVk is what Windows and every well-behaved app
+                    // reads; wScan + KEYEVENTF_SCANCODE is what a game reading DirectInput or raw
+                    // input reads, and ARK is one of those.
                     wVk = (ushort)virtualKey,
-                    // Provide the scan code too — some games read scan codes rather than VKs.
-                    wScan = (ushort)MapVirtualKey((uint)virtualKey, MAPVK_VK_TO_VSC),
+                    wScan = scan,
                     dwFlags = flags,
                     time = 0,
                     dwExtraInfo = UIntPtr.Zero
@@ -150,6 +169,24 @@ public sealed class InputSimulator : IInputSimulator
             }
         };
         Dispatch(input);
+    }
+
+    /// <summary>
+    /// The scan code and KEYBDINPUT flags for one key event.
+    ///
+    /// The scan code used to be filled in without ever setting KEYEVENTF_SCANCODE, which means
+    /// Windows ignored it and rebuilt one from the virtual key — so the field was decoration and
+    /// a game that reads scan codes saw whatever the active layout mapped the VK back to. Setting
+    /// the flag makes the scan code the one that actually travels. A virtual key the layout has no
+    /// scan code for (scan 0) keeps the VK-only path, because KEYEVENTF_SCANCODE with a zero scan
+    /// code is a key event that presses nothing.
+    /// </summary>
+    internal static (ushort Scan, uint Flags) BuildKeyFlags(int virtualKey, ushort scanCode, bool keyUp)
+    {
+        uint flags = keyUp ? KEYEVENTF_KEYUP : 0u;
+        if (IsExtendedKey(virtualKey)) flags |= KEYEVENTF_EXTENDEDKEY;
+        if (scanCode != 0) flags |= KEYEVENTF_SCANCODE;
+        return (scanCode, flags);
     }
 
     private void SendUnicodeChar(char c)
@@ -250,7 +287,7 @@ public sealed class InputSimulator : IInputSimulator
         MouseDown(button);
         try
         {
-            await DelayAsync(holdMs, jitter, ct);
+            await DelayAsync(EffectiveHoldMs(holdMs), jitter, ct);
         }
         finally
         {
@@ -343,9 +380,12 @@ public sealed class InputSimulator : IInputSimulator
     private const uint INPUT_MOUSE = 0;
     private const uint INPUT_KEYBOARD = 1;
 
-    private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
+    internal const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+    internal const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint KEYEVENTF_UNICODE = 0x0004;
+
+    /// <summary>Makes Windows send <c>wScan</c> as given instead of deriving one from <c>wVk</c>.</summary>
+    internal const uint KEYEVENTF_SCANCODE = 0x0008;
 
     private const uint MOUSEEVENTF_MOVE = 0x0001;
     private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;

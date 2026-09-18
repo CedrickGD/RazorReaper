@@ -316,10 +316,12 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
 
             var hold = Math.Max(1, config.HoldMs);
 
+            // try/finally rather than a catch per cancellation point: the button has to come back
+            // up for *any* exit, and the old form only covered the one exception it named.
             _input.MouseDown(config.Button);
             try { await Task.Delay(hold, token); }
-            catch (OperationCanceledException) { _input.MouseUp(config.Button); return; }
-            _input.MouseUp(config.Button);
+            catch (OperationCanceledException) { return; }
+            finally { _input.MouseUp(config.Button); }
 
             if (config.ClickType == AutoClickerClickType.Double && _running)
             {
@@ -327,8 +329,8 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
                 if (!_running) return;
                 _input.MouseDown(config.Button);
                 try { await Task.Delay(hold, token); }
-                catch (OperationCanceledException) { _input.MouseUp(config.Button); return; }
-                _input.MouseUp(config.Button);
+                catch (OperationCanceledException) { return; }
+                finally { _input.MouseUp(config.Button); }
             }
 
             Interlocked.Increment(ref _clickCount);

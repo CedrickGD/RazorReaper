@@ -97,7 +97,6 @@ public sealed class CraftingScript : CalibratableScriptBase
         var fwdVk = HotkeyParser.TryParseKey(ForwardKey, out var f) ? f : 'W';
         var accessVk = HotkeyParser.TryParseKey(AccessKey, out var a) ? a : 'F';
         var craftVk = HotkeyParser.TryParseKey(CraftKey, out var k) ? k : 'E';
-        var walking = false;
 
         try
         {
@@ -106,11 +105,9 @@ public sealed class CraftingScript : CalibratableScriptBase
                 if (Foreground.IsGameForeground())
                 {
                     // move to the next station
-                    _input.KeyDown(fwdVk);
-                    walking = true;
+                    HoldKey(_input, fwdVk);
                     await _input.DelayAsync(Math.Clamp(WalkMs, 100, 10000), ct: ct);
-                    _input.KeyUp(fwdVk);
-                    walking = false;
+                    ReleaseKey(_input, fwdVk);
                     await _input.DelayAsync(Pad(250), ct: ct);
 
                     // open, craft, close
@@ -133,11 +130,8 @@ public sealed class CraftingScript : CalibratableScriptBase
         catch (OperationCanceledException) { }
         finally
         {
-            if (walking)
-            {
-                try { _input.KeyUp(fwdVk); }
-                catch (Exception ex) { Logger.LogWarning(ex, "Crafting forward-key release failed"); }
-            }
+            // A stop lands mid-walk more often than not — the walk leg is the longest one.
+            ReleaseHeldKeys();
         }
     }
 

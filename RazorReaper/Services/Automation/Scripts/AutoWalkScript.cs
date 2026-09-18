@@ -57,14 +57,14 @@ public sealed class AutoWalkScript : AutomationScriptBase
                 {
                     // Sprint goes down first: ARK reads it as a modifier on the movement that
                     // follows, and pressing it after forward can start the run as a walk.
-                    if (sprint) _input.KeyDown(sprintVk);
-                    _input.KeyDown(forwardVk);
+                    if (sprint) HoldKey(_input, sprintVk);
+                    HoldKey(_input, forwardVk);
                     isDown = true;
                 }
                 else if (!foreground && isDown)
                 {
-                    _input.KeyUp(forwardVk);
-                    if (sprint) _input.KeyUp(sprintVk);
+                    ReleaseKey(_input, forwardVk);
+                    if (sprint) ReleaseKey(_input, sprintVk);
                     isDown = false;
                 }
 
@@ -73,18 +73,9 @@ public sealed class AutoWalkScript : AutomationScriptBase
         }
         finally
         {
-            if (isDown)
-            {
-                // Release both even if one throws — a stuck Shift is worse than a logged warning.
-                try { _input.KeyUp(forwardVk); }
-                catch (Exception ex) { Logger.LogWarning(ex, "Auto-Walk forward key release failed"); }
-
-                if (sprint)
-                {
-                    try { _input.KeyUp(sprintVk); }
-                    catch (Exception ex) { Logger.LogWarning(ex, "Auto-Walk sprint key release failed"); }
-                }
-            }
+            // The scaffold drains held keys on every exit path anyway; doing it here as well
+            // gets them up the moment the loop unwinds instead of one stop-path later.
+            ReleaseHeldKeys();
         }
     }
 

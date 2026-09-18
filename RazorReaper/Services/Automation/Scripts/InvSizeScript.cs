@@ -42,9 +42,9 @@ public sealed class InvSizeScript : AutomationScriptBase
             {
                 if (Foreground.IsGameForeground())
                 {
-                    _input.KeyDown(VkShift);
+                    HoldKey(_input, VkShift);
                     await _input.ClickAsync(MouseButton.Right, ct: ct);
-                    _input.KeyUp(VkShift);
+                    ReleaseKey(_input, VkShift);
                 }
                 await Task.Delay(Math.Clamp(IntervalMs, 20, 2000), ct);
             }
@@ -52,8 +52,9 @@ public sealed class InvSizeScript : AutomationScriptBase
         catch (OperationCanceledException) { }
         finally
         {
-            try { _input.KeyUp(VkShift); }
-            catch (Exception ex) { Logger.LogWarning(ex, "Inv Size Shift release failed"); }
+            // Cancellation lands inside ClickAsync more often than anywhere else, which is
+            // exactly between the Shift going down and coming back up.
+            ReleaseHeldKeys();
         }
     }
 
