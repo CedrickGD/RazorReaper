@@ -1,8 +1,10 @@
 @page "/bosses"
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Boss Tribute Guide</h1>
-    <p class="page-subtitle">Bosses and mini-bosses sorted by map with entry requirements.</p>
+    <h1 class="page-title">@Localizer.T("bosses.title")</h1>
+    <p class="page-subtitle">@Localizer.T("bosses.subtitle")</p>
 </header>
 
 <div class="bosses-layout">
@@ -14,8 +16,8 @@
                 </svg>
             </div>
             <div>
-                <h3>How to use this list</h3>
-                <p>Expand each boss to see Gamma, Beta, and Alpha tribute requirements.</p>
+                <h3>@Localizer.T("bosses.how.title")</h3>
+                <p>@Localizer.T("bosses.how.text")</p>
             </div>
         </div>
     </section>
@@ -23,8 +25,8 @@
     @if (IsFiltered)
     {
         <div class="deeplink-filter-bar">
-            <span>Showing <strong>@MapFilter</strong></span>
-            <a href="/bosses">Show all maps</a>
+            <span>@Localizer.T("bosses.showing.lead")<strong>@MapFilter</strong></span>
+            <a href="/bosses">@Localizer.T("bosses.showall")</a>
         </div>
     }
 
@@ -39,7 +41,7 @@
                         <p>@map.Note</p>
                     }
                 </div>
-                <span class="bosses-map-count">@map.Bosses.Count entries</span>
+                <span class="bosses-map-count">@Localizer.T("palette.deeplink.boss.count", map.Bosses.Count)</span>
             </div>
 
             <div class="bosses-grid">
@@ -76,9 +78,9 @@
 
                         <details class="boss-tier-details">
                             <summary>
-                                <span>@(boss.Tiers.Count > 1 ? "Show tier requirements" : "Show entry requirements")</span>
+                                <span>@Localizer.T(boss.Tiers.Count > 1 ? "bosses.show.tiers" : "bosses.show.entry")</span>
                                 <span class="boss-tier-summary">
-                                    @(boss.Tiers.Count > 1 ? "Gamma / Beta / Alpha" : "Single list")
+                                    @(boss.Tiers.Count > 1 ? "Gamma / Beta / Alpha" : Localizer.T("bosses.singlelist"))
                                 </span>
                                 <svg class="boss-tier-chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.7a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" clip-rule="evenodd" />
@@ -118,6 +120,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     /// <summary>Set by a palette deep link (/bosses?map=Ragnarok) to show just that map.</summary>
     [Parameter, SupplyParameterFromQuery(Name = "map")]
     public string? MapFilter { get; set; }

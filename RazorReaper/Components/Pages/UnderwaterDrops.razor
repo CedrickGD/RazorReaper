@@ -1,41 +1,43 @@
 @page "/underwater-drops"
 @using System.Globalization
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="uw-page">
     <header class="page-header">
-        <h1 class="page-title">Underwater Drops</h1>
-        <p class="page-subtitle">Underwater loot crate locations with coordinates, searchable by map and crate type.</p>
+        <h1 class="page-title">@Localizer.T("nav.page.underwater-drops")</h1>
+        <p class="page-subtitle">@Localizer.T("uw.subtitle")</p>
     </header>
 
     <div class="uw-layout">
         <section class="content-card uw-controls">
             <div class="uw-toolbar">
                 <div class="uw-search-block">
-                    <label class="uw-label">Search</label>
+                    <label class="uw-label">@Localizer.T("common.search")</label>
                     <div class="uw-search-wrapper">
                         <svg class="uw-search-icon" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                         </svg>
                         <input type="text"
                                class="uw-search-input"
-                               placeholder="Search area, map or note..."
+                               placeholder="@Localizer.T("uw.search.placeholder")"
                                @bind="searchQuery"
                                @bind:event="oninput" />
                     </div>
                 </div>
                 <div class="uw-count">
-                    <span>Showing:</span>
+                    <span>@Localizer.T("dinoprices.showing")</span>
                     <span class="uw-count-value">@filteredCount / @UnderwaterDropsData.Drops.Count</span>
                 </div>
             </div>
 
             <div class="uw-filter-row">
                 <div class="uw-filter-group">
-                    <span class="uw-label">Map</span>
+                    <span class="uw-label">@Localizer.T("common.map")</span>
                     <div class="uw-chip-row">
                         <button type="button"
                                 class="uw-chip @(selectedMap is null ? "active" : "")"
-                                @onclick="() => SelectMap(null)">All maps</button>
+                                @onclick="() => SelectMap(null)">@Localizer.T("common.allmaps")</button>
                         @foreach (var map in UnderwaterDropsData.Maps)
                         {
                             var mapName = map;
@@ -46,25 +48,25 @@
                     </div>
                 </div>
                 <div class="uw-filter-group">
-                    <span class="uw-label">Crate type</span>
+                    <span class="uw-label">@Localizer.T("uw.cratetype")</span>
                     <div class="uw-chip-row">
                         <button type="button"
                                 class="uw-chip @(selectedTier is null ? "active" : "")"
-                                @onclick="() => SelectTier(null)">All types</button>
+                                @onclick="() => SelectTier(null)">@Localizer.T("uw.alltypes")</button>
                         <button type="button"
                                 class="uw-chip @(selectedTier == UnderwaterDropTier.DeepSea ? "active" : "")"
                                 @onclick="() => SelectTier(UnderwaterDropTier.DeepSea)">
-                            <span class="uw-dot uw-dot-deepsea"></span>Deep sea
+                            <span class="uw-dot uw-dot-deepsea"></span>@Localizer.T("uw.tier.deepsea")
                         </button>
                         <button type="button"
                                 class="uw-chip @(selectedTier == UnderwaterDropTier.CaveCrate ? "active" : "")"
                                 @onclick="() => SelectTier(UnderwaterDropTier.CaveCrate)">
-                            <span class="uw-dot uw-dot-cave"></span>Cave crate
+                            <span class="uw-dot uw-dot-cave"></span>@Localizer.T("uw.tier.cave")
                         </button>
                         <button type="button"
                                 class="uw-chip @(selectedTier == UnderwaterDropTier.Shipwreck ? "active" : "")"
                                 @onclick="() => SelectTier(UnderwaterDropTier.Shipwreck)">
-                            <span class="uw-dot uw-dot-wreck"></span>Shipwreck
+                            <span class="uw-dot uw-dot-wreck"></span>@Localizer.T("uw.tier.shipwreck")
                         </button>
                     </div>
                 </div>
@@ -72,7 +74,7 @@
         </section>
 
         <section class="content-card uw-info-card">
-            <p>Deep-sea crates need character level 80 to open and respawn on a timer after being looted.</p>
+            <p>@Localizer.T("uw.note")</p>
         </section>
 
         @if (filteredGroups.Count > 0)
@@ -82,15 +84,15 @@
                 <section class="content-card uw-map-card">
                     <div class="uw-map-header">
                         <h2>@group.MapName</h2>
-                        <span class="uw-map-count">@group.Entries.Count @(group.Entries.Count == 1 ? "location" : "locations")</span>
+                        <span class="uw-map-count">@Localizer.T(group.Entries.Count == 1 ? "uw.count.one" : "uw.count.many", group.Entries.Count)</span>
                     </div>
                     <div class="uw-table">
                         <div class="uw-table-header">
-                            <div>Type</div>
-                            <div>Area</div>
-                            <div>Lat</div>
-                            <div>Lon</div>
-                            <div>Access</div>
+                            <div>@Localizer.T("uw.column.type")</div>
+                            <div>@Localizer.T("uw.column.area")</div>
+                            <div>@Localizer.T("common.lat")</div>
+                            <div>@Localizer.T("common.lon")</div>
+                            <div>@Localizer.T("uw.column.access")</div>
                         </div>
                         <div class="uw-table-body">
                             @foreach (var drop in group.Entries)
@@ -118,8 +120,8 @@
                     <svg fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                     </svg>
-                    <h3>No drops found</h3>
-                    <p>Try a different search, map or crate type.</p>
+                    <h3>@Localizer.T("uw.empty.title")</h3>
+                    <p>@Localizer.T("uw.empty.text")</p>
                 </div>
             </section>
         }
@@ -127,6 +129,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private sealed class MapGroup
     {
         public string MapName { get; init; } = "";
@@ -220,12 +230,12 @@
             .ToList();
     }
 
-    private static string TierLabel(UnderwaterDropTier tier) => tier switch
+    private string TierLabel(UnderwaterDropTier tier) => tier switch
     {
-        UnderwaterDropTier.DeepSea => "Deep sea",
-        UnderwaterDropTier.CaveCrate => "Cave crate",
-        UnderwaterDropTier.Shipwreck => "Shipwreck",
-        _ => "Unknown"
+        UnderwaterDropTier.DeepSea => Localizer.T("uw.tier.deepsea"),
+        UnderwaterDropTier.CaveCrate => Localizer.T("uw.tier.cave"),
+        UnderwaterDropTier.Shipwreck => Localizer.T("uw.tier.shipwreck"),
+        _ => Localizer.T("common.unknown")
     };
 
     private static string TierDotClass(UnderwaterDropTier tier) => tier switch

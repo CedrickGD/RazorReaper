@@ -386,6 +386,115 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">TP Locations</h1>",
+            "Teleport-worthy spots across every map",
+            ">All Maps</button>",
+            "placeholder=\"Search locations...\"",
+            ">All</button>",
+            "locations</span>",
+            ">Lat</span>",
+            ">Lon</span>",
+            "title=\"Copy: cheat setplayerpos",
+            "<span>Copy</span>",
+            "<h3>No locations found</h3>",
+            "Try a different search, map, or category",
+            "=> \"Obelisk\"",
+            "=> \"Landmark\"",
+            "teleport command copied.",
+            "$\"Copied TP command:",
+            "\"Failed to copy the teleport command.\"",
+        })
+        {
+            data.Add("Components/Pages/TpLocations.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Underwater Drops</h1>",
+            "Underwater loot crate locations with coordinates",
+            ">Search</label>",
+            "placeholder=\"Search area, map or note...\"",
+            "<span>Showing:</span>",
+            ">Map</span>",
+            ">All maps</button>",
+            ">Crate type</span>",
+            ">All types</button>",
+            "</span>Deep sea",
+            "</span>Cave crate",
+            "</span>Shipwreck",
+            "Deep-sea crates need character level 80",
+            "\"location\" : \"locations\"",
+            "<div>Type</div>",
+            "<div>Access</div>",
+            "<h3>No drops found</h3>",
+            "=> \"Deep sea\"",
+        })
+        {
+            data.Add("Components/Pages/UnderwaterDrops.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Boss Tribute Guide</h1>",
+            "Bosses and mini-bosses sorted by map",
+            "<h3>How to use this list</h3>",
+            "Expand each boss to see Gamma",
+            "<span>Showing <strong>",
+            ">Show all maps</a>",
+            "Bosses.Count entries",
+            "\"Show tier requirements\"",
+            ": \"Single list\"",
+        })
+        {
+            data.Add("Components/Pages/Bosses.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Steam Mods</h1>",
+            "Browse installed ARK: Survival Evolved workshop mods",
+            ">Installed Mods</span>",
+            ">Named by Steam</span>",
+            "\"Scanning...\" : \"Refresh Mods\"",
+            ">Steam Path:</span>",
+            ">Last Scan:</span>",
+            "placeholder=\"Search by mod name or workshop ID\"",
+            ">Sort</label>",
+            ">Installed Filter</label>",
+            ">Size Filter</label>",
+            "Label=\"Only show mods with Steam titles\"",
+            "<h3>Scan Notes</h3>",
+            "Scanning Steam libraries and workshop metadata",
+            "<h3>Steam not detected</h3>",
+            "<h3>No installed ARK workshop mods found</h3>",
+            "<h3>No matches for current filters</h3>",
+            ">Drive: @",
+            ">Size: @",
+            ">Installed (Local)</span>",
+            ">Updated (Best Source)</span>",
+            ">Copy ID</button>",
+            ">Open Web</button>",
+            ">Open Steam</button>",
+            ">Open Folder</button>",
+            "\"Latest Installed\"",
+            "\"Last 7 Days\"",
+            "\"All Sizes\"",
+            "\"Under 100 MB\"",
+            "\"Steam was not detected on this machine.\"",
+            "$\"Loaded {allMods.Count}",
+            "$\"Copied ID {workshopId}\"",
+            "\"Could not open mod folder.\"",
+            "return \"Not scanned yet\"",
+            "return \"Unknown\"",
+            "d ago\"",
+            "return \"Just now\"",
+        })
+        {
+            data.Add("Components/Pages/SteamMods.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">Global Hotkeys</h1>",
             "Every system-wide hotkey, set in one place",
             ">Set on its page</a>",

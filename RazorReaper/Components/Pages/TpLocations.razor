@@ -7,16 +7,18 @@
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ILogger<TpLocations> Logger
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">TP Locations</h1>
-    <p class="page-subtitle">Teleport-worthy spots across every map, with copyable setplayerpos commands where documented.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.tp-locations")</h1>
+    <p class="page-subtitle">@Localizer.T("tp.subtitle")</p>
 </header>
 
 <div class="tp-page">
     <section class="content-card tp-toolbar-card">
         <div class="tp-map-tabs">
-            <button class="tp-map-tab @(selectedMap == AllMaps ? "active" : "")" @onclick="() => SelectMap(AllMaps)">All Maps</button>
+            <button class="tp-map-tab @(selectedMap == AllMaps ? "active" : "")" @onclick="() => SelectMap(AllMaps)">@Localizer.T("common.allmaps")</button>
             @foreach (var map in TpLocationData.Maps)
             {
                 var mapName = map;
@@ -31,13 +33,13 @@
                 </svg>
                 <input type="text"
                        class="tp-search-input"
-                       placeholder="Search locations..."
+                       placeholder="@Localizer.T("tp.search.placeholder")"
                        @bind="searchQuery"
                        @bind:event="oninput" />
             </div>
 
             <div class="tp-category-tabs">
-                <button class="tp-category-tab @(selectedCategory == AllCategories ? "active" : "")" @onclick="() => SelectCategory(AllCategories)">All</button>
+                <button class="tp-category-tab @(selectedCategory == AllCategories ? "active" : "")" @onclick="() => SelectCategory(AllCategories)">@Localizer.T("common.all")</button>
                 @foreach (var category in TpLocationData.Categories)
                 {
                     var categoryKey = category;
@@ -47,7 +49,7 @@
 
             <div class="tp-count">
                 <span class="tp-count-value">@filtered.Count</span>
-                <span>of @TpLocationData.Entries.Count locations</span>
+                <span>@Localizer.T("tp.count", TpLocationData.Entries.Count)</span>
             </div>
         </div>
     </section>
@@ -73,19 +75,19 @@
                             </p>
                         </div>
                         <div class="tp-row-coords">
-                            <span class="tp-coord-label">Lat</span>
+                            <span class="tp-coord-label">@Localizer.T("common.lat")</span>
                             <span class="tp-coord-value">@FormatCoord(entry.Lat)</span>
-                            <span class="tp-coord-label">Lon</span>
+                            <span class="tp-coord-label">@Localizer.T("common.lon")</span>
                             <span class="tp-coord-value">@FormatCoord(entry.Lon)</span>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(entry.SetPlayerPos))
                         {
-                            <button class="tp-copy-btn" title="Copy: cheat setplayerpos @entry.SetPlayerPos" @onclick="() => CopyCommand(entry)">
+                            <button class="tp-copy-btn" title="@Localizer.T("tp.copy.tooltip", entry.SetPlayerPos)" @onclick="() => CopyCommand(entry)">
                                 <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 20 20">
                                     <rect x="7" y="7" width="9" height="9" rx="2" />
                                     <path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" />
                                 </svg>
-                                <span>Copy</span>
+                                <span>@Localizer.T("license.key.copy")</span>
                             </button>
                         }
                         else
@@ -102,14 +104,22 @@
                 <svg fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                 </svg>
-                <h3>No locations found</h3>
-                <p>Try a different search, map, or category filter.</p>
+                <h3>@Localizer.T("tp.empty.title")</h3>
+                <p>@Localizer.T("tp.empty.text")</p>
             </div>
         }
     </section>
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string AllMaps = "All Maps";
     private const string AllCategories = "all";
 
@@ -200,14 +210,14 @@
     private static string FormatCoord(double value)
         => value.ToString("0.0", CultureInfo.InvariantCulture);
 
-    private static string CategoryLabel(string category) => category switch
+    private string CategoryLabel(string category) => category switch
     {
-        "obelisk" => "Obelisk",
-        "cave" => "Cave",
-        "loot" => "Loot",
-        "resource" => "Resource",
-        "landmark" => "Landmark",
-        "terminal" => "Terminal",
+        "obelisk" => Localizer.T("tp.category.obelisk"),
+        "cave" => Localizer.T("tp.category.cave"),
+        "loot" => Localizer.T("tp.category.loot"),
+        "resource" => Localizer.T("tp.category.resource"),
+        "landmark" => Localizer.T("tp.category.landmark"),
+        "terminal" => Localizer.T("tp.category.terminal"),
         _ => category
     };
 
@@ -223,13 +233,13 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", command);
-            NotificationService.ShowSuccess($"{entry.Name} teleport command copied.");
-            ActivityService.AddActivity($"Copied TP command: {entry.Name}", "info");
+            NotificationService.ShowSuccess(Localizer.T("tp.copied", entry.Name));
+            ActivityService.AddActivity(Localizer.T("tp.activity.copied", entry.Name), "info");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to copy teleport command for {Location}", entry.Name);
-            NotificationService.ShowError("Failed to copy the teleport command.");
+            NotificationService.ShowError(Localizer.T("tp.copy.failed"));
         }
     }
 }

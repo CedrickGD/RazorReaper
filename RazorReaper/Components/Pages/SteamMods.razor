@@ -6,10 +6,12 @@
 @inject IActivityService ActivityService
 @inject IProcessService ProcessService
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Steam Mods</h1>
-    <p class="page-subtitle">Browse installed ARK: Survival Evolved workshop mods with fast search and latest-install filters.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.steam-mods")</h1>
+    <p class="page-subtitle">@Localizer.T("steammods.subtitle")</p>
 </header>
 
 <div class="steam-mods-layout">
@@ -17,34 +19,34 @@
         <div class="steam-mods-summary-header">
             <div class="steam-mods-summary-meta">
                 <div class="steam-mods-meta-item">
-                    <span class="steam-mods-meta-label">Installed Mods</span>
+                    <span class="steam-mods-meta-label">@Localizer.T("steammods.meta.installed")</span>
                     <span class="steam-mods-meta-value">@allMods.Count</span>
                 </div>
                 <div class="steam-mods-meta-item">
-                    <span class="steam-mods-meta-label">Showing</span>
+                    <span class="steam-mods-meta-label">@Localizer.T("steammods.meta.showing")</span>
                     <span class="steam-mods-meta-value">@visibleMods.Count</span>
                 </div>
                 <div class="steam-mods-meta-item">
-                    <span class="steam-mods-meta-label">Libraries</span>
+                    <span class="steam-mods-meta-label">@Localizer.T("steammods.meta.libraries")</span>
                     <span class="steam-mods-meta-value">@librariesScanned.Count</span>
                 </div>
                 <div class="steam-mods-meta-item">
-                    <span class="steam-mods-meta-label">Named by Steam</span>
+                    <span class="steam-mods-meta-label">@Localizer.T("steammods.meta.named")</span>
                     <span class="steam-mods-meta-value">@allMods.Count(mod => mod.HasSteamMetadata)</span>
                 </div>
             </div>
 
             <button class="btn btn-primary steam-mods-refresh-btn" @onclick="RefreshModsAsync" disabled="@isLoading">
-                @(isLoading ? "Scanning..." : "Refresh Mods")
+                @Localizer.T(isLoading ? "steammods.scanning" : "steammods.refresh")
             </button>
         </div>
 
         <div class="steam-mods-path-line">
-            <span class="steam-mods-path-label">Steam Path:</span>
+            <span class="steam-mods-path-label">@Localizer.T("steammods.steampath")</span>
             <span class="steam-mods-path-value">@(string.IsNullOrWhiteSpace(steamPath) ? "Not detected" : steamPath)</span>
         </div>
         <div class="steam-mods-path-line">
-            <span class="steam-mods-path-label">Last Scan:</span>
+            <span class="steam-mods-path-label">@Localizer.T("steammods.lastscan")</span>
             <span class="steam-mods-path-value">@FormatScanTime(lastScannedLocal)</span>
         </div>
     </section>
@@ -52,30 +54,30 @@
     <section class="content-card steam-mods-filter-card">
         <div class="steam-mods-filter-grid">
             <div class="steam-mods-filter-field">
-                <label for="mod-search">Search</label>
+                <label for="mod-search">@Localizer.T("common.search")</label>
                 <input id="mod-search"
                        class="steam-mods-input"
                        @bind="SearchQuery"
                        @bind:event="oninput"
-                       placeholder="Search by mod name or workshop ID" />
+                       placeholder="@Localizer.T("steammods.search.placeholder")" />
             </div>
 
             <div class="steam-mods-filter-field">
-                <label for="mod-sort">Sort</label>
+                <label for="mod-sort">@Localizer.T("steammods.sort")</label>
                 <Dropdown Value="@sortOption.ToString()"
                           ValueChanged="OnSortChanged"
                           Options="SortOptions" />
             </div>
 
             <div class="steam-mods-filter-field">
-                <label for="mod-recency">Installed Filter</label>
+                <label for="mod-recency">@Localizer.T("steammods.recency")</label>
                 <Dropdown Value="@recencyFilter.ToString()"
                           ValueChanged="OnRecencyChanged"
                           Options="RecencyOptions" />
             </div>
 
             <div class="steam-mods-filter-field">
-                <label for="mod-size-filter">Size Filter</label>
+                <label for="mod-size-filter">@Localizer.T("steammods.sizefilter")</label>
                 <Dropdown Value="@sizeFilter.ToString()"
                           ValueChanged="OnSizeFilterChanged"
                           Options="SizeFilterOptions" />
@@ -83,14 +85,14 @@
         </div>
 
         <div class="steam-mods-toggle-row">
-            <Switch Compact="true" Label="Only show mods with Steam titles" @bind-Value="OnlyNamedMods" />
+            <Switch Compact="true" Label="@Localizer.T("steammods.onlynamed")" @bind-Value="OnlyNamedMods" />
         </div>
     </section>
 
     @if (scanWarnings.Count > 0)
     {
         <section class="content-card steam-mods-warning-card">
-            <h3>Scan Notes</h3>
+            <h3>@Localizer.T("steammods.scannotes")</h3>
             <ul class="steam-mods-warning-list">
                 @foreach (var warning in scanWarnings)
                 {
@@ -104,28 +106,28 @@
     {
         <section class="content-card steam-mods-empty-card">
             <div class="steam-mods-spinner"></div>
-            <p>Scanning Steam libraries and workshop metadata...</p>
+            <p>@Localizer.T("steammods.scanning.text")</p>
         </section>
     }
     else if (!steamDetected)
     {
         <section class="content-card steam-mods-empty-card">
-            <h3>Steam not detected</h3>
-            <p>Install path was not found in registry. Open Steam once and then refresh.</p>
+            <h3>@Localizer.T("steammods.nosteam.title")</h3>
+            <p>@Localizer.T("steammods.nosteam.text")</p>
         </section>
     }
     else if (allMods.Count == 0)
     {
         <section class="content-card steam-mods-empty-card">
-            <h3>No installed ARK workshop mods found</h3>
-            <p>This scan checks all detected Steam libraries for <code>steamapps\workshop\content\346110</code>.</p>
+            <h3>@Localizer.T("steammods.nomods.title")</h3>
+            <p>@Localizer.T("steammods.nomods.lead")<code>steamapps\workshop\content\346110</code>@Localizer.T("steammods.nomods.rest")</p>
         </section>
     }
     else if (visibleMods.Count == 0)
     {
         <section class="content-card steam-mods-empty-card">
-            <h3>No matches for current filters</h3>
-            <p>Try widening the recency filter or clearing the search box.</p>
+            <h3>@Localizer.T("steammods.nomatch.title")</h3>
+            <p>@Localizer.T("steammods.nomatch.text")</p>
         </section>
     }
     else
@@ -141,29 +143,29 @@
                         </div>
 
                         <div class="steam-mods-tag-row">
-                            <span class="steam-mods-tag">Drive: @GetDriveRoot(mod.LibraryPath)</span>
-                            <span class="steam-mods-tag">Size: @FormatSize(mod.SizeBytes)</span>
-                            <span class="steam-mods-tag">Installed: @GetRelativeAge(mod.InstalledAtUtc)</span>
-                            <span class="steam-mods-tag">Updated: @GetRelativeAge(mod.EffectiveLastUpdatedUtc)</span>
+                            <span class="steam-mods-tag">@Localizer.T("steammods.tag.drive", GetDriveRoot(mod.LibraryPath))</span>
+                            <span class="steam-mods-tag">@Localizer.T("steammods.tag.size", FormatSize(mod.SizeBytes))</span>
+                            <span class="steam-mods-tag">@Localizer.T("steammods.tag.installed", GetRelativeAge(mod.InstalledAtUtc))</span>
+                            <span class="steam-mods-tag">@Localizer.T("steammods.tag.updated", GetRelativeAge(mod.EffectiveLastUpdatedUtc))</span>
                         </div>
 
                         <div class="steam-mods-time-grid">
                             <div>
-                                <span class="steam-mods-time-label">Installed (Local)</span>
+                                <span class="steam-mods-time-label">@Localizer.T("steammods.time.installed")</span>
                                 <span class="steam-mods-time-value">@FormatTimestamp(mod.InstalledAtUtc)</span>
                             </div>
                             <div>
-                                <span class="steam-mods-time-label">Updated (Best Source)</span>
+                                <span class="steam-mods-time-label">@Localizer.T("steammods.time.updated")</span>
                                 <span class="steam-mods-time-value">@FormatTimestamp(mod.EffectiveLastUpdatedUtc)</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="steam-mods-actions">
-                        <button class="btn btn-secondary" @onclick="() => CopyWorkshopIdAsync(mod.WorkshopId)">Copy ID</button>
-                        <button class="btn btn-secondary" @onclick="() => OpenWorkshopInBrowser(mod.WorkshopId)">Open Web</button>
-                        <button class="btn btn-secondary" @onclick="() => OpenWorkshopInSteam(mod.WorkshopId)">Open Steam</button>
-                        <button class="btn btn-secondary" @onclick="() => OpenModFolder(mod.ContentPath)">Open Folder</button>
+                        <button class="btn btn-secondary" @onclick="() => CopyWorkshopIdAsync(mod.WorkshopId)">@Localizer.T("steammods.copyid")</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenWorkshopInBrowser(mod.WorkshopId)">@Localizer.T("steammods.openweb")</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenWorkshopInSteam(mod.WorkshopId)">@Localizer.T("steammods.opensteam")</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenModFolder(mod.ContentPath)">@Localizer.T("home.sound.openfolder")</button>
                     </div>
                 </article>
             }
@@ -172,6 +174,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private readonly List<SteamWorkshopMod> allMods = new();
     private readonly List<SteamWorkshopMod> visibleMods = new();
     private readonly List<string> librariesScanned = new();
@@ -219,16 +229,16 @@
         }
     }
 
-    private IReadOnlyList<Dropdown.Option> SortOptions { get; } = new List<Dropdown.Option>
+    private IReadOnlyList<Dropdown.Option> SortOptions => new List<Dropdown.Option>
     {
-        new(nameof(SteamModsSort.LatestInstalled), "Latest Installed"),
-        new(nameof(SteamModsSort.LatestUpdated), "Latest Updated"),
-        new(nameof(SteamModsSort.SizeDescending), "Size (Biggest-Smallest)"),
-        new(nameof(SteamModsSort.SizeAscending), "Size (Smallest-Biggest)"),
-        new(nameof(SteamModsSort.NameAscending), "Name A-Z"),
-        new(nameof(SteamModsSort.NameDescending), "Name Z-A"),
-        new(nameof(SteamModsSort.IdAscending), "Workshop ID (Low-High)"),
-        new(nameof(SteamModsSort.IdDescending), "Workshop ID (High-Low)")
+        new(nameof(SteamModsSort.LatestInstalled), Localizer.T("steammods.sort.latestinstalled")),
+        new(nameof(SteamModsSort.LatestUpdated), Localizer.T("steammods.sort.latestupdated")),
+        new(nameof(SteamModsSort.SizeDescending), Localizer.T("steammods.sort.sizedesc")),
+        new(nameof(SteamModsSort.SizeAscending), Localizer.T("steammods.sort.sizeasc")),
+        new(nameof(SteamModsSort.NameAscending), Localizer.T("steammods.sort.nameasc")),
+        new(nameof(SteamModsSort.NameDescending), Localizer.T("steammods.sort.namedesc")),
+        new(nameof(SteamModsSort.IdAscending), Localizer.T("steammods.sort.idasc")),
+        new(nameof(SteamModsSort.IdDescending), Localizer.T("steammods.sort.iddesc"))
     };
 
     private void OnSortChanged(string value)
@@ -254,12 +264,12 @@
         }
     }
 
-    private IReadOnlyList<Dropdown.Option> RecencyOptions { get; } = new List<Dropdown.Option>
+    private IReadOnlyList<Dropdown.Option> RecencyOptions => new List<Dropdown.Option>
     {
-        new(nameof(SteamModsRecency.All), "All"),
-        new(nameof(SteamModsRecency.Last7Days), "Last 7 Days"),
-        new(nameof(SteamModsRecency.Last30Days), "Last 30 Days"),
-        new(nameof(SteamModsRecency.Last90Days), "Last 90 Days")
+        new(nameof(SteamModsRecency.All), Localizer.T("common.all")),
+        new(nameof(SteamModsRecency.Last7Days), Localizer.T("steammods.recency.7")),
+        new(nameof(SteamModsRecency.Last30Days), Localizer.T("steammods.recency.30")),
+        new(nameof(SteamModsRecency.Last90Days), Localizer.T("steammods.recency.90"))
     };
 
     private void OnRecencyChanged(string value)
@@ -285,14 +295,14 @@
         }
     }
 
-    private IReadOnlyList<Dropdown.Option> SizeFilterOptions { get; } = new List<Dropdown.Option>
+    private IReadOnlyList<Dropdown.Option> SizeFilterOptions => new List<Dropdown.Option>
     {
-        new(nameof(SteamModsSizeFilter.All), "All Sizes"),
-        new(nameof(SteamModsSizeFilter.Unknown), "Unknown Size"),
-        new(nameof(SteamModsSizeFilter.Under100Mb), "Under 100 MB"),
-        new(nameof(SteamModsSizeFilter.Mb100To500), "100 MB to 500 MB"),
-        new(nameof(SteamModsSizeFilter.Mb500To1Gb), "500 MB to 1 GB"),
-        new(nameof(SteamModsSizeFilter.Over1Gb), "Over 1 GB")
+        new(nameof(SteamModsSizeFilter.All), Localizer.T("steammods.size.all")),
+        new(nameof(SteamModsSizeFilter.Unknown), Localizer.T("steammods.size.unknown")),
+        new(nameof(SteamModsSizeFilter.Under100Mb), Localizer.T("steammods.size.under100")),
+        new(nameof(SteamModsSizeFilter.Mb100To500), Localizer.T("steammods.size.100to500")),
+        new(nameof(SteamModsSizeFilter.Mb500To1Gb), Localizer.T("steammods.size.500to1g")),
+        new(nameof(SteamModsSizeFilter.Over1Gb), Localizer.T("steammods.size.over1g"))
     };
 
     private void OnSizeFilterChanged(string value)
@@ -365,26 +375,26 @@
             {
                 if (!steamDetected)
                 {
-                    NotificationService.ShowWarning("Steam was not detected on this machine.");
+                    NotificationService.ShowWarning(Localizer.T("steammods.toast.nosteam"));
                 }
                 else if (allMods.Count == 0)
                 {
-                    NotificationService.ShowInfo("No installed ARK workshop mods found.");
+                    NotificationService.ShowInfo(Localizer.T("steammods.toast.nomods"));
                 }
                 else
                 {
-                    NotificationService.ShowSuccess($"Loaded {allMods.Count} installed ARK mods.");
+                    NotificationService.ShowSuccess(Localizer.T("steammods.toast.loaded", allMods.Count));
                 }
             }
 
-            ActivityService.AddActivity($"Steam Workshop scan complete: {allMods.Count} ARK mods", "info");
+            ActivityService.AddActivity(Localizer.T("steammods.activity.scanned", allMods.Count), "info");
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to scan Steam mods: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("steammods.toast.scanfailed", ex.Message));
         }
         finally
         {
@@ -472,33 +482,33 @@
         try
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(workshopId);
-            NotificationService.ShowSuccess($"Copied ID {workshopId}");
+            NotificationService.ShowSuccess(Localizer.T("steammods.toast.copied", workshopId));
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to copy ID: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("steammods.toast.copyfailed", ex.Message));
         }
     }
 
     private void OpenWorkshopInBrowser(string workshopId)
     {
-        OpenProcess(GetWorkshopWebUrl(workshopId), "Could not open workshop page in browser.");
+        OpenProcess(GetWorkshopWebUrl(workshopId), Localizer.T("steammods.toast.openweb.failed"));
     }
 
     private void OpenWorkshopInSteam(string workshopId)
     {
-        OpenProcess($"steam://url/CommunityFilePage/{workshopId}", "Could not open workshop page in Steam client.");
+        OpenProcess($"steam://url/CommunityFilePage/{workshopId}", Localizer.T("steammods.toast.opensteam.failed"));
     }
 
     private void OpenModFolder(string contentPath)
     {
         if (string.IsNullOrWhiteSpace(contentPath))
         {
-            NotificationService.ShowWarning("No mod folder path available.");
+            NotificationService.ShowWarning(Localizer.T("steammods.toast.nofolder"));
             return;
         }
 
-        OpenProcess(contentPath, "Could not open mod folder.");
+        OpenProcess(contentPath, Localizer.T("steammods.toast.openfolder.failed"));
     }
 
     private void OpenProcess(string target, string errorMessage)
@@ -518,21 +528,21 @@
         return $"https://steamcommunity.com/sharedfiles/filedetails/?id={workshopId}";
     }
 
-    private static string FormatScanTime(DateTime? localTime)
+    private string FormatScanTime(DateTime? localTime)
     {
         if (!localTime.HasValue)
         {
-            return "Not scanned yet";
+            return Localizer.T("steammods.notscanned");
         }
 
         return localTime.Value.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
-    private static string GetDriveRoot(string path)
+    private string GetDriveRoot(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
-            return "Unknown";
+            return Localizer.T("common.unknown");
         }
 
         try
@@ -545,47 +555,47 @@
         }
     }
 
-    private static string FormatTimestamp(DateTime? timestampUtc)
+    private string FormatTimestamp(DateTime? timestampUtc)
     {
         if (!timestampUtc.HasValue)
         {
-            return "Unknown";
+            return Localizer.T("common.unknown");
         }
 
         return timestampUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
     }
 
-    private static string GetRelativeAge(DateTime? timestampUtc)
+    private string GetRelativeAge(DateTime? timestampUtc)
     {
         if (!timestampUtc.HasValue)
         {
-            return "Unknown";
+            return Localizer.T("common.unknown");
         }
 
         var span = DateTime.UtcNow - timestampUtc.Value;
         if (span.TotalDays >= 1)
         {
-            return $"{(int)span.TotalDays}d ago";
+            return Localizer.T("activity.days", (int)span.TotalDays);
         }
 
         if (span.TotalHours >= 1)
         {
-            return $"{(int)span.TotalHours}h ago";
+            return Localizer.T("activity.hours", (int)span.TotalHours);
         }
 
         if (span.TotalMinutes >= 1)
         {
-            return $"{(int)span.TotalMinutes}m ago";
+            return Localizer.T("activity.minutes", (int)span.TotalMinutes);
         }
 
-        return "Just now";
+        return Localizer.T("activity.justnow");
     }
 
-    private static string FormatSize(long? bytes)
+    private string FormatSize(long? bytes)
     {
         if (!bytes.HasValue || bytes.Value <= 0)
         {
-            return "Unknown";
+            return Localizer.T("common.unknown");
         }
 
         string[] units = ["B", "KB", "MB", "GB", "TB"];
