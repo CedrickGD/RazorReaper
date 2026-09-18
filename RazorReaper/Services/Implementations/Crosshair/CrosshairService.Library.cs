@@ -104,13 +104,13 @@ public partial class CrosshairService
         try
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(_imagesDir);
-            _notifications.ShowSuccess($"Copied: {_imagesDir}");
+            _notifications.ShowSuccess(_localizer.T("crosshair.library.toast.copied", _imagesDir));
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Clipboard copy failed");
-            _notifications.ShowError($"Couldn't copy path: {ex.Message}");
+            _notifications.ShowError(_localizer.T("crosshair.library.error.copy", ex.Message));
             return false;
         }
     }
@@ -173,7 +173,7 @@ public partial class CrosshairService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to delete imported image {Path}", path);
-            _notifications.ShowError($"Delete failed: {ex.Message}");
+            _notifications.ShowError(_localizer.T("crosshair.library.error.delete", ex.Message));
             return false;
         }
     }
@@ -182,7 +182,7 @@ public partial class CrosshairService
     {
         if (!ImageFormatDetection.ImageSourceExists(path))
         {
-            _notifications.ShowError("That image is no longer on disk.");
+            _notifications.ShowError(_localizer.T("crosshair.library.error.missing"));
             return;
         }
         CrosshairProfile snapshot;

@@ -2525,6 +2525,50 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Implementations/Crosshair/CrosshairService.cs", literal);
         }
 
+        // The same class's other four files. They word eighteen messages through the field
+        // CrosshairService.cs declares and name no localizer type themselves, which is exactly
+        // why the toast scan could not see them until it started reading a partial class whole.
+        foreach (var literal in new[]
+        {
+            "\"Crosshair overlay enabled.\"",
+            "\"Crosshair overlay disabled.\"",
+        })
+        {
+            data.Add("Services/Implementations/Crosshair/CrosshairService.Hotkey.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"Image file is empty.\"",
+            "\"Extracting video frames",
+            "$\"Couldn't extract frames from",
+            "\"Video imported.\"",
+            "unrecognised image format",
+            "$\"Image import failed:",
+            "$\"Unrecognized workshop file type:",
+            "\"Workshop path doesn't exist.\"",
+            "\"No usable image or config found in workshop file.\"",
+            "$\"Workshop import failed:",
+            "\"Couldn't read that crosshair code.\"",
+            "$\"Code import failed:",
+        })
+        {
+            data.Add("Services/Implementations/Crosshair/CrosshairService.Imports.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "$\"Copied: {_imagesDir}\"",
+            "$\"Couldn't copy path:",
+            "$\"Delete failed:",
+            "\"That image is no longer on disk.\"",
+        })
+        {
+            data.Add("Services/Implementations/Crosshair/CrosshairService.Library.cs", literal);
+        }
+
+        data.Add("Services/Implementations/Crosshair/CrosshairService.Preview.cs", "$\"Couldn't load image:");
+
         foreach (var literal in new[]
         {
             "public static string Describe(CrosshairProfile p)",

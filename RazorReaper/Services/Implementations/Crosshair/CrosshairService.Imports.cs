@@ -25,7 +25,7 @@ public partial class CrosshairService
             var bytes = ms.ToArray();
             if (bytes.Length == 0)
             {
-                _notifications.ShowError("Image file is empty.");
+                _notifications.ShowError(_localizer.T("crosshair.import.error.empty"));
                 return null;
             }
 
@@ -55,16 +55,16 @@ public partial class CrosshairService
             // so we use our own on-disk frame-sequence format (a `.frames` directory + manifest).
             if (ImageFormatDetection.SniffVideoExtension(bytes) != null)
             {
-                _notifications.ShowInfo("Extracting video frames…");
+                _notifications.ShowInfo(_localizer.T("crosshair.import.video.extracting"));
                 var framesFolder = await _videoExtractor.ExtractToFolderAsync(bytes, fileName, _imagesDir);
                 if (framesFolder == null)
                 {
-                    _notifications.ShowError($"Couldn't extract frames from '{fileName}'. Try converting it to PNG/GIF first.");
+                    _notifications.ShowError(_localizer.T("crosshair.import.error.frames", fileName));
                     return null;
                 }
                 lock (_libraryLock) { _libraryCache.Insert(0, framesFolder); }
                 LibraryChanged?.Invoke();
-                _notifications.ShowSuccess("Video imported.");
+                _notifications.ShowSuccess(_localizer.T("crosshair.import.video.done"));
                 return framesFolder;
             }
 
@@ -98,7 +98,7 @@ public partial class CrosshairService
 
             if (pngBytes == null || pngBytes.Length == 0)
             {
-                _notifications.ShowError($"Couldn't decode '{fileName}' — unrecognised image format.");
+                _notifications.ShowError(_localizer.T("crosshair.import.error.decode", fileName));
                 return null;
             }
 
@@ -107,7 +107,7 @@ public partial class CrosshairService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Image import failed for {File}", fileName);
-            _notifications.ShowError($"Image import failed: {ex.Message}");
+            _notifications.ShowError(_localizer.T("crosshair.import.error.image", ex.Message));
             return null;
         }
     }
@@ -170,7 +170,7 @@ public partial class CrosshairService
                 else
                 {
                     // Some workshop bundles are .zip-ish — try as folder if it's a dir, else give up.
-                    _notifications.ShowWarning($"Unrecognized workshop file type: {ext}");
+                    _notifications.ShowWarning(_localizer.T("crosshair.import.error.workshoptype", ext));
                     return null;
                 }
             }
@@ -183,7 +183,7 @@ public partial class CrosshairService
             }
             else
             {
-                _notifications.ShowError("Workshop path doesn't exist.");
+                _notifications.ShowError(_localizer.T("crosshair.import.error.workshopmissing"));
                 return null;
             }
 
@@ -217,7 +217,7 @@ public partial class CrosshairService
 
             if (imageCandidate == null && configCandidate == null)
             {
-                _notifications.ShowError("No usable image or config found in workshop file.");
+                _notifications.ShowError(_localizer.T("crosshair.import.error.workshopempty"));
                 return null;
             }
 
@@ -226,7 +226,7 @@ public partial class CrosshairService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Workshop import failed for {Path}", path);
-            _notifications.ShowError($"Workshop import failed: {ex.Message}");
+            _notifications.ShowError(_localizer.T("crosshair.error.workshop", ex.Message));
             return null;
         }
     }
@@ -240,7 +240,7 @@ public partial class CrosshairService
             {
                 // The parser names the field it choked on — pass that through verbatim instead of
                 // collapsing every failure into one unhelpful "couldn't recognise that code".
-                _notifications.ShowError(result.Error ?? "Couldn't read that crosshair code.");
+                _notifications.ShowError(result.Error ?? _localizer.T("crosshair.import.error.code"));
                 _logger.LogInformation("Crosshair code import rejected ({Format}): {Error}", result.Format, result.Error);
                 return null;
             }
@@ -249,7 +249,7 @@ public partial class CrosshairService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Code import failed");
-            _notifications.ShowError($"Code import failed: {ex.Message}");
+            _notifications.ShowError(_localizer.T("crosshair.import.error.codefailed", ex.Message));
             return null;
         }
     }

@@ -13,9 +13,9 @@ public partial class CrosshairService
         try
         {
             if (_overlayActive)
-                _notifications.ShowInfo("Crosshair overlay enabled.");
+                _notifications.ShowInfo(_localizer.T("crosshair.toast.overlay.enabled"));
             else
-                _notifications.ShowInfo("Crosshair overlay disabled.");
+                _notifications.ShowInfo(_localizer.T("crosshair.toast.overlay.disabled"));
         }
         catch { /* notifications can fail in odd shutdown paths */ }
     }

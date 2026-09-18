@@ -114,7 +114,7 @@ public partial class CrosshairService
                     // Log + notify on the FIRST failure only. Subsequent EnsurePreviewImage calls
                     // with the same path now short-circuit via _previewLoadFailed.
                     _logger.LogWarning(err, "Preview image load failed for {Path}", loadPath);
-                    try { _notifications.ShowError($"Couldn't load image: {err.Message}"); } catch { }
+                    try { _notifications.ShowError(_localizer.T("crosshair.error.loadimage", err.Message)); } catch { }
                 }
 
                 // Only re-render when we actually loaded something. A failed load already cleared
