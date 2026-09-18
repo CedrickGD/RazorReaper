@@ -218,13 +218,22 @@ public sealed class TurretFillerScript : CalibratableScriptBase
         await _input.ClickAsync(MouseButton.Left, search, ct: ct);
         await _input.DelayAsync(150, ct: ct);
 
-        for (var i = 0; i < ClearKeystrokes; i++) await _input.KeyPressAsync(VkBack, ct: ct);
+        // The same check the press loop does, for the same reason and over a longer stretch: forty
+        // backspaces, a typed name and a settle delay take seconds, and whatever steals the focus
+        // in the middle of that gets the rest of them emptied into its own text field.
+        for (var i = 0; i < ClearKeystrokes; i++)
+        {
+            if (!Foreground.IsGameForeground()) return;
+            await _input.KeyPressAsync(VkBack, ct: ct);
+        }
+        if (!Foreground.IsGameForeground()) return;
         await _input.TypeTextAsync(FilterText, ct: ct);
         ReportEffect();
         await _input.DelayAsync(Math.Clamp(FilterSettleMs, 100, 2000), ct: ct);
 
         // A click, not just a move: it takes keyboard focus out of the search box, so the
         // transfer key that follows is a key bind again and not one more typed letter.
+        if (!Foreground.IsGameForeground()) return;
         await _input.ClickAsync(MouseButton.Left, slot, ct: ct);
         await _input.DelayAsync(80, ct: ct);
     }
