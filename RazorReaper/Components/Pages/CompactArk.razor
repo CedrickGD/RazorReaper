@@ -52,7 +52,7 @@
             <div class="compact-ark-stat accent">
                 <div class="compact-ark-stat-label">@Localizer.T("compact.stat.saved")</div>
                 <div class="compact-ark-stat-value">@(HasStats ? FormatBytes(SavedBytes) : "—")</div>
-                <div class="compact-ark-stat-sub">@(HasStats ? $"{SavedPercent:0.0}% of the install" : "Run an analysis to find out")</div>
+                <div class="compact-ark-stat-sub">@(HasStats ? Localizer.T("compact.stat.saved.sub", SavedPercent.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)) : Localizer.T("compact.stat.saved.sub.none"))</div>
             </div>
         </div>
 
@@ -70,7 +70,7 @@
                         Description="@Localizer.T("compact.compress.description")"
                         Disabled="@(!CanStart)">
                 <button class="btn btn-primary" @onclick="() => RequestOperation(true)" disabled="@(!CanStart)">
-                    Compress
+                    @Localizer.T("compact.button.compress")
                 </button>
             </SettingRow>
 
@@ -78,7 +78,7 @@
                         Description="@Localizer.T("compact.uncompress.description")"
                         Disabled="@(!CanStart)">
                 <button class="btn btn-secondary" @onclick="() => RequestOperation(false)" disabled="@(!CanStart)">
-                    Uncompress
+                    @Localizer.T("compact.button.uncompress")
                 </button>
             </SettingRow>
         </div>
@@ -342,7 +342,7 @@
 
             if (!result.InstallFound)
             {
-                NotificationService.ShowError("ARK installation not found. Compact ARK needs a valid install.");
+                NotificationService.ShowError(Localizer.T("compact.toast.notfound"));
             }
             else
             {
@@ -354,8 +354,9 @@
 
                 if (!result.IsNtfs)
                 {
-                    NotificationService.ShowWarning(
-                        $"The ARK drive is {result.DriveFormat ?? "not NTFS"} — NTFS compression is unavailable.");
+                    NotificationService.ShowWarning(Localizer.T(
+                        "compact.toast.notntfs",
+                        result.DriveFormat ?? Localizer.T("compact.toast.notntfs.unknown")));
                 }
             }
         }
@@ -366,7 +367,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Compact ARK analysis failed");
-            NotificationService.ShowError($"Analysis failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("compact.toast.analysisfailed", ex.Message));
         }
         finally
         {
@@ -403,7 +404,7 @@
 
         if (CompactArkService.IsArkRunning())
         {
-            NotificationService.ShowError("ARK is currently running. Close the game first.");
+            NotificationService.ShowError(Localizer.T("compact.toast.running"));
             return;
         }
 
@@ -433,19 +434,17 @@
 
             if (result.Cancelled)
             {
-                NotificationService.ShowWarning(
-                    compress
-                        ? "Compression cancelled. Files already processed stay compressed."
-                        : "Uncompress cancelled. Files already processed stay uncompressed.");
+                NotificationService.ShowWarning(Localizer.T(
+                    compress ? "compact.toast.cancelled.compress" : "compact.toast.cancelled.uncompress"));
                 ActivityService.AddActivity(
-                    compress ? "Compact ARK: compression cancelled" : "Compact ARK: uncompress cancelled",
+                    Localizer.T(compress ? "compact.activity.cancelled.compress" : "compact.activity.cancelled.uncompress"),
                     "warning");
                 reanalyze = true;
             }
             else if (!result.Success)
             {
-                NotificationService.ShowError(result.ErrorMessage ?? "The compact operation failed.");
-                ActivityService.AddActivity("Compact ARK operation failed", "warning");
+                NotificationService.ShowError(result.ErrorMessage ?? Localizer.T("compact.toast.failed"));
+                ActivityService.AddActivity(Localizer.T("compact.activity.failed"), "warning");
             }
             else
             {
@@ -467,20 +466,20 @@
                 if (compress)
                 {
                     var saved = Math.Max(0, result.LogicalBytes - result.OnDiskBytesAfter);
-                    NotificationService.ShowSuccess($"ARK compressed — {FormatBytes(saved)} saved on disk.");
-                    ActivityService.AddActivity($"Compacted ARK install (saved {FormatBytes(saved)})", "success");
+                    NotificationService.ShowSuccess(Localizer.T("compact.toast.compressed", FormatBytes(saved)));
+                    ActivityService.AddActivity(Localizer.T("compact.activity.compressed", FormatBytes(saved)), "success");
                 }
                 else
                 {
-                    NotificationService.ShowSuccess("ARK restored to its full uncompressed size.");
-                    ActivityService.AddActivity("Uncompressed ARK install", "success");
+                    NotificationService.ShowSuccess(Localizer.T("compact.toast.uncompressed"));
+                    ActivityService.AddActivity(Localizer.T("compact.activity.uncompressed"), "success");
                 }
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Compact ARK operation failed unexpectedly");
-            NotificationService.ShowError($"Operation failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("compact.toast.operationfailed", ex.Message));
         }
         finally
         {

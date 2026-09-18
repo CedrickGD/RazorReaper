@@ -1011,7 +1011,7 @@
             };
             list.Add(spot);
             customStore.MesaExtraSpots[mesaMapTarget] = list.OrderBy(s => s.Name).ToList();
-            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" added to {mesaMapTarget}.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.spotaddedto", spot.Name, mesaMapTarget));
         }
         else if (targetSpot != null)
         {
@@ -1038,7 +1038,7 @@
                 list.Remove(spot);
                 await CustomDataService.SaveAsync(customStore);
             }
-            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" deleted.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.spotdeleted", spot.Name));
             StateHasChanged();
         };
         modalTitleKey = "mapmods.modal.confirmdelete";
@@ -1091,7 +1091,7 @@
             };
             customStore.Servers.Add(server);
             customStore.Servers = customStore.Servers.OrderBy(s => s.Name).ToList();
-            NotificationService.ShowSuccess($"Server \"{server.Name}\" added.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.serveradded", server.Name));
         }
         else if (targetServer != null)
         {
@@ -1111,7 +1111,7 @@
         {
             customStore?.Servers.Remove(server);
             await CustomDataService.SaveAsync(customStore!);
-            NotificationService.ShowSuccess($"Server \"{server.Name}\" deleted.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.serverdeleted", server.Name));
             StateHasChanged();
         };
         modalTitleKey = "mapmods.modal.confirmdelete";
@@ -1152,7 +1152,7 @@
             var map = new CustomMap { Name = formMapName.Trim(), Note = formMapNote.Trim(), Spots = new() };
             targetServer.Maps.Add(map);
             targetServer.Maps = targetServer.Maps.OrderBy(m => m.Name).ToList();
-            NotificationService.ShowSuccess($"Map \"{map.Name}\" added.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.mapadded", map.Name));
         }
         else if (targetMap != null)
         {
@@ -1173,7 +1173,7 @@
         {
             server.Maps.Remove(map);
             await CustomDataService.SaveAsync(customStore!);
-            NotificationService.ShowSuccess($"Map \"{map.Name}\" deleted.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.mapdeleted", map.Name));
             StateHasChanged();
         };
         modalTitleKey = "mapmods.modal.confirmdelete";
@@ -1229,7 +1229,7 @@
             };
             targetMap.Spots.Add(spot);
             targetMap.Spots = targetMap.Spots.OrderBy(s => s.Name).ToList();
-            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" added.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.spotadded", spot.Name));
         }
         else if (targetSpot != null)
         {
@@ -1253,7 +1253,7 @@
         {
             map.Spots.Remove(spot);
             await CustomDataService.SaveAsync(customStore!);
-            NotificationService.ShowSuccess($"Spot \"{spot.Name}\" deleted.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.spotdeleted", spot.Name));
             StateHasChanged();
         };
         modalTitleKey = "mapmods.modal.confirmdelete";

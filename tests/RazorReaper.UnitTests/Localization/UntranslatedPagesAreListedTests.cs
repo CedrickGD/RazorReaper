@@ -10,6 +10,11 @@ namespace RazorReaper.UnitTests.Localization;
 /// Both directions matter. A page that gets migrated and stays in the table sends the next
 /// reader to do work that is already done. A page that never gets migrated and is quietly
 /// dropped from the table reads as finished, and nobody goes looking for it again.
+///
+/// What this test cannot tell you is how much of a page is migrated: one <c>Localizer.T(</c> is
+/// enough to take a page off the list, and six pages came off it with every toast still in
+/// English. That half is <see cref="TranslatedFilesWordNoToastInEnglishTests"/>; read the two
+/// together before calling anything translated.
 /// </summary>
 public sealed class UntranslatedPagesAreListedTests
 {

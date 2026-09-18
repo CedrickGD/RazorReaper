@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -8,6 +9,7 @@ using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Diagnostics;
 using RazorReaper.Services.Implementations;
+using RazorReaper.Services.Localization;
 using RazorReaper.UnitTests.Infrastructure;
 
 namespace RazorReaper.UnitTests.Diagnostics;
@@ -179,6 +181,11 @@ public sealed class FeedbackServiceDiagnosticsTests
                 },
             }),
             diagnostics,
+            // The real dictionary, not a stub: these tests read the wording the service returns,
+            // and a stub that echoed keys would pass while the English went missing. Pinned to
+            // English, because the runner's own UI culture would otherwise decide the language and
+            // the assertions below would pass or fail depending on whose machine they ran on.
+            new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US")),
             NullLogger<FeedbackService>.Instance);
 
     private sealed class SnapshotService : IDiagnosticSnapshotService

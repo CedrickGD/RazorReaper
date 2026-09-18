@@ -71,6 +71,7 @@ public sealed class TranslatedSurfaceTests
             "Deep gradient / shadow tone",
             "Subtle tinted text",
             " hex\"",
+            "\"Accent color reset to purple\"",
         })
         {
             data.Add("Components/Shared/AccentColorCard.razor", literal);
@@ -103,6 +104,7 @@ public sealed class TranslatedSurfaceTests
             "Font installation failed:",
             "Copied download link for",
             "Failed to copy download link.",
+            "$\"UI font set:",
         })
         {
             data.Add("Components/Shared/FontSettingsCard.razor", literal);
@@ -651,6 +653,26 @@ public sealed class TranslatedSurfaceTests
             "=> \"Partially compacted\"",
             "Could not locate a valid ARK: Survival Evolved installation.",
             "Install path will appear here after analysis.",
+            // Wave 2: the two action buttons, the saved-percentage line and every toast the
+            // page words itself. The page was on the "Done" list with all of these still English.
+            "\n                    Compress\n",
+            "\n                    Uncompress\n",
+            "% of the install",
+            "Run an analysis to find out",
+            "ARK installation not found. Compact ARK needs a valid install.",
+            "NTFS compression is unavailable.",
+            "$\"Analysis failed:",
+            "ARK is currently running. Close the game first.",
+            "Compression cancelled. Files already processed stay compressed.",
+            "Uncompress cancelled. Files already processed stay uncompressed.",
+            "\"Compact ARK: compression cancelled\"",
+            "The compact operation failed.",
+            "\"Compact ARK operation failed\"",
+            "saved on disk.",
+            "Compacted ARK install (saved",
+            "ARK restored to its full uncompressed size.",
+            "\"Uncompressed ARK install\"",
+            "$\"Operation failed:",
         })
         {
             data.Add("Components/Pages/CompactArk.razor", literal);
@@ -707,6 +729,11 @@ public sealed class TranslatedSurfaceTests
             "\"Spot updated.\"",
             "$\"Delete spot",
             "?? \"No artifact\"",
+            // Wave 2: the six add/delete toasts. Only the "updated" half of each pair had been
+            // migrated, so saving a spot spoke the reader's language and adding one did not.
+            "$\"Spot ",
+            "$\"Server ",
+            "$\"Map ",
         })
         {
             data.Add("Components/Pages/MapMods.razor", literal);
@@ -816,6 +843,7 @@ public sealed class TranslatedSurfaceTests
             "return \"Unknown\"",
             "d ago\"",
             "return \"Just now\"",
+            "\"Not detected\"",
         })
         {
             data.Add("Components/Pages/SteamMods.razor", literal);
@@ -1041,6 +1069,12 @@ public sealed class TranslatedSurfaceTests
             "$\"Error saving path:",
             "\"Reset to auto-detect mode\"",
             "$\"Error resetting path:",
+            // Wave 2: the four reasons there is no WiFi name, which were written into the field
+            // the status card renders raw and so stayed English through a language switch.
+            "\"Timed Out\"",
+            "\"No WiFi Adapter\"",
+            "\"Unable to detect\"",
+            "\"Not Available\"",
         })
         {
             data.Add("Components/Pages/Home.razor", literal);
@@ -1198,6 +1232,24 @@ public sealed class TranslatedSurfaceTests
         })
         {
             data.Add("Services/Implementations/AutoUpdateManager.cs", literal);
+        }
+
+        // The feedback page is translated; the service behind it composed its results in English,
+        // which put the one untranslated line of the page on the line that mattered most. What the
+        // server words and what an exception words are still passed through as they arrive.
+        foreach (var literal in new[]
+        {
+            "Please enter your feedback before submitting.",
+            "\"Feedback is not configured.\"",
+            "Diagnostics could not be collected.",
+            "The diagnostic snapshot is too large to send.",
+            "\"Thanks for your feedback!\"",
+            "\"Failed to send feedback. Please try again.\"",
+            "\"Feedback submission was canceled.\"",
+            "$\"Network error:",
+        })
+        {
+            data.Add("Services/Implementations/FeedbackService.cs", literal);
         }
 
         foreach (var literal in new[]

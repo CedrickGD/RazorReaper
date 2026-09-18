@@ -7,6 +7,7 @@ using RazorReaper.Configuration;
 using RazorReaper.Diagnostics;
 using RazorReaper.Services;
 using RazorReaper.Services.Diagnostics;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Implementations;
 
@@ -14,6 +15,13 @@ namespace RazorReaper.Services.Implementations;
 /// Sends in-app user feedback to the admin panel. Attaches best-effort identity (machine name,
 /// HWID, license key, app version, platform, install id) so the admin can act on it, plus the
 /// user's optional contact handle. Mirrors LicenseService's HTTP + DTO conventions.
+///
+/// The service words its own results, so it carries an <see cref="ILocalizer"/>: the page hands
+/// what comes back straight to a toast, and a string composed here in English would be the one
+/// untranslated line on an otherwise translated page. The messages are transient — shown at the
+/// moment they are returned — so resolving them on creation is enough. What the server words
+/// (<c>result.Message</c>, <c>result.Error</c>) and what an exception words are left as they
+/// arrive; only the fallbacks and the frame around them are ours to translate.
 /// </summary>
 public class FeedbackService : IFeedbackService
 {
@@ -27,6 +35,7 @@ public class FeedbackService : IFeedbackService
     private readonly ILicenseService _licenseService;
     private readonly IOptions<AppConfiguration> _options;
     private readonly IDiagnosticSnapshotService _diagnostics;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<FeedbackService> _logger;
 
     public FeedbackService(
@@ -35,6 +44,7 @@ public class FeedbackService : IFeedbackService
         ILicenseService licenseService,
         IOptions<AppConfiguration> options,
         IDiagnosticSnapshotService diagnostics,
+        ILocalizer localizer,
         ILogger<FeedbackService> logger)
     {
         _httpClient = httpClient;
@@ -42,6 +52,7 @@ public class FeedbackService : IFeedbackService
         _licenseService = licenseService;
         _options = options;
         _diagnostics = diagnostics;
+        _localizer = localizer;
         _logger = logger;
     }
 
@@ -80,14 +91,14 @@ public class FeedbackService : IFeedbackService
     {
         if (string.IsNullOrWhiteSpace(message))
         {
-            return new(false, "Please enter your feedback before submitting.");
+            return new(false, _localizer.T("feedback.result.empty"));
         }
 
         var settings = _options.Value.AdminPanel;
         var baseUrl = settings.BaseUrl?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            return new(false, "Feedback is not configured.");
+            return new(false, _localizer.T("feedback.result.notconfigured"));
         }
 
         try
@@ -116,7 +127,7 @@ public class FeedbackService : IFeedbackService
 
             if (requireDiagnostics && diagnosticSnapshot is null)
             {
-                return new(false, "Diagnostics could not be collected. Nothing was sent—please try again.");
+                return new(false, _localizer.T("feedback.result.nodiagnostics"));
             }
 
             var payload = new FeedbackPayload
@@ -148,7 +159,7 @@ public class FeedbackService : IFeedbackService
                 // object rather than changing or rejecting the user's message.
                 if (requireDiagnostics)
                 {
-                    return new(false, "The diagnostic snapshot is too large to send. Nothing was sent—please try again after restarting the app.");
+                    return new(false, _localizer.T("feedback.result.diagnosticstoolarge"));
                 }
 
                 _logger.LogWarning("Diagnostic snapshot omitted because the feedback body exceeds {MaxBytes} bytes.", MaxRequestBytes);
@@ -169,19 +180,19 @@ public class FeedbackService : IFeedbackService
 
             if (response.IsSuccessStatusCode && result is { Ok: true })
             {
-                return new(true, result.Message ?? "Thanks for your feedback!", result.ReportId);
+                return new(true, result.Message ?? _localizer.T("feedback.result.thanks"), result.ReportId);
             }
 
-            return new(false, result?.Error ?? "Failed to send feedback. Please try again.");
+            return new(false, result?.Error ?? _localizer.T("feedback.result.failed"));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return new(false, "Feedback submission was canceled.");
+            return new(false, _localizer.T("feedback.result.canceled"));
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to submit feedback.");
-            return new(false, $"Network error: {ex.Message}");
+            return new(false, _localizer.T("feedback.result.networkerror", ex.Message));
         }
     }
 

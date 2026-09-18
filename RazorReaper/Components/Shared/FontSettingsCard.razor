@@ -231,7 +231,7 @@
             selectedFontPresetId = preset.Id;
             await PersistFontSettingsAsync(preset);
 
-            ActivityService.AddActivity($"UI font set: {preset.Name}", "info");
+            ActivityService.AddActivity(Localizer.T("settings.font.activity.set", preset.Name), "info");
             Logger.LogInformation("UI font preset selected: {PresetId}", preset.Id);
 
             _ = EnsureFontPresetInstalledAsync(preset);

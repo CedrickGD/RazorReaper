@@ -52,7 +52,7 @@
                     </div>
                     <div class="system-item">
                         <div class="system-label">@Localizer.T("home.status.network")</div>
-                        <div class="system-value">@(wifiName ?? Localizer.T("home.status.notconnected"))</div>
+                        <div class="system-value">@WifiStatusText</div>
                     </div>
                     <div class="system-item">
                         <div class="system-label">@Localizer.T("home.status.signal")</div>
@@ -499,6 +499,25 @@
     // "Unknown" would stay English until the next 10- or 20-second refresh after a switch.
     private string? wifiName;
     private string? wifiSignalStrength;
+
+    /// <summary>
+    /// Why there is no SSID to show. The reason is held as a case and not as a sentence for the
+    /// reason above it: "Timed Out" written into <see cref="wifiName"/> stayed English through
+    /// every language switch until the next refresh happened to overwrite it.
+    /// </summary>
+    private enum WifiState { NotConnected, TimedOut, NoAdapter, Undetectable, Unavailable }
+
+    private WifiState wifiState = WifiState.NotConnected;
+
+    /// <summary>The SSID is a name and stays as it is; only the reason for its absence is worded.</summary>
+    private string WifiStatusText => wifiName ?? wifiState switch
+    {
+        WifiState.TimedOut => Localizer.T("home.wifi.timedout"),
+        WifiState.NoAdapter => Localizer.T("home.wifi.noadapter"),
+        WifiState.Undetectable => Localizer.T("home.wifi.undetectable"),
+        WifiState.Unavailable => Localizer.T("home.wifi.unavailable"),
+        _ => Localizer.T("home.status.notconnected")
+    };
     private string? cpuName;
     private string? gpuName;
     private string? motherboardName;
@@ -1390,7 +1409,8 @@
                 catch (Exception ex)
                 {
                     Logger.LogDebug(ex, "WiFi detection output read did not complete");
-                    wifiName = "Timed Out";
+                    wifiName = null;
+                    wifiState = WifiState.TimedOut;
                     wifiSignalStrength = null;
                     return;
                 }
@@ -1398,7 +1418,8 @@
                 if (!exited)
                 {
                     Logger.LogDebug("WiFi detection timed out");
-                    wifiName = "Timed Out";
+                    wifiName = null;
+                    wifiState = WifiState.TimedOut;
                     wifiSignalStrength = null;
                     return;
                 }
@@ -1410,7 +1431,8 @@
 
                 if (output.Contains("There is no wireless interface on the system", StringComparison.OrdinalIgnoreCase))
                 {
-                    wifiName = "No WiFi Adapter";
+                    wifiName = null;
+                    wifiState = WifiState.NoAdapter;
                     wifiSignalStrength = null;
                     return;
                 }
@@ -1421,6 +1443,7 @@
                 string state = string.Empty;
 
                 wifiName = null;
+                wifiState = WifiState.NotConnected;
                 wifiSignalStrength = null;
 
                 foreach (var line in lines)
@@ -1484,14 +1507,16 @@
             else
             {
                 Logger.LogDebug("Failed to start netsh process - WiFi detection unavailable");
-                wifiName = "Unable to detect";
+                wifiName = null;
+                wifiState = WifiState.Undetectable;
                 wifiSignalStrength = null;
             }
         }
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "Could not detect WiFi information (this is normal for Ethernet-only systems)");
-            wifiName = "Not Available";
+            wifiName = null;
+            wifiState = WifiState.Unavailable;
             wifiSignalStrength = null;
         }
     }

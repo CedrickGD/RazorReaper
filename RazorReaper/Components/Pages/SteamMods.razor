@@ -43,7 +43,7 @@
 
         <div class="steam-mods-path-line">
             <span class="steam-mods-path-label">@Localizer.T("steammods.steampath")</span>
-            <span class="steam-mods-path-value">@(string.IsNullOrWhiteSpace(steamPath) ? "Not detected" : steamPath)</span>
+            <span class="steam-mods-path-value">@(string.IsNullOrWhiteSpace(steamPath) ? Localizer.T("steammods.path.notdetected") : steamPath)</span>
         </div>
         <div class="steam-mods-path-line">
             <span class="steam-mods-path-label">@Localizer.T("steammods.lastscan")</span>

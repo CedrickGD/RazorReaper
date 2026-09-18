@@ -143,6 +143,7 @@ public sealed class IdentityConsumerTests
             CreateOptions(parameters[3].ParameterType, telemetryEnabled: false),
             CreateNoOpProxy(parameters[4].ParameterType),
             CreateNoOpProxy(parameters[5].ParameterType),
+            CreateNoOpProxy(parameters[6].ParameterType),
         ]));
     }
 
