@@ -178,16 +178,17 @@ public sealed class NotificationIndicatorLayoutTests
 
         // Same frame family as the license overlay.
         Assert.Contains("role=\"dialog\"", overlay, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Close\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@Localizer.T(\"common.close\")\"", overlay, StringComparison.Ordinal);
         Assert.Contains("e.Key == \"Escape\"", overlay, StringComparison.Ordinal);
 
         // What's new on top: the manifest notes, the two states, the update action on the manager's own path.
-        Assert.Contains("What's new in v", overlay, StringComparison.Ordinal);
-        Assert.Contains("You're up to date", overlay, StringComparison.Ordinal);
+        // The wording is in Resources/i18n now; TranslatedSurfaceTests pins the English.
+        Assert.Contains("Localizer.T(\"whatsnew.title\", ReleaseLabel(target))", overlay, StringComparison.Ordinal);
+        Assert.Contains("whatsnew.uptodate", overlay, StringComparison.Ordinal);
         // The action is the restart once a build is staged, and the plain re-check until then.
         // "Update now" re-checked and nothing else, which read as a promise it never kept.
-        Assert.Contains("Restart & update to v", overlay, StringComparison.Ordinal);
-        Assert.Contains("Check again", overlay, StringComparison.Ordinal);
+        Assert.Contains("whatsnew.restartupdate", overlay, StringComparison.Ordinal);
+        Assert.Contains("whatsnew.checkagain", overlay, StringComparison.Ordinal);
         Assert.DoesNotContain("\"Update now\"", overlay, StringComparison.Ordinal);
         Assert.Contains("AutoUpdateManager.CheckNowAsync()", overlay, StringComparison.Ordinal);
         Assert.Contains("check.Notes", overlay, StringComparison.Ordinal);

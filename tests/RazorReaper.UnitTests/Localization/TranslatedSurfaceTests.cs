@@ -144,6 +144,66 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Account.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            "aria-label=\"Close\"",
+            "title=\"Close (Esc)\"",
+            "\"Premium is active\"",
+            "\"Unlock Premium\"",
+            "<li>Every feature is unlocked on this machine.</li>",
+            "\"Included with Premium\"",
+            "(\"Auto Clicker\", ",
+            "\"Buy / renew\"",
+            ">Esc closes this view<",
+            ">Your license key<",
+            "\"Reveal\"",
+            ">Copy</button>",
+            "<dd>Bound to this PC</dd>",
+            "<dt>Time left</dt>",
+            "Your license has expired.",
+            ">Renew</a>",
+            "\"Verifying…\"",
+            "The key is in your order confirmation.",
+            "Please enter a license key.",
+            "<dd>Not activated</dd>",
+            ">Need help?<",
+            "License key copied to clipboard.",
+            "\"3 Months\"",
+            "\"Expired\"",
+            "} months\"",
+        })
+        {
+            data.Add("Components/Shared/LicenseOverlay.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "aria-label=\"Close\"",
+            "title=\"Close (Esc)\"",
+            ">Release notes</span>",
+            "What's new in v",
+            "<strong>Update failed</strong>",
+            "is available.\")",
+            ">Restarting…</button>",
+            "Restart & update to v",
+            "\"Downloading…",
+            "\"Check again\"",
+            ">Full changelog</a>",
+            "Release notes appear once the update check has run.",
+            "You're up to date",
+            "No notes were published for this release.",
+            ">Open inbox</a>",
+            "Loading your inbox…",
+            "No replies yet. Answers to your reports land here.",
+            "\"1 unread\"",
+            "Support replied · @reply.ReportId",
+            ">New</span>",
+            "\"just now\"",
+        })
+        {
+            data.Add("Components/Shared/WhatsNewOverlay.razor", literal);
+        }
+
         return data;
     }
 
@@ -158,6 +218,15 @@ public sealed class TranslatedSurfaceTests
     [InlineData("notfound.title", "Page not found")]
     [InlineData("notfound.back", "Back to Home")]
     [InlineData("nav.page.feedback", "Feedback & Support")]
+    [InlineData("license.buy.renew", "Buy / renew")]
+    [InlineData("license.buy.premium", "Buy Premium")]
+    [InlineData("license.fact.device.bound", "Bound to this PC")]
+    [InlineData("whatsnew.title", "What's new in v{0}")]
+    [InlineData("whatsnew.uptodate", "You're up to date — v{0}.")]
+    [InlineData("whatsnew.restartupdate", "Restart & update to v{0}")]
+    [InlineData("whatsnew.checkagain", "Check again")]
+    [InlineData("whatsnew.failed", "Update failed")]
+    [InlineData("whatsnew.downloading.percent", "Downloading… {0}%")]
     public void TheEnglishWordingIsWhatItWas(string key, string expected)
     {
         Assert.True(TranslationParityTests.Read("en").TryGetValue(key, out var english), $"missing {key}");
@@ -168,9 +237,25 @@ public sealed class TranslatedSurfaceTests
     [MemberData(nameof(MigratedLiterals))]
     public void AMigratedSurfaceKeepsNoEnglishLiteral(string relativePath, string literal)
     {
-        var source = File.ReadAllText(AppFile(relativePath));
+        var source = WithoutComments(File.ReadAllText(AppFile(relativePath)));
 
         Assert.DoesNotContain(literal, source, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Drops razor <c>@* … *@</c> blocks and whole-line C# comments. A comment quoting the
+    /// wording it explains — "the primary action becomes 'Restart &amp; update to vX'" — is not a
+    /// string the app renders, and making the migration delete those comments would cost the
+    /// reader the explanation to satisfy a grep. Only whole comment lines go, never a trailing
+    /// <c>//</c>, so a literal cannot hide behind a URL on the same line.
+    /// </summary>
+    private static string WithoutComments(string source)
+    {
+        var withoutBlocks = Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+
+        return string.Join('\n', withoutBlocks
+            .Split('\n')
+            .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
     }
 
     [Fact]

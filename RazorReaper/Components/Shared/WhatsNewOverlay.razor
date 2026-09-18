@@ -3,10 +3,12 @@
 @using RazorReaper.Models
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
+@using RazorReaper.Services.Localization
 @inject IWhatsNewService Overlay
 @inject IAutoUpdateManager AutoUpdateManager
 @inject IUpdateService UpdateService
 @inject ISupportInboxService Inbox
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 @inject ILogger<WhatsNewOverlay> Logger
 @implements IAsyncDisposable
@@ -51,14 +53,14 @@
 
         <div class="whats-new-frame">
 
-            <button type="button" class="whats-new-close" aria-label="Close" title="Close (Esc)" @onclick="Close">
+            <button type="button" class="whats-new-close" aria-label="@Localizer.T("common.close")" title="@Localizer.T("common.close.tooltip")" @onclick="Close">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
                     <path d="M5 5l10 10M15 5L5 15" />
                 </svg>
             </button>
 
             <section class="whats-new-release" aria-labelledby="whats-new-title">
-                <span class="whats-new-eyebrow">Release notes</span>
+                <span class="whats-new-eyebrow">@Localizer.T("whatsnew.eyebrow")</span>
                 <h1 id="whats-new-title" class="whats-new-title">@ReleaseTitle(target)</h1>
 
                 @if (hasUpdate)
@@ -71,19 +73,19 @@
                         <div class="whats-new-update-text">
                             @if (installFailure is not null)
                             {
-                                <strong>Update failed</strong>
+                                <strong>@Localizer.T("whatsnew.failed")</strong>
                                 <span>@installFailure</span>
                             }
                             else
                             {
-                                <strong>@($"Version {ReleaseLabel(target)} is available.")</strong>
-                                <span>@($"You're on {UpdateService.CurrentVersionLabel}.") @AutoUpdateManager.StatusMessage</span>
+                                <strong>@Localizer.T("whatsnew.available", ReleaseLabel(target))</strong>
+                                <span>@Localizer.T("whatsnew.youreon", UpdateService.CurrentVersionLabel) @AutoUpdateManager.StatusMessage</span>
                             }
                         </div>
                         <div class="whats-new-update-actions">
                             @if (AutoUpdateManager.IsInstallLaunching)
                             {
-                                <button type="button" class="btn btn-primary" disabled>Restarting…</button>
+                                <button type="button" class="btn btn-primary" disabled>@Localizer.T("whatsnew.restarting")</button>
                             }
                             else if (AutoUpdateManager.IsInstallerReady)
                             {
@@ -100,26 +102,26 @@
                             else
                             {
                                 <button type="button" class="btn btn-secondary" @onclick="UpdateNowAsync" disabled="@UpdateBusy">
-                                    @(UpdateBusy ? "Checking…" : "Check again")
+                                    @(UpdateBusy ? Localizer.T("whatsnew.checking") : Localizer.T("whatsnew.checkagain"))
                                 </button>
                             }
                             @if (!string.IsNullOrWhiteSpace(check?.ChangelogUrl))
                             {
-                                <a class="btn btn-secondary" href="@check.ChangelogUrl" target="_blank" rel="noopener">Full changelog</a>
+                                <a class="btn btn-secondary" href="@check.ChangelogUrl" target="_blank" rel="noopener">@Localizer.T("whatsnew.changelog")</a>
                             }
                         </div>
                     </div>
                 }
                 else if (check is null)
                 {
-                    <p class="whats-new-status">Release notes appear once the update check has run.</p>
+                    <p class="whats-new-status">@Localizer.T("whatsnew.notes.pending")</p>
                 }
                 else if (!check.IsSuccess)
                 {
                     <div class="whats-new-status is-warning" role="status">
-                        <span>@(check.ErrorMessage ?? "Update check failed.") The notes will appear at the next check.</span>
+                        <span>@(check.ErrorMessage ?? Localizer.T("update.check.failed")) @Localizer.T("whatsnew.notes.nextcheck")</span>
                         <button type="button" class="rr-pill-btn ghost sm" @onclick="UpdateNowAsync" disabled="@UpdateBusy">
-                            @(UpdateBusy ? "Checking…" : "Check again")
+                            @(UpdateBusy ? Localizer.T("whatsnew.checking") : Localizer.T("whatsnew.checkagain"))
                         </button>
                     </div>
                 }
@@ -127,10 +129,10 @@
                 {
                     <p class="whats-new-status is-current">
                         <span class="whats-new-tick" aria-hidden="true">✓</span>
-                        <span>@($"You're up to date — v{UpdateService.CurrentVersionLabel}.")</span>
+                        <span>@Localizer.T("whatsnew.uptodate", UpdateService.CurrentVersionLabel)</span>
                         @if (!string.IsNullOrWhiteSpace(check.ChangelogUrl))
                         {
-                            <a href="@check.ChangelogUrl" target="_blank" rel="noopener">Full changelog</a>
+                            <a href="@check.ChangelogUrl" target="_blank" rel="noopener">@Localizer.T("whatsnew.changelog")</a>
                         }
                     </p>
                 }
@@ -148,7 +150,7 @@
                     }
                     else
                     {
-                        <p class="whats-new-empty">No notes were published for this release.</p>
+                        <p class="whats-new-empty">@Localizer.T("whatsnew.nonotes")</p>
                     }
                 }
             </section>
@@ -156,13 +158,13 @@
             <section class="whats-new-inbox" aria-labelledby="whats-new-inbox-title">
                 <div class="whats-new-inbox-head">
                     <h2 id="whats-new-inbox-title" class="whats-new-inbox-title">
-                        Inbox
+                        @Localizer.T("whatsnew.inbox.title")
                         @if (Inbox.UnreadCount > 0)
                         {
-                            <span class="whats-new-unread">@(Inbox.UnreadCount == 1 ? "1 unread" : $"{Inbox.UnreadCount} unread")</span>
+                            <span class="whats-new-unread">@(Inbox.UnreadCount == 1 ? Localizer.T("whatsnew.unread.one") : Localizer.T("whatsnew.unread.many", Inbox.UnreadCount))</span>
                         }
                     </h2>
-                    <a class="btn btn-secondary" href="/inbox" @onclick="Close">Open inbox</a>
+                    <a class="btn btn-secondary" href="/inbox" @onclick="Close">@Localizer.T("whatsnew.inbox.open")</a>
                 </div>
 
                 @if (Inbox.Error is not null)
@@ -172,11 +174,11 @@
 
                 @if (!Inbox.HasLoaded && Inbox.Error is null)
                 {
-                    <p class="whats-new-inbox-note">Loading your inbox…</p>
+                    <p class="whats-new-inbox-note">@Localizer.T("whatsnew.inbox.loading")</p>
                 }
                 else if (Inbox.Replies.Count == 0)
                 {
-                    <p class="whats-new-inbox-note">No replies yet. Answers to your reports land here.</p>
+                    <p class="whats-new-inbox-note">@Localizer.T("whatsnew.inbox.empty")</p>
                 }
                 else
                 {
@@ -188,13 +190,13 @@
                                    href="@InboxLink(reply)"
                                    @onclick="Close">
                                     <span class="whats-new-reply-main">
-                                        <span class="whats-new-reply-subject">Support replied · @reply.ReportId</span>
+                                        <span class="whats-new-reply-subject">@Localizer.T("whatsnew.reply.subject", reply.ReportId)</span>
                                         <span class="whats-new-reply-preview">@FirstLine(reply.Message)</span>
                                     </span>
                                     <span class="whats-new-reply-side">
                                         @if (reply.ReadAt is null)
                                         {
-                                            <span class="whats-new-reply-new">New</span>
+                                            <span class="whats-new-reply-new">@Localizer.T("whatsnew.reply.new")</span>
                                         }
                                         <span class="whats-new-reply-time">@FormatWhen(reply.CreatedAt)</span>
                                     </span>
@@ -329,12 +331,12 @@
 
     /// <summary>"Restart &amp; update to v1.5.4" — the staged build, not the manifest's.</summary>
     private string RestartLabel
-        => $"Restart & update to v{ReleaseLabel(AutoUpdateManager.PendingVersion)}";
+        => Localizer.T("whatsnew.restartupdate", ReleaseLabel(AutoUpdateManager.PendingVersion));
 
     private string DownloadingLabel
         => AutoUpdateManager.DownloadProgressPercent is int percent
-            ? $"Downloading… {percent}%"
-            : "Downloading…";
+            ? Localizer.T("whatsnew.downloading.percent", percent)
+            : Localizer.T("whatsnew.downloading");
 
     private async Task RestartAndUpdateAsync()
     {
@@ -393,7 +395,7 @@
     // ---- Labels ---------------------------------------------------------------
 
     private string ReleaseTitle(Version? target)
-        => $"What's new in v{ReleaseLabel(target)}";
+        => Localizer.T("whatsnew.title", ReleaseLabel(target));
 
     /// <summary>The manifest's (or the staged build's) version, or the running one while there is neither.</summary>
     private string ReleaseLabel(Version? version)
@@ -408,13 +410,13 @@
         return line.Length > 140 ? line[..140].TrimEnd() + "…" : line;
     }
 
-    private static string FormatWhen(DateTimeOffset when)
+    private string FormatWhen(DateTimeOffset when)
     {
         var age = DateTimeOffset.UtcNow - when;
-        if (age < TimeSpan.FromMinutes(1)) return "just now";
-        if (age < TimeSpan.FromHours(1)) return $"{(int)age.TotalMinutes} min ago";
-        if (age < TimeSpan.FromDays(1)) return $"{(int)age.TotalHours} h ago";
-        if (age < TimeSpan.FromDays(7)) return $"{(int)age.TotalDays} d ago";
+        if (age < TimeSpan.FromMinutes(1)) return Localizer.T("whatsnew.when.now");
+        if (age < TimeSpan.FromHours(1)) return Localizer.T("whatsnew.when.minutes", (int)age.TotalMinutes);
+        if (age < TimeSpan.FromDays(1)) return Localizer.T("whatsnew.when.hours", (int)age.TotalHours);
+        if (age < TimeSpan.FromDays(7)) return Localizer.T("whatsnew.when.days", (int)age.TotalDays);
         return when.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
     }
 

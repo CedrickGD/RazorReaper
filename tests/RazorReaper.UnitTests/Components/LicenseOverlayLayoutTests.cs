@@ -61,7 +61,7 @@ public sealed class LicenseOverlayLayoutTests
         var overlay = File.ReadAllText(ComponentPath("Shared", "LicenseOverlay.razor"));
 
         Assert.Contains("role=\"dialog\"", overlay, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Close\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@Localizer.T(\"common.close\")\"", overlay, StringComparison.Ordinal);
         Assert.Contains("e.Key == \"Escape\"", overlay, StringComparison.Ordinal);
         Assert.Contains("class=\"license-key-input\"", overlay, StringComparison.Ordinal);
         Assert.Contains("LicenseService.ActivateLicenseAsync(", overlay, StringComparison.Ordinal);
@@ -71,9 +71,13 @@ public sealed class LicenseOverlayLayoutTests
         Assert.Contains("href=\"@StoreUrl\"", overlay, StringComparison.Ordinal);
 
         // "Manage or renew" promised a portal that does not exist — the shop sells and renews.
-        Assert.Contains("@(premium ? \"Buy / renew\" : \"Buy Premium\")", overlay, StringComparison.Ordinal);
+        // The two labels are dictionary entries now; TranslatedSurfaceTests pins their English.
+        Assert.Contains(
+            "@(premium ? Localizer.T(\"license.buy.renew\") : Localizer.T(\"license.buy.premium\"))",
+            overlay,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("Manage or renew", overlay, StringComparison.Ordinal);
-        Assert.Contains("Bound to this PC", overlay, StringComparison.Ordinal);
+        Assert.Contains("@Localizer.T(\"license.fact.device.bound\")", overlay, StringComparison.Ordinal);
         Assert.Contains("is-expired", overlay, StringComparison.Ordinal);
         Assert.Contains("is-soon", overlay, StringComparison.Ordinal);
         Assert.Contains("Overlay.Close()", overlay, StringComparison.Ordinal);
@@ -287,18 +291,18 @@ public sealed class LicenseOverlayLayoutTests
         var benefits = overlay.IndexOf("class=\"license-benefit-list\"", StringComparison.Ordinal);
         Assert.True(benefits > 0 && benefits < heroEnd, "The benefits list belongs to the hero column.");
         Assert.True(overlay.IndexOf("class=\"license-perks\"", StringComparison.Ordinal) < benefits);
-        Assert.Contains("Included with Premium", overlay, StringComparison.Ordinal);
-        Assert.Contains("Premium unlocks", overlay, StringComparison.Ordinal);
+        Assert.Contains("license.benefits.title.premium", overlay, StringComparison.Ordinal);
+        Assert.Contains("license.benefits.title.free", overlay, StringComparison.Ordinal);
 
         // "Need help?" closes the panel column.
         var help = overlay.IndexOf("class=\"license-help\"", StringComparison.Ordinal);
         Assert.True(help > panelStart, "The help row belongs to the panel column.");
-        Assert.Contains("Need help?", overlay, StringComparison.Ordinal);
+        Assert.Contains("license.help.title", overlay, StringComparison.Ordinal);
         Assert.Contains("href=\"/feedback?section=support\" @onclick=\"Close\"", overlay, StringComparison.Ordinal);
         Assert.Contains("href=\"/inbox\" @onclick=\"Close\"", overlay, StringComparison.Ordinal);
 
         // Six facts on both tiers, Status among them.
-        Assert.Contains("<dt>Status</dt>", overlay, StringComparison.Ordinal);
+        Assert.Contains("<dt>@Localizer.T(\"license.fact.status\")</dt>", overlay, StringComparison.Ordinal);
         Assert.Equal(12, Regex.Matches(overlay, "<dt>").Count);
 
         var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "license-overlay.css"));

@@ -15,18 +15,22 @@ public sealed class UpdateAffordanceTests
     {
         var overlay = File.ReadAllText(ComponentPath("Shared", "WhatsNewOverlay.razor"));
 
-        // Ready → the restart, and it is the primary action.
+        // Ready → the restart, and it is the primary action. The label is a dictionary entry
+        // since the i18n wave; TranslatedSurfaceTests pins what it says in English.
         Assert.Contains("AutoUpdateManager.IsInstallerReady", overlay, StringComparison.Ordinal);
-        Assert.Contains("$\"Restart & update to v{ReleaseLabel(AutoUpdateManager.PendingVersion)}\"", overlay, StringComparison.Ordinal);
+        Assert.Contains(
+            "Localizer.T(\"whatsnew.restartupdate\", ReleaseLabel(AutoUpdateManager.PendingVersion))",
+            overlay,
+            StringComparison.Ordinal);
         Assert.Contains("class=\"btn btn-primary\" @onclick=\"RestartAndUpdateAsync\"", overlay, StringComparison.Ordinal);
         Assert.Contains("AutoUpdateManager.ApplyUpdateNowAsync(UpdateApplyTrigger.Button)", overlay, StringComparison.Ordinal);
 
         // Downloading → the progress, and nothing to press.
-        Assert.Contains("$\"Downloading… {percent}%\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("Localizer.T(\"whatsnew.downloading.percent\", percent)", overlay, StringComparison.Ordinal);
         Assert.Contains("<button type=\"button\" class=\"btn btn-primary\" disabled>@DownloadingLabel</button>", overlay, StringComparison.Ordinal);
 
         // Nothing staged → the plain re-check, kept as a secondary.
-        Assert.Contains("\"Check again\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("Localizer.T(\"whatsnew.checkagain\")", overlay, StringComparison.Ordinal);
         Assert.Contains("class=\"btn btn-secondary\" @onclick=\"UpdateNowAsync\"", overlay, StringComparison.Ordinal);
 
         // The old label promised an install and only re-checked.
@@ -256,7 +260,7 @@ public sealed class UpdateAffordanceTests
 
         Assert.Contains("var installFailure = AutoUpdateManager.InstallFailureMessage;", overlay, StringComparison.Ordinal);
         Assert.Contains("|| check?.HasUpdate == true || installFailure is not null;", overlay, StringComparison.Ordinal);
-        Assert.Contains("<strong>Update failed</strong>", overlay, StringComparison.Ordinal);
+        Assert.Contains("<strong>@Localizer.T(\"whatsnew.failed\")</strong>", overlay, StringComparison.Ordinal);
         Assert.Contains("<span>@installFailure</span>", overlay, StringComparison.Ordinal);
         Assert.Contains(
             "class=\"whats-new-update @(installFailure is not null ? \"is-warning\" : \"\")\"",
@@ -267,7 +271,7 @@ public sealed class UpdateAffordanceTests
         // is still rendered by the IsInstallerReady branch below it.
         var panel = overlay.IndexOf("<div class=\"whats-new-update ", StringComparison.Ordinal);
         var actions = overlay.IndexOf("whats-new-update-actions", panel, StringComparison.Ordinal);
-        var failed = overlay.IndexOf("<strong>Update failed</strong>", panel, StringComparison.Ordinal);
+        var failed = overlay.IndexOf("<strong>@Localizer.T(\"whatsnew.failed\")</strong>", panel, StringComparison.Ordinal);
         Assert.True(failed > panel && failed < actions, "The failed state sits above the actions, not instead of them.");
         Assert.Contains("@onclick=\"RestartAndUpdateAsync\"", overlay[actions..], StringComparison.Ordinal);
 

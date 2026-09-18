@@ -1,9 +1,11 @@
 @using System.Globalization
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @inject ILicenseOverlayService Overlay
 @inject ILicenseService LicenseService
 @inject INotificationService NotificationService
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 @inject ILogger<LicenseOverlay> Logger
 @implements IAsyncDisposable
@@ -35,7 +37,7 @@
 
         <div class="license-overlay-frame">
 
-            <button type="button" class="license-overlay-close" aria-label="Close" title="Close (Esc)" @onclick="Close">
+            <button type="button" class="license-overlay-close" aria-label="@Localizer.T("common.close")" title="@Localizer.T("common.close.tooltip")" @onclick="Close">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
                     <path d="M5 5l10 10M15 5L5 15" />
                 </svg>
@@ -49,37 +51,54 @@
                 <ul class="license-perks">
                     @if (premium)
                     {
-                        <li>Every feature is unlocked on this machine.</li>
-                        <li>The license is re-checked in the background — nothing to do.</li>
+                        <li>@Localizer.T("license.perk.premium.1")</li>
+                        <li>@Localizer.T("license.perk.premium.2")</li>
                         @if (IsPerpetual)
                         {
-                            <li>Lifetime plan: there is no expiry to keep an eye on.</li>
+                            <li>@Localizer.T("license.perk.premium.lifetime")</li>
                         }
                         else
                         {
-                            <li>Renew before the countdown ends to stay uninterrupted.</li>
+                            <li>@Localizer.T("license.perk.premium.renew")</li>
                         }
                     }
                     else
                     {
-                        <li>A key from your order unlocks every feature.</li>
-                        <li>Keys bind to one PC at activation.</li>
-                        <li>Support replies land in your in-app inbox.</li>
+                        <li>@Localizer.T("license.perk.free.1")</li>
+                        <li>@Localizer.T("license.perk.free.2")</li>
+                        <li>@Localizer.T("license.perk.free.3")</li>
                     }
                 </ul>
 
                 @* What the tier covers, one row per feature: this is what carries the hero column
                    down to its foot. Page names are the sidebar's. *@
                 <div class="license-benefits">
-                    <h2 class="license-benefits-title">@(premium ? "Included with Premium" : "Premium unlocks")</h2>
+                    <h2 class="license-benefits-title">@(premium ? Localizer.T("license.benefits.title.premium") : Localizer.T("license.benefits.title.free"))</h2>
                     <ul class="license-benefit-list">
-                        @foreach (var benefit in Benefits)
-                        {
-                            <li>
-                                <span class="license-benefit-name">@benefit.Name</span>
-                                <span class="license-benefit-note">@benefit.Note</span>
-                            </li>
-                        }
+                        <li>
+                            <span class="license-benefit-name">@Localizer.T("license.benefit.1.name")</span>
+                            <span class="license-benefit-note">@Localizer.T("license.benefit.1.note")</span>
+                        </li>
+                        <li>
+                            <span class="license-benefit-name">@Localizer.T("license.benefit.2.name")</span>
+                            <span class="license-benefit-note">@Localizer.T("license.benefit.2.note")</span>
+                        </li>
+                        <li>
+                            <span class="license-benefit-name">@Localizer.T("license.benefit.3.name")</span>
+                            <span class="license-benefit-note">@Localizer.T("license.benefit.3.note")</span>
+                        </li>
+                        <li>
+                            <span class="license-benefit-name">@Localizer.T("license.benefit.4.name")</span>
+                            <span class="license-benefit-note">@Localizer.T("license.benefit.4.note")</span>
+                        </li>
+                        <li>
+                            <span class="license-benefit-name">@Localizer.T("license.benefit.5.name")</span>
+                            <span class="license-benefit-note">@Localizer.T("license.benefit.5.note")</span>
+                        </li>
+                        <li>
+                            <span class="license-benefit-name">@Localizer.T("license.benefit.6.name")</span>
+                            <span class="license-benefit-note">@Localizer.T("license.benefit.6.note")</span>
+                        </li>
                     </ul>
                 </div>
 
@@ -87,25 +106,25 @@
                     <a class="btn btn-secondary" href="@StoreUrl" target="_blank" rel="noopener">
                         @* "Manage" promised a portal that does not exist: the shop sells and
                            renews, and that is all it does. *@
-                        @(premium ? "Buy / renew" : "Buy Premium")
+                        @(premium ? Localizer.T("license.buy.renew") : Localizer.T("license.buy.premium"))
                     </a>
-                    <span class="license-hero-hint">Esc closes this view</span>
+                    <span class="license-hero-hint">@Localizer.T("license.esc.hint")</span>
                 </div>
             </aside>
 
-            <section class="license-panel" aria-label="License details">
+            <section class="license-panel" aria-label="@Localizer.T("license.panel.aria")">
                 @if (premium)
                 {
                     <div class="license-key-block">
                         <div class="license-key-head">
-                            <span class="license-key-label">Your license key</span>
+                            <span class="license-key-label">@Localizer.T("license.key.label")</span>
                             <div class="license-key-actions">
                                 <button type="button" class="rr-pill-btn ghost sm"
                                         aria-pressed="@(_keyHidden ? "false" : "true")"
                                         @onclick="ToggleKeyVisibility">
-                                    @(_keyHidden ? "Reveal" : "Hide")
+                                    @(_keyHidden ? Localizer.T("license.key.reveal") : Localizer.T("license.key.hide"))
                                 </button>
-                                <button type="button" class="rr-pill-btn ghost sm" @onclick="CopyKeyAsync">Copy</button>
+                                <button type="button" class="rr-pill-btn ghost sm" @onclick="CopyKeyAsync">@Localizer.T("license.key.copy")</button>
                             </div>
                         </div>
                         <div class="license-key-value">@DisplayedKey</div>
@@ -113,31 +132,31 @@
 
                     <dl class="license-facts">
                         <div class="license-fact">
-                            <dt>Plan</dt>
+                            <dt>@Localizer.T("license.fact.plan")</dt>
                             <dd>@PlanLabel</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Status</dt>
+                            <dt>@Localizer.T("license.fact.status")</dt>
                             <dd>@StatusLabel</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Expires</dt>
-                            <dd>@(IsPerpetual ? "Never" : FormatExpiry(LicenseService.ExpiresAt))</dd>
+                            <dt>@Localizer.T("license.fact.expires")</dt>
+                            <dd>@(IsPerpetual ? Localizer.T("license.fact.never") : FormatExpiry(LicenseService.ExpiresAt))</dd>
                         </div>
                         @if (!IsPerpetual)
                         {
                             <div class="license-fact @RemainingClass">
-                                <dt>Time left</dt>
+                                <dt>@Localizer.T("license.fact.timeleft")</dt>
                                 <dd>@RemainingLabel</dd>
                             </div>
                         }
                         <div class="license-fact">
-                            <dt>Device</dt>
-                            <dd>Bound to this PC</dd>
+                            <dt>@Localizer.T("license.fact.device")</dt>
+                            <dd>@Localizer.T("license.fact.device.bound")</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Re-check</dt>
-                            <dd>Automatic</dd>
+                            <dt>@Localizer.T("license.fact.recheck")</dt>
+                            <dd>@Localizer.T("common.automatic")</dd>
                         </div>
                     </dl>
 
@@ -146,17 +165,17 @@
                         <div class="license-expiry-warning @RemainingClass" role="status">
                             <span>
                                 @(Remaining <= TimeSpan.Zero
-                                    ? "Your license has expired."
-                                    : $"Your license runs out in {RemainingLabel}.")
+                                    ? Localizer.T("license.expired")
+                                    : Localizer.T("license.expiring", RemainingLabel))
                             </span>
-                            <a href="@StoreUrl" target="_blank" rel="noopener">Renew</a>
+                            <a href="@StoreUrl" target="_blank" rel="noopener">@Localizer.T("license.renew")</a>
                         </div>
                     }
                 }
                 else
                 {
                     <div class="license-activation">
-                        <label class="license-key-label" for="license-overlay-key">License key</label>
+                        <label class="license-key-label" for="license-overlay-key">@Localizer.T("license.activation.label")</label>
                         <div class="license-activation-row">
                             <input id="license-overlay-key"
                                    class="license-key-input"
@@ -168,42 +187,40 @@
                                    spellcheck="false"
                                    autocomplete="off" />
                             <button type="button" class="btn btn-primary license-btn" @onclick="ActivateAsync" disabled="@_activating">
-                                @(_activating ? "Verifying…" : "Activate")
+                                @(_activating ? Localizer.T("license.activation.verifying") : Localizer.T("license.activation.activate"))
                             </button>
                         </div>
                         @if (!string.IsNullOrEmpty(_activationError))
                         {
                             <div class="license-error" role="alert">@_activationError</div>
                         }
-                        <p class="license-activation-note">
-                            The key is in your order confirmation. It binds to this PC the moment it is activated.
-                        </p>
+                        <p class="license-activation-note">@Localizer.T("license.activation.note")</p>
                     </div>
 
                     <dl class="license-facts">
                         <div class="license-fact">
-                            <dt>Plan</dt>
+                            <dt>@Localizer.T("license.fact.plan")</dt>
                             <dd>Freemium</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Status</dt>
-                            <dd>Not activated</dd>
+                            <dt>@Localizer.T("license.fact.status")</dt>
+                            <dd>@Localizer.T("license.status.notactivated")</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Device</dt>
-                            <dd>This PC</dd>
+                            <dt>@Localizer.T("license.fact.device")</dt>
+                            <dd>@Localizer.T("license.fact.device.thispc")</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Unlock</dt>
-                            <dd>One key, this PC</dd>
+                            <dt>@Localizer.T("license.fact.unlock")</dt>
+                            <dd>@Localizer.T("license.fact.unlock.value")</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Support</dt>
-                            <dd>In-app inbox</dd>
+                            <dt>@Localizer.T("license.fact.support")</dt>
+                            <dd>@Localizer.T("license.fact.support.value")</dd>
                         </div>
                         <div class="license-fact">
-                            <dt>Updates</dt>
-                            <dd>Automatic</dd>
+                            <dt>@Localizer.T("license.fact.updates")</dt>
+                            <dd>@Localizer.T("common.automatic")</dd>
                         </div>
                     </dl>
                 }
@@ -211,13 +228,11 @@
                 @* Closes the panel column the way the store button closes the hero. Both links
                    close the view; the page opens behind it. *@
                 <div class="license-help">
-                    <span class="license-help-title">Need help?</span>
-                    <p class="license-help-text">
-                        Problems with a key, a purchase or an activation go to support; replies land in your inbox.
-                    </p>
+                    <span class="license-help-title">@Localizer.T("license.help.title")</span>
+                    <p class="license-help-text">@Localizer.T("license.help.text")</p>
                     <div class="license-help-links">
-                        <a href="/feedback?section=support" @onclick="Close">Feedback &amp; Support</a>
-                        <a href="/inbox" @onclick="Close">Support inbox</a>
+                        <a href="/feedback?section=support" @onclick="Close">@Localizer.T("nav.page.feedback")</a>
+                        <a href="/inbox" @onclick="Close">@Localizer.T("nav.page.inbox")</a>
                     </div>
                 </div>
             </section>
@@ -331,7 +346,7 @@
 
         if (string.IsNullOrWhiteSpace(_keyInput))
         {
-            _activationError = "Please enter a license key.";
+            _activationError = Localizer.T("license.activation.empty");
             return;
         }
 
@@ -360,21 +375,16 @@
 
     private void ToggleKeyVisibility() => _keyHidden = !_keyHidden;
 
-    private static readonly (string Name, string Note)[] Benefits =
-    [
-        ("Auto Clicker", "Timed clicks, hold-to-click and the hotkey"),
-        ("Pixel Glitch", "Pixel and calibration tools"),
-        ("Scripts & HUD Overlay", "Automation and the in-game HUD"),
-        ("Sky Changer & Loading Screen", "Custom textures and screens"),
-        ("Mods & Intel", "Prices, line list, bosses, drops, locations"),
-        ("Priority support", "Replies from the panel, in your inbox"),
-    ];
+    // The benefit rows are written out in the markup rather than looped over a table, so every
+    // key is spelled where it is rendered and the scan that proves no key goes unused can see it.
 
-    private string HeroTitle => LicenseService.IsPremium ? "Premium is active" : "Unlock Premium";
+    private string HeroTitle => LicenseService.IsPremium
+        ? Localizer.T("license.hero.title.premium")
+        : Localizer.T("license.hero.title.free");
 
     private string HeroLede => LicenseService.IsPremium
-        ? "This PC is licensed. Your key, plan and expiry are on the right."
-        : "Paste the key from your order to unlock every RazorReaper feature on this PC.";
+        ? Localizer.T("license.hero.lede.premium")
+        : Localizer.T("license.hero.lede.free");
 
     private string DisplayedKey
     {
@@ -429,12 +439,12 @@
         try
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(key);
-            NotificationService.ShowSuccess("License key copied to clipboard.");
+            NotificationService.ShowSuccess(Localizer.T("license.copied"));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying license key to clipboard");
-            NotificationService.ShowError("Failed to copy license key.");
+            NotificationService.ShowError(Localizer.T("license.copyfailed"));
         }
     }
 
@@ -461,11 +471,12 @@
             if (string.IsNullOrWhiteSpace(plan)) return "Premium";
             switch (plan.ToLowerInvariant())
             {
+                // "Lifetime" is a plan name the shop sells under, so it stays as it is sold.
                 case "lifetime": return "Lifetime";
-                case "1-month": return "1 Month";
-                case "3-months": return "3 Months";
-                case "6-months": return "6 Months";
-                case "12-months": return "12 Months";
+                case "1-month": return Localizer.T("license.plan.1month");
+                case "3-months": return Localizer.T("license.plan.3months");
+                case "6-months": return Localizer.T("license.plan.6months");
+                case "12-months": return Localizer.T("license.plan.12months");
             }
             // Plan names arrive as ASCII from the store, so the current culture has no say here —
             // under tr-TR "invite" would come back capitalised as 'İ'.
@@ -486,18 +497,19 @@
 
             var left = Remaining;
             if (left is null) return "—";
-            if (left.Value <= TimeSpan.Zero) return "Expired";
+            if (left.Value <= TimeSpan.Zero) return Localizer.T("license.status.expired");
 
             var d = left.Value;
-            if (d.TotalDays >= 60) return $"{(int)(d.TotalDays / 30)} months";
-            if (d.TotalDays >= 2) return $"{(int)d.TotalDays} days";
-            if (d.TotalHours >= 2) return $"{(int)d.TotalHours} hours";
-            return $"{Math.Max(1, (int)d.TotalMinutes)} minutes";
+            if (d.TotalDays >= 60) return Localizer.T("license.remaining.months", (int)(d.TotalDays / 30));
+            if (d.TotalDays >= 2) return Localizer.T("license.remaining.days", (int)d.TotalDays);
+            if (d.TotalHours >= 2) return Localizer.T("license.remaining.hours", (int)d.TotalHours);
+            return Localizer.T("license.remaining.minutes", Math.Max(1, (int)d.TotalMinutes));
         }
     }
 
-    private string StatusLabel
-        => Remaining is { } left && left <= TimeSpan.Zero ? "Expired" : "Active";
+    private string StatusLabel => Remaining is { } left && left <= TimeSpan.Zero
+        ? Localizer.T("license.status.expired")
+        : Localizer.T("license.status.active");
 
     /// <summary>Under a week left, or already gone — worth colouring.</summary>
     private bool ExpiresSoon
