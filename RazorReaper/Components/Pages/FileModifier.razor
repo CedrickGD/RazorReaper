@@ -1,58 +1,62 @@
 @page "/file-modifier"
 @using RazorReaper.Services
 @using RazorReaper.Services.FileModifier
+@using RazorReaper.Services.Localization
 @inject IFileModifierService FileMod
 @inject INotificationService Notifications
 @inject IProcessService ProcessService
+@inject ILocalizer Localizer
 @implements IDisposable
 
 <div class="file-modifier-page">
     <header class="page-header">
-        <h1 class="page-title">File Modifier</h1>
-        <p class="page-subtitle">Remove or replace individual ARK files, and clear redundant cooked data to reclaim disk.</p>
+        <h1 class="page-title">@Localizer.T("filemodifier.title")</h1>
+        <p class="page-subtitle">@Localizer.T("filemodifier.subtitle")</p>
     </header>
 
     @if (_arkPath is null)
     {
         <div class="content-card">
-            <StatusHeader State="off" Label="ARK not found"
-                          Description="ARK wasn't found through Steam — install it, then rescan.">
+            <StatusHeader State="off" Label="@Localizer.T("filemodifier.noark.label")"
+                          Description="@Localizer.T("filemodifier.noark.description")">
                 <Actions>
-                    <button class="btn btn-secondary" @onclick="Rescan">Rescan</button>
+                    <button class="btn btn-secondary" @onclick="Rescan">@Localizer.T("filemodifier.rescan")</button>
                 </Actions>
             </StatusHeader>
         </div>
     }
     else
     {
-        <ElevationPrompt Message="Some game folders can only be changed with administrator rights." />
+        <ElevationPrompt Message="@Localizer.T("filemodifier.elevation")" />
 
         @* ── SeekFree cleanup ─────────────────────────────────────────────── *@
         <div class="content-card">
             <StatusHeader State="@(_seekFree?.Exists == true ? "warning" : "off")"
                           Label="@SeekFreeLabel"
-                          Description="Deletes redundant cooked map data. Frees disk and forces ARK to load loose (modified) files.">
+                          Description="@Localizer.T("filemodifier.sfc.description")">
                 <Actions>
                     <button class="btn btn-secondary" @onclick="ScanSeekFreeAsync" disabled="@_busy">
-                        @(_scanning ? "Scanning…" : "Scan")
+                        @Localizer.T(_scanning ? "filemodifier.scanning" : "filemodifier.scan")
                     </button>
                     <button class="btn btn-secondary" @onclick="() => FileMod.OpenSteamVerify()" disabled="@_busy">
-                        Verify in Steam
+                        @Localizer.T("filemodifier.verify")
                     </button>
                 </Actions>
             </StatusHeader>
 
+            @* One emphasised sentence rather than four emphasised words: a dictionary value carries
+               no markup, and four <strong>/<em> spans inside one sentence would have been nine keys
+               whose order no other language keeps. *@
             <div class="fm-note">
-                This <strong>permanently deletes</strong> game files and is <strong>not</strong> backed up — to undo it,
-                use <em>Verify in Steam</em> (re-downloads the data). Only delete maps you don't play. Steam's
-                <em>Verify integrity</em> restores everything, and a game update may bring it back too.
+                <strong>@Localizer.T("filemodifier.note.warning")</strong>
+                @Localizer.T("filemodifier.note.undo")
             </div>
 
             @if (_seekFree is { Exists: true })
             {
                 @if (_seekFree.Items.Count == 0)
                 {
-                    <p class="fm-empty">Nothing redundant found in SeekFreeContent.</p>
+                    <p class="fm-empty">@Localizer.T("filemodifier.sfc.empty")</p>
                 }
                 else
                 {
@@ -70,8 +74,8 @@
                                               Disabled="@_busy" />
                                 </span>
                                 <span class="fm-sfc-main">
-                                    <span class="fm-sfc-name">@item.Label</span>
-                                    <span class="fm-sfc-cat">@item.Category</span>
+                                    <span class="fm-sfc-name">@ItemLabel(item)</span>
+                                    <span class="fm-sfc-cat">@CategoryLabel(item.Kind)</span>
                                 </span>
                                 <span class="fm-sfc-size">@FormatBytes(item.SizeBytes)</span>
                             </div>
@@ -81,17 +85,19 @@
                     <div class="fm-sfc-actions">
                         @if (_confirmDelete)
                         {
-                            <span class="fm-confirm-text">Delete @_selected.Count item(s), freeing @FormatBytes(SelectedBytes)? This cannot be undone here.</span>
+                            <span class="fm-confirm-text">@Localizer.T("filemodifier.confirm", _selected.Count, FormatBytes(SelectedBytes))</span>
                             <button class="btn btn-danger" @onclick="DeleteSeekFreeAsync" disabled="@_busy">
-                                @(_deleting ? "Deleting…" : "Yes, delete")
+                                @Localizer.T(_deleting ? "filemodifier.deleting" : "filemodifier.delete.confirm")
                             </button>
-                            <button class="btn btn-secondary" @onclick="() => _confirmDelete = false" disabled="@_busy">Cancel</button>
+                            <button class="btn btn-secondary" @onclick="() => _confirmDelete = false" disabled="@_busy">@Localizer.T("common.cancel")</button>
                         }
                         else
                         {
                             <button class="btn btn-danger" @onclick="() => _confirmDelete = true"
                                     disabled="@(_busy || _selected.Count == 0)">
-                                Delete selected@(_selected.Count > 0 ? $" ({FormatBytes(SelectedBytes)})" : "")
+                                @(_selected.Count > 0
+                                    ? Localizer.T("filemodifier.delete.selected.size", FormatBytes(SelectedBytes))
+                                    : Localizer.T("filemodifier.delete.selected"))
                             </button>
                         }
                     </div>
@@ -99,7 +105,7 @@
             }
             else if (_seekFree is not null)
             {
-                <p class="fm-empty">No SeekFreeContent folder found — nothing to clean up.</p>
+                <p class="fm-empty">@Localizer.T("filemodifier.sfc.none")</p>
             }
         </div>
 
@@ -107,20 +113,20 @@
         <div class="content-card">
             <StatusHeader State="@(_modified.Count > 0 ? "warning" : "online")"
                           Label="@ModifiedLabel"
-                          Description="Remove or replace a single file inside the ARK install. Originals are backed up and fully restorable.">
+                          Description="@Localizer.T("filemodifier.files.description")">
                 <Actions>
-                    <button class="btn btn-secondary" @onclick="RemoveFileAsync" disabled="@_busy">Remove a file…</button>
-                    <button class="btn btn-secondary" @onclick="ReplaceFileAsync" disabled="@_busy">Replace a file…</button>
+                    <button class="btn btn-secondary" @onclick="RemoveFileAsync" disabled="@_busy">@Localizer.T("filemodifier.remove")</button>
+                    <button class="btn btn-secondary" @onclick="ReplaceFileAsync" disabled="@_busy">@Localizer.T("filemodifier.replace")</button>
                     @if (_modified.Count > 0)
                     {
-                        <button class="btn btn-secondary" @onclick="RestoreAllAsync" disabled="@_busy">Restore all</button>
+                        <button class="btn btn-secondary" @onclick="RestoreAllAsync" disabled="@_busy">@Localizer.T("filemodifier.restoreall")</button>
                     }
                 </Actions>
             </StatusHeader>
 
             @if (_modified.Count == 0)
             {
-                <p class="fm-empty">No files modified. Use “Remove” or “Replace” to change a game file — the original is always backed up first.</p>
+                <p class="fm-empty">@Localizer.T("filemodifier.files.empty")</p>
             }
             else
             {
@@ -130,10 +136,10 @@
                         <SettingRow @key="entry.Id" Title="@System.IO.Path.GetFileName(entry.RelativePath)"
                                     Description="@ModEntryDescription(entry)">
                             <span class="fm-badge @(entry.Action == FileModAction.Removed ? "removed" : "")">
-                                @(entry.Action == FileModAction.Removed ? "Removed" : "Replaced")
+                                @ActionLabel(entry.Action)
                             </span>
                             <button class="btn btn-secondary" @onclick="() => RestoreAsync(entry.Id)" disabled="@_busy">
-                                Restore
+                                @Localizer.T("filemodifier.restore")
                             </button>
                         </SettingRow>
                     }
@@ -144,6 +150,9 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     private string? _arkPath;
     private SeekFreeReport? _seekFree;
     private IReadOnlyList<FileModEntry> _modified = Array.Empty<FileModEntry>();
@@ -170,15 +179,38 @@
         _seekFree?.Items.Where(i => _selected.Contains(i.Id)).Sum(i => i.SizeBytes) ?? 0;
 
     private string SeekFreeLabel => _seekFree is { Exists: true }
-        ? $"SeekFreeContent — {FormatBytes(_seekFree.TotalBytes)}"
-        : "SeekFree cleanup";
+        ? Localizer.T("filemodifier.sfc.label.size", FormatBytes(_seekFree.TotalBytes))
+        : Localizer.T("filemodifier.sfc.label");
 
     private string ModifiedLabel => _modified.Count switch
     {
-        0 => "No files modified",
-        1 => "1 file modified",
-        _ => $"{_modified.Count} files modified"
+        0 => Localizer.T("filemodifier.files.none"),
+        1 => Localizer.T("filemodifier.files.one"),
+        _ => Localizer.T("filemodifier.files.many", _modified.Count)
     };
+
+    private string ActionLabel(FileModAction action) =>
+        Localizer.T(action == FileModAction.Removed
+            ? "filemodifier.badge.removed"
+            : "filemodifier.badge.replaced");
+
+    // A map row is named after its folder — that is ARK's own map name and stays as it is. The
+    // two fixed rows are named here rather than by the scan, so they follow a language switch
+    // without a rescan.
+    private string ItemLabel(SeekFreeItem item) => item.Kind switch
+    {
+        SeekFreeKind.ShaderModel4 => Localizer.T("filemodifier.sfc.sm4"),
+        SeekFreeKind.CoreBlueprints => Localizer.T("filemodifier.sfc.core"),
+        _ => item.Label ?? item.Id
+    };
+
+    private string CategoryLabel(SeekFreeKind kind) => Localizer.T(kind switch
+    {
+        SeekFreeKind.ShaderModel4 => "filemodifier.sfc.category.shaders",
+        SeekFreeKind.Map => "filemodifier.sfc.category.map",
+        SeekFreeKind.OfficialMap => "filemodifier.sfc.category.mod",
+        _ => "filemodifier.sfc.category.core"
+    });
 
     private void ToggleSelected(string id, bool on)
     {
@@ -227,7 +259,7 @@
         }
         catch (Exception ex)
         {
-            Notifications.ShowError($"Cleanup failed: {ex.Message}");
+            Notifications.ShowError(Localizer.T("filemodifier.toast.cleanupfailed", ex.Message));
         }
         finally
         {
@@ -240,7 +272,7 @@
     private async Task RemoveFileAsync()
     {
         if (_busy) return;
-        var picked = await PickFileAsync("Select the ARK file to remove");
+        var picked = await PickFileAsync(Localizer.T("filemodifier.picker.remove"));
         if (picked is null) return;
 
         WarnIfArkRunning();
@@ -260,10 +292,10 @@
     private async Task ReplaceFileAsync()
     {
         if (_busy) return;
-        var target = await PickFileAsync("Select the ARK file to replace");
+        var target = await PickFileAsync(Localizer.T("filemodifier.picker.replace.target"));
         if (target is null) return;
 
-        var source = await PickFileAsync("Select the replacement file");
+        var source = await PickFileAsync(Localizer.T("filemodifier.picker.replace.source"));
         if (source is null) return;
 
         WarnIfArkRunning();
@@ -305,9 +337,11 @@
         try
         {
             var (restored, failed) = await FileMod.RestoreAllAsync();
-            if (failed == 0 && restored > 0) Notifications.ShowSuccess($"Restored {restored} file(s).");
-            else if (failed > 0) Notifications.ShowWarning($"Restored {restored} file(s), {failed} failed.");
-            else Notifications.ShowInfo("Nothing to restore.");
+            if (failed == 0 && restored > 0)
+                Notifications.ShowSuccess(Localizer.T("filemodifier.toast.restoredall", restored));
+            else if (failed > 0)
+                Notifications.ShowWarning(Localizer.T("filemodifier.toast.restoredpartial", restored, failed));
+            else Notifications.ShowInfo(Localizer.T("filemodifier.toast.nothingtorestore"));
         }
         finally
         {
@@ -325,7 +359,7 @@
         }
         catch (Exception ex)
         {
-            Notifications.ShowError("Could not open the file picker.");
+            Notifications.ShowError(Localizer.T("filemodifier.toast.pickerfailed"));
             System.Diagnostics.Debug.WriteLine(ex);
             return null;
         }
@@ -342,16 +376,18 @@
         try
         {
             if (ProcessService.IsProcessRunning("ShooterGame"))
-                Notifications.ShowWarning("ARK is running — close the game so it doesn't lock these files.");
+                Notifications.ShowWarning(Localizer.T("filemodifier.toast.arkrunning"));
         }
         catch { /* best-effort */ }
     }
 
-    private static string ModEntryDescription(FileModEntry entry)
-    {
-        var action = entry.Action == FileModAction.Removed ? "Removed" : "Replaced";
-        return $"{entry.RelativePath} · {action} {entry.TimestampUtc.ToLocalTime():g}";
-    }
+    // Not static: a static helper cannot reach the injected localizer, and the badge word in
+    // the middle of this line is the one thing on the row that has to follow a switch.
+    private string ModEntryDescription(FileModEntry entry) =>
+        Localizer.T("filemodifier.entry.description",
+            entry.RelativePath,
+            ActionLabel(entry.Action),
+            entry.TimestampUtc.ToLocalTime().ToString("g"));
 
     private static string FormatBytes(long bytes)
     {

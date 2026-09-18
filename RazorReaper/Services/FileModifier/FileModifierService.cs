@@ -2,6 +2,7 @@ using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.FileModifier;
 
@@ -23,13 +24,27 @@ public sealed record FileModEntry(
 /// <summary>Outcome of a file-modifier operation.</summary>
 public sealed record FileModResult(bool Success, string Message);
 
+/// <summary>What kind of thing a SeekFree row is, which is also how the page words it.</summary>
+public enum SeekFreeKind
+{
+    ShaderModel4,
+    Map,
+    OfficialMap,
+    CoreBlueprints
+}
+
 /// <summary>One deletable chunk of ARK's SeekFreeContent, with its on-disk size.</summary>
+/// <remarks>
+/// The scan reports what a row <em>is</em>; the page words it. A map row carries its folder name,
+/// which is ARK's own map name and stays as it is in every language, and the two fixed rows carry
+/// no name at all — <see cref="SeekFreeKind"/> is enough for the page to name them, and naming
+/// them here would freeze the wording at scan time.
+/// </remarks>
 public sealed record SeekFreeItem(
     string Id,
-    string Label,
-    string Category,
+    string? Label,
+    SeekFreeKind Kind,
     long SizeBytes,
-    bool IsShaderModel4,
     string? FolderPath);
 
 /// <summary>Scan of ARK's SeekFreeContent: total size plus the individually deletable items.</summary>
@@ -91,6 +106,10 @@ public sealed class FileModifierService : IFileModifierService
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
 
+    // The page shows a FileModResult's Message verbatim, so every outcome is worded here or it
+    // is worded in English — including the ones only a failure ever reaches.
+    private readonly ILocalizer _localizer;
+
     private readonly string _backupRoot;
     private readonly string _filesDir;
     private readonly string _manifestPath;
@@ -102,13 +121,15 @@ public sealed class FileModifierService : IFileModifierService
         IArkPathProvider arkPathProvider,
         IProcessService process,
         INotificationService notifications,
-        IActivityService activity)
+        IActivityService activity,
+        ILocalizer localizer)
     {
         _logger = logger;
         _arkPathProvider = arkPathProvider;
         _process = process;
         _notifications = notifications;
         _activity = activity;
+        _localizer = localizer;
 
         _backupRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -165,10 +186,10 @@ public sealed class FileModifierService : IFileModifierService
                 if (arkPath is null) return new FileModResult(false, error!);
 
                 if (!File.Exists(absolutePath))
-                    return new FileModResult(false, "That file no longer exists.");
+                    return new FileModResult(false, _localizer.T("filemodifier.result.filemissing"));
 
                 if (EntryForRelative(relative!) is not null)
-                    return new FileModResult(false, "That file is already modified — restore it first.");
+                    return new FileModResult(false, _localizer.T("filemodifier.result.alreadymodified"));
 
                 var size = new FileInfo(absolutePath).Length;
                 var backupPath = BackupPathFor(relative!);
@@ -182,18 +203,18 @@ public sealed class FileModifierService : IFileModifierService
 
                 AddEntry(new FileModEntry(Guid.NewGuid().ToString("N"), relative!, FileModAction.Removed, size, DateTime.UtcNow));
                 _logger.LogInformation("File modifier removed {Relative}", relative);
-                TryActivity($"Removed game file {Path.GetFileName(relative!)}", "warning");
-                return new FileModResult(true, $"Removed {Path.GetFileName(relative!)} — backed up and restorable.");
+                TryActivity(_localizer.T("filemodifier.activity.removed", Path.GetFileName(relative!)), "warning");
+                return new FileModResult(true, _localizer.T("filemodifier.result.removed", Path.GetFileName(relative!)));
             }
             catch (OperationCanceledException) { throw; }
             catch (UnauthorizedAccessException)
             {
-                return new FileModResult(false, "Access denied — try running RazorReaper as Administrator.");
+                return new FileModResult(false, _localizer.T("filemodifier.result.accessdenied"));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "File modifier remove failed for {Path}", absolutePath);
-                return new FileModResult(false, $"Could not remove the file: {ex.Message}");
+                return new FileModResult(false, _localizer.T("filemodifier.result.removefailed", ex.Message));
             }
         }, cancellationToken);
 
@@ -206,14 +227,14 @@ public sealed class FileModifierService : IFileModifierService
                 if (arkPath is null) return new FileModResult(false, error!);
 
                 if (string.IsNullOrWhiteSpace(sourceFilePath) || !File.Exists(sourceFilePath))
-                    return new FileModResult(false, "The replacement file no longer exists.");
+                    return new FileModResult(false, _localizer.T("filemodifier.result.sourcemissing"));
 
                 if (string.Equals(Path.GetFullPath(sourceFilePath), Path.GetFullPath(targetAbsolutePath), StringComparison.OrdinalIgnoreCase))
-                    return new FileModResult(false, "The replacement is the same file as the target.");
+                    return new FileModResult(false, _localizer.T("filemodifier.result.samefile"));
 
                 var targetExists = File.Exists(targetAbsolutePath);
                 if (!targetExists && EntryForRelative(relative!) is null)
-                    return new FileModResult(false, "The target game file wasn't found, so there is nothing to replace.");
+                    return new FileModResult(false, _localizer.T("filemodifier.result.targetmissing"));
 
                 var existing = EntryForRelative(relative!);
                 var backupPath = BackupPathFor(relative!);
@@ -239,18 +260,18 @@ public sealed class FileModifierService : IFileModifierService
                     AddEntry(new FileModEntry(Guid.NewGuid().ToString("N"), relative!, FileModAction.Replaced, originalSize, DateTime.UtcNow));
                 }
                 _logger.LogInformation("File modifier replaced {Relative}", relative);
-                TryActivity($"Replaced game file {Path.GetFileName(relative!)}", "warning");
-                return new FileModResult(true, $"Replaced {Path.GetFileName(relative!)} — original backed up and restorable.");
+                TryActivity(_localizer.T("filemodifier.activity.replaced", Path.GetFileName(relative!)), "warning");
+                return new FileModResult(true, _localizer.T("filemodifier.result.replaced", Path.GetFileName(relative!)));
             }
             catch (OperationCanceledException) { throw; }
             catch (UnauthorizedAccessException)
             {
-                return new FileModResult(false, "Access denied — try running RazorReaper as Administrator.");
+                return new FileModResult(false, _localizer.T("filemodifier.result.accessdenied"));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "File modifier replace failed for {Path}", targetAbsolutePath);
-                return new FileModResult(false, $"Could not replace the file: {ex.Message}");
+                return new FileModResult(false, _localizer.T("filemodifier.result.replacefailed", ex.Message));
             }
         }, cancellationToken);
 
@@ -276,10 +297,10 @@ public sealed class FileModifierService : IFileModifierService
         try
         {
             var entry = GetModifiedFiles().FirstOrDefault(e => e.Id == id);
-            if (entry is null) return new FileModResult(false, "That modification is no longer tracked.");
+            if (entry is null) return new FileModResult(false, _localizer.T("filemodifier.result.untracked"));
 
             var arkPath = GetArkPath();
-            if (arkPath is null) return new FileModResult(false, "ARK installation not found.");
+            if (arkPath is null) return new FileModResult(false, _localizer.T("filemodifier.result.noark"));
 
             var targetPath = Path.Combine(arkPath, entry.RelativePath);
             var backupPath = BackupPathFor(entry.RelativePath);
@@ -287,7 +308,8 @@ public sealed class FileModifierService : IFileModifierService
             if (entry.Action == FileModAction.Removed && !File.Exists(backupPath))
             {
                 // A removed file with no backup can't be recovered by us.
-                return new FileModResult(false, $"No backup found for {Path.GetFileName(entry.RelativePath)} — use Steam's Verify Integrity.");
+                return new FileModResult(false,
+                    _localizer.T("filemodifier.result.nobackup", Path.GetFileName(entry.RelativePath)));
             }
 
             if (File.Exists(backupPath))
@@ -304,16 +326,16 @@ public sealed class FileModifierService : IFileModifierService
 
             RemoveEntry(entry.Id);
             _logger.LogInformation("File modifier restored {Relative}", entry.RelativePath);
-            return new FileModResult(true, $"Restored {Path.GetFileName(entry.RelativePath)}.");
+            return new FileModResult(true, _localizer.T("filemodifier.result.restored", Path.GetFileName(entry.RelativePath)));
         }
         catch (UnauthorizedAccessException)
         {
-            return new FileModResult(false, "Access denied — try running RazorReaper as Administrator.");
+            return new FileModResult(false, _localizer.T("filemodifier.result.accessdenied"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "File modifier restore failed for {Id}", id);
-            return new FileModResult(false, $"Could not restore the file: {ex.Message}");
+            return new FileModResult(false, _localizer.T("filemodifier.result.restorefailed", ex.Message));
         }
     }
 
@@ -321,11 +343,11 @@ public sealed class FileModifierService : IFileModifierService
     private (string? ArkPath, string? Relative, string? Error) ValidateTarget(string absolutePath)
     {
         if (string.IsNullOrWhiteSpace(absolutePath))
-            return (null, null, "No file selected.");
+            return (null, null, _localizer.T("filemodifier.result.nofile"));
 
         var arkPath = GetArkPath();
         if (arkPath is null)
-            return (null, null, "ARK installation not found — is the game installed through Steam?");
+            return (null, null, _localizer.T("filemodifier.result.noark.steam"));
 
         string full, arkFull;
         try
@@ -335,12 +357,12 @@ public sealed class FileModifierService : IFileModifierService
         }
         catch
         {
-            return (null, null, "That path could not be read.");
+            return (null, null, _localizer.T("filemodifier.result.badpath"));
         }
 
         var prefix = arkFull.EndsWith(Path.DirectorySeparatorChar) ? arkFull : arkFull + Path.DirectorySeparatorChar;
         if (!full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            return (null, null, "For safety, only files inside the ARK install folder can be modified.");
+            return (null, null, _localizer.T("filemodifier.result.outsideark"));
 
         var relative = full.Substring(prefix.Length);
         return (arkPath, relative, null);
@@ -371,7 +393,7 @@ public sealed class FileModifierService : IFileModifierService
                 }
                 if (sm4Bytes > 0)
                 {
-                    items.Add(new SeekFreeItem("sm4", "Shader Model 4 files (*.SM4)", "Redundant shader variants", sm4Bytes, true, null));
+                    items.Add(new SeekFreeItem("sm4", null, SeekFreeKind.ShaderModel4, sm4Bytes, null));
                 }
 
                 // 2) Per-map folders under Maps\ and Mods\ (delete maps you don't play).
@@ -384,7 +406,9 @@ public sealed class FileModifierService : IFileModifierService
                         cancellationToken.ThrowIfCancellationRequested();
                         var size = DirectorySize(folder, cancellationToken);
                         var name = Path.GetFileName(folder);
-                        items.Add(new SeekFreeItem($"map:{group}:{name}", name, group == "Maps" ? "Map data" : "Official map (mod)", size, false, folder));
+                        items.Add(new SeekFreeItem($"map:{group}:{name}", name,
+                            group == "Maps" ? SeekFreeKind.Map : SeekFreeKind.OfficialMap,
+                            size, folder));
                     }
                 }
 
@@ -393,7 +417,7 @@ public sealed class FileModifierService : IFileModifierService
                 if (Directory.Exists(coreDir))
                 {
                     var size = DirectorySize(coreDir, cancellationToken);
-                    items.Add(new SeekFreeItem("core", "Core blueprints", "Core game data (advanced)", size, false, coreDir));
+                    items.Add(new SeekFreeItem("core", null, SeekFreeKind.CoreBlueprints, size, coreDir));
                 }
 
                 total = DirectorySize(sfcRoot, cancellationToken);
@@ -412,10 +436,10 @@ public sealed class FileModifierService : IFileModifierService
         => Task.Run(() =>
         {
             if (items is null || items.Count == 0)
-                return new SeekFreeResult(false, "Nothing selected.", 0);
+                return new SeekFreeResult(false, _localizer.T("filemodifier.result.nothingselected"), 0);
 
             var arkPath = GetArkPath();
-            if (arkPath is null) return new SeekFreeResult(false, "ARK installation not found.", 0);
+            if (arkPath is null) return new SeekFreeResult(false, _localizer.T("filemodifier.result.noark"), 0);
 
             var sfcRoot = Path.Combine(arkPath, "ShooterGame", "SeekFreeContent");
             var sfcFull = Path.GetFullPath(sfcRoot);
@@ -423,7 +447,7 @@ public sealed class FileModifierService : IFileModifierService
             var failures = 0;
 
             // Delete the SM4 set first so it isn't double-counted against folders being removed too.
-            foreach (var item in items.Where(i => i.IsShaderModel4))
+            foreach (var item in items.Where(i => i.Kind == SeekFreeKind.ShaderModel4))
             {
                 foreach (var file in SafeEnumerate(sfcRoot, "*.SM4"))
                 {
@@ -442,7 +466,7 @@ public sealed class FileModifierService : IFileModifierService
                 }
             }
 
-            foreach (var item in items.Where(i => !i.IsShaderModel4 && i.FolderPath is not null))
+            foreach (var item in items.Where(i => i.Kind != SeekFreeKind.ShaderModel4 && i.FolderPath is not null))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -468,11 +492,11 @@ public sealed class FileModifierService : IFileModifierService
             }
 
             if (freed > 0)
-                TryActivity($"SeekFree cleanup freed {FormatBytes(freed)}", "success");
+                TryActivity(_localizer.T("filemodifier.activity.freed", FormatBytes(freed)), "success");
 
             var message = failures == 0
-                ? $"Freed {FormatBytes(freed)}."
-                : $"Freed {FormatBytes(freed)}, but {failures} item(s) could not be deleted (try running as Administrator).";
+                ? _localizer.T("filemodifier.result.freed", FormatBytes(freed))
+                : _localizer.T("filemodifier.result.freedpartial", FormatBytes(freed), failures);
             return new SeekFreeResult(failures == 0, message, freed);
         }, cancellationToken);
 
@@ -482,7 +506,7 @@ public sealed class FileModifierService : IFileModifierService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not open Steam verify");
-            _notifications.ShowError("Could not open Steam — start it manually and verify the ARK files.");
+            _notifications.ShowError(_localizer.T("filemodifier.result.steamfailed"));
         }
     }
 

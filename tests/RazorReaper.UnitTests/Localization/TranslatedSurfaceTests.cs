@@ -1381,6 +1381,83 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/LoadingScreenService.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">File Modifier</h1>",
+            "Remove or replace individual ARK files",
+            "Label=\"ARK not found\"",
+            "ARK wasn't found through Steam — install it",
+            ">Rescan</button>",
+            "Some game folders can only be changed with administrator rights.",
+            "Deletes redundant cooked map data.",
+            "\"Scanning…\" : \"Scan\"",
+            "Verify in Steam\n",
+            "permanently deletes",
+            "Nothing redundant found in SeekFreeContent.",
+            "No SeekFreeContent folder found",
+            "This cannot be undone here.",
+            "\"Deleting…\" : \"Yes, delete\"",
+            ">Cancel</button>",
+            "Delete selected",
+            "Remove or replace a single file inside the ARK install.",
+            ">Remove a file…</button>",
+            ">Replace a file…</button>",
+            ">Restore all</button>",
+            "No files modified. Use",
+            "\"Removed\" : \"Replaced\"",
+            "SeekFree cleanup\"",
+            "\"No files modified\"",
+            "\"1 file modified\"",
+            "files modified\"",
+            "Cleanup failed:",
+            "Select the ARK file to remove",
+            "Select the ARK file to replace",
+            "Select the replacement file",
+            "Restored {restored} file(s)",
+            "\"Nothing to restore.\"",
+            "\"Could not open the file picker.\"",
+            "ARK is running — close the game",
+        })
+        {
+            data.Add("Components/Pages/FileModifier.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"That file no longer exists.\"",
+            "That file is already modified",
+            "Removed game file",
+            "backed up and restorable.",
+            "Access denied — try running RazorReaper as Administrator.",
+            "Could not remove the file:",
+            "\"The replacement file no longer exists.\"",
+            "The replacement is the same file as the target.",
+            "The target game file wasn't found",
+            "Replaced game file",
+            "Could not replace the file:",
+            "That modification is no longer tracked.",
+            "\"ARK installation not found.\"",
+            "No backup found for",
+            "Could not restore the file:",
+            "\"No file selected.\"",
+            "ARK installation not found — is the game installed through Steam?",
+            "That path could not be read.",
+            "For safety, only files inside the ARK install folder",
+            "Shader Model 4 files",
+            "Redundant shader variants",
+            "\"Map data\"",
+            "Official map (mod)",
+            "\"Core blueprints\"",
+            "Core game data (advanced)",
+            "\"Nothing selected.\"",
+            "SeekFree cleanup freed",
+            "could not be deleted (try running as Administrator)",
+            "Could not open Steam — start it manually",
+        })
+        {
+            data.Add("Services/FileModifier/FileModifierService.cs", literal);
+        }
+
         return data;
     }
 
