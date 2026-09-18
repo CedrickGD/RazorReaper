@@ -51,10 +51,20 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     /// A message handed to the notification or activity service. The call may be broken across
     /// lines, so the argument is not looked for on the same line as the call.
     /// </summary>
+    /// <remarks>
+    /// The optional prefix is a message picked by a conditional — <c>ok ? "…" : "…"</c> — which is
+    /// how SkyInjectorService wrote both of its activity lines and therefore how both of them
+    /// stayed out of this scan while it only ever read a literal sitting directly after the
+    /// bracket. It deliberately matches nothing with a quote, bracket, comma, semicolon or brace
+    /// in it, so it cannot run past the argument it belongs to and cannot mistake a
+    /// <c>?? Localizer.T("key")</c> fallback for a sentence. Only the first branch is read, which
+    /// is enough: a pair written in English fails on one of them.
+    /// </remarks>
     private static readonly Regex MessageCall = new(
         @"(?:(?:NotificationService|Notifications|_notifications|ActivityService|_activity)\s*\.\s*"
         + @"(?:Show(?:Success|Error|Warning|WarningWithCountdown|Info)|AddActivity)"
         + @"|(?<!\w)TryActivity)\s*\(\s*"
+        + @"(?:[^""(),;{}]*\?\s*)?"
         + @"(?<literal>\$?""(?:[^""\\]|\\.)*"")",
         RegexOptions.Singleline);
 
@@ -225,6 +235,7 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("Services/Implementations/Crosshair/CrosshairService.Imports.cs")]
     [InlineData("Services/Implementations/Crosshair/CrosshairService.Library.cs")]
     [InlineData("Services/Implementations/Crosshair/CrosshairService.Preview.cs")]
+    [InlineData("Services/Implementations/CustomLab/SkyInjectorService.cs")]
     public void TheFilesThisScanWasWrittenForAreInRangeOfIt(string relativePath)
         => Assert.Contains(relativePath, FilesWithALocalizer().Select(f => f.Path).ToArray());
 
@@ -257,16 +268,28 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     }
 
     /// <summary>
-    /// The other direction: a class whose files all name nothing stays out of range, so the
-    /// grouping cannot quietly pull the whole project in and turn every English literal in the
-    /// app into a finding.
+    /// The other direction, which is what stops the grouping from quietly widening into the whole
+    /// project: a file is only pulled in by a sibling if it really shares a partial type with
+    /// one. Stated as a property rather than against a named file, because the file that is
+    /// English today is the file that gets migrated tomorrow.
     /// </summary>
     [Fact]
-    public void AClassThatNamesNoLocalizerAnywhereStaysOutOfRange()
+    public void GroupingOnlyPullsInAFileThatSharesAPartialTypeWithOne()
     {
-        var inRange = FilesWithALocalizer().Select(file => file.Path).ToHashSet(StringComparer.Ordinal);
+        var files = ProjectSources();
+        var namesOne = files.Where(file => KnowsHowToTranslate.IsMatch(file.Source))
+            .Select(file => file.Path)
+            .ToHashSet(StringComparer.Ordinal);
+        var inRange = FilesWithALocalizer().ToArray();
 
-        Assert.DoesNotContain("Services/Implementations/CustomLab/SkyInjectorService.cs", inRange);
+        Assert.True(inRange.Length < files.Length, "the scan now reads every source in the project");
+
+        var sources = files.ToDictionary(file => file.Path, file => file.Source, StringComparer.Ordinal);
+        foreach (var pulled in inRange.Where(file => !namesOne.Contains(file.Path)))
+        {
+            var shared = PartialTypesIn(pulled.Source).ToHashSet(StringComparer.Ordinal);
+            Assert.Contains(namesOne, sibling => PartialTypesIn(sources[sibling]).Any(shared.Contains));
+        }
     }
 
     /// <summary>
@@ -308,6 +331,9 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
     [InlineData("ActivityService.AddActivity(Localizer.T(\"compact.activity.failed\"), \"warning\");", false)]
     [InlineData("TryActivity(\"Noglin: FPS restored\", \"info\");", true)]
     [InlineData("TryActivity(Localizer.T(\"scripts.activity.stopped\", name), \"info\");", false)]
+    [InlineData("_activity.AddActivity(\n    errors.Count == 0 ? $\"Sky injected: {n}\"\n        : $\"Sky inject: {n} ok\", \"info\");", true)]
+    [InlineData("_activity.AddActivity(\n    ok\n        ? _localizer.T(\"sky.activity.injected\", n)\n        : _localizer.T(\"sky.activity.injected.errors\", n), \"info\");", false)]
+    [InlineData("_notifications.ShowError(result.Error ?? _localizer.T(\"crosshair.import.error.code\"));", false)]
     public void TheScanFindsASentenceAndLetsAJoinThrough(string snippet, bool expected)
     {
         var match = MessageCall.Match(snippet);

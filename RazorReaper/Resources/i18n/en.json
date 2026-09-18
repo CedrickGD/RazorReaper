@@ -1439,6 +1439,11 @@
   "sky.toast.restored": "Restored {0} sky texture(s). Restart ARK to see the original.",
   "sky.toast.restorefailed": "Sky restore failed — see log.",
 
+  "sky.activity.injected": "Sky injected → {0} texture(s)",
+  "sky.activity.injected.errors": "Sky inject → {0} ok, {1} errors",
+  "sky.activity.restored": "Sky restored → {0} file(s)",
+  "sky.activity.restored.errors": "Sky restore → {0} ok, {1} errors",
+
   "sky.log.imageselected": "Image selected: {0}",
   "sky.log.undecodable": "{0} files aren't decoded by the built-in image pipeline. Convert it to PNG/JPG/BMP/TGA/WEBP first.",
   "sky.log.convertx": "  Need a quick converter? Try Convert-X (also by CedrickGD):",

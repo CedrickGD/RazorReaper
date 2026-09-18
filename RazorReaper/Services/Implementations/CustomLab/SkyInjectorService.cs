@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using RazorReaper.Models;
+using RazorReaper.Services.Localization;
 using SkiaSharp;
 
 namespace RazorReaper.Services.Implementations.CustomLab;
@@ -50,6 +51,7 @@ public class SkyInjectorService : ISkyInjectorService
     private readonly ICustomLabSettingsService _settings;
     private readonly IProcessService _process;
     private readonly IOptions<AppConfiguration> _config;
+    private readonly ILocalizer _localizer;
 
     public SkyInjectorService(
         ILogger<SkyInjectorService> logger,
@@ -58,7 +60,8 @@ public class SkyInjectorService : ISkyInjectorService
         ITelemetryService telemetry,
         ICustomLabSettingsService settings,
         IProcessService process,
-        IOptions<AppConfiguration> config)
+        IOptions<AppConfiguration> config,
+        ILocalizer localizer)
     {
         _logger = logger;
         _arkPaths = arkPaths;
@@ -67,6 +70,7 @@ public class SkyInjectorService : ISkyInjectorService
         _settings = settings;
         _process = process;
         _config = config;
+        _localizer = localizer;
 
         var appData = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -202,9 +206,11 @@ public class SkyInjectorService : ISkyInjectorService
             }, ct);
 
             _activity.AddActivity(
-                errors.Count == 0 ? $"Sky injected → {patched} texture(s)"
-                                  : $"Sky inject → {patched} ok, {errors.Count} errors",
-                errors.Count == 0 ? "success" : "warning");
+                errors.Count == 0
+                    ? _localizer.T("sky.activity.injected", patched)
+                    : _localizer.T("sky.activity.injected.errors", patched, errors.Count),
+                errors.Count == 0 ? "success" : "warning",
+                errors.Count == 0 ? "sky.activity.injected" : "sky.activity.injected.errors");
 
             if (patched > 0) await _settings.MarkSkyInjectedAsync();
 
@@ -279,9 +285,11 @@ public class SkyInjectorService : ISkyInjectorService
         }, ct);
 
         _activity.AddActivity(
-            errors.Count == 0 ? $"Sky restored → {restored} file(s)"
-                              : $"Sky restore → {restored} ok, {errors.Count} errors",
-            errors.Count == 0 ? "info" : "warning");
+            errors.Count == 0
+                ? _localizer.T("sky.activity.restored", restored)
+                : _localizer.T("sky.activity.restored.errors", restored, errors.Count),
+            errors.Count == 0 ? "info" : "warning",
+            errors.Count == 0 ? "sky.activity.restored" : "sky.activity.restored.errors");
 
         if (restored > 0) await _settings.MarkSkyRestoredAsync();
 

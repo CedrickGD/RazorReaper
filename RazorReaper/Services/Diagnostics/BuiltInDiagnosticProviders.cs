@@ -634,7 +634,7 @@ public sealed class FeatureCatalogDiagnosticProvider : IDiagnosticProvider
         "launch-options" => ["launch"],
         "fonts" => ["fonts"],
         "paintings" => ["paintings"],
-        "custom-lab" => ["customlab"],
+        "custom-lab" => ["sky", "customlab"],
         "loading-screen" => ["loadingscreen"],
         "char-manager" => ["charmanager"],
         "stretched-res" => ["stretchedres"],
@@ -918,7 +918,7 @@ public sealed class SettingsOperationsDiagnosticProvider(
                 ? "Font operation"
                 : "App operation",
             "inichanger" or "inibuilder" => "INI operation",
-            "customlab" => "Sky Changer operation",
+            "sky" or "customlab" => "Sky Changer operation",
             "loadingscreen" => "Loading Screen operation",
             // File Modifier's rows are all about ARK's own game files, which is also what the
             // sentence scan used to read out of them ("Removed game file …").

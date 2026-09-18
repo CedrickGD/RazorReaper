@@ -1439,6 +1439,11 @@
   "sky.toast.restored": "Восстановлено текстур неба: {0}. Перезапустите ARK, чтобы увидеть оригинал.",
   "sky.toast.restorefailed": "Не удалось восстановить небо — смотрите вывод.",
 
+  "sky.activity.injected": "Небо внедрено → текстур: {0}",
+  "sky.activity.injected.errors": "Внедрение неба → успешно: {0}, ошибок: {1}",
+  "sky.activity.restored": "Небо восстановлено → файлов: {0}",
+  "sky.activity.restored.errors": "Восстановление неба → успешно: {0}, ошибок: {1}",
+
   "sky.log.imageselected": "Выбрано изображение: {0}",
   "sky.log.undecodable": "Файлы {0} встроенный обработчик изображений не читает. Сначала переведите их в PNG/JPG/BMP/TGA/WEBP.",
   "sky.log.convertx": "  Нужен быстрый конвертер? Попробуйте Convert-X (тоже от CedrickGD):",

@@ -2569,6 +2569,19 @@ public sealed class TranslatedSurfaceTests
 
         data.Add("Services/Implementations/Crosshair/CrosshairService.Preview.cs", "$\"Couldn't load image:");
 
+        // Sky Changer's injector. Its two activity lines were each a conditional between two
+        // interpolated sentences, which is the shape that kept them out of the toast scan.
+        foreach (var literal in new[]
+        {
+            "$\"Sky injected",
+            "$\"Sky inject →",
+            "$\"Sky restored",
+            "$\"Sky restore →",
+        })
+        {
+            data.Add("Services/Implementations/CustomLab/SkyInjectorService.cs", literal);
+        }
+
         foreach (var literal in new[]
         {
             "public static string Describe(CrosshairProfile p)",

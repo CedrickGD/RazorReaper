@@ -1439,6 +1439,11 @@
   "sky.toast.restored": "{0} Himmelstextur(en) wiederhergestellt. Starte ARK neu, um den Originalhimmel zu sehen.",
   "sky.toast.restorefailed": "Wiederherstellen des Himmels fehlgeschlagen — sieh in der Ausgabe nach.",
 
+  "sky.activity.injected": "Himmel eingesetzt → {0} Textur(en)",
+  "sky.activity.injected.errors": "Himmel-Einsatz → {0} ok, {1} Fehler",
+  "sky.activity.restored": "Himmel wiederhergestellt → {0} Datei(en)",
+  "sky.activity.restored.errors": "Himmel-Wiederherstellung → {0} ok, {1} Fehler",
+
   "sky.log.imageselected": "Bild ausgewählt: {0}",
   "sky.log.undecodable": "{0}-Dateien kann die eingebaute Bildverarbeitung nicht lesen. Wandle sie vorher in PNG/JPG/BMP/TGA/WEBP um.",
   "sky.log.convertx": "  Brauchst du schnell einen Konverter? Probier Convert-X (ebenfalls von CedrickGD):",

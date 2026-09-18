@@ -1439,6 +1439,11 @@
   "sky.toast.restored": "已恢复 {0} 个天空贴图。重启 ARK 就能看到原始天空。",
   "sky.toast.restorefailed": "恢复天空失败 —— 请看输出。",
 
+  "sky.activity.injected": "天空已注入 → {0} 个贴图",
+  "sky.activity.injected.errors": "天空注入 → 成功 {0} 个，错误 {1} 个",
+  "sky.activity.restored": "天空已恢复 → {0} 个文件",
+  "sky.activity.restored.errors": "天空恢复 → 成功 {0} 个，错误 {1} 个",
+
   "sky.log.imageselected": "已选择图片：{0}",
   "sky.log.undecodable": "内置的图片处理无法解码 {0} 文件。请先转换成 PNG/JPG/BMP/TGA/WEBP。",
   "sky.log.convertx": "  需要一个快速转换工具？试试 Convert-X（同样出自 CedrickGD）：",
