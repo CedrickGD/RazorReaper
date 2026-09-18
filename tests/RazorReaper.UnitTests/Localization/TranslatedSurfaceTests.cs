@@ -868,6 +868,14 @@ public sealed class TranslatedSurfaceTests
         {
             yield return ("HudModels.cs", RazorReaper.Services.Overlay.HudSettings.AnchorKey(anchor));
         }
+
+        // The Lifetime guide numbers its steps rather than naming them: a key named after a
+        // step would put the method in the markup above the paywall.
+        for (var step = 1; step <= RazorReaper.Components.Pages.DinoLevelGuide.StepCount; step++)
+        {
+            yield return ("DinoLevelGuide.razor", $"dinolevel.step.{step}.head");
+            yield return ("DinoLevelGuide.razor", $"dinolevel.step.{step}.detail");
+        }
     }
 
     /// <summary>

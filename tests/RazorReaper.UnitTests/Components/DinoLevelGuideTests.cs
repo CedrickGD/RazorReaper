@@ -17,6 +17,10 @@ namespace RazorReaper.UnitTests.Components;
 public sealed class DinoLevelGuideTests
 {
     private const string Route = "/guides/dino-level";
+
+    private static string English(string key)
+        => RazorReaper.UnitTests.Localization.TranslationParityTests.Read("en")[key];
+
     private const string GateOpen = "<PremiumLock RequiresLifetime=\"true\">";
     private const string GateClose = "</PremiumLock>";
 
@@ -28,7 +32,8 @@ public sealed class DinoLevelGuideTests
         var page = Page();
 
         Assert.StartsWith("@page \"" + Route + "\"", page, StringComparison.Ordinal);
-        Assert.Contains("<h1 class=\"page-title\">Higher dino levels</h1>", page, StringComparison.Ordinal);
+        Assert.Contains("<h1 class=\"page-title\">@Localizer.T(\"dinolevel.title\")</h1>", page, StringComparison.Ordinal);
+        Assert.Equal("Higher dino levels", English("dinolevel.title"));
         Assert.Contains("class=\"page-subtitle\"", page, StringComparison.Ordinal);
     }
 
@@ -241,9 +246,25 @@ public sealed class DinoLevelGuideTests
         Assert.True(open > 0 && close > open, "the page must wrap its body in the gate");
 
         var outside = page[..open] + page[(close + GateClose.Length)..];
-        foreach (var giveaway in new[] { "Noglin", "transmitter", "unclaim", "render distance" })
+        var giveaways = new[] { "Noglin", "transmitter", "unclaim", "render distance" };
+
+        foreach (var giveaway in giveaways)
         {
             Assert.DoesNotContain(giveaway, outside, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // A key is rendered where it is written, so a key named after a step would put the
+        // method above the gate just as surely as the sentence would. The steps are numbered,
+        // and what the two keys outside the gate resolve to is checked rather than assumed.
+        foreach (var code in new[] { "en", "de", "ru", "zh-Hans" })
+        {
+            var dictionary = RazorReaper.UnitTests.Localization.TranslationParityTests.Read(code);
+
+            foreach (var giveaway in giveaways)
+            {
+                Assert.DoesNotContain(giveaway, dictionary["dinolevel.title"], StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain(giveaway, dictionary["dinolevel.subtitle"], StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         // The nav row and the palette hit are visible to everyone, so they must not leak it either.
@@ -253,15 +274,14 @@ public sealed class DinoLevelGuideTests
         Assert.DoesNotContain("Noglin", description, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>The owner's notes, in the owner's order. The order is the trick.</summary>
+    /// <summary>
+    /// The owner's notes, in the owner's order. The order is the trick, so it is pinned against
+    /// the English dictionary — the page renders <c>dinolevel.step.N.head</c> for N in order and
+    /// the wording lives there now.
+    /// </summary>
     [Fact]
     public void TheStepsFollowTheOwnersNotesInOrder()
     {
-        var page = Page();
-        var steps = Regex.Matches(page, @"<span class=""dlg-step-head"">([^<]+)</span>")
-            .Select(m => m.Groups[1].Value)
-            .ToArray();
-
         Assert.Equal(
             new[]
             {
@@ -274,10 +294,25 @@ public sealed class DinoLevelGuideTests
                 "Tame it again",
                 "Repeat",
             },
-            steps);
+            Enumerable.Range(1, RazorReaper.Components.Pages.DinoLevelGuide.StepCount)
+                .Select(n => English($"dinolevel.step.{n}.head"))
+                .ToArray());
 
-        // Every step carries its one line of detail.
-        Assert.Equal(steps.Length, Regex.Matches(page, @"<span class=""dlg-step-detail"">").Count);
+        // Every step carries its one line of detail, in all four languages.
+        foreach (var code in new[] { "en", "de", "ru", "zh-Hans" })
+        {
+            var dictionary = RazorReaper.UnitTests.Localization.TranslationParityTests.Read(code);
+
+            for (var n = 1; n <= RazorReaper.Components.Pages.DinoLevelGuide.StepCount; n++)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(dictionary[$"dinolevel.step.{n}.detail"]));
+            }
+        }
+
+        var page = Page();
+        Assert.Contains("for (var step = 1; step <= StepCount; step++)", page, StringComparison.Ordinal);
+        Assert.Contains("dlg-step-head", page, StringComparison.Ordinal);
+        Assert.Contains("dlg-step-detail", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -285,19 +320,20 @@ public sealed class DinoLevelGuideTests
     {
         var page = Page();
 
-        Assert.Contains("<h2 class=\"dlg-card-title\">Requirements</h2>", page, StringComparison.Ordinal);
-        Assert.Contains("<h2 class=\"dlg-card-title\">Tips &amp; caveats</h2>", page, StringComparison.Ordinal);
+        Assert.Equal("Requirements", English("dinolevel.requirements.title"));
+        Assert.Equal("Tips & caveats", English("dinolevel.tips.title"));
 
         // No video was ever made, and the guide says so rather than leaving a gap where one goes.
-        Assert.Contains("no video for it yet", page, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no video for it yet", English("dinolevel.what.2"), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<HostedVideo", page, StringComparison.Ordinal);
 
         // Server settings differ; the page says that without inventing a server or a number.
-        Assert.Contains("server settings", page, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("server settings", English("dinolevel.tip.3"), StringComparison.OrdinalIgnoreCase);
 
         var footer = Regex.Match(page, @"<p class=""dlg-footer"">.*?</p>", RegexOptions.Singleline);
         Assert.True(footer.Success, "the page must end with the feedback line");
-        Assert.Contains("Something changed?", footer.Value, StringComparison.Ordinal);
+        Assert.Contains("dinolevel.footer.lead", footer.Value, StringComparison.Ordinal);
+        Assert.StartsWith("Something changed?", English("dinolevel.footer.lead"), StringComparison.Ordinal);
         Assert.Contains("href=\"/feedback\"", footer.Value, StringComparison.Ordinal);
     }
 
