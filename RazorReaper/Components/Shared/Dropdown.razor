@@ -4,13 +4,21 @@
    so no CSS reaches it — in a dark app you get a white system menu you cannot read. Only a
    div-based list can be themed.
 
+   Where the list is drawn: in the browser's top layer, via popover. Every .content-card carries
+   backdrop-filter, which makes the card a stacking context, so a list painted inside one is
+   covered by the next card from that card's top edge down — the menu looked cut off at the
+   bottom edge of its own card. The top layer sits above every stacking context, so no card,
+   scroller or transform reaches it. wwwroot/js/dropdown-layer.js places it from the trigger's
+   rectangle, flips it up when the room below is too tight and caps it to the window.
+
    Keyboard model matches GlobalSearch: Up/Down/Home/End move, Enter picks, Escape closes.
-   Outside clicks land on a transparent full-viewport backdrop, same as ColorField. *@
+   Outside clicks and Escape are caught by the layer, which calls back into CloseFromLayer. *@
 @using RazorReaper.Services.Localization
+@implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject ILocalizer Localizer
 
-<div class="rr-dd @(_open ? "open" : "") @(_flipUp ? "flip-up" : "")">
+<div class="rr-dd @(_open ? "open" : "")">
     <button type="button"
             class="rr-dd-trigger"
             @ref="_triggerEl"
@@ -29,8 +37,10 @@
 
     @if (_open)
     {
-        <div class="rr-dd-backdrop" @onclick="Close"></div>
-        <div class="rr-dd-pop" role="listbox" @onclick:stopPropagation="true">
+        @* popover="manual": the list is promoted to the top layer but keeps its own dismissal,
+           so a click on the trigger closes it instead of being eaten by a light dismiss and
+           immediately reopening. *@
+        <div class="rr-dd-pop" role="listbox" popover="manual" @ref="_popEl" @onclick:stopPropagation="true">
             @foreach (var (option, index) in Options.Select((o, i) => (o, i)))
             {
                 <button type="button"
@@ -69,20 +79,58 @@
     [Parameter] public string? Placeholder { get; set; }
 
     private bool _open;
-    private bool _flipUp;
     private int _active;
     private ElementReference _triggerEl;
+    private ElementReference _popEl;
 
-    /// Rough popover height for the flip decision, same approach as ColorField: overestimating
-    /// only flips a little early, underestimating overhangs the window.
-    private double PopHeight => Math.Min(280, 12 + Options.Count * 30);
+    /// <summary>
+    /// Whether the layer currently holds this dropdown. The list element is gone from the DOM
+    /// by the time the closing render lands, so the layer is keyed by this id rather than by
+    /// an ElementReference that could no longer be marshalled.
+    /// </summary>
+    private bool _layered;
+    private readonly string _layerId = $"rr-dd-{Guid.NewGuid():N}";
+
+    /// <summary>The cursor the layer was last asked to scroll to, so hovering does not ask again.</summary>
+    private int _revealed = -1;
+    private DotNetObjectReference<Dropdown>? _self;
 
     private string SelectedLabel =>
         Options.FirstOrDefault(o => o.Value == Value)?.Label
         ?? Placeholder
         ?? Localizer.T("dropdown.placeholder");
 
-    private async Task Toggle()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (_open && !_layered)
+            {
+                _layered = true;
+                _revealed = _active;
+                _self ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("rrDropdownLayer.open", _layerId, _popEl, _triggerEl, _self);
+            }
+            else if (_open && _active != _revealed)
+            {
+                // The keyboard cursor moved, and the list may have been capped to the window.
+                _revealed = _active;
+                await JS.InvokeVoidAsync("rrDropdownLayer.reveal", _layerId);
+            }
+            else if (!_open && _layered)
+            {
+                _layered = false;
+                _revealed = -1;
+                await JS.InvokeVoidAsync("rrDropdownLayer.close", _layerId);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The window is going away; there is no layer left to tidy.
+        }
+    }
+
+    private void Toggle()
     {
         if (_open)
         {
@@ -91,18 +139,18 @@
         }
 
         _active = Math.Max(0, Options.ToList().FindIndex(o => o.Value == Value));
-        try
-        {
-            _flipUp = await JS.InvokeAsync<bool>("rrColorMeasureFlip", _triggerEl, PopHeight);
-        }
-        catch
-        {
-            _flipUp = false;
-        }
         _open = true;
     }
 
-    private void Close() => _open = false;
+    /// <summary>Outside click or Escape, reported by the layer.</summary>
+    [JSInvokable]
+    public Task CloseFromLayer()
+    {
+        if (!_open) return Task.CompletedTask;
+        _open = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
     private async Task PickAsync(string value)
     {
@@ -117,7 +165,7 @@
         if (!_open)
         {
             // Opening with the keyboard should land on the current value, which Toggle does.
-            if (e.Key is "ArrowDown" or "ArrowUp" or "Enter" or " ") await Toggle();
+            if (e.Key is "ArrowDown" or "ArrowUp" or "Enter" or " ") Toggle();
             return;
         }
 
@@ -143,5 +191,24 @@
                 _open = false;
                 break;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_layered)
+        {
+            _layered = false;
+            try
+            {
+                await JS.InvokeVoidAsync("rrDropdownLayer.close", _layerId);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Shutting down: the layer is going with the window.
+            }
+        }
+
+        _self?.Dispose();
+        _self = null;
     }
 }

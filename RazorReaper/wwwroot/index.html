@@ -868,7 +868,8 @@
         // Decides whether a popover should flip upward (open above its trigger instead of
         // below) based on the available room. Pure layout query — no top/left math, since
         // the popover is absolutely positioned relative to its own wrapper. Called by
-        // Components/Shared/ColorField.razor and Components/Shared/Dropdown.razor on open.
+        // Components/Shared/ColorField.razor on open. Dropdown does its own placing in
+        // js/dropdown-layer.js, which has to compute real coordinates for the top layer.
         window.rrColorMeasureFlip = function (swatchEl, popHeight) {
             if (!swatchEl) return false;
             var rect = swatchEl.getBoundingClientRect();
@@ -883,6 +884,7 @@
     <script src="js/network-animation.js"></script>
     <script src="js/lightbox.js"></script>
     <script src="js/license-overlay.js"></script>
+    <script src="js/dropdown-layer.js"></script>
 
     <!-- Runtime test runner. Bails out unless _tests/test-config.json has
          "enabled": true, so end-user installs incur ~zero overhead. -->

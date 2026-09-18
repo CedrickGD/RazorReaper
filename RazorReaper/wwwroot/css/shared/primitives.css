@@ -716,23 +716,21 @@ input[type="range"].theme-hue-slider::-webkit-slider-runnable-track {
     transform: rotate(180deg);
 }
 
-/* Catches the outside click. Transparent, so it never dims the page behind it. */
-.rr-dd-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-}
+/* The list lives in the browser's top layer (popover), not inside the card. Every
+   .content-card carries backdrop-filter, which makes it a stacking context, so a list
+   painted inside one was covered by the next card from that card's top edge down — it
+   read as the menu being cut off at the bottom edge of its own card, and lifting the
+   card's overflow:hidden never touched the real cause. In the top layer nothing on the
+   page can clip or cover it, so no card has to give up its rounded clipping any more.
 
-/* Absolute against .rr-dd, not fixed against the viewport. .content-card carries
-   backdrop-filter: blur(10px), which makes the card the containing block for fixed
-   descendants — a viewport-positioned list lands at the wrong place inside it. The card's
-   overflow:hidden is lifted below instead. */
+   top/left/width and the final max-height come from wwwroot/js/dropdown-layer.js, which
+   measures the trigger. max-height here is the design cap it reads and then narrows to
+   whatever room the window leaves. */
 .rr-dd-pop {
-    position: absolute;
+    position: fixed;
     z-index: 61;
-    top: calc(100% + 4px);
-    left: 0;
-    width: 100%;
+    margin: 0;
+    inset: auto;
     max-height: 280px;
     overflow-y: auto;
     padding: 0.25rem;
@@ -744,15 +742,10 @@ input[type="range"].theme-hue-slider::-webkit-slider-runnable-track {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
 
-.rr-dd.flip-up .rr-dd-pop {
-    top: auto;
-    bottom: calc(100% + 4px);
-}
-
-/* .content-card is overflow:hidden !important, which would cut the list off at the card
-   edge. Only cards that actually hold a dropdown give that up, so nothing else changes. */
-.content-card:has(.rr-dd) {
-    overflow: visible !important;
+/* Opened upward, so the shadow falls upward too and the list still reads as sitting over
+   the page rather than under it. */
+.rr-dd-pop.flip-up {
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
 }
 
 .rr-dd-opt {
