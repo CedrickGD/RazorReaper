@@ -386,6 +386,62 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Map Mods</h1>",
+            "Modded map spots — caves, landmarks",
+            "spots.Count spots",
+            "title=\"Add spot\"",
+            ">No spots here yet.</p>",
+            ">Select a spot to see its details.</p>",
+            "<span>Loading preview…</span>",
+            "<span>Add image or GIF</span>",
+            ">Remove</button>",
+            ">Artifact</span>",
+            ">Entrance</span>",
+            ">Hazards</span>",
+            ">Loadout</span>",
+            ">Loot</span>",
+            "Lat @sel.Lat / Lon @sel.Lon",
+            ">Not documented</span>",
+            "<span>Copy teleport</span>",
+            ">Edit spot</button>",
+            ">Delete</button>",
+            ">Your Servers</h2>",
+            "Add your own servers, maps, and base spots.",
+            "title=\"Add map\"",
+            "title=\"Edit server\"",
+            "title=\"Delete server\"",
+            "Maps.Count maps",
+            "No maps yet — add one",
+            "No custom servers yet.",
+            "<label>Server Name</label>",
+            "placeholder=\"e.g. INX, Nitrado, MyCluster\"",
+            "<label>Server Logo (optional)</label>",
+            "<span>Upload image</span>",
+            "Leave empty for auto initials.",
+            "<label>Map Name</label>",
+            "<label>Spot Name</label>",
+            "<label>Latitude</label>",
+            "<label>Longitude</label>",
+            "<label>Type</label>",
+            "<label>Note (optional)</label>",
+            "placeholder=\"Optional notes\"",
+            ">Cancel</button>",
+            ">Save</button>",
+            "modalTitle = \"",
+            "\"Teleport command copied.\"",
+            "$\"Copied teleport:",
+            "\"Image must be under 8 MB.\"",
+            "\"Preview image added.\"",
+            "\"Spot updated.\"",
+            "$\"Delete spot",
+            "?? \"No artifact\"",
+        })
+        {
+            data.Add("Components/Pages/MapMods.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">TP Locations</h1>",
             "Teleport-worthy spots across every map",
             ">All Maps</button>",
@@ -1168,7 +1224,7 @@ public sealed class TranslatedSurfaceTests
     /// ending in Key, and is a Preferences address rather than a translation.
     /// </remarks>
     private static readonly Regex KeyField =
-        new(@"\b(?:Title|Label|Description|Name|Group|Text|Hint|Note|Subtitle)Key\s*[:=]\s*""(?<key>[^""]*)""");
+        new(@"(?:Title|Label|Description|Name|Group|Text|Hint|Note|Subtitle)Key\s*[:=]\s*""(?<key>[^""]*)""");
 
     private static IEnumerable<string> KeysAskedFor(string source)
     {

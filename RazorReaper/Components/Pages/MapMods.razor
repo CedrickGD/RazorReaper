@@ -7,11 +7,13 @@
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
 @inject ILogger<MapMods> Logger
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="caves-page map-mods-merged">
     <header class="page-header">
-        <h1 class="page-title">Map Mods</h1>
-        <p class="page-subtitle">Modded map spots — caves, landmarks, obelisks and POIs — with coordinates and notes.</p>
+        <h1 class="page-title">@Localizer.T("nav.page.map-mods")</h1>
+        <p class="page-subtitle">@Localizer.T("mapmods.subtitle")</p>
     </header>
 
     <div class="caves-map-selector">
@@ -35,8 +37,8 @@
             <div class="caves-list-header">
                 <h3>@selectedMap</h3>
                 <div class="mm-list-header-right">
-                    <span class="caves-list-count">@spots.Count spots</span>
-                    <button class="cs-icon-btn small" title="Add spot" @onclick="() => OpenAddMesaSpot(selectedMap)">
+                    <span class="caves-list-count">@Localizer.T("mapmods.spots", spots.Count)</span>
+                    <button class="cs-icon-btn small" title="@Localizer.T("mapmods.spot.add")" @onclick="() => OpenAddMesaSpot(selectedMap)">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
                 </div>
@@ -57,7 +59,7 @@
                 }
                 @if (spots.Count == 0)
                 {
-                    <p class="cave-empty">No spots here yet.</p>
+                    <p class="cave-empty">@Localizer.T("mapmods.nospots")</p>
                 }
             </div>
         </section>
@@ -65,7 +67,7 @@
         <section class="content-card caves-detail-card">
             @if (sel is null)
             {
-                <p class="cave-empty">Select a spot to see its details.</p>
+                <p class="cave-empty">@Localizer.T("mapmods.selectspot")</p>
             }
             else
             {
@@ -76,7 +78,7 @@
                     @if (previewSrc is null && IsRemoteMediaLoading(sel.ImagePath))
                     {
                         <div class="cave-image-placeholder">
-                            <span>Loading preview…</span>
+                            <span>@Localizer.T("mapmods.preview.loading")</span>
                         </div>
                     }
                     else if (previewSrc is null)
@@ -87,7 +89,7 @@
                                 <path d="M3 16.5 10 4l7 12.5H3Z" />
                                 <path d="M7.6 16.5a2.4 2.4 0 0 1 4.8 0" />
                             </svg>
-                            <span>Add image or GIF</span>
+                            <span>@Localizer.T("mapmods.image.add")</span>
                         </label>
                     }
                     else
@@ -96,9 +98,9 @@
                         <div class="cave-image-actions">
                             <label class="cave-image-btn">
                                 <InputFile OnChange="@(e => AttachImage(sel, e))" accept="image/png,image/jpeg,image/webp,image/gif" />
-                                Replace
+                                @Localizer.T("mapmods.image.replace")
                             </label>
-                            <button type="button" class="cave-image-btn danger" @onclick="() => RemoveImage(sel)">Remove</button>
+                            <button type="button" class="cave-image-btn danger" @onclick="() => RemoveImage(sel)">@Localizer.T("common.remove")</button>
                         </div>
                     }
                 </div>
@@ -114,7 +116,7 @@
                     }
                     else if (!string.IsNullOrWhiteSpace(sel.Type))
                     {
-                        <span class="cave-diff-chip diff-none">@sel.Type</span>
+                        <span class="cave-diff-chip diff-none">@SpotTypeLabel(sel.Type)</span>
                     }
                 </div>
 
@@ -122,26 +124,26 @@
                     @if (!string.IsNullOrEmpty(sel.Artifact))
                     {
                         <div class="cave-detail-row">
-                            <span class="cave-detail-label">Artifact</span>
+                            <span class="cave-detail-label">@Localizer.T("mapmods.label.artifact")</span>
                             <span class="cave-detail-value">@sel.Artifact</span>
                         </div>
                     }
                     <div class="cave-detail-row">
-                        <span class="cave-detail-label">Entrance</span>
+                        <span class="cave-detail-label">@Localizer.T("mapmods.label.entrance")</span>
                         <span class="cave-detail-value cave-coords-value">
                             @if (sel.HasCoords)
                             {
-                                <span class="cave-coords">Lat @sel.Lat / Lon @sel.Lon</span>
+                                <span class="cave-coords">@Localizer.T("mapmods.coords", sel.Lat, sel.Lon)</span>
                             }
                             else
                             {
-                                <span class="cave-coords">Not documented</span>
+                                <span class="cave-coords">@Localizer.T("mapmods.nocoords")</span>
                             }
                             @if (!string.IsNullOrEmpty(sel.SetPlayerPos))
                             {
                                 <button class="cave-copy-btn" @onclick="() => CopyTeleport(sel)">
                                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5" /><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" /></svg>
-                                    <span>Copy teleport</span>
+                                    <span>@Localizer.T("mapmods.copytp")</span>
                                 </button>
                             }
                         </span>
@@ -149,7 +151,7 @@
                     @if (sel.Hazards is { Length: > 0 })
                     {
                         <div class="cave-detail-row">
-                            <span class="cave-detail-label">Hazards</span>
+                            <span class="cave-detail-label">@Localizer.T("mapmods.label.hazards")</span>
                             <span class="cave-detail-value">
                                 <span class="cave-hazard-chips">
                                     @foreach (var hazard in sel.Hazards)
@@ -163,21 +165,21 @@
                     @if (!string.IsNullOrEmpty(sel.Loadout))
                     {
                         <div class="cave-detail-row">
-                            <span class="cave-detail-label">Loadout</span>
+                            <span class="cave-detail-label">@Localizer.T("mapmods.label.loadout")</span>
                             <span class="cave-detail-value">@sel.Loadout</span>
                         </div>
                     }
                     @if (!string.IsNullOrEmpty(sel.Loot))
                     {
                         <div class="cave-detail-row">
-                            <span class="cave-detail-label">Loot</span>
+                            <span class="cave-detail-label">@Localizer.T("mapmods.label.loot")</span>
                             <span class="cave-detail-value">@sel.Loot</span>
                         </div>
                     }
                     @if (!string.IsNullOrEmpty(sel.Note))
                     {
                         <div class="cave-detail-row">
-                            <span class="cave-detail-label">Note</span>
+                            <span class="cave-detail-label">@Localizer.T("mapmods.label.note")</span>
                             <span class="cave-detail-value">@sel.Note</span>
                         </div>
                     }
@@ -186,8 +188,8 @@
                 @if (sel.UserSpot is not null)
                 {
                     <div class="cave-detail-actions">
-                        <button class="btn btn-secondary" @onclick="() => OpenEditMesaSpot(sel.Map, sel.UserSpot!)">Edit spot</button>
-                        <button class="btn btn-danger" @onclick="() => ConfirmDeleteMesaSpot(sel.Map, sel.UserSpot!)">Delete</button>
+                        <button class="btn btn-secondary" @onclick="() => OpenEditMesaSpot(sel.Map, sel.UserSpot!)">@Localizer.T("mapmods.spot.edit")</button>
+                        <button class="btn btn-danger" @onclick="() => ConfirmDeleteMesaSpot(sel.Map, sel.UserSpot!)">@Localizer.T("common.delete")</button>
                     </div>
                 }
             }
@@ -202,12 +204,12 @@
 <div class="cs-section">
     <div class="cs-section-header">
         <div class="cs-section-title-area">
-            <h2 class="cs-section-title">Your Servers</h2>
-            <p class="cs-section-subtitle">Add your own servers, maps, and base spots.</p>
+            <h2 class="cs-section-title">@Localizer.T("mapmods.servers.title")</h2>
+            <p class="cs-section-subtitle">@Localizer.T("mapmods.servers.subtitle")</p>
         </div>
         <button class="btn btn-primary cs-add-server-btn" @onclick="OpenAddServer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Server
+            @Localizer.T("mapmods.server.add")
         </button>
     </div>
 
@@ -230,17 +232,17 @@
                         </div>
                         <div>
                             <h3 class="cs-server-name">@server.Name</h3>
-                            <span class="cs-server-stats">@server.Maps.Count maps &middot; @server.Maps.Sum(m => m.Spots.Count) spots</span>
+                            <span class="cs-server-stats">@Localizer.T("mapmods.server.stats", server.Maps.Count, server.Maps.Sum(m => m.Spots.Count))</span>
                         </div>
                     </div>
                     <div class="cs-server-actions">
-                        <button class="cs-icon-btn" @onclick="() => OpenAddMap(server)" title="Add map">
+                        <button class="cs-icon-btn" @onclick="() => OpenAddMap(server)" title="@Localizer.T("mapmods.map.add")">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         </button>
-                        <button class="cs-icon-btn" @onclick="() => OpenEditServer(server)" title="Edit server">
+                        <button class="cs-icon-btn" @onclick="() => OpenEditServer(server)" title="@Localizer.T("mapmods.server.edit")">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
-                        <button class="cs-icon-btn danger" @onclick="() => ConfirmDeleteServer(server)" title="Delete server">
+                        <button class="cs-icon-btn danger" @onclick="() => ConfirmDeleteServer(server)" title="@Localizer.T("mapmods.server.delete")">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                     </div>
@@ -260,13 +262,13 @@
                                 </div>
                                 <div class="map-mods-map-meta">
                                     <span class="map-mods-map-count">@map.Spots.Count spots</span>
-                                    <button class="cs-icon-btn small" @onclick="() => OpenAddSpot(server, map)" @onclick:stopPropagation="true" title="Add spot">
+                                    <button class="cs-icon-btn small" @onclick="() => OpenAddSpot(server, map)" @onclick:stopPropagation="true" title="@Localizer.T("mapmods.spot.add")">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                     </button>
-                                    <button class="cs-icon-btn small" @onclick="() => OpenEditMap(server, map)" @onclick:stopPropagation="true" title="Edit map">
+                                    <button class="cs-icon-btn small" @onclick="() => OpenEditMap(server, map)" @onclick:stopPropagation="true" title="@Localizer.T("mapmods.map.edit")">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     </button>
-                                    <button class="cs-icon-btn small danger" @onclick="() => ConfirmDeleteMap(server, map)" @onclick:stopPropagation="true" title="Delete map">
+                                    <button class="cs-icon-btn small danger" @onclick="() => ConfirmDeleteMap(server, map)" @onclick:stopPropagation="true" title="@Localizer.T("mapmods.map.delete")">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                     </button>
                                     <span class="map-mods-map-toggle" aria-hidden="true"></span>
@@ -284,19 +286,19 @@
                                                 {
                                                     <span class="map-mods-spot-type">@spot.Type</span>
                                                 }
-                                                <button class="cs-icon-btn tiny" @onclick="() => OpenEditSpot(server, map, spot)" title="Edit">
+                                                <button class="cs-icon-btn tiny" @onclick="() => OpenEditSpot(server, map, spot)" title="@Localizer.T("common.edit")">
                                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                                 </button>
-                                                <button class="cs-icon-btn tiny danger" @onclick="() => ConfirmDeleteSpot(server, map, spot)" title="Delete">
+                                                <button class="cs-icon-btn tiny danger" @onclick="() => ConfirmDeleteSpot(server, map, spot)" title="@Localizer.T("common.delete")">
                                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                                 </button>
                                             </div>
                                         </div>
                                         <div class="map-mods-coordinates">
-                                            <span class="map-mods-coordinate-label">Lat</span>
+                                            <span class="map-mods-coordinate-label">@Localizer.T("common.lat")</span>
                                             <span class="map-mods-coordinate-value">@spot.Latitude</span>
                                             <span class="map-mods-coordinate-divider">/</span>
-                                            <span class="map-mods-coordinate-label">Lon</span>
+                                            <span class="map-mods-coordinate-label">@Localizer.T("common.lon")</span>
                                             <span class="map-mods-coordinate-value">@spot.Longitude</span>
                                         </div>
                                         @if (!string.IsNullOrWhiteSpace(spot.Note))
@@ -311,7 +313,7 @@
 
                     @if (server.Maps.Count == 0)
                     {
-                        <p class="cs-empty-hint">No maps yet — add one to get started.</p>
+                        <p class="cs-empty-hint">@Localizer.T("mapmods.nomaps")</p>
                     }
                 </div>
             </div>
@@ -321,7 +323,7 @@
     {
         <div class="cs-empty-state">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M12 22s8-6 8-12A8 8 0 0 0 4 10c0 6 8 12 8 12Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <p>No custom servers yet. Click <strong>Add Server</strong> to create one.</p>
+            <p>@Localizer.T("mapmods.noservers.lead")<strong>@Localizer.T("mapmods.server.add")</strong>@Localizer.T("mapmods.noservers.rest")</p>
         </div>
     }
 </div>
@@ -332,7 +334,7 @@
     <div class="cs-modal-overlay" @onclick="CloseModal">
         <div class="cs-modal" @onclick:stopPropagation="true">
             <div class="cs-modal-header">
-                <h3>@modalTitle</h3>
+                <h3>@Localizer.T(modalTitleKey)</h3>
                 <button class="cs-icon-btn" @onclick="CloseModal">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -344,17 +346,17 @@
                 case ModalMode.EditServer:
                     <div class="cs-modal-body">
                         <div class="cs-form-group">
-                            <label>Server Name</label>
-                            <input type="text" @bind="formServerName" placeholder="e.g. INX, Nitrado, MyCluster" />
+                            <label>@Localizer.T("mapmods.form.servername")</label>
+                            <input type="text" @bind="formServerName" placeholder="@Localizer.T("mapmods.form.servername.hint")" />
                         </div>
                         <div class="cs-form-group">
-                            <label>Server Logo (optional)</label>
+                            <label>@Localizer.T("mapmods.form.logo")</label>
                             <div class="cs-logo-upload-area">
                                 @if (!string.IsNullOrWhiteSpace(formServerLogo))
                                 {
                                     <div class="cs-logo-preview-wrap">
-                                        <img class="cs-logo-preview" src="@formServerLogo" alt="Preview" />
-                                        <button class="cs-icon-btn tiny danger" @onclick="ClearLogo" title="Remove">
+                                        <img class="cs-logo-preview" src="@formServerLogo" alt="@Localizer.T("mapmods.form.logo.preview")" />
+                                        <button class="cs-icon-btn tiny danger" @onclick="ClearLogo" title="@Localizer.T("common.remove")">
                                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                         </button>
                                     </div>
@@ -364,16 +366,16 @@
                                     <label class="cs-logo-dropzone">
                                         <InputFile OnChange="HandleLogoUpload" accept="image/png,image/jpeg,image/webp,image/gif" />
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                        <span>Upload image</span>
+                                        <span>@Localizer.T("mapmods.form.logo.upload")</span>
                                     </label>
                                 }
-                                <p class="cs-logo-hint">PNG, JPG, WebP &middot; max 2 MB. Leave empty for auto initials.</p>
+                                <p class="cs-logo-hint">@Localizer.T("mapmods.form.logo.hint")</p>
                             </div>
                         </div>
                     </div>
                     <div class="cs-modal-footer">
-                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button class="btn btn-primary" @onclick="SaveServer">Save</button>
+                        <button class="btn btn-secondary" @onclick="CloseModal">@Localizer.T("common.cancel")</button>
+                        <button class="btn btn-primary" @onclick="SaveServer">@Localizer.T("common.save")</button>
                     </div>
                     break;
 
@@ -381,17 +383,17 @@
                 case ModalMode.EditMap:
                     <div class="cs-modal-body">
                         <div class="cs-form-group">
-                            <label>Map Name</label>
-                            <input type="text" @bind="formMapName" placeholder="e.g. Ragnarok, The Island" />
+                            <label>@Localizer.T("mapmods.form.mapname")</label>
+                            <input type="text" @bind="formMapName" placeholder="@Localizer.T("mapmods.form.mapname.hint")" />
                         </div>
                         <div class="cs-form-group">
-                            <label>Note (optional)</label>
-                            <input type="text" @bind="formMapNote" placeholder="e.g. Custom caves and landmarks" />
+                            <label>@Localizer.T("mapmods.form.note")</label>
+                            <input type="text" @bind="formMapNote" placeholder="@Localizer.T("mapmods.form.mapnote.hint")" />
                         </div>
                     </div>
                     <div class="cs-modal-footer">
-                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button class="btn btn-primary" @onclick="SaveMap">Save</button>
+                        <button class="btn btn-secondary" @onclick="CloseModal">@Localizer.T("common.cancel")</button>
+                        <button class="btn btn-primary" @onclick="SaveMap">@Localizer.T("common.save")</button>
                     </div>
                     break;
 
@@ -402,37 +404,37 @@
                     var isMesa = modalMode is ModalMode.AddMesaSpot or ModalMode.EditMesaSpot;
                     <div class="cs-modal-body">
                         <div class="cs-form-group">
-                            <label>Spot Name</label>
-                            <input type="text" @bind="formSpotName" placeholder="e.g. Horror Cave" />
+                            <label>@Localizer.T("mapmods.form.spotname")</label>
+                            <input type="text" @bind="formSpotName" placeholder="@Localizer.T("mapmods.form.spotname.hint")" />
                         </div>
                         <div class="cs-form-row">
                             <div class="cs-form-group">
-                                <label>Latitude</label>
-                                <input type="text" @bind="formSpotLat" placeholder="e.g. 50" />
+                                <label>@Localizer.T("mapmods.form.lat")</label>
+                                <input type="text" @bind="formSpotLat" placeholder="@Localizer.T("mapmods.form.lat.hint")" />
                             </div>
                             <div class="cs-form-group">
-                                <label>Longitude</label>
-                                <input type="text" @bind="formSpotLon" placeholder="e.g. 72" />
+                                <label>@Localizer.T("mapmods.form.lon")</label>
+                                <input type="text" @bind="formSpotLon" placeholder="@Localizer.T("mapmods.form.lon.hint")" />
                             </div>
                         </div>
                         <div class="cs-form-group">
-                            <label>Type</label>
+                            <label>@Localizer.T("uw.column.type")</label>
                             <div class="cs-type-picker">
                                 @foreach (var t in spotTypes)
                                 {
                                     <button class="cs-type-btn @(formSpotType == t ? "active" : "")"
-                                            @onclick="() => formSpotType = t">@t</button>
+                                            @onclick="() => formSpotType = t">@SpotTypeLabel(t)</button>
                                 }
                             </div>
                         </div>
                         <div class="cs-form-group">
-                            <label>Note (optional)</label>
-                            <input type="text" @bind="formSpotNote" placeholder="Optional notes" />
+                            <label>@Localizer.T("mapmods.form.note")</label>
+                            <input type="text" @bind="formSpotNote" placeholder="@Localizer.T("mapmods.form.note.hint")" />
                         </div>
                     </div>
                     <div class="cs-modal-footer">
-                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button class="btn btn-primary" @onclick="@(isMesa ? SaveMesaSpot : SaveSpot)">Save</button>
+                        <button class="btn btn-secondary" @onclick="CloseModal">@Localizer.T("common.cancel")</button>
+                        <button class="btn btn-primary" @onclick="@(isMesa ? SaveMesaSpot : SaveSpot)">@Localizer.T("common.save")</button>
                     </div>
                     break;
 
@@ -441,8 +443,8 @@
                         <p class="cs-confirm-text">@confirmMessage</p>
                     </div>
                     <div class="cs-modal-footer">
-                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button class="btn btn-danger" @onclick="ExecuteDelete">Delete</button>
+                        <button class="btn btn-secondary" @onclick="CloseModal">@Localizer.T("common.cancel")</button>
+                        <button class="btn btn-danger" @onclick="ExecuteDelete">@Localizer.T("common.delete")</button>
                     </div>
                     break;
             }
@@ -451,6 +453,14 @@
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     // ── Merged browser state (Cave design over the merged spot dataset) ──
     private string selectedMap = "";
     private string? selectedKey;
@@ -570,10 +580,10 @@
     private static string DotClass(MergedSpot s)
         => s.Difficulty is not null ? DiffClass(s.Difficulty.Value) : "diff-none";
 
-    private static string RowSub(MergedSpot s)
+    private string RowSub(MergedSpot s)
     {
-        if (s.Difficulty is not null) return s.Artifact ?? "No artifact";
-        return !string.IsNullOrEmpty(s.Note) ? s.Note! : s.Type;
+        if (s.Difficulty is not null) return s.Artifact ?? Localizer.T("mapmods.noartifact");
+        return !string.IsNullOrEmpty(s.Note) ? s.Note! : SpotTypeLabel(s.Type);
     }
 
     private static string DiffClass(CaveDifficulty difficulty) => difficulty switch
@@ -592,13 +602,13 @@
         try
         {
             await Clipboard.Default.SetTextAsync(spot.SetPlayerPos);
-            NotificationService.ShowSuccess("Teleport command copied.");
-            ActivityService.AddActivity($"Copied teleport: {spot.Name}", "info");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.copied"));
+            ActivityService.AddActivity(Localizer.T("mapmods.activity.copied", spot.Name), "info");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to copy teleport command");
-            NotificationService.ShowError("Failed to copy the command.");
+            NotificationService.ShowError(Localizer.T("mapmods.toast.copyfailed"));
         }
     }
 
@@ -677,7 +687,7 @@
         const long maxBytes = 8 * 1024 * 1024;
         if (e.File.Size > maxBytes)
         {
-            NotificationService.ShowError("Image must be under 8 MB.");
+            NotificationService.ShowError(Localizer.T("mapmods.toast.imagetoolarge", 8));
             return;
         }
 
@@ -690,12 +700,12 @@
             var mime = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/png" : e.File.ContentType;
             customStore.SpotImages[$"{spot.Map}|{spot.Name}"] = $"data:{mime};base64,{base64}";
             await CustomDataService.SaveAsync(customStore);
-            NotificationService.ShowSuccess("Preview image added.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.imageadded"));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to attach spot image");
-            NotificationService.ShowError("Failed to add the image.");
+            NotificationService.ShowError(Localizer.T("mapmods.toast.imagefailed"));
         }
     }
 
@@ -705,7 +715,7 @@
         if (customStore.SpotImages.Remove($"{spot.Map}|{spot.Name}"))
         {
             await CustomDataService.SaveAsync(customStore);
-            NotificationService.ShowSuccess("Preview image removed.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.imageremoved"));
         }
     }
 
@@ -869,12 +879,26 @@
     }
 
     // ── Custom servers state ──
+    // Stored as written: these go into the user's own saved spots, and a spot saved in German
+    // must still match one saved in English. Only the label on screen is translated.
     private static readonly string[] spotTypes = { "Cave", "Landmark", "Obelisk", "POI" };
+
+    private string SpotTypeLabel(string type) => type switch
+    {
+        "Cave" => Localizer.T("tp.category.cave"),
+        "Landmark" => Localizer.T("tp.category.landmark"),
+        "Obelisk" => Localizer.T("tp.category.obelisk"),
+        "POI" => Localizer.T("mapmods.type.poi"),
+        "Spot" => Localizer.T("mapmods.type.spot"),
+        _ => type
+    };
 
     private CustomServerStore? customStore;
 
     private bool modalOpen;
-    private string modalTitle = "";
+    // A key, not a sentence: the modal is open across renders, and a stored English title
+    // would sit there through a language switch.
+    private string modalTitleKey = "";
     private ModalMode modalMode;
 
     // Form fields
@@ -947,7 +971,7 @@
         formSpotNote = "";
         mesaMapTarget = mapName;
         targetSpot = null;
-        modalTitle = "Add Spot";
+        modalTitleKey = "mapmods.modal.addspot";
         modalMode = ModalMode.AddMesaSpot;
         modalOpen = true;
     }
@@ -961,7 +985,7 @@
         formSpotNote = spot.Note;
         mesaMapTarget = mapName;
         targetSpot = spot;
-        modalTitle = "Edit Spot";
+        modalTitleKey = "mapmods.modal.editspot";
         modalMode = ModalMode.EditMesaSpot;
         modalOpen = true;
     }
@@ -997,7 +1021,7 @@
             targetSpot.Type = formSpotType;
             targetSpot.Note = formSpotNote.Trim();
             customStore.MesaExtraSpots[mesaMapTarget] = list.OrderBy(s => s.Name).ToList();
-            NotificationService.ShowSuccess("Spot updated.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.spotsaved"));
         }
 
         await CustomDataService.SaveAsync(customStore);
@@ -1006,7 +1030,7 @@
 
     private void ConfirmDeleteMesaSpot(string mapName, CustomSpot spot)
     {
-        confirmMessage = $"Delete spot \"{spot.Name}\"?";
+        confirmMessage = Localizer.T("mapmods.confirm.spot", spot.Name);
         deleteAction = async () =>
         {
             if (customStore?.MesaExtraSpots.TryGetValue(mapName, out var list) == true)
@@ -1017,7 +1041,7 @@
             NotificationService.ShowSuccess($"Spot \"{spot.Name}\" deleted.");
             StateHasChanged();
         };
-        modalTitle = "Confirm Delete";
+        modalTitleKey = "mapmods.modal.confirmdelete";
         modalMode = ModalMode.ConfirmDelete;
         modalOpen = true;
     }
@@ -1038,7 +1062,7 @@
         formServerName = "";
         formServerLogo = "";
         targetServer = null;
-        modalTitle = "Add Server";
+        modalTitleKey = "mapmods.modal.addserver";
         modalMode = ModalMode.AddServer;
         modalOpen = true;
     }
@@ -1048,7 +1072,7 @@
         formServerName = server.Name;
         formServerLogo = server.LogoDataUrl;
         targetServer = server;
-        modalTitle = "Edit Server";
+        modalTitleKey = "mapmods.modal.editserver";
         modalMode = ModalMode.EditServer;
         modalOpen = true;
     }
@@ -1073,7 +1097,7 @@
         {
             targetServer.Name = formServerName.Trim();
             targetServer.LogoDataUrl = formServerLogo;
-            NotificationService.ShowSuccess("Server updated.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.serversaved"));
         }
 
         await CustomDataService.SaveAsync(customStore);
@@ -1082,7 +1106,7 @@
 
     private void ConfirmDeleteServer(CustomServer server)
     {
-        confirmMessage = $"Delete server \"{server.Name}\" and all its maps and spots?";
+        confirmMessage = Localizer.T("mapmods.confirm.server", server.Name);
         deleteAction = async () =>
         {
             customStore?.Servers.Remove(server);
@@ -1090,7 +1114,7 @@
             NotificationService.ShowSuccess($"Server \"{server.Name}\" deleted.");
             StateHasChanged();
         };
-        modalTitle = "Confirm Delete";
+        modalTitleKey = "mapmods.modal.confirmdelete";
         modalMode = ModalMode.ConfirmDelete;
         modalOpen = true;
     }
@@ -1103,7 +1127,7 @@
         formMapNote = "";
         targetServer = server;
         targetMap = null;
-        modalTitle = "Add Map";
+        modalTitleKey = "mapmods.modal.addmap";
         modalMode = ModalMode.AddMap;
         modalOpen = true;
     }
@@ -1114,7 +1138,7 @@
         formMapNote = map.Note;
         targetServer = server;
         targetMap = map;
-        modalTitle = "Edit Map";
+        modalTitleKey = "mapmods.modal.editmap";
         modalMode = ModalMode.EditMap;
         modalOpen = true;
     }
@@ -1135,7 +1159,7 @@
             targetMap.Name = formMapName.Trim();
             targetMap.Note = formMapNote.Trim();
             targetServer.Maps = targetServer.Maps.OrderBy(m => m.Name).ToList();
-            NotificationService.ShowSuccess("Map updated.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.mapsaved"));
         }
 
         await CustomDataService.SaveAsync(customStore!);
@@ -1144,7 +1168,7 @@
 
     private void ConfirmDeleteMap(CustomServer server, CustomMap map)
     {
-        confirmMessage = $"Delete map \"{map.Name}\" and all its spots?";
+        confirmMessage = Localizer.T("mapmods.confirm.map", map.Name);
         deleteAction = async () =>
         {
             server.Maps.Remove(map);
@@ -1152,7 +1176,7 @@
             NotificationService.ShowSuccess($"Map \"{map.Name}\" deleted.");
             StateHasChanged();
         };
-        modalTitle = "Confirm Delete";
+        modalTitleKey = "mapmods.modal.confirmdelete";
         modalMode = ModalMode.ConfirmDelete;
         modalOpen = true;
     }
@@ -1169,7 +1193,7 @@
         targetServer = server;
         targetMap = map;
         targetSpot = null;
-        modalTitle = "Add Spot";
+        modalTitleKey = "mapmods.modal.addspot";
         modalMode = ModalMode.AddSpot;
         modalOpen = true;
     }
@@ -1184,7 +1208,7 @@
         targetServer = server;
         targetMap = map;
         targetSpot = spot;
-        modalTitle = "Edit Spot";
+        modalTitleKey = "mapmods.modal.editspot";
         modalMode = ModalMode.EditSpot;
         modalOpen = true;
     }
@@ -1215,7 +1239,7 @@
             targetSpot.Type = formSpotType;
             targetSpot.Note = formSpotNote.Trim();
             targetMap.Spots = targetMap.Spots.OrderBy(s => s.Name).ToList();
-            NotificationService.ShowSuccess("Spot updated.");
+            NotificationService.ShowSuccess(Localizer.T("mapmods.toast.spotsaved"));
         }
 
         await CustomDataService.SaveAsync(customStore!);
@@ -1224,7 +1248,7 @@
 
     private void ConfirmDeleteSpot(CustomServer server, CustomMap map, CustomSpot spot)
     {
-        confirmMessage = $"Delete spot \"{spot.Name}\"?";
+        confirmMessage = Localizer.T("mapmods.confirm.spot", spot.Name);
         deleteAction = async () =>
         {
             map.Spots.Remove(spot);
@@ -1232,7 +1256,7 @@
             NotificationService.ShowSuccess($"Spot \"{spot.Name}\" deleted.");
             StateHasChanged();
         };
-        modalTitle = "Confirm Delete";
+        modalTitleKey = "mapmods.modal.confirmdelete";
         modalMode = ModalMode.ConfirmDelete;
         modalOpen = true;
     }
@@ -1244,7 +1268,7 @@
         var file = e.File;
         if (file.Size > 2 * 1024 * 1024)
         {
-            NotificationService.ShowError("Image must be under 2 MB.");
+            NotificationService.ShowError(Localizer.T("mapmods.toast.imagetoolarge", 2));
             return;
         }
 
