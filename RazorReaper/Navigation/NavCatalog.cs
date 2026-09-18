@@ -16,13 +16,30 @@ public sealed record NavPage(
     string IconSvg,
     string Description,
     string[] Keywords,
-    string? Badge = null);
+    string? Badge = null)
+{
+    /// <summary>
+    /// Where the sidebar reads this page's name from once a language other than English is on.
+    /// Derived from the route rather than written out a second time: a key typed by hand is a
+    /// key that goes stale the first time a page is renamed. <see cref="Label"/> stays the
+    /// English original, which is what diagnostics, telemetry and Rich Presence report.
+    /// </summary>
+    public string LabelKey => "nav.page." + NavCatalog.Normalize(Route).Replace('/', '.');
+}
 
 /// <summary>
 /// A sidebar category. The sidebar renders one row per group; hovering the row opens a
 /// flyout listing <see cref="Pages"/>.
 /// </summary>
-public sealed record NavGroup(string Name, string IconSvg, IReadOnlyList<NavPage> Pages);
+/// <param name="Name">
+/// The English name, and the group's identity: <see cref="NavPage.Category"/> is matched
+/// against it and the sidebar remembers the open group by it. Translating it in place would
+/// break both, so the translated spelling is looked up under <see cref="NameKey"/> instead.
+/// </param>
+public sealed record NavGroup(string Name, string IconSvg, IReadOnlyList<NavPage> Pages)
+{
+    public string NameKey => "nav.group." + NavCatalog.Slug(Name);
+}
 
 /// <summary>
 /// Single source of truth for the app's page structure.
@@ -249,6 +266,16 @@ public static class NavCatalog
         if (string.IsNullOrWhiteSpace(route)) return string.Empty;
         return route.Split('?', '#')[0].Trim('/');
     }
+
+    /// <summary>
+    /// A group name as a dictionary key fragment: "Help &amp; About" becomes "help-about".
+    /// Lowercase ASCII with the ampersand dropped, so the key survives a wording change to the
+    /// English name only when that change is deliberate enough to also move the key.
+    /// </summary>
+    internal static string Slug(string name) =>
+        string.Join('-', name.Replace("&", " ", StringComparison.Ordinal)
+                             .ToLowerInvariant()
+                             .Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>Resolves a route back to its page — used by pinned, recents and deep links.</summary>
     public static NavPage? FindByRoute(string? route)

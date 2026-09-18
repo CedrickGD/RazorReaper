@@ -51,6 +51,21 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Settings.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Search</span>",
+            "title=\"Search pages, locations and commands (Ctrl+K)\"",
+            "title=\"Drag to resize\"",
+            "Premium — open your license",
+            "Freemium — open your license",
+            "@group.Name\"",
+            ">@entry.Label<",
+            ">@_selectedGroup<",
+        })
+        {
+            data.Add("Components/Shared/SharedNavbar.razor", literal);
+        }
+
         return data;
     }
 
@@ -68,7 +83,7 @@ public sealed class TranslatedSurfaceTests
     {
         var english = TranslationParityTests.Read("en");
 
-        var unknown = UsedKeys()
+        var unknown = UsedKeys().Concat(GeneratedKeys())
             .Where(used => !english.ContainsKey(used.Key))
             .Select(used => $"{used.File}: {used.Key}")
             .OrderBy(entry => entry, StringComparer.Ordinal)
@@ -81,7 +96,7 @@ public sealed class TranslatedSurfaceTests
     [Fact]
     public void NoEnglishKeyIsUnused()
     {
-        var used = UsedKeys().Select(u => u.Key).ToHashSet(StringComparer.Ordinal);
+        var used = UsedKeys().Concat(GeneratedKeys()).Select(u => u.Key).ToHashSet(StringComparer.Ordinal);
 
         var dead = TranslationParityTests.Read("en").Keys
             .Where(key => !used.Contains(key))
@@ -89,6 +104,24 @@ public sealed class TranslatedSurfaceTests
             .ToArray();
 
         Assert.True(dead.Length == 0, $"keys nothing renders: {string.Join(", ", dead)}");
+    }
+
+    /// <summary>
+    /// Keys nothing spells out: the sidebar asks for <c>nav.page.*</c> and <c>nav.group.*</c>
+    /// through properties the catalog derives from the route and the group name, so they are
+    /// read off the real catalog rather than grepped for.
+    /// </summary>
+    private static IEnumerable<(string File, string Key)> GeneratedKeys()
+    {
+        foreach (var group in RazorReaper.Navigation.NavCatalog.Groups)
+        {
+            yield return ("NavCatalog.cs", group.NameKey);
+        }
+
+        foreach (var page in RazorReaper.Navigation.NavCatalog.Pages)
+        {
+            yield return ("NavCatalog.cs", page.LabelKey);
+        }
     }
 
     /// <summary>Every <c>T("…")</c> in the app project, with the file that spells it.</summary>

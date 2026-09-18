@@ -2,7 +2,9 @@
 @using RazorReaper.Navigation
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
+@using RazorReaper.Services.Localization
 @inject ILicenseService LicenseService
+@inject ILocalizer Localizer
 @inject ILicenseOverlayService LicenseOverlay
 @inject IUpdateService UpdateService
 @inject NavigationManager Navigation
@@ -33,12 +35,12 @@
         <img class="brand-logo" src="images/RRlogo.png" alt="Razor Reaper" />
     </div>
 
-    <button type="button" class="search-trigger" @onclick="OpenSearch" title="Search pages, locations and commands (Ctrl+K)">
+    <button type="button" class="search-trigger" @onclick="OpenSearch" title="@Localizer.T("nav.search.tooltip")">
         <svg class="search-trigger-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="9" cy="9" r="5.5" />
             <path d="m13.5 13.5 3 3" />
         </svg>
-        <span class="search-trigger-text">Search</span>
+        <span class="search-trigger-text">@Localizer.T("nav.search.label")</span>
         <kbd class="search-trigger-kbd">Ctrl K</kbd>
     </button>
 
@@ -54,8 +56,8 @@
                 <li @key="group.Name">
                     <button type="button"
                             class="rail-btn @(isSelected ? "selected" : "") @(holdsActive ? "has-active" : "")"
-                            title="@group.Name"
-                            aria-label="@group.Name"
+                            title="@GroupLabel(group)"
+                            aria-label="@GroupLabel(group)"
                             aria-pressed="@isSelected"
                             @onclick="() => SelectGroup(group.Name)">
                         <span class="rail-icon">@((MarkupString)group.IconSvg)</span>
@@ -69,14 +71,14 @@
         @* @key on the group name remounts the list when the category changes, which
            restarts the entry animation instead of silently swapping the text. *@
         <div class="panel-body" @key="_selectedGroup">
-            <div class="panel-title">@_selectedGroup</div>
+            <div class="panel-title">@SelectedGroupLabel</div>
             <ul class="panel-list">
                 @foreach (var entry in SelectedPages)
                 {
                     <li @key="entry.Route">
                         <a href="@entry.Route" class="panel-link @GetActiveClass(entry.Route)">
                             <span class="nav-icon-wrap">@((MarkupString)entry.IconSvg)</span>
-                            <span class="panel-label">@entry.Label</span>
+                            <span class="panel-label">@Localizer.T(entry.LabelKey)</span>
                             @* Only the pages that are not in every plan carry one, so the row
                                stays a plain label everywhere else. *@
                             @if (!string.IsNullOrWhiteSpace(entry.Badge))
@@ -121,7 +123,7 @@
        node via JS after first render (see OnAfterRenderAsync below), bypassing
        Blazor's event indirection entirely — that turned out to be the difference
        between events firing and not firing under WebView2. *@
-    <div class="sidebar-resize-handle" title="Drag to resize" @ref="_resizeHandleRef">
+    <div class="sidebar-resize-handle" title="@Localizer.T("nav.resize")" @ref="_resizeHandleRef">
         <span class="resize-grip"></span>
     </div>
 </nav>
@@ -135,9 +137,16 @@
     /// <summary>Category whose pages the panel is showing.</summary>
     private string _selectedGroup = NavCatalog.Groups[0].Name;
 
-    private IReadOnlyList<NavPage> SelectedPages =>
-        NavCatalog.Groups.FirstOrDefault(g => g.Name == _selectedGroup)?.Pages
-        ?? NavCatalog.Groups[0].Pages;
+    private NavGroup SelectedGroup =>
+        NavCatalog.Groups.FirstOrDefault(g => g.Name == _selectedGroup) ?? NavCatalog.Groups[0];
+
+    private IReadOnlyList<NavPage> SelectedPages => SelectedGroup.Pages;
+
+    // The group's English name is its identity — _selectedGroup holds it and NavPage.Category is
+    // matched against it — so the panel heading has to be looked up rather than printed.
+    private string SelectedGroupLabel => GroupLabel(SelectedGroup);
+
+    private string GroupLabel(NavGroup group) => Localizer.T(group.NameKey);
 
     protected override void OnInitialized()
     {
@@ -165,8 +174,8 @@
     private string LicenseDotClass => LicenseService.IsPremium ? "premium" : "freemium";
 
     private string LicenseTooltip => LicenseService.IsPremium
-        ? "Premium — open your license: plan, key and expiry"
-        : "Freemium — open your license to activate a key";
+        ? Localizer.T("nav.license.premium.tooltip")
+        : Localizer.T("nav.license.freemium.tooltip");
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
