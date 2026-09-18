@@ -76,7 +76,16 @@
                 @foreach (var entry in SelectedPages)
                 {
                     <li @key="entry.Route">
-                        <a href="@entry.Route" class="panel-link @GetActiveClass(entry.Route)">
+                        @* The title is the ellipsis's way out. Every translation that did not fit
+                           the 109.2px label slot was shortened in the dictionary instead, which is
+                           the fix that leaves the row readable rather than hoverable — but one name
+                           cannot be shortened there: the English "Feedback & Support" is NavPage.Label
+                           as well as a word, the identity diagnostics and Rich Presence report, and
+                           NavigationTranslationTests pins the dictionary entry to it. It wants 121.1px
+                           and ellipsises. So the rail's own title moves down onto the row, where it
+                           also catches whatever a future translation makes too long. *@
+                        <a href="@entry.Route" class="panel-link @GetActiveClass(entry.Route)"
+                           title="@Localizer.T(entry.LabelKey)">
                             <span class="nav-icon-wrap">@((MarkupString)entry.IconSvg)</span>
                             <span class="panel-label">@Localizer.T(entry.LabelKey)</span>
                             @* Only the pages that are not in every plan carry one, so the row
