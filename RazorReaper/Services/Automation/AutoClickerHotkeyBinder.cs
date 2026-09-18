@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation;
 
@@ -39,6 +40,7 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
     private readonly IAutomationHotkeyService _hotkeys;
     private readonly INotificationService _notifications;
     private readonly IAutoClickerRuntime _runtime;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<AutoClickerHotkeyBinder> _logger;
     private readonly object _gate = new();
 
@@ -52,11 +54,13 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
         IAutomationHotkeyService hotkeys,
         INotificationService notifications,
         IAutoClickerRuntime runtime,
+        ILocalizer localizer,
         ILogger<AutoClickerHotkeyBinder> logger)
     {
         _hotkeys = hotkeys;
         _notifications = notifications;
         _runtime = runtime;
+        _localizer = localizer;
         _logger = logger;
 
         // A binding edited on the hotkeys page has to take effect without a restart.
@@ -111,7 +115,7 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
             if (_registrationId == 0)
             {
                 _logger.LogWarning("Could not register Auto Clicker hotkey {Display} (vk=0x{Vk:X2}) — already held by another app", AutoClickerHotkey.Display, vk);
-                _notifications.ShowWarning($"Could not register {AutoClickerHotkey.Display} for the Auto Clicker — it may be in use by another app.");
+                _notifications.ShowWarning(_localizer.T("autoclicker.toast.hotkeyinuse", AutoClickerHotkey.Display));
             }
             else
             {

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation;
 
@@ -124,6 +125,7 @@ public sealed class InputRecorderService : IInputRecorderService
 
     private readonly IInputSimulator _sim;
     private readonly IActivityService _activity;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<InputRecorderService> _logger;
 
     private readonly object _stateGate = new();
@@ -152,10 +154,12 @@ public sealed class InputRecorderService : IInputRecorderService
     public InputRecorderService(
         IInputSimulator sim,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<InputRecorderService> logger)
     {
         _sim = sim;
         _activity = activity;
+        _localizer = localizer;
         _logger = logger;
     }
 
@@ -203,7 +207,7 @@ public sealed class InputRecorderService : IInputRecorderService
                 return false;
             }
 
-            TryActivity("Input recording started", "info");
+            TryActivity(_localizer.T("recorder.activity.started"), "info");
             RaiseStateChanged();
             return true;
         }
@@ -239,7 +243,7 @@ public sealed class InputRecorderService : IInputRecorderService
             };
         }
 
-        TryActivity($"Input recording stopped ({recording.Events.Count} events)", "info");
+        TryActivity(_localizer.T("recorder.activity.stopped", recording.Events.Count), "info");
         RaiseStateChanged();
         return recording;
     }
@@ -461,12 +465,12 @@ public sealed class InputRecorderService : IInputRecorderService
                 }
             }
 
-            TryActivity($"Replay of {displayName} completed", "success");
+            TryActivity(_localizer.T("recorder.activity.replaycompleted", displayName), "success");
             return true;
         }
         catch (OperationCanceledException)
         {
-            TryActivity($"Replay of {displayName} stopped", "warning");
+            TryActivity(_localizer.T("recorder.activity.replaystopped", displayName), "warning");
             return false;
         }
         catch (Exception ex)
@@ -540,7 +544,7 @@ public sealed class InputRecorderService : IInputRecorderService
             var json = JsonSerializer.Serialize(recording, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(tmp, json);
             File.Move(tmp, path, overwrite: true);
-            TryActivity($"Recording '{recording.Name}' saved", "success");
+            TryActivity(_localizer.T("recorder.activity.saved", recording.Name), "success");
             return true;
         }
         catch (Exception ex)
@@ -575,7 +579,7 @@ public sealed class InputRecorderService : IInputRecorderService
             var path = PathFor(SanitizeName(name));
             if (!File.Exists(path)) return false;
             File.Delete(path);
-            TryActivity($"Recording '{name}' deleted", "info");
+            TryActivity(_localizer.T("recorder.activity.deleted", name), "info");
             return true;
         }
         catch (Exception ex)

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
+using RazorReaper.Services.Localization;
 // Disambiguate from Microsoft.Maui.Graphics implicit usings.
 using Point = System.Drawing.Point;
 
@@ -154,6 +155,7 @@ public sealed class MacroEngine : IMacroEngine
     private readonly IProcessService _process;
     private readonly IOptions<AppConfiguration> _config;
     private readonly IActivityService _activity;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<MacroEngine> _logger;
     private readonly ConcurrentDictionary<string, MacroRunner> _runners = new(StringComparer.OrdinalIgnoreCase);
 
@@ -162,12 +164,14 @@ public sealed class MacroEngine : IMacroEngine
         IProcessService process,
         IOptions<AppConfiguration> config,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<MacroEngine> logger)
     {
         _sim = sim;
         _process = process;
         _config = config;
         _activity = activity;
+        _localizer = localizer;
         _logger = logger;
     }
 
@@ -183,12 +187,13 @@ public sealed class MacroEngine : IMacroEngine
     {
         foreach (var runner in _runners.Values)
             runner.Stop();
-        try { _activity.AddActivity("All macro runners stopped", "warning"); }
+        try { _activity.AddActivity(_localizer.T("macro.activity.stopall"), "warning"); }
         catch { /* activity is best-effort */ }
     }
 
     internal IInputSimulator Simulator => _sim;
     internal IActivityService Activity => _activity;
+    internal ILocalizer Localizer => _localizer;
     internal ILogger Logger => _logger;
 
     /// <summary>
@@ -306,7 +311,7 @@ internal sealed class MacroRunner : IMacroRunner
             CurrentStepIndex = -1;
         }
         RaiseState(MacroRunnerState.Running);
-        TryActivity($"Macro '{sequence.Name}' started", "info");
+        TryActivity(_engine.Localizer.T("macro.activity.started", sequence.Name), "info");
 
         var sim = _engine.Simulator;
         var token = cts.Token;
@@ -342,24 +347,24 @@ internal sealed class MacroRunner : IMacroRunner
                     await sim.DelayAsync(sequence.LoopDelayMs, sequence.DelayJitter, token);
             }
             completed = true;
-            TryActivity($"Macro '{sequence.Name}' completed ({CurrentLoop} loop(s))", "success");
+            TryActivity(_engine.Localizer.T("macro.activity.completed", sequence.Name, CurrentLoop), "success");
             return true;
         }
         catch (OperationCanceledException)
         {
-            TryActivity($"Macro '{sequence.Name}' stopped", "warning");
+            TryActivity(_engine.Localizer.T("macro.activity.stopped", sequence.Name), "warning");
             return false;
         }
         catch (InvalidOperationException ex)
         {
             _engine.Logger.LogWarning("Macro '{Name}' aborted: {Reason}", sequence.Name, ex.Message);
-            TryActivity($"Macro '{sequence.Name}' aborted — {ex.Message}", "warning");
+            TryActivity(_engine.Localizer.T("macro.activity.aborted", sequence.Name, ex.Message), "warning");
             return false;
         }
         catch (Exception ex)
         {
             _engine.Logger.LogError(ex, "Macro '{Name}' failed", sequence.Name);
-            TryActivity($"Macro '{sequence.Name}' failed", "warning");
+            TryActivity(_engine.Localizer.T("macro.activity.failed", sequence.Name), "warning");
             return false;
         }
         finally

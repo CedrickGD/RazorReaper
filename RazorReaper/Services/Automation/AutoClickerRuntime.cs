@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Automation;
 
@@ -79,6 +80,7 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
 {
     private readonly IInputSimulator _input;
     private readonly IActivityService _activity;
+    private readonly ILocalizer _localizer;
     private readonly ILogger<AutoClickerRuntime> _logger;
 
     private readonly SemaphoreSlim _clickGate = new(1, 1);
@@ -105,10 +107,12 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
     public AutoClickerRuntime(
         IInputSimulator input,
         IActivityService activity,
+        ILocalizer localizer,
         ILogger<AutoClickerRuntime> logger)
     {
         _input = input;
         _activity = activity;
+        _localizer = localizer;
         _logger = logger;
         Config = AutoClickerConfigStore.Load();
     }
@@ -163,7 +167,7 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
             if (!_running) return;
         }
 
-        _activity.AddActivity($"Autoclicker started ({FormatInterval(config)} interval)", "success");
+        _activity.AddActivity(_localizer.T("autoclicker.activity.started", FormatInterval(config)), "success");
 
         if (config.Randomize)
         {
@@ -225,7 +229,7 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
         }
 
         NextClickTime = null;
-        _activity.AddActivity($"Autoclicker stopped ({_clickCount} clicks performed)", "info");
+        _activity.AddActivity(_localizer.T("autoclicker.activity.stopped", _clickCount), "info");
         RaiseChanged();
     }
 

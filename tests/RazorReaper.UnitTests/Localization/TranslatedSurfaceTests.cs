@@ -2401,9 +2401,8 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Scripts.razor", literal);
         }
 
-        // The two calibration-card lines the page words for it. The class words its own toasts
-        // now; these two stay the page's, because a line that sits on a card for as long as the
-        // calibration does has to survive a switch, and a sentence built here would not.
+        // The two calibration-card lines the page words for it. The class has no localizer and
+        // is not migrated — its toasts are still English — so only the summaries are pinned.
         foreach (var literal in new[]
         {
             "px at {r.X}, {r.Y}",
@@ -2714,6 +2713,35 @@ public sealed class TranslatedSurfaceTests
         })
         {
             data.Add("Services/Automation/FedSuitMacro.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "All macro runners stopped",
+            "Macro '{sequence.Name}' started",
+            "Macro '{sequence.Name}' completed",
+            "Macro '{sequence.Name}' failed",
+        })
+        {
+            data.Add("Services/Automation/MacroEngine.cs", literal);
+        }
+
+        foreach (var literal in new[] { "Autoclicker started (", "clicks performed" })
+        {
+            data.Add("Services/Automation/AutoClickerRuntime.cs", literal);
+        }
+
+        data.Add("Services/Automation/AutoClickerHotkeyBinder.cs", "for the Auto Clicker — it may be in use");
+
+        foreach (var literal in new[]
+        {
+            "Input recording started",
+            "Input recording stopped (",
+            "Replay of {displayName} completed",
+            "Recording '{recording.Name}' saved",
+        })
+        {
+            data.Add("Services/Automation/InputRecorderService.cs", literal);
         }
 
         data.Add("Services/Automation/Scripts/AstroScript.cs", "Focus ARK first");
