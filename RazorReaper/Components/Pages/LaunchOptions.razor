@@ -3,10 +3,12 @@
 @using RazorReaper.Services
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Launch Options</h1>
-    <p class="page-subtitle">Quick ARK startup flags with clear trade-offs.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.launch-options")</h1>
+    <p class="page-subtitle">@Localizer.T("launch.subtitle")</p>
 </header>
 
 <div class="launch-options-layout">
@@ -18,45 +20,45 @@
                 </svg>
             </div>
             <div>
-                <h3>Before you change anything</h3>
-                <p>Use only what helps. Test FPS, stability, and visibility after each change.</p>
+                <h3>@Localizer.T("launch.before.title")</h3>
+                <p>@Localizer.T("launch.before.text")</p>
             </div>
         </div>
     </section>
 
     <section class="content-card launch-options-args-card">
         <div class="launch-options-section-header">
-            <h3>ARK Launch Arguments</h3>
-            <p>Click any argument to copy it.</p>
+            <h3>@Localizer.T("launch.args.title")</h3>
+            <p>@Localizer.T("launch.args.text")</p>
         </div>
 
         <div class="launch-options-grid">
-            @foreach (var option in options)
+            @foreach (var option in Options)
             {
                 <article @key="option.Flag" class="launch-option-card">
                     <button class="launch-option-flag launch-option-flag-btn"
                             @onclick="() => CopyTextAsync(option.Flag)"
-                            title="Copy @option.Flag">
+                            title="@Localizer.T("launch.copyflag", option.Flag)">
                         @option.Flag
                     </button>
-                    <p class="launch-option-description">@option.Description</p>
+                    <p class="launch-option-description">@Localizer.T(option.DescriptionKey)</p>
 
                     <div class="launch-option-list-block">
-                        <div class="launch-option-list-title">Good for</div>
+                        <div class="launch-option-list-title">@Localizer.T("launch.goodfor")</div>
                         <ul class="launch-option-list">
-                            @foreach (var item in option.Pros)
+                            @foreach (var key in option.ProKeys)
                             {
-                                <li>@item</li>
+                                <li @key="key">@Localizer.T(key)</li>
                             }
                         </ul>
                     </div>
 
                     <div class="launch-option-list-block launch-option-list-block-warning">
-                        <div class="launch-option-list-title">Watch out</div>
+                        <div class="launch-option-list-title">@Localizer.T("launch.watchout")</div>
                         <ul class="launch-option-list">
-                            @foreach (var item in option.Cons)
+                            @foreach (var key in option.ConKeys)
                             {
-                                <li>@item</li>
+                                <li @key="key">@Localizer.T(key)</li>
                             }
                         </ul>
                     </div>
@@ -67,15 +69,15 @@
 
     <div class="launch-options-bottom-grid">
         <section class="content-card launch-options-steps-card">
-            <h3>How to add them in Steam</h3>
+            <h3>@Localizer.T("launch.steps.title")</h3>
             <button class="launch-options-steam-btn" @onclick="OpenArkLaunchOptionsInSteam">
                 Open ARK Properties (General)
             </button>
             <ol class="launch-options-steps">
-                <li>Open <strong>Steam</strong>.</li>
-                <li>Open <strong>ARK</strong> and go to <strong>Properties</strong>.</li>
-                <li>In the <strong>General</strong> tab, find <strong>Launch Options</strong>.</li>
-                <li>Paste your selected arguments separated by spaces.</li>
+                <li>@Localizer.T("launch.step.1")</li>
+                <li>@Localizer.T("launch.step.2")</li>
+                <li>@Localizer.T("launch.step.3")</li>
+                <li>@Localizer.T("launch.step.4")</li>
             </ol>
             <p class="launch-options-note">
                 If you already use custom options, keep them. Example: keep <code>-culture=zh-Hans-CN</code> and append new flags with spaces.
@@ -83,94 +85,47 @@
         </section>
 
         <section class="content-card launch-options-example-card">
-            <h3>Example line</h3>
-            <p>Click to copy:</p>
+            <h3>@Localizer.T("launch.example.title")</h3>
+            <p>@Localizer.T("launch.example.text")</p>
             <button class="launch-options-code launch-options-code-btn"
                     @onclick="() => CopyTextAsync(ExampleLaunchLine)"
-                    title="Copy full launch line">
+                    title="@Localizer.T("launch.example.tooltip")">
                 @ExampleLaunchLine
             </button>
-            <p class="launch-options-note">Many players keep <code>-lowmemory</code>, but test on your own hardware.</p>
+            <p class="launch-options-note">@Localizer.T("launch.note.lead")<code>-lowmemory</code>@Localizer.T("launch.note.rest")</p>
         </section>
     </div>
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string ArkSteamUrl = "steam://gameproperties/346110/general";
     private const string ArkSteamFallbackUrl = "steam://gameproperties/346110";
     private const string ExampleLaunchLine = "-lowmemory -USEALLAVAILABLECORES -sm4 -high -noVerifiedMappings -nomansky";
 
-    private readonly List<LaunchOptionInfo> options = new()
+    /// <summary>
+    /// The flags, and where each one's prose lives. Public and static so the set of keys the page
+    /// asks for can be read off it by a test — a list of keys inside a razor file is invisible to
+    /// a grep for T("…"), and an unused entry in four dictionaries is four people translating
+    /// something nothing renders.
+    ///
+    /// The flags themselves are ARK's own command-line switches and are never translated.
+    /// </summary>
+    public static readonly IReadOnlyList<LaunchOptionInfo> Options = new List<LaunchOptionInfo>
     {
-        new(
-            "-lowmemory",
-            "Low-memory mode for RAM-limited PCs.",
-            new[]
-            {
-                "Best for systems with under 8 GB RAM",
-                "Reduces memory usage",
-                "Destroyed structures despawn immediately"
-            },
-            new[]
-            {
-                "Can reduce visual quality"
-            }),
-        new(
-            "-USEALLAVAILABLECORES",
-            "Forces ARK to use all CPU cores.",
-            new[]
-            {
-                "Can improve FPS and performance"
-            },
-            new[]
-            {
-                "Can increase load on older CPUs"
-            }),
-        new(
-            "-sm4",
-            "Forces Shader Model 4.",
-            new[]
-            {
-                "Can increase FPS on older hardware"
-            },
-            new[]
-            {
-                "Water and shadows look worse"
-            }),
-        new(
-            "-high",
-            "Starts ARK with high process priority.",
-            new[]
-            {
-                "Can improve performance"
-            },
-            new[]
-            {
-                "Can make other apps slower while ARK is running"
-            }),
-        new(
-            "-noVerifiedMappings",
-            "Skips part of startup file checks.",
-            new[]
-            {
-                "Can reduce startup time"
-            },
-            new[]
-            {
-                "Can cause issues if game files are damaged"
-            }),
-        new(
-            "-nomansky",
-            "Disables sky effects to reduce visual overhead.",
-            new[]
-            {
-                "Can improve FPS",
-                "Can improve visibility"
-            },
-            new[]
-            {
-                "Sky can look unrealistic"
-            })
+        new("-lowmemory", 3, 1),
+        new("-USEALLAVAILABLECORES", 1, 1),
+        new("-sm4", 1, 1),
+        new("-high", 1, 1),
+        new("-noVerifiedMappings", 1, 1),
+        new("-nomansky", 2, 1),
     };
 
     private async Task CopyTextAsync(string text)
@@ -178,12 +133,12 @@
         try
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(text);
-            NotificationService.ShowSuccess("Copied to clipboard.");
-            ActivityService.AddActivity($"Copied launch text: {text}", "info");
+            NotificationService.ShowSuccess(Localizer.T("launch.toast.copied"));
+            ActivityService.AddActivity(Localizer.T("launch.activity.copied", text), "info");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to copy: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("launch.toast.copyfailed", ex.Message));
         }
     }
 
@@ -197,8 +152,8 @@
                 UseShellExecute = true
             });
 
-            NotificationService.ShowSuccess("Opened ARK Properties (General).");
-            ActivityService.AddActivity("Opened ARK Properties General tab", "info");
+            NotificationService.ShowSuccess(Localizer.T("launch.toast.opened"));
+            ActivityService.AddActivity(Localizer.T("launch.activity.opened"), "info");
         }
         catch (Exception ex)
         {
@@ -210,19 +165,28 @@
                     UseShellExecute = true
                 });
 
-                NotificationService.ShowWarning("Opened ARK Properties. If General is not selected, click the General tab.");
-                ActivityService.AddActivity("Opened ARK Properties (fallback URI)", "warning");
+                NotificationService.ShowWarning(Localizer.T("launch.toast.opened.fallback"));
+                ActivityService.AddActivity(Localizer.T("launch.activity.opened.fallback"), "warning");
             }
             catch
             {
-                NotificationService.ShowError($"Failed to open Steam: {ex.Message}");
+                NotificationService.ShowError(Localizer.T("launch.toast.openfailed", ex.Message));
             }
         }
     }
 
-    private sealed record LaunchOptionInfo(
-        string Flag,
-        string Description,
-        IReadOnlyList<string> Pros,
-        IReadOnlyList<string> Cons);
+    /// <param name="Flag">ARK's own switch, as it is typed into Steam.</param>
+    /// <param name="Pros">How many "Good for" lines this flag has.</param>
+    /// <param name="Cons">How many "Watch out" lines it has.</param>
+    public sealed record LaunchOptionInfo(string Flag, int Pros, int Cons)
+    {
+        /// <summary>Key prefix, derived from the flag: "-sm4" is "launch.opt.sm4".</summary>
+        public string KeyPrefix => "launch.opt." + Flag.TrimStart('-').ToLowerInvariant();
+
+        public string DescriptionKey => KeyPrefix + ".description";
+
+        public IEnumerable<string> ProKeys => Enumerable.Range(1, Pros).Select(n => $"{KeyPrefix}.pro.{n}");
+
+        public IEnumerable<string> ConKeys => Enumerable.Range(1, Cons).Select(n => $"{KeyPrefix}.con.{n}");
+    }
 }

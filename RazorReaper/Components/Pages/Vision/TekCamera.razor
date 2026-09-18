@@ -5,6 +5,8 @@
 @using RazorReaper.Utilities
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @{
     var isEnabled = bUseOldThirdPersonCameraTrace && bUseOldThirdPersonCameraOffset;
@@ -19,17 +21,17 @@
                 </svg>
             </div>
             <div>
-                <h3>TEK Camera</h3>
-                <p class="vision-card-sub">Restore the classic third-person camera trace and offset behavior.</p>
+                <h3>@Localizer.T("vision.tab.tek")</h3>
+                <p class="vision-card-sub">@Localizer.T("vision.tek.subtitle")</p>
             </div>
         </div>
 
         <div class="vision-tek-hero @(isEnabled ? "is-on" : "is-off")">
             <div class="vision-tek-hero-state">
-                <span class="vision-tek-state-badge">@(isEnabled ? "Active" : "Inactive")</span>
+                <span class="vision-tek-state-badge">@Localizer.T(isEnabled ? "common.active" : "desync.inactive")</span>
                 <div class="vision-tek-state-text">
-                    <strong>@(isEnabled ? "Classic third-person camera" : "Vanilla third-person camera")</strong>
-                    <span>@(isEnabled ? "Older trace + offset behavior is active. Useful for closer-feeling combat camera." : "Default modern camera behavior. Enable for the classic feel.")</span>
+                    <strong>@Localizer.T(isEnabled ? "vision.tek.state.on" : "vision.tek.state.off")</strong>
+                    <span>@Localizer.T(isEnabled ? "vision.tek.state.on.text" : "vision.tek.state.off.text")</span>
                 </div>
             </div>
             <button class="vision-tek-toggle @(isEnabled ? "is-off" : "is-on")"
@@ -47,11 +49,11 @@
                         <polyline points="8 12 11 15 16 9" />
                     }
                 </svg>
-                <span>@(isEnabled ? "Disable Camera Trace" : "Enable Camera Trace")</span>
+                <span>@Localizer.T(isEnabled ? "vision.tek.disable" : "vision.tek.enable")</span>
             </button>
         </div>
 
-        <div class="vision-tek-keys-label">Underlying settings</div>
+        <div class="vision-tek-keys-label">@Localizer.T("vision.tek.keys")</div>
         <div class="vision-tek-keys">
             <div class="vision-tek-key @(bUseOldThirdPersonCameraTrace ? "on" : "off")">
                 <div class="vision-tek-key-dot"></div>
@@ -70,10 +72,10 @@
         </div>
 
         <div class="path-section">
-            <strong>Config Path</strong>
+            <strong>@Localizer.T("vision.configpath")</strong>
             <div class="path-display @(string.IsNullOrEmpty(gameUserSettingsPath) ? string.Empty : "clickable")"
                  @onclick="OpenGameSettingsFolder"
-                 title="@(string.IsNullOrEmpty(gameUserSettingsPath) ? "Path not available" : "Open folder")">
+                 title="@Localizer.T(string.IsNullOrEmpty(gameUserSettingsPath) ? "vision.path.unavailable" : "home.sound.openfolder")">
                 @GetConfigPathDisplay()
             </div>
         </div>
@@ -81,6 +83,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string DefaultGameSettingsPath = @"ARK\ShooterGame\Saved\Config\WindowsNoEditor\GameUserSettings.ini";
 
     private string arkInstallPath = string.Empty;
@@ -111,14 +121,14 @@
         {
             if (!ResolveArkPath())
             {
-                NotificationService.ShowError("ARK installation not found. Please ensure ARK is installed.");
+                NotificationService.ShowError(Localizer.T("vision.toast.noark"));
                 return;
             }
 
             gameUserSettingsPath = Path.Combine(arkInstallPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor", "GameUserSettings.ini");
             if (!File.Exists(gameUserSettingsPath))
             {
-                NotificationService.ShowWarning("GameUserSettings.ini not found. Launch ARK once to create it.");
+                NotificationService.ShowWarning(Localizer.T("vision.toast.nosettings"));
                 return;
             }
 
@@ -126,7 +136,7 @@
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("common.error", ex.Message));
         }
     }
 
@@ -172,7 +182,7 @@
             {
                 if (!File.Exists(gameUserSettingsPath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found.")));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("vision.toast.nofile"))));
                     return;
                 }
 
@@ -211,7 +221,7 @@
 
                 if (!modified)
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini.")));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning(Localizer.T("vision.toast.nosection"))));
                     return;
                 }
 
@@ -220,15 +230,15 @@
                 {
                     bUseOldThirdPersonCameraTrace = true;
                     bUseOldThirdPersonCameraOffset = true;
-                    NotificationService.ShowSuccess("Camera trace enabled.");
-                    ActivityService.AddActivity("Camera trace enabled", "success");
+                    NotificationService.ShowSuccess(Localizer.T("vision.tek.toast.enabled"));
+                    ActivityService.AddActivity(Localizer.T("vision.tek.toast.enabled"), "success");
                     StateHasChanged();
                 }));
             });
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("common.error", ex.Message));
         }
     }
 
@@ -245,7 +255,7 @@
             {
                 if (!File.Exists(gameUserSettingsPath))
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError("GameUserSettings.ini file not found.")));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowError(Localizer.T("vision.toast.nofile"))));
                     return;
                 }
 
@@ -258,15 +268,15 @@
                 {
                     bUseOldThirdPersonCameraTrace = false;
                     bUseOldThirdPersonCameraOffset = false;
-                    NotificationService.ShowWarning("Camera trace disabled.");
-                    ActivityService.AddActivity("Camera trace disabled", "warning");
+                    NotificationService.ShowWarning(Localizer.T("vision.tek.toast.disabled"));
+                    ActivityService.AddActivity(Localizer.T("vision.tek.toast.disabled"), "warning");
                     StateHasChanged();
                 }));
             });
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("common.error", ex.Message));
         }
     }
 
@@ -274,7 +284,7 @@
     {
         if (string.IsNullOrEmpty(gameUserSettingsPath))
         {
-            NotificationService.ShowWarning("Config path not available.");
+            NotificationService.ShowWarning(Localizer.T("vision.toast.nopath"));
             return;
         }
 
@@ -287,7 +297,7 @@
         {
             if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             {
-                NotificationService.ShowError("Folder does not exist.");
+                NotificationService.ShowError(Localizer.T("vision.toast.nofolder"));
                 return;
             }
 
@@ -298,11 +308,11 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity($"Opened folder: {path}", "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.open", ex.Message));
         }
     }
 

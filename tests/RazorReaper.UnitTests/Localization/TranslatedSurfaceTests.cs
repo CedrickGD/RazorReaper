@@ -386,6 +386,95 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Launch Options</h1>",
+            "Quick ARK startup flags with clear trade-offs.",
+            "<h3>Before you change anything</h3>",
+            "<h3>ARK Launch Arguments</h3>",
+            "title=\"Copy @option.Flag\"",
+            ">Good for</div>",
+            ">Watch out</div>",
+            "<h3>How to add them in Steam</h3>",
+            "<li>Open <strong>Steam</strong>.</li>",
+            "<h3>Example line</h3>",
+            "title=\"Copy full launch line\"",
+            "Many players keep <code>",
+            "\"Low-memory mode for RAM-limited PCs.\"",
+            "\"Can improve FPS and performance\"",
+            "\"Copied to clipboard.\"",
+            "$\"Copied launch text:",
+            "\"Opened ARK Properties (General).\"",
+        })
+        {
+            data.Add("Components/Pages/LaunchOptions.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Vision Tools</h1>",
+            "Manage TEK camera behavior, scope visibility",
+            "<span>TEK Camera</span>",
+            "<span>Scope</span>",
+            "<span>Custom FOV</span>",
+        })
+        {
+            data.Add("Components/Pages/Vision/Vision.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "<h3>TEK Camera</h3>",
+            "Restore the classic third-person camera trace",
+            "\"Active\" : \"Inactive\"",
+            "\"Classic third-person camera\"",
+            "\"Disable Camera Trace\" : \"Enable Camera Trace\"",
+            ">Underlying settings</div>",
+            "<strong>Config Path</strong>",
+            "\"Path not available\" : \"Open folder\"",
+            "ARK installation not found.",
+            "\"Camera trace enabled.\"",
+            "\"Config path not available.\"",
+            "\"Folder does not exist.\"",
+        })
+        {
+            data.Add("Components/Pages/Vision/TekCamera.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "<h3>Scope Files</h3>",
+            "Disable scope rendering files",
+            "<strong>Set in-game textures to High or Epic</strong>",
+            "alt=\"Scope view after files disabled\"",
+            ">Scope</div>",
+            "\"Disabled\" : \"Enabled\"",
+            ">Scanning scope files...</div>",
+            "\"Restore Scope Files\" : \"Disable Scope Files\"",
+            "<strong>Scope Root</strong>",
+            "\"Scope root path not found.\"",
+            "$\"Renamed {result.renamed}",
+            "\"No active scope files found.\"",
+        })
+        {
+            data.Add("Components/Pages/Vision/Scope.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "<h3>Custom FOV</h3>",
+            "The in-game slider caps at 1.35.",
+            "alt=\"Custom FOV view example\"",
+            ">Apply @pendingFov",
+            ">Reset to 1.00</span>",
+            "<strong>Config Path</strong>",
+            "$\"FOV set to",
+            "$\"FOV write failed:",
+        })
+        {
+            data.Add("Components/Pages/Vision/CustomFov.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">Troubleshoot</h1>",
             "Logging, diagnostics, and quick fixes",
             "Let support see the useful details",
@@ -1229,6 +1318,18 @@ public sealed class TranslatedSurfaceTests
         foreach (var key in RazorReaper.Services.Automation.HotkeyRegistry.Keys)
         {
             yield return ("HotkeyRegistry.cs", key);
+        }
+
+        // Launch Options derives its prose keys from the flag, so the keys are in no file as
+        // literals at all.
+        foreach (var option in RazorReaper.Components.Pages.LaunchOptions.Options)
+        {
+            yield return ("LaunchOptions.razor", option.DescriptionKey);
+
+            foreach (var key in option.ProKeys.Concat(option.ConKeys))
+            {
+                yield return ("LaunchOptions.razor", key);
+            }
         }
 
         // The Lifetime guide numbers its steps rather than naming them: a key named after a

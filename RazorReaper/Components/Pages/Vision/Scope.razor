@@ -6,6 +6,8 @@
 
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="vision-card-wrap wide">
     <div class="content-card">
@@ -16,8 +18,8 @@
                 </svg>
             </div>
             <div>
-                <h3>Scope Files</h3>
-                <p class="vision-card-sub">Disable scope rendering files to clear the view.</p>
+                <h3>@Localizer.T("vision.scope.title")</h3>
+                <p class="vision-card-sub">@Localizer.T("vision.scope.subtitle")</p>
             </div>
         </div>
 
@@ -28,7 +30,7 @@
                 <circle cx="10" cy="13.5" r="0.6" fill="currentColor" />
             </svg>
             <div>
-                <strong>Set in-game textures to High or Epic</strong> for scope removal to take effect properly.
+                <strong>@Localizer.T("vision.scope.warning.lead")</strong>@Localizer.T("vision.scope.warning.rest")
             </div>
         </div>
 
@@ -36,7 +38,7 @@
             <div class="vision-split-left">
                 <div class="vision-reference">
                     <HostedImg Src="images/vision/scope-removed.webp"
-                               alt="Scope view after files disabled"
+                               alt="@Localizer.T("vision.scope.image.alt")"
                                onclick="rrZoom(this)" />
                 </div>
             </div>
@@ -47,14 +49,14 @@
                         <div class="setting-item @(ScopeHasDisabledFiles() ? "disabled" : "enabled")">
                             <div class="setting-status-dot"></div>
                             <div class="setting-info">
-                                <div class="setting-name">Scope</div>
-                                <div class="setting-value">@(ScopeHasDisabledFiles() ? "Disabled" : "Enabled")</div>
+                                <div class="setting-name">@Localizer.T("vision.tab.scope")</div>
+                                <div class="setting-value">@Localizer.T(ScopeHasDisabledFiles() ? "vision.scope.state.disabled" : "vision.scope.state.enabled")</div>
                             </div>
                         </div>
                     </div>
                     @if (isScopeStatusLoading)
                     {
-                        <div class="scope-status-note">Scanning scope files...</div>
+                        <div class="scope-status-note">@Localizer.T("vision.scope.scanning")</div>
                     }
                 </div>
 
@@ -63,16 +65,16 @@
                             @onclick="ToggleScopeFiles"
                             disabled="@IsScopeToggleDisabled()">
                         <div class="btn-content-large">
-                            <span class="btn-title">@(ScopeHasDisabledFiles() ? "Restore Scope Files" : "Disable Scope Files")</span>
+                            <span class="btn-title">@Localizer.T(ScopeHasDisabledFiles() ? "vision.scope.restore" : "vision.scope.disable")</span>
                         </div>
                     </button>
                 </div>
 
                 <div class="path-section">
-                    <strong>Scope Root</strong>
+                    <strong>@Localizer.T("vision.scope.root")</strong>
                     <div class="path-display @(string.IsNullOrEmpty(scopeRootPath) ? string.Empty : "clickable")"
                          @onclick="OpenScopeFolder"
-                         title="@(string.IsNullOrEmpty(scopeRootPath) ? "Path not available" : "Open folder")">
+                         title="@Localizer.T(string.IsNullOrEmpty(scopeRootPath) ? "vision.path.unavailable" : "home.sound.openfolder")">
                         @GetScopeRootDisplay()
                     </div>
                 </div>
@@ -82,6 +84,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string ScopeDisabledSuffix = ".rrscopeoff";
     private const string DefaultScopeRootPath = @"ARK\ShooterGame\Content\PrimalEarth";
 
@@ -197,7 +207,7 @@
 
         if (string.IsNullOrEmpty(scopeRootPath) || !Directory.Exists(scopeRootPath))
         {
-            NotificationService.ShowError("Scope root path not found.");
+            NotificationService.ShowError(Localizer.T("vision.scope.toast.norootpath"));
             return;
         }
 
@@ -243,21 +253,21 @@
 
             if (result.renamed > 0)
             {
-                NotificationService.ShowSuccess($"Renamed {result.renamed} scope file(s).");
-                ActivityService.AddActivity($"Scope files disabled: {result.renamed}", "success");
+                NotificationService.ShowSuccess(Localizer.T("vision.scope.toast.renamed", result.renamed));
+                ActivityService.AddActivity(Localizer.T("vision.scope.activity.disabled", result.renamed), "success");
             }
             else if (result.scanned == 0)
             {
-                NotificationService.ShowInfo("No active scope files found.");
+                NotificationService.ShowInfo(Localizer.T("vision.scope.toast.noactive"));
             }
             else
             {
-                NotificationService.ShowWarning($"No files renamed. Skipped: {result.skipped}, Failed: {result.failed}.");
+                NotificationService.ShowWarning(Localizer.T("vision.scope.toast.norename", result.skipped, result.failed));
             }
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Scope disable failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("vision.scope.toast.disablefailed", ex.Message));
         }
         finally
         {
@@ -275,7 +285,7 @@
 
         if (string.IsNullOrEmpty(scopeRootPath) || !Directory.Exists(scopeRootPath))
         {
-            NotificationService.ShowError("Scope root path not found.");
+            NotificationService.ShowError(Localizer.T("vision.scope.toast.norootpath"));
             return;
         }
 
@@ -321,21 +331,21 @@
 
             if (result.restored > 0)
             {
-                NotificationService.ShowSuccess($"Restored {result.restored} scope file(s).");
-                ActivityService.AddActivity($"Scope files restored: {result.restored}", "info");
+                NotificationService.ShowSuccess(Localizer.T("vision.scope.toast.restored", result.restored));
+                ActivityService.AddActivity(Localizer.T("vision.scope.activity.restored", result.restored), "info");
             }
             else if (result.scanned == 0)
             {
-                NotificationService.ShowInfo("No disabled scope files found.");
+                NotificationService.ShowInfo(Localizer.T("vision.scope.toast.nodisabled"));
             }
             else
             {
-                NotificationService.ShowWarning($"No files restored. Skipped: {result.skipped}, Failed: {result.failed}.");
+                NotificationService.ShowWarning(Localizer.T("vision.scope.toast.norestore", result.skipped, result.failed));
             }
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Scope restore failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("vision.scope.toast.restorefailed", ex.Message));
         }
         finally
         {
@@ -348,7 +358,7 @@
     {
         if (string.IsNullOrEmpty(scopeRootPath))
         {
-            NotificationService.ShowWarning("Scope root path not available.");
+            NotificationService.ShowWarning(Localizer.T("vision.scope.toast.norootpath"));
             return;
         }
 
@@ -361,7 +371,7 @@
         {
             if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             {
-                NotificationService.ShowError("Folder does not exist.");
+                NotificationService.ShowError(Localizer.T("vision.toast.nofolder"));
                 return;
             }
 
@@ -372,11 +382,11 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity($"Opened folder: {path}", "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.open", ex.Message));
         }
     }
 

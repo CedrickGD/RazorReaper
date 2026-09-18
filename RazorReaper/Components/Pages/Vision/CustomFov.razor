@@ -7,6 +7,8 @@
 
 @inject INotificationService NotificationService
 @inject IActivityService ActivityService
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="vision-card-wrap wide">
     <div class="content-card">
@@ -18,8 +20,8 @@
                 </svg>
             </div>
             <div>
-                <h3>Custom FOV</h3>
-                <p class="vision-card-sub">The in-game slider caps at 1.35. Push higher for ultrawide or triple-monitor setups.</p>
+                <h3>@Localizer.T("vision.tab.fov")</h3>
+                <p class="vision-card-sub">@Localizer.T("vision.fov.subtitle")</p>
             </div>
         </div>
 
@@ -27,7 +29,7 @@
             <div class="vision-split-left">
                 <div class="vision-reference">
                     <HostedImg Src="images/vision/fov-crafting-station.webp"
-                               alt="Custom FOV view example"
+                               alt="@Localizer.T("vision.fov.image.alt")"
                                onclick="rrZoom(this)" />
                 </div>
             </div>
@@ -75,23 +77,23 @@
                             @onclick="ApplyFov"
                             disabled="@(isBusy || Math.Abs(pendingFov - currentFov) < 0.001)">
                         <div class="btn-content-large">
-                            <span class="btn-title">Apply @pendingFov.ToString("F2", CultureInfo.InvariantCulture)</span>
+                            <span class="btn-title">@Localizer.T("vision.fov.apply", pendingFov.ToString("F2", CultureInfo.InvariantCulture))</span>
                         </div>
                     </button>
                     <button class="fov-btn-large disable"
                             @onclick="ResetFov"
                             disabled="@(isBusy || Math.Abs(currentFov - 1.0) < 0.001)">
                         <div class="btn-content-large">
-                            <span class="btn-title">Reset to 1.00</span>
+                            <span class="btn-title">@Localizer.T("vision.fov.reset")</span>
                         </div>
                     </button>
                 </div>
 
                 <div class="path-section">
-                    <strong>Config Path</strong>
+                    <strong>@Localizer.T("vision.configpath")</strong>
                     <div class="path-display @(string.IsNullOrEmpty(gameUserSettingsPath) ? string.Empty : "clickable")"
                          @onclick="OpenGameSettingsFolder"
-                         title="@(string.IsNullOrEmpty(gameUserSettingsPath) ? "Path not available" : "Open folder")">
+                         title="@Localizer.T(string.IsNullOrEmpty(gameUserSettingsPath) ? "vision.path.unavailable" : "home.sound.openfolder")">
                         @GetConfigPathDisplay()
                     </div>
                 </div>
@@ -101,6 +103,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string DefaultGameSettingsPath = @"ARK\ShooterGame\Saved\Config\WindowsNoEditor\GameUserSettings.ini";
     private const string BackupSuffix = ".rrfovbak";
     private const string SettingsSectionHeader = "[/Script/ShooterGame.ShooterGameUserSettings]";
@@ -138,14 +148,14 @@
         {
             if (!ResolveArkPath())
             {
-                NotificationService.ShowError("ARK installation not found. Please ensure ARK is installed.");
+                NotificationService.ShowError(Localizer.T("vision.toast.noark"));
                 return;
             }
 
             gameUserSettingsPath = Path.Combine(arkInstallPath, "ShooterGame", "Saved", "Config", "WindowsNoEditor", "GameUserSettings.ini");
             if (!File.Exists(gameUserSettingsPath))
             {
-                NotificationService.ShowWarning("GameUserSettings.ini not found. Launch ARK once to create it.");
+                NotificationService.ShowWarning(Localizer.T("vision.toast.nosettings"));
                 return;
             }
 
@@ -153,7 +163,7 @@
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("common.error", ex.Message));
         }
     }
 
@@ -219,7 +229,7 @@
 
             if (!File.Exists(gameUserSettingsPath))
             {
-                NotificationService.ShowError("GameUserSettings.ini file not found.");
+                NotificationService.ShowError(Localizer.T("vision.toast.nofile"));
                 return;
             }
 
@@ -254,7 +264,7 @@
                 }
                 else
                 {
-                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning("Could not find settings section in GameUserSettings.ini.")));
+                    this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning(Localizer.T("vision.toast.nosection"))));
                     return;
                 }
 
@@ -262,12 +272,12 @@
             });
 
             currentFov = targetValue;
-            NotificationService.ShowSuccess($"FOV set to {targetValue.ToString("F2", CultureInfo.InvariantCulture)}.");
-            ActivityService.AddActivity($"FOV applied: {targetValue.ToString("F2", CultureInfo.InvariantCulture)}", "success");
+            NotificationService.ShowSuccess(Localizer.T("vision.fov.toast.set", targetValue.ToString("F2", CultureInfo.InvariantCulture)));
+            ActivityService.AddActivity(Localizer.T("vision.fov.activity.applied", targetValue.ToString("F2", CultureInfo.InvariantCulture)), "success");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"FOV write failed: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("vision.fov.toast.failed", ex.Message));
         }
         finally
         {
@@ -286,7 +296,7 @@
     {
         if (string.IsNullOrEmpty(gameUserSettingsPath))
         {
-            NotificationService.ShowWarning("Config path not available.");
+            NotificationService.ShowWarning(Localizer.T("vision.toast.nopath"));
             return;
         }
 
@@ -299,7 +309,7 @@
         {
             if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             {
-                NotificationService.ShowError("Folder does not exist.");
+                NotificationService.ShowError(Localizer.T("vision.toast.nofolder"));
                 return;
             }
 
@@ -310,11 +320,11 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity($"Opened folder: {path}", "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info");
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.open", ex.Message));
         }
     }
 
