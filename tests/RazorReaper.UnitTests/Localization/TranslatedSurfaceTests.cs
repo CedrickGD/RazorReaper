@@ -386,6 +386,72 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Game Management</h1>",
+            "Control and monitor ARK: Survival Evolved.</p>",
+            ">Launch</button>",
+            ">Close</button>",
+            "<h3>In-game commands</h3>",
+            "Typed into the console, so ARK has to be running",
+            "<h3>Console Hotkey</h3>",
+            "placeholder=\"Press a key…\"",
+            "Click and press the key that opens the console",
+            "\"Running\" : \"Not running\"",
+            "$\"Unknown console key",
+            "\"New Hotkey Saved\"",
+            "displayName: \"Debug Structures\"",
+            "displayName: \"Clean Vision\"",
+            "ARK: Survival Evolved is not running.",
+            "$\"Command '{commandLabel}'",
+            "\"ARK launched via Steam\"",
+            "ARK: Survival Evolved closed successfully",
+        })
+        {
+            data.Add("Components/Pages/Game.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "<h3>Sky source</h3>",
+            "Pick an image to tile across the sky",
+            "Image file\n",
+            "Solid color\n",
+            "Browse…\n",
+            ">No image selected</span>",
+            "alt=\"loaded sky\"",
+            ">Sky color</span>",
+            "<h3>Options</h3>",
+            ">Flip vertically</div>",
+            ">Tile size</div>",
+            "<span>Injecting…</span>",
+            "<span>Inject sky</span>",
+            "<span>Restore original sky</span>",
+            "<span>Output</span>",
+            ">Clear</button>",
+            "Ready. Pick an image or color",
+            "<strong>Maps covered</strong>",
+            "Shows after the next <strong>map load</strong>",
+            "Safe on <strong>any server</strong>",
+            "=> \"Sky injected\"",
+            "ARK is running with your custom sky.",
+            "\"1× — normal\"",
+            "PickerTitle = \"Select a sky image\"",
+            "$\"Image selected:",
+            "\"Could not open the file picker.\"",
+            "Need a quick converter?",
+            "$\"Swapping sky →",
+            "verbAct: \"Patched\"",
+            "$\"Sky applied to",
+            "\"Sky swap failed — see log.\"",
+            "Restoring original sky textures from backup",
+            "verbAct: \"Restored\"",
+            "$\"Restored {result.Patched} sky texture",
+        })
+        {
+            data.Add("Components/Pages/CustomLab/SkyInjector.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             ">Launch Options</h1>",
             "Quick ARK startup flags with clear trade-offs.",
             "<h3>Before you change anything</h3>",

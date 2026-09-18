@@ -11,6 +11,8 @@
 @inject IUsageGateService UsageGate
 @inject ILogger<SkyInjector> Logger
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="lab-injector">
     @* ── Status badge ─────────────────────────────────────────────── *@
@@ -53,8 +55,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h3>Sky source</h3>
-                    <p>Pick an image to tile across the sky, or choose a flat color.</p>
+                    <h3>@Localizer.T("sky.source.title")</h3>
+                    <p>@Localizer.T("sky.source.subtitle")</p>
                 </div>
             </div>
 
@@ -67,7 +69,7 @@
                             <rect x="3" y="4" width="14" height="12" rx="2" />
                             <path d="m6.2 12.5 2.5-2.8 2.4 2.4 2.7-3.3 1.9 3.7" />
                         </svg>
-                        Image file
+                        @Localizer.T("sky.mode.image")
                     </button>
                     <button type="button"
                             class="injector-mode-btn @(_opts.Mode == SkyInjectionMode.SolidColor ? "active" : "")"
@@ -75,7 +77,7 @@
                         <svg viewBox="0 0 20 20" fill="currentColor">
                             <circle cx="10" cy="10" r="6.5" />
                         </svg>
-                        Solid color
+                        @Localizer.T("sky.mode.color")
                     </button>
                 </div>
 
@@ -89,12 +91,12 @@
                                 <path d="M10 12v4" />
                                 <path d="M8 14h4" />
                             </svg>
-                            Browse…
+                            @Localizer.T("sky.browse")
                         </button>
                         <div class="injector-file-path" title="@(_opts.ImagePath ?? "")">
                             @if (string.IsNullOrEmpty(_opts.ImagePath))
                             {
-                                <span class="injector-file-empty">No image selected</span>
+                                <span class="injector-file-empty">@Localizer.T("sky.noimage")</span>
                             }
                             else
                             {
@@ -104,14 +106,14 @@
                     </div>
                     @if (!string.IsNullOrEmpty(_previewUri))
                     {
-                        <img src="@_previewUri" alt="loaded sky" style="margin-top:.75rem;max-width:100%;max-height:180px;border-radius:var(--radius-control);border:1px solid rgba(255,255,255,.12);display:block;" />
+                        <img src="@_previewUri" alt="@Localizer.T("sky.preview.alt")" style="margin-top:.75rem;max-width:100%;max-height:180px;border-radius:var(--radius-control);border:1px solid rgba(255,255,255,.12);display:block;" />
                     }
                 }
                 else
                 {
                     <div class="injector-color-row">
                         <ColorField @bind-Value="_opts.HexColor" />
-                        <span class="injector-color-label">Sky color</span>
+                        <span class="injector-color-label">@Localizer.T("sky.color.label")</span>
                     </div>
                 }
             </div>
@@ -128,15 +130,15 @@
                     </svg>
                 </div>
                 <div>
-                    <h3>Options</h3>
-                    <p>Tweak how the image is mapped onto the sky.</p>
+                    <h3>@Localizer.T("sky.options.title")</h3>
+                    <p>@Localizer.T("sky.options.subtitle")</p>
                 </div>
             </div>
 
             <div class="lab-card-content">
                 <div class="lab-settings-row">
                     <div class="lab-settings-label">
-                        <div class="lab-settings-title">Flip vertically</div>
+                        <div class="lab-settings-title">@Localizer.T("sky.flip")</div>
                         <p class="lab-settings-desc">
                             Use if your image has the sky at the top and ground at the bottom — ARK's coordinate
                             system flips it otherwise.
@@ -149,7 +151,7 @@
 
                 <div class="lab-settings-row">
                     <div class="lab-settings-label">
-                        <div class="lab-settings-title">Tile size</div>
+                        <div class="lab-settings-title">@Localizer.T("sky.tile")</div>
                         <p class="lab-settings-desc">
                             1× shows the full image as the sky. 2× through 4× repeat the image to make
                             it look smaller / more zoomed in.
@@ -174,7 +176,7 @@
             @if (_busy && _lastAction == "inject")
             {
                 <span class="injector-spinner"></span>
-                <span>Injecting…</span>
+                <span>@Localizer.T("sky.injecting")</span>
             }
             else
             {
@@ -182,7 +184,7 @@
                     <path d="M4 10h12" />
                     <path d="M10 4l6 6-6 6" />
                 </svg>
-                <span>Inject sky</span>
+                <span>@Localizer.T("sky.inject")</span>
             }
         </button>
 
@@ -193,7 +195,7 @@
             @if (_busy && _lastAction == "restore")
             {
                 <span class="injector-spinner"></span>
-                <span>Restoring…</span>
+                <span>@Localizer.T("sky.restoring")</span>
             }
             else
             {
@@ -201,7 +203,7 @@
                     <path d="M4 6V3" /><path d="M4 6h3" />
                     <path d="M4 6a7 7 0 1 1-2 4.9" />
                 </svg>
-                <span>Restore original sky</span>
+                <span>@Localizer.T("sky.restore")</span>
             }
         </button>
     </div>
@@ -213,16 +215,16 @@
                 <rect x="3.5" y="3.5" width="13" height="13" rx="1.5" />
                 <path d="M6.5 7.5h7M6.5 10h7M6.5 12.5h4" />
             </svg>
-            <span>Output</span>
+            <span>@Localizer.T("sky.log.title")</span>
             @if (_logLines.Count > 0)
             {
-                <button type="button" class="injector-log-clear" @onclick="ClearLog">Clear</button>
+                <button type="button" class="injector-log-clear" @onclick="ClearLog">@Localizer.T("common.clear")</button>
             }
         </div>
         <div class="injector-log-body">
             @if (_logLines.Count == 0)
             {
-                <div class="injector-log-empty">Ready. Pick an image or color, then click <strong>Inject sky</strong>.</div>
+                <div class="injector-log-empty">@Localizer.T("sky.log.empty.lead")<strong>@Localizer.T("sky.inject")</strong>@Localizer.T("sky.log.empty.rest")</div>
             }
             else
             {
@@ -247,21 +249,14 @@
                 <path d="M10 16s4.8-4.8 4.8-8A4.8 4.8 0 1 0 5.2 8c0 3.2 4.8 8 4.8 8Z" />
                 <circle cx="10" cy="8" r="1.8" />
             </svg>
-            <strong>Maps covered</strong>
+            <strong>@Localizer.T("sky.coverage.title")</strong>
         </div>
         <p class="injector-coverage-list">
             The Island · Scorched Earth · Aberration · Extinction · Genesis · Genesis 2
             · The Center · Ragnarok · Valguero · Crystal Isles · Lost Island · Fjördur
         </p>
-        <p class="injector-coverage-caveat">
-            Shows after the next <strong>map load</strong> — rejoin or relaunch to see it. Won't show at
-            <strong>night</strong> — that's normal.
-        </p>
-        <p class="injector-coverage-caveat">
-            Safe on <strong>any server</strong>: it only edits your own local sky files, so there's nothing for
-            anti-cheat to flag. Instant in-game swapping isn't offered — it would mean fighting BattlEye, which
-            risks your account.
-        </p>
+        <p class="injector-coverage-caveat">@Localizer.T("sky.coverage.caveat.1")</p>
+        <p class="injector-coverage-caveat">@Localizer.T("sky.coverage.caveat.2")</p>
     </div>
 </div>
 
@@ -574,6 +569,14 @@
 </style>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const string ConvertXUrl = "https://github.com/CedrickGD/Convert-X";
     private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -617,16 +620,16 @@
 
     private string StatusTitle => StatusKind switch
     {
-        "injected" => "Sky injected",
-        "restored" => "Original sky restored",
-        _ => "Original"
+        "injected" => Localizer.T("sky.status.injected"),
+        "restored" => Localizer.T("sky.status.restored"),
+        _ => Localizer.T("sky.status.original")
     };
 
     private string StatusSubtitle => StatusKind switch
     {
-        "injected" => "ARK is running with your custom sky. Restore to revert to the original.",
-        "restored" => "ARK's original sky is back. Backups are kept — clear them in Settings if you're done.",
-        _ => "No backups on disk yet. Pick an image or color and inject."
+        "injected" => Localizer.T("sky.status.injected.text"),
+        "restored" => Localizer.T("sky.status.restored.text"),
+        _ => Localizer.T("sky.status.original.text")
     };
 
     private string? _previewUri;
@@ -678,12 +681,12 @@
         _ = UpdatePreview();
     }
 
-    private static readonly IReadOnlyList<Dropdown.Option> TileOptions = new List<Dropdown.Option>
+    private IReadOnlyList<Dropdown.Option> TileOptions => new List<Dropdown.Option>
     {
-        new("1", "1× — normal"),
-        new("2", "2× — 2 by 2 tiles"),
-        new("3", "3× — 3 by 3 tiles"),
-        new("4", "4× — 4 by 4 tiles (very small)")
+        new("1", Localizer.T("sky.tile.1")),
+        new("2", Localizer.T("sky.tile.2")),
+        new("3", Localizer.T("sky.tile.3")),
+        new("4", Localizer.T("sky.tile.4"))
     };
 
     private void OnTileChanged(string value)
@@ -705,7 +708,7 @@
             });
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Select a sky image",
+                PickerTitle = Localizer.T("sky.picker.title"),
                 FileTypes = fileTypes
             });
             if (result is not null)
@@ -713,19 +716,19 @@
                 _opts.ImagePath = result.FullPath;
                 try { Preferences.Set("SkyInjectorImagePath", _opts.ImagePath); } catch { }
                 await UpdatePreview();
-                AppendLog($"Image selected: {Path.GetFileName(_opts.ImagePath)}", "info");
+                AppendLog(Localizer.T("sky.log.imageselected", Path.GetFileName(_opts.ImagePath)), "info");
 
                 var ext = Path.GetExtension(_opts.ImagePath);
                 if (!SupportedImageExtensions.Contains(ext))
                 {
-                    AppendConvertXHint($"{ext} files aren't decoded by the built-in image pipeline. Convert it to PNG/JPG/BMP/TGA/WEBP first.");
+                    AppendConvertXHint(Localizer.T("sky.log.undecodable", ext));
                 }
             }
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Sky image picker failed");
-            Notifications.ShowError("Could not open the file picker.");
+            Notifications.ShowError(Localizer.T("sky.toast.pickerfailed"));
         }
     }
 
@@ -733,9 +736,9 @@
     {
         AppendLog(preamble, "warn");
         _logLines.Add(new LogLine(
-            "  Need a quick converter? Try Convert-X (also by CedrickGD):",
+            Localizer.T("sky.log.convertx"),
             "info",
-            ActionLabel: "Open Convert-X on GitHub",
+            ActionLabel: Localizer.T("sky.log.convertx.action"),
             ActionUrl: ConvertXUrl));
     }
 
@@ -752,7 +755,7 @@
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to open URL {Url}", url);
-            Notifications.ShowError($"Couldn't open {url} — copy and paste it into your browser.");
+            Notifications.ShowError(Localizer.T("sky.toast.urlfailed", url));
         }
     }
 
@@ -771,34 +774,34 @@
         {
             _busy = false;
             _lastAction = null;
-            Notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} sky injects). Resets next month — Premium is unlimited.");
+            Notifications.ShowWarning(Localizer.T("sky.limit", gate.Limit));
             return;
         }
         AppendLog(_opts.Mode == SkyInjectionMode.Image
-            ? $"Swapping sky → {Path.GetFileName(_opts.ImagePath)} (tile {_opts.TileSize}x, flip {_opts.FlipVertically})…"
-            : $"Swapping sky → solid color {_opts.HexColor}…", "info");
+            ? Localizer.T("sky.log.swapping.image", Path.GetFileName(_opts.ImagePath), _opts.TileSize, _opts.FlipVertically)
+            : Localizer.T("sky.log.swapping.color", _opts.HexColor), "info");
         try
         {
             // Patches the sky textures by name on disk; the game loads them on the next map load
             // (rejoin / relaunch / next in-game day). No proxy, no injection — safe on any server.
             var result = await Injector.InjectAsync(_opts);
-            AppendResult(result, verbAct: "Patched", verbErr: "errors during inject");
+            AppendResult(result, verbAct: Localizer.T("sky.log.patched"), verbErr: Localizer.T("sky.log.injecterrors"));
             _hasBackup = Injector.HasBackup();
             if (result.Errors.Count == 0 && result.Patched > 0)
             {
-                AppendLog("Rejoin the server or relaunch ARK to see it (or wait for the next in-game day). Won't show at night — that's normal.", "info");
-                Notifications.ShowSuccess($"Sky applied to {result.Patched} file(s) — rejoin or relaunch to see it.");
+                AppendLog(Localizer.T("sky.log.rejoin"), "info");
+                Notifications.ShowSuccess(Localizer.T("sky.toast.applied", result.Patched));
             }
             else if (result.Errors.Count > 0)
             {
-                Notifications.ShowError($"Sky inject completed with {result.Errors.Count} error(s) — see log.");
+                Notifications.ShowError(Localizer.T("sky.toast.injecterrors", result.Errors.Count));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Live sky swap failed");
-            AppendLog($"Swap failed: {ex.Message}", "error");
-            Notifications.ShowError("Sky swap failed — see log.");
+            AppendLog(Localizer.T("sky.log.swapfailed", ex.Message), "error");
+            Notifications.ShowError(Localizer.T("sky.toast.swapfailed"));
         }
         finally
         {
@@ -813,16 +816,16 @@
 
         if (LabSettings.Current.GuardArkProcess && ProcessService.IsProcessRunning("ShooterGame"))
         {
-            AppendLog("ARK is running — file writes may fail or be ignored until you restart.", "warn");
+            AppendLog(Localizer.T("sky.log.arkrunning"), "warn");
         }
 
         _busy = true;
         _lastAction = "restore";
-        AppendLog("Restoring original sky textures from backup…", "info");
+        AppendLog(Localizer.T("sky.log.restoring"), "info");
         try
         {
             var result = await Injector.RestoreAsync();
-            AppendResult(result, verbAct: "Restored", verbErr: "errors during restore");
+            AppendResult(result, verbAct: Localizer.T("sky.log.restored"), verbErr: Localizer.T("sky.log.restoreerrors"));
             _hasBackup = Injector.HasBackup();
             // Restoring the original sky returns the tool to a clean slate — drop the custom image + its preview.
             _opts.ImagePath = null;
@@ -830,14 +833,14 @@
             try { Preferences.Set("SkyInjectorImagePath", ""); } catch { }
             if (result.Errors.Count == 0 && result.Patched > 0)
             {
-                Notifications.ShowSuccess($"Restored {result.Patched} sky texture(s). Restart ARK to see the original.");
+                Notifications.ShowSuccess(Localizer.T("sky.toast.restored", result.Patched));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Restore failed");
-            AppendLog($"Restore failed: {ex.Message}", "error");
-            Notifications.ShowError("Sky restore failed — see log.");
+            AppendLog(Localizer.T("sky.log.restorefailed", ex.Message), "error");
+            Notifications.ShowError(Localizer.T("sky.toast.restorefailed"));
         }
         finally
         {
@@ -848,7 +851,7 @@
 
     private void AppendResult(SkyInjectionResult result, string verbAct, string verbErr)
     {
-        AppendLog($"{verbAct}: {result.Patched} | Skipped: {result.Skipped}", result.Errors.Count == 0 ? "success" : "warn");
+        AppendLog(Localizer.T("sky.log.result", verbAct, result.Patched, result.Skipped), result.Errors.Count == 0 ? "success" : "warn");
         var sawDecodeFailure = false;
         foreach (var err in result.Errors)
         {
@@ -861,11 +864,11 @@
         }
         if (result.Errors.Count > 0)
         {
-            AppendLog($"{result.Errors.Count} {verbErr}.", "warn");
+            AppendLog(Localizer.T("sky.log.errorcount", result.Errors.Count, verbErr), "warn");
         }
         if (sawDecodeFailure)
         {
-            AppendConvertXHint("That image format wasn't decoded.");
+            AppendConvertXHint(Localizer.T("sky.log.formatfailed"));
         }
     }
 

@@ -18,11 +18,13 @@
 @inject IArkLauncher ArkLauncher
 
 @implements IAsyncDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <div class="game-page-container">
     <header class="page-header">
-        <h1 class="page-title">Game Management</h1>
-        <p class="page-subtitle">Control and monitor ARK: Survival Evolved.</p>
+        <h1 class="page-title">@Localizer.T("game.title")</h1>
+        <p class="page-subtitle">@Localizer.T("game.subtitle")</p>
     </header>
 
     @* Launch and Close are the two that do not need the game to already be running the
@@ -33,16 +35,16 @@
                   Label="ARK: Survival Evolved"
                   Description="@StatusDescription">
         <Actions>
-            <button class="btn btn-primary" @onclick="LaunchGame" disabled="@isGameRunning">Launch</button>
-            <button class="btn btn-danger" @onclick="CloseGame" disabled="@IsGameNotRunning()">Close</button>
+            <button class="btn btn-primary" @onclick="LaunchGame" disabled="@isGameRunning">@Localizer.T("game.launch")</button>
+            <button class="btn btn-danger" @onclick="CloseGame" disabled="@IsGameNotRunning()">@Localizer.T("game.close")</button>
         </Actions>
     </StatusHeader>
 
     <div class="game-grid">
 
     <div class="content-card">
-        <h3>In-game commands</h3>
-        <p class="game-note">Typed into the console, so ARK has to be running and the key below has to match the one it opens with.</p>
+        <h3>@Localizer.T("game.commands.title")</h3>
+        <p class="game-note">@Localizer.T("game.commands.note")</p>
         @* Flex, not a stretched grid: buttons keep the width of their own label. Filling
            the card evenly put "Reconnect" in the middle of a 200px box. *@
         <div class="game-actions">
@@ -51,33 +53,33 @@
                     <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.35 0 4.48.9 6.07 2.38" />
                     <polyline points="21 4 21 12 13 12" />
                 </svg>
-                Reconnect
+                @Localizer.T("game.command.reconnect")
             </button>
             <button class="btn btn-secondary" @onclick="ExecuteDisconnect" disabled="@IsGameNotRunning()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
                     <line x1="12" y1="2" x2="12" y2="12" />
                 </svg>
-                Disconnect
+                @Localizer.T("game.command.disconnect")
             </button>
             <button class="btn btn-secondary" @onclick="ExecuteCleanVision" disabled="@IsGameNotRunning()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
                     <circle cx="12" cy="12" r="3" />
                 </svg>
-                Clean Vision
+                @Localizer.T("game.command.cleanvision")
             </button>
             <button class="btn btn-secondary" @onclick="ExecuteDebugStructures" disabled="@IsGameNotRunning()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
-                Debug Structures
+                @Localizer.T("game.command.debugstructures")
             </button>
         </div>
     </div>
 
     <div class="content-card">
-        <h3>Console Hotkey</h3>
+        <h3>@Localizer.T("game.consolekey.title")</h3>
         @* The shared hotkey look, but not the shared HotkeyField: that captures whole
            combinations, and only a single key can be mapped to the virtual-key code this
            page sends. *@
@@ -93,9 +95,9 @@
                    @onkeydown:preventDefault="true"
                    @onkeydown:stopPropagation="true"
                    maxlength="12"
-                   placeholder="Press a key…"
+                   placeholder="@Localizer.T("hotkey.presskey")"
                    readonly />
-            <p class="game-note">Click and press the key that opens the console in ARK. Default is @DefaultConsoleKey.</p>
+            <p class="game-note">@Localizer.T("game.consolekey.note", DefaultConsoleKey)</p>
         </div>
     </div>
 
@@ -103,6 +105,14 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private const byte VK_TAB = 0x09;
     private const byte VK_RETURN = 0x0D;
     private const string DefaultConsoleKey = "TAB";
@@ -152,7 +162,7 @@
 
     /// <summary>Carries what the two labelled boxes used to say, in the one line under the status.</summary>
     private string StatusDescription =>
-        (isGameRunning ? "Running" : "Not running")
+        Localizer.T(isGameRunning ? "game.status.running" : "game.status.notrunning")
         + $" · {Configuration.Value.Ark.GameProcessName} · Steam AppId 346110";
 
     // Helper method for boolean attributes
@@ -343,7 +353,7 @@
             wasUnknown = true;
             if (notify)
             {
-                NotificationService.ShowWarning($"Unknown console key '{rawKey}'. Using {DefaultConsoleKey}.");
+                NotificationService.ShowWarning(Localizer.T("game.consolekey.unknown", rawKey, DefaultConsoleKey));
             }
         }
 
@@ -364,7 +374,7 @@
 
         if (notify && !wasUnknown && !string.Equals(previousKey, consoleKey, StringComparison.OrdinalIgnoreCase))
         {
-            NotificationService.ShowSuccess("New Hotkey Saved");
+            NotificationService.ShowSuccess(Localizer.T("game.consolekey.saved"));
         }
     }
 
@@ -424,12 +434,12 @@
 
     private async Task ExecuteDebugStructures()
     {
-        await ExecuteGameCommand("debugstructures", displayName: "Debug Structures");
+        await ExecuteGameCommand("debugstructures", displayName: Localizer.T("game.command.debugstructures"));
     }
 
     private async Task ExecuteCleanVision()
     {
-        await ExecuteGameCommand(CleanVisionCommand, useClipboard: true, displayName: "Clean Vision");
+        await ExecuteGameCommand(CleanVisionCommand, useClipboard: true, displayName: Localizer.T("game.command.cleanvision"));
     }
 
     private async Task ExecuteGameCommand(string command, bool useClipboard = false, string? displayName = null)
@@ -441,25 +451,25 @@
 
             if (!GameConsole.IsGameRunning)
             {
-                NotificationService.ShowWarning("ARK: Survival Evolved is not running.");
+                NotificationService.ShowWarning(Localizer.T("game.toast.notrunning"));
                 return;
             }
 
             var ok = await GameConsole.SendCommandAsync(command, useClipboard);
             if (ok)
             {
-                NotificationService.ShowSuccess($"Command '{commandLabel}' executed successfully");
-                ActivityService.AddActivity($"Game command executed: {commandLabel}", "success");
+                NotificationService.ShowSuccess(Localizer.T("game.toast.commandsent", commandLabel));
+                ActivityService.AddActivity(Localizer.T("game.activity.commandsent", commandLabel), "success");
             }
             else
             {
-                NotificationService.ShowError($"Failed to send '{commandLabel}'. Try again.");
+                NotificationService.ShowError(Localizer.T("game.toast.commandfailed", commandLabel));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error executing game command: {Command}", command);
-            NotificationService.ShowError($"Error executing command: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("game.toast.commanderror", ex.Message));
         }
 
         StateHasChanged();
@@ -473,7 +483,7 @@
             var launch = ArkLauncher.LaunchNormal();
             if (launch.Ok) NotificationService.ShowSuccess(launch.Message);
             else NotificationService.ShowError(launch.Message);
-            ActivityService.AddActivity(launch.Ok ? "ARK launched via Steam" : "ARK launch failed", launch.Ok ? "success" : "warning");
+            ActivityService.AddActivity(Localizer.T(launch.Ok ? "game.activity.launched" : "game.activity.launchfailed"), launch.Ok ? "success" : "warning");
 
             await Task.Delay(5000);
             CheckGameStatus();
@@ -481,7 +491,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error launching game");
-            NotificationService.ShowError($"Error launching game: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("game.toast.launcherror", ex.Message));
         }
 
         StateHasChanged();
@@ -503,8 +513,8 @@
                 }
 
                 CheckGameStatus();
-                NotificationService.ShowSuccess("ARK: Survival Evolved closed successfully");
-                ActivityService.AddActivity("ARK: Survival Evolved closed", "warning");
+                NotificationService.ShowSuccess(Localizer.T("game.toast.closed"));
+                ActivityService.AddActivity(Localizer.T("game.activity.closed"), "warning");
             }
             finally
             {
@@ -518,7 +528,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error closing game");
-            NotificationService.ShowError($"Error closing game: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("game.toast.closeerror", ex.Message));
         }
 
         StateHasChanged();
