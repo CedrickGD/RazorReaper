@@ -234,7 +234,7 @@
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", command);
             NotificationService.ShowSuccess(Localizer.T("tp.copied", entry.Name));
-            ActivityService.AddActivity(Localizer.T("tp.activity.copied", entry.Name), "info");
+            ActivityService.AddActivity(Localizer.T("tp.activity.copied", entry.Name), "info", "tp.activity.copied");
         }
         catch (Exception ex)
         {

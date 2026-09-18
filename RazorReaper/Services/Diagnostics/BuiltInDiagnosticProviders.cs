@@ -618,10 +618,42 @@ public sealed class FeatureCatalogDiagnosticProvider : IDiagnosticProvider
             ? 0
             : AutomationScripts.Count(script => Safe(() => _preferences.ContainsKey(ScriptPreferenceKey(script.Key)), false));
 
+    /// <summary>
+    /// The key areas whose rows belong to a route. Checked before the English keywords below,
+    /// because a row written in German matches none of those — and a route that cannot find its
+    /// own last row reports nothing at all, not merely a coarser label.
+    /// </summary>
+    private static string[] AreasFor(string route) => route switch
+    {
+        "server" => ["server"],
+        "game" => ["game"],
+        "settings" => ["settings"],
+        "ini-changer" => ["inichanger"],
+        "ini-builder" => ["inibuilder"],
+        "vision" => ["vision"],
+        "launch-options" => ["launch"],
+        "fonts" => ["fonts"],
+        "paintings" => ["paintings"],
+        "custom-lab" => ["customlab"],
+        "loading-screen" => ["loadingscreen"],
+        "char-manager" => ["charmanager"],
+        "stretched-res" => ["stretchedres"],
+        "autoclicker" => ["autoclicker"],
+        "scripts" => ["scripts", "macro", "recorder"],
+        "line-list" => ["linelist"],
+        "steam-mods" => ["steammods"],
+        "desync" => ["desync"],
+        "file-modifier" => ["filemodifier"],
+        "crosshair" => ["crosshair"],
+        "compact-ark" => ["compact"],
+        _ => [],
+    };
+
     private static RazorReaper.Models.ActivityItem? FindRecent(
         string route,
         IReadOnlyList<RazorReaper.Models.ActivityItem> recent)
     {
+        var areas = AreasFor(route);
         var keywords = route switch
         {
             "server" => new[] { "server", "favorite" },
@@ -652,9 +684,12 @@ public sealed class FeatureCatalogDiagnosticProvider : IDiagnosticProvider
             _ => Array.Empty<string>(),
         };
 
-        return keywords.Length == 0
-            ? null
-            : recent.FirstOrDefault(activity => keywords.Any(keyword =>
+        if (areas.Length == 0 && keywords.Length == 0) return null;
+
+        // One pass, so the newest matching row still wins whichever way it matched.
+        return recent.FirstOrDefault(activity =>
+            areas.Any(area => (activity.Key ?? string.Empty).StartsWith(area + ".", StringComparison.Ordinal))
+            || keywords.Any(keyword =>
                 (activity.Title ?? string.Empty).Contains(keyword, StringComparison.OrdinalIgnoreCase)));
     }
 
@@ -662,7 +697,7 @@ public sealed class FeatureCatalogDiagnosticProvider : IDiagnosticProvider
     {
         if (activity is null) return null;
         var operation = route == "desync"
-            ? SettingsOperationsDiagnosticProvider.ClassifyActivity(activity.Title)
+            ? SettingsOperationsDiagnosticProvider.ClassifyActivity(activity)
             : "operation";
         return $"Last {operation}: {NormalizeActivityType(activity.Type)}, {activity.Timestamp.ToUniversalTime():O}";
     }
@@ -799,7 +834,7 @@ public sealed class SettingsOperationsDiagnosticProvider(
                 Key = $"operation_{index + 1}",
                 Label = $"Recent operation {index + 1}",
                 Status = ActivityStatus(activity.Type),
-                Value = ClassifyActivity(activity.Title),
+                Value = ClassifyActivity(activity),
                 Detail = activity.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
             });
         }
@@ -825,6 +860,81 @@ public sealed class SettingsOperationsDiagnosticProvider(
             _ => "unknown",
         };
 
+    /// <summary>
+    /// The privacy-filtered label for one timeline row: what happened, with the name, path,
+    /// command or server address the row was written with left out.
+    /// </summary>
+    /// <remarks>
+    /// Classified off the row's dictionary key, which is the same string in every language. It
+    /// used to be classified off the sentence — by looking for "administrator", "not running" and
+    /// "firewall" in it — so a row written while the app was in German or Chinese fell through to
+    /// the coarse label and the bundle lost the detail exactly for the users hardest to support.
+    /// A row with no key is one written before its caller was migrated; those are still English,
+    /// and <see cref="ClassifyActivity(string?)"/> reads them the old way.
+    /// </remarks>
+    internal static string ClassifyActivity(RazorReaper.Models.ActivityItem? activity)
+        => ClassifyKey(activity?.Key) ?? ClassifyActivity(activity?.Title);
+
+    /// <summary>
+    /// The label a dictionary key maps to, or null when the row carries no key.
+    /// </summary>
+    /// <remarks>
+    /// The area — the key's first segment — is what decides, because that is what the bundle is
+    /// asked about: which feature was last used and whether it worked. Desync is the one area
+    /// spelled out row by row, because its failures are the ones support actually triages.
+    /// </remarks>
+    internal static string? ClassifyKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return null;
+
+        if (key.StartsWith("desync.", StringComparison.Ordinal))
+        {
+            return key switch
+            {
+                "desync.activity.failed.admin" => "Desync failed: administrator required",
+                "desync.activity.failed.notrunning" => "Desync failed: ARK not running",
+                "desync.activity.failed.executable" => "Desync failed: executable unavailable",
+                "desync.activity.failed.rulecreate"
+                    or "desync.activity.failed.ruleremove"
+                    or "desync.activity.failed.autorevert" => "Desync failed: firewall operation",
+                "desync.activity.failed.limit" => "Desync failed: usage limit",
+                "desync.activity.activated" => "Desync activated",
+                "desync.activity.reverted" => "Desync reverted",
+                _ => "Desync operation",
+            };
+        }
+
+        var dot = key.IndexOf('.');
+        var area = dot < 0 ? key : key[..dot];
+
+        return area switch
+        {
+            "autoclicker" => "Autoclicker operation",
+            "scripts" or "macro" or "recorder" => "Automation operation",
+            "stretchedres" => "Resolution operation",
+            "compact" => "Compact ARK operation",
+            "fonts" => "Font operation",
+            "settings" => key.StartsWith("settings.font.", StringComparison.Ordinal)
+                ? "Font operation"
+                : "App operation",
+            "inichanger" or "inibuilder" => "INI operation",
+            "customlab" => "Sky Changer operation",
+            "loadingscreen" => "Loading Screen operation",
+            // File Modifier's rows are all about ARK's own game files, which is also what the
+            // sentence scan used to read out of them ("Removed game file …").
+            "game" or "launch" or "steammods" or "filemodifier" => "ARK operation",
+            "home" => key.StartsWith("home.activity.path", StringComparison.Ordinal)
+                ? "ARK operation"
+                : "App operation",
+            _ => "App operation",
+        };
+    }
+
+    /// <summary>
+    /// The fallback for a row with no key: the English sentence, read for the words it happens to
+    /// contain. Right for an English row, coarse for any other — which is the whole reason rows
+    /// carry a key now.
+    /// </summary>
     internal static string ClassifyActivity(string? title)
     {
         var value = title ?? string.Empty;

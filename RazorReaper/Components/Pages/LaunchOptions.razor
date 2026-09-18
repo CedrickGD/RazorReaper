@@ -134,7 +134,7 @@
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(text);
             NotificationService.ShowSuccess(Localizer.T("launch.toast.copied"));
-            ActivityService.AddActivity(Localizer.T("launch.activity.copied", text), "info");
+            ActivityService.AddActivity(Localizer.T("launch.activity.copied", text), "info", "launch.activity.copied");
         }
         catch (Exception ex)
         {
@@ -153,7 +153,7 @@
             });
 
             NotificationService.ShowSuccess(Localizer.T("launch.toast.opened"));
-            ActivityService.AddActivity(Localizer.T("launch.activity.opened"), "info");
+            ActivityService.AddActivity(Localizer.T("launch.activity.opened"), "info", "launch.activity.opened");
         }
         catch (Exception ex)
         {
@@ -166,7 +166,7 @@
                 });
 
                 NotificationService.ShowWarning(Localizer.T("launch.toast.opened.fallback"));
-                ActivityService.AddActivity(Localizer.T("launch.activity.opened.fallback"), "warning");
+                ActivityService.AddActivity(Localizer.T("launch.activity.opened.fallback"), "warning", "launch.activity.opened.fallback");
             }
             catch
             {

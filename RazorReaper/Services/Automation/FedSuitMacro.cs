@@ -316,7 +316,8 @@ public sealed class FedSuitMacro : IFedSuitMacro
                         cycles == 1 ? "scripts.fed.activity.run.one" : "scripts.fed.activity.run.many",
                         cycles,
                         FormatDuration(elapsed)),
-                    cycles > 0 ? "success" : "warning");
+                    cycles > 0 ? "success" : "warning",
+                    cycles == 1 ? "scripts.fed.activity.run.one" : "scripts.fed.activity.run.many");
             }
             catch { /* notifications/activity are best-effort */ }
 

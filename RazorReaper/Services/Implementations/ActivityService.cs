@@ -27,7 +27,7 @@ public class ActivityService : IActivityService
     }
 
     /// <inheritdoc/>
-    public void AddActivity(string title, string type = "info")
+    public void AddActivity(string title, string type = "info", string? key = null)
     {
         try
         {
@@ -35,6 +35,7 @@ public class ActivityService : IActivityService
             {
                 Title = title,
                 Type = type,
+                Key = key,
                 Timestamp = DateTime.Now
             };
 

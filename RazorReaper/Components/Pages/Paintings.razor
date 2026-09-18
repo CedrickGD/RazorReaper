@@ -402,7 +402,7 @@
             });
 
             NotificationService.ShowSuccess(Localizer.T("paintings.toast.opened"));
-            ActivityService.AddActivity(Localizer.T("paintings.activity.opened"), "success");
+            ActivityService.AddActivity(Localizer.T("paintings.activity.opened"), "success", "paintings.activity.opened");
             StateHasChanged();
         }
         catch (Exception ex)
@@ -448,7 +448,7 @@
             {
                 Directory.CreateDirectory(folderPath);
                 NotificationService.ShowSuccess(Localizer.T("paintings.toast.created"));
-                ActivityService.AddActivity(Localizer.T("paintings.activity.created"), "success");
+                ActivityService.AddActivity(Localizer.T("paintings.activity.created"), "success", "paintings.activity.created");
                 folderExists = true;
                 fileCount = 0;
             }

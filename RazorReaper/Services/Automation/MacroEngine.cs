@@ -187,7 +187,7 @@ public sealed class MacroEngine : IMacroEngine
     {
         foreach (var runner in _runners.Values)
             runner.Stop();
-        try { _activity.AddActivity(_localizer.T("macro.activity.stopall"), "warning"); }
+        try { _activity.AddActivity(_localizer.T("macro.activity.stopall"), "warning", "macro.activity.stopall"); }
         catch { /* activity is best-effort */ }
     }
 
@@ -311,7 +311,7 @@ internal sealed class MacroRunner : IMacroRunner
             CurrentStepIndex = -1;
         }
         RaiseState(MacroRunnerState.Running);
-        TryActivity(_engine.Localizer.T("macro.activity.started", sequence.Name), "info");
+        TryActivity(_engine.Localizer.T("macro.activity.started", sequence.Name), "info", "macro.activity.started");
 
         var sim = _engine.Simulator;
         var token = cts.Token;
@@ -347,24 +347,24 @@ internal sealed class MacroRunner : IMacroRunner
                     await sim.DelayAsync(sequence.LoopDelayMs, sequence.DelayJitter, token);
             }
             completed = true;
-            TryActivity(_engine.Localizer.T("macro.activity.completed", sequence.Name, CurrentLoop), "success");
+            TryActivity(_engine.Localizer.T("macro.activity.completed", sequence.Name, CurrentLoop), "success", "macro.activity.completed");
             return true;
         }
         catch (OperationCanceledException)
         {
-            TryActivity(_engine.Localizer.T("macro.activity.stopped", sequence.Name), "warning");
+            TryActivity(_engine.Localizer.T("macro.activity.stopped", sequence.Name), "warning", "macro.activity.stopped");
             return false;
         }
         catch (InvalidOperationException ex)
         {
             _engine.Logger.LogWarning("Macro '{Name}' aborted: {Reason}", sequence.Name, ex.Message);
-            TryActivity(_engine.Localizer.T("macro.activity.aborted", sequence.Name, ex.Message), "warning");
+            TryActivity(_engine.Localizer.T("macro.activity.aborted", sequence.Name, ex.Message), "warning", "macro.activity.aborted");
             return false;
         }
         catch (Exception ex)
         {
             _engine.Logger.LogError(ex, "Macro '{Name}' failed", sequence.Name);
-            TryActivity(_engine.Localizer.T("macro.activity.failed", sequence.Name), "warning");
+            TryActivity(_engine.Localizer.T("macro.activity.failed", sequence.Name), "warning", "macro.activity.failed");
             return false;
         }
         finally
@@ -446,9 +446,9 @@ internal sealed class MacroRunner : IMacroRunner
         catch { /* subscriber errors must not kill the runner */ }
     }
 
-    private void TryActivity(string title, string type)
+    private void TryActivity(string title, string type, string? key = null)
     {
-        try { _engine.Activity.AddActivity(title, type); }
+        try { _engine.Activity.AddActivity(title, type, key); }
         catch { /* activity is best-effort */ }
     }
 }

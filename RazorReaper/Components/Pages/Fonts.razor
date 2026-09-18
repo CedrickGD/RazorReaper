@@ -278,7 +278,7 @@
     private void SelectFont(string fontType)
     {
         selectedFont = fontType;
-        ActivityService.AddActivity(Localizer.T("fonts.activity.selected", GetFontDisplayName(fontType)), "info");
+        ActivityService.AddActivity(Localizer.T("fonts.activity.selected", GetFontDisplayName(fontType)), "info", "fonts.activity.selected");
         Logger.LogInformation("Font selected: {FontType}", fontType);
     }
 
@@ -369,7 +369,7 @@
                     await InvokeAsync(() =>
                     {
                         NotificationService.ShowSuccess(Localizer.T("fonts.success.installed.global"));
-                        ActivityService.AddActivity(Localizer.T("fonts.activity.global.installed"), "success");
+                        ActivityService.AddActivity(Localizer.T("fonts.activity.global.installed"), "success", "fonts.activity.global.installed");
                         StateHasChanged();
                     });
 
@@ -439,7 +439,7 @@
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess(Localizer.T("fonts.success.downloaded", extractPath, destZipPath));
-                    ActivityService.AddActivity(Localizer.T("fonts.activity.global.downloaded"), "success");
+                    ActivityService.AddActivity(Localizer.T("fonts.activity.global.downloaded"), "success", "fonts.activity.global.downloaded");
                 }), Logger);
 
                 Logger.LogInformation("Global font downloaded to: {Path}", extractPath);
@@ -506,7 +506,7 @@
                 await InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess(Localizer.T("fonts.success.installed.asian"));
-                    ActivityService.AddActivity(Localizer.T("fonts.activity.asian.installed"), "success");
+                    ActivityService.AddActivity(Localizer.T("fonts.activity.asian.installed"), "success", "fonts.activity.asian.installed");
                     StateHasChanged();
                 });
 
@@ -552,7 +552,7 @@
             });
 
             NotificationService.ShowSuccess(Localizer.T("fonts.success.folderopened"));
-            ActivityService.AddActivity(Localizer.T("fonts.activity.folderopened"), "info");
+            ActivityService.AddActivity(Localizer.T("fonts.activity.folderopened"), "info", "fonts.activity.folderopened");
             Logger.LogInformation("Opened font folder: {Path}", fontFolderPath);
         }
         catch (Exception ex)
@@ -569,7 +569,7 @@
             await Clipboard.Default.SetTextAsync("culture=Global");
 
             NotificationService.ShowSuccess(Localizer.T("fonts.success.copied"));
-            ActivityService.AddActivity(Localizer.T("fonts.activity.launchoption.copied"), "success");
+            ActivityService.AddActivity(Localizer.T("fonts.activity.launchoption.copied"), "success", "fonts.activity.launchoption.copied");
             Logger.LogInformation("Launch option copied to clipboard");
         }
         catch (Exception ex)
@@ -586,7 +586,7 @@
             await Clipboard.Default.SetTextAsync("-culture=zh-Hans-CN");
 
             NotificationService.ShowSuccess(Localizer.T("fonts.success.copied"));
-            ActivityService.AddActivity(Localizer.T("fonts.activity.asian.launchoption.copied"), "success");
+            ActivityService.AddActivity(Localizer.T("fonts.activity.asian.launchoption.copied"), "success", "fonts.activity.asian.launchoption.copied");
             Logger.LogInformation("Asian font launch option copied to clipboard");
         }
         catch (Exception ex)
@@ -607,7 +607,7 @@
             await Clipboard.Default.SetTextAsync(pathToCopy);
 
             NotificationService.ShowSuccess(Localizer.T("fonts.success.pathcopied"));
-            ActivityService.AddActivity(Localizer.T("fonts.activity.path.copied"), "success");
+            ActivityService.AddActivity(Localizer.T("fonts.activity.path.copied"), "success", "fonts.activity.path.copied");
             Logger.LogInformation("Font path copied to clipboard: {Path}", pathToCopy);
         }
         catch (Exception ex)
@@ -648,7 +648,7 @@
             });
 
             NotificationService.ShowSuccess(Localizer.T("fonts.success.steamopened"));
-            ActivityService.AddActivity(Localizer.T("fonts.activity.steamopened"), "info");
+            ActivityService.AddActivity(Localizer.T("fonts.activity.steamopened"), "info", "fonts.activity.steamopened");
             Logger.LogInformation("Opened ARK in Steam library");
         }
         catch (Exception ex)

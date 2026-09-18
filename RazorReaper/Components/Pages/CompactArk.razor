@@ -438,13 +438,14 @@
                     compress ? "compact.toast.cancelled.compress" : "compact.toast.cancelled.uncompress"));
                 ActivityService.AddActivity(
                     Localizer.T(compress ? "compact.activity.cancelled.compress" : "compact.activity.cancelled.uncompress"),
-                    "warning");
+                    "warning",
+                    compress ? "compact.activity.cancelled.compress" : "compact.activity.cancelled.uncompress");
                 reanalyze = true;
             }
             else if (!result.Success)
             {
                 NotificationService.ShowError(result.ErrorMessage ?? Localizer.T("compact.toast.failed"));
-                ActivityService.AddActivity(Localizer.T("compact.activity.failed"), "warning");
+                ActivityService.AddActivity(Localizer.T("compact.activity.failed"), "warning", "compact.activity.failed");
             }
             else
             {
@@ -467,12 +468,12 @@
                 {
                     var saved = Math.Max(0, result.LogicalBytes - result.OnDiskBytesAfter);
                     NotificationService.ShowSuccess(Localizer.T("compact.toast.compressed", FormatBytes(saved)));
-                    ActivityService.AddActivity(Localizer.T("compact.activity.compressed", FormatBytes(saved)), "success");
+                    ActivityService.AddActivity(Localizer.T("compact.activity.compressed", FormatBytes(saved)), "success", "compact.activity.compressed");
                 }
                 else
                 {
                     NotificationService.ShowSuccess(Localizer.T("compact.toast.uncompressed"));
-                    ActivityService.AddActivity(Localizer.T("compact.activity.uncompressed"), "success");
+                    ActivityService.AddActivity(Localizer.T("compact.activity.uncompressed"), "success", "compact.activity.uncompressed");
                 }
             }
         }

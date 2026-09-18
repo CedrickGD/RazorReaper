@@ -491,7 +491,7 @@ public sealed class StretchedResMonitorTests
     {
         public event EventHandler<ActivityItem>? ActivityAdded { add { } remove { } }
 
-        public void AddActivity(string title, string type = "info") { }
+        public void AddActivity(string title, string type = "info", string? key = null) { }
         public IReadOnlyList<ActivityItem> GetRecentActivities() => [];
         public void ClearActivities() { }
     }

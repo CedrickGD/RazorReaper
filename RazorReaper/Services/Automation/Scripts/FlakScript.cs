@@ -169,7 +169,7 @@ public sealed class FlakScript : CalibratableScriptBase
 
                 await _input.KeyPressAsync(vk, ct: c);
                 LastSwapUtc = DateTime.UtcNow;
-                TryActivity(Localizer.T("scripts.flak.activity.swapped", slot + 1, value), "success");
+                TryActivity(Localizer.T("scripts.flak.activity.swapped", slot + 1, value), "success", "scripts.flak.activity.swapped");
                 RaiseChanged();
             }
         }, foregroundOnly: true, ct);

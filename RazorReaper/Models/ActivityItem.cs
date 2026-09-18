@@ -23,6 +23,19 @@ public class ActivityItem
     public string Type { get; set; } = "info";
 
     /// <summary>
+    /// The dictionary key <see cref="Title"/> was worded from, or null for a row written before
+    /// its caller was migrated.
+    /// </summary>
+    /// <remarks>
+    /// The row itself keeps the language it was written in — re-deriving the sentence on a
+    /// language switch would mean storing the arguments too, for a list that lives one session.
+    /// What the key buys is the reader nobody sees: the diagnostics bundle classifies a row by
+    /// this instead of by matching English words in <see cref="Title"/>, so a German timeline
+    /// reports the same detail an English one does rather than falling back to a coarse label.
+    /// </remarks>
+    public string? Key { get; set; }
+
+    /// <summary>
     /// How long ago the activity occurred, in the reader's language: "Just now", "5m ago",
     /// "2h ago", "3d ago", or a date like "Jan 15".
     /// </summary>

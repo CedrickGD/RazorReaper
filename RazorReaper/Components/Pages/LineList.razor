@@ -391,7 +391,7 @@
             if (ok)
             {
                 NotificationService.ShowSuccess(Localizer.T("linelist.success.added"));
-                ActivityService.AddActivity(Localizer.T("linelist.activity.added", label), "success");
+                ActivityService.AddActivity(Localizer.T("linelist.activity.added", label), "success", "linelist.activity.added");
             }
         }
         else
@@ -400,7 +400,7 @@
             if (ok)
             {
                 NotificationService.ShowSuccess(Localizer.T("linelist.success.updated"));
-                ActivityService.AddActivity(Localizer.T("linelist.activity.updated", label), "info");
+                ActivityService.AddActivity(Localizer.T("linelist.activity.updated", label), "info", "linelist.activity.updated");
             }
         }
 
@@ -430,7 +430,7 @@
 
             var label = string.IsNullOrWhiteSpace(line.Name) ? line.Species : $"{line.Species} — {line.Name}";
             NotificationService.ShowSuccess(Localizer.T("linelist.success.deleted"));
-            ActivityService.AddActivity(Localizer.T("linelist.activity.deleted", label), "info");
+            ActivityService.AddActivity(Localizer.T("linelist.activity.deleted", label), "info", "linelist.activity.deleted");
         }
         else
         {
@@ -552,7 +552,7 @@
         {
             await Microsoft.Maui.ApplicationModel.DataTransfer.Clipboard.Default.SetTextAsync(post);
             NotificationService.ShowSuccess(Localizer.T("linelist.success.copied"));
-            ActivityService.AddActivity(Localizer.T("linelist.activity.copied"), "info");
+            ActivityService.AddActivity(Localizer.T("linelist.activity.copied"), "info", "linelist.activity.copied");
         }
         catch (Exception ex)
         {

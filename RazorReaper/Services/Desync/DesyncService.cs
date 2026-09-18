@@ -145,14 +145,14 @@ public sealed class DesyncService : IDesyncService
         if (!IsAdministrator)
         {
             _notifications.ShowWarning(_localizer.T("desync.toast.admin"));
-            TryActivity(_localizer.T("desync.activity.failed.admin"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.admin"), "warning", "desync.activity.failed.admin");
             return false;
         }
 
         if (!_process.IsProcessRunning(_config.Value.Ark.GameProcessName))
         {
             _notifications.ShowWarning(_localizer.T("desync.toast.notrunning"));
-            TryActivity(_localizer.T("desync.activity.failed.notrunning"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.notrunning"), "warning", "desync.activity.failed.notrunning");
             return false;
         }
 
@@ -160,7 +160,7 @@ public sealed class DesyncService : IDesyncService
         if (string.IsNullOrWhiteSpace(exePath))
         {
             _notifications.ShowError(_localizer.T("desync.toast.executable"));
-            TryActivity(_localizer.T("desync.activity.failed.executable"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.executable"), "warning", "desync.activity.failed.executable");
             return false;
         }
 
@@ -178,7 +178,7 @@ public sealed class DesyncService : IDesyncService
             _notifications.ShowError(add.Output.Length > 0
                 ? _localizer.T("desync.toast.rulefailed", add.Output)
                 : _localizer.T("desync.toast.rulefailed.elevation"));
-            TryActivity(_localizer.T("desync.activity.failed.rulecreate"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.rulecreate"), "warning", "desync.activity.failed.rulecreate");
             return false;
         }
 
@@ -190,7 +190,7 @@ public sealed class DesyncService : IDesyncService
         {
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
             _notifications.ShowWarning(_localizer.T("desync.toast.limit", quota.Limit));
-            TryActivity(_localizer.T("desync.activity.failed.limit"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.limit"), "warning", "desync.activity.failed.limit");
             return false;
         }
 
@@ -204,7 +204,7 @@ public sealed class DesyncService : IDesyncService
         }
 
         _notifications.ShowSuccess(_localizer.T("desync.toast.active", seconds));
-        TryActivity(_localizer.T("desync.activity.activated", seconds), "warning");
+        TryActivity(_localizer.T("desync.activity.activated", seconds), "warning", "desync.activity.activated");
         TryHud(revertAt);
         RaiseChanged();
 
@@ -231,12 +231,12 @@ public sealed class DesyncService : IDesyncService
         {
             _logger.LogWarning("Desync revert: netsh delete rule reported failure: {Output}", del.Output);
             _notifications.ShowWarning(_localizer.T("desync.toast.removefailed"));
-            TryActivity(_localizer.T("desync.activity.failed.ruleremove"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.ruleremove"), "warning", "desync.activity.failed.ruleremove");
             RaiseChanged();
             return;
         }
         _notifications.ShowInfo(_localizer.T("desync.toast.reverted"));
-        TryActivity(_localizer.T("desync.activity.reverted"), "info");
+        TryActivity(_localizer.T("desync.activity.reverted"), "info", "desync.activity.reverted");
         RaiseChanged();
     }
 
@@ -257,7 +257,7 @@ public sealed class DesyncService : IDesyncService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Desync auto-revert failed — forcing rule removal");
-            TryActivity(_localizer.T("desync.activity.failed.autorevert"), "warning");
+            TryActivity(_localizer.T("desync.activity.failed.autorevert"), "warning", "desync.activity.failed.autorevert");
             await RunNetshAsync($"advfirewall firewall delete rule name=\"{RuleName}\"");
             TryHud(null);
         }
@@ -345,9 +345,9 @@ public sealed class DesyncService : IDesyncService
         catch (Exception ex) { _logger.LogWarning(ex, "Desync Changed subscriber threw"); }
     }
 
-    private void TryActivity(string title, string type)
+    private void TryActivity(string title, string type, string? key = null)
     {
-        try { _activity.AddActivity(title, type); }
+        try { _activity.AddActivity(title, type, key); }
         catch { /* best-effort */ }
     }
 

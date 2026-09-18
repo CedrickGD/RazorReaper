@@ -254,7 +254,7 @@
             if (result.renamed > 0)
             {
                 NotificationService.ShowSuccess(Localizer.T("vision.scope.toast.renamed", result.renamed));
-                ActivityService.AddActivity(Localizer.T("vision.scope.activity.disabled", result.renamed), "success");
+                ActivityService.AddActivity(Localizer.T("vision.scope.activity.disabled", result.renamed), "success", "vision.scope.activity.disabled");
             }
             else if (result.scanned == 0)
             {
@@ -332,7 +332,7 @@
             if (result.restored > 0)
             {
                 NotificationService.ShowSuccess(Localizer.T("vision.scope.toast.restored", result.restored));
-                ActivityService.AddActivity(Localizer.T("vision.scope.activity.restored", result.restored), "info");
+                ActivityService.AddActivity(Localizer.T("vision.scope.activity.restored", result.restored), "info", "vision.scope.activity.restored");
             }
             else if (result.scanned == 0)
             {
@@ -382,7 +382,7 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info", "home.activity.openedfolder");
         }
         catch (Exception ex)
         {

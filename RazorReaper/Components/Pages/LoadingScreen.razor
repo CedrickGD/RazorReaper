@@ -398,7 +398,7 @@
         if (op.Success)
         {
             Notifications.ShowSuccess(op.Message);
-            Activity.AddActivity(Localizer.T("loadingscreen.activity.replaced", movie.DisplayName), "success");
+            Activity.AddActivity(Localizer.T("loadingscreen.activity.replaced", movie.DisplayName), "success", "loadingscreen.activity.replaced");
         }
         else
         {
@@ -418,7 +418,7 @@
             if (op.Success)
             {
                 Notifications.ShowSuccess(op.Message);
-                Activity.AddActivity(Localizer.T("loadingscreen.activity.restored", movie.FileName), "success");
+                Activity.AddActivity(Localizer.T("loadingscreen.activity.restored", movie.FileName), "success", "loadingscreen.activity.restored");
             }
             else
             {
@@ -450,7 +450,7 @@
             if (summary.Failed == 0 && summary.Restored > 0)
             {
                 Notifications.ShowSuccess(Localizer.T("loadingscreen.toast.restoredall", summary.Restored));
-                Activity.AddActivity(Localizer.T("loadingscreen.activity.restoredall", summary.Restored), "success");
+                Activity.AddActivity(Localizer.T("loadingscreen.activity.restoredall", summary.Restored), "success", "loadingscreen.activity.restoredall");
             }
             else if (summary.Failed > 0)
             {

@@ -167,7 +167,7 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
             if (!_running) return;
         }
 
-        _activity.AddActivity(_localizer.T("autoclicker.activity.started", FormatInterval(config)), "success");
+        _activity.AddActivity(_localizer.T("autoclicker.activity.started", FormatInterval(config)), "success", "autoclicker.activity.started");
 
         if (config.Randomize)
         {
@@ -229,7 +229,7 @@ public sealed class AutoClickerRuntime : IAutoClickerRuntime, IDisposable
         }
 
         NextClickTime = null;
-        _activity.AddActivity(_localizer.T("autoclicker.activity.stopped", _clickCount), "info");
+        _activity.AddActivity(_localizer.T("autoclicker.activity.stopped", _clickCount), "info", "autoclicker.activity.stopped");
         RaiseChanged();
     }
 

@@ -131,7 +131,7 @@ public abstract class AutomationScriptBase : IDisposable
         }
 
         Notifications.ShowSuccess(Localizer.T("scripts.toast.started", _displayName));
-        TryActivity(Localizer.T("scripts.activity.started", _displayName), "success");
+        TryActivity(Localizer.T("scripts.activity.started", _displayName), "success", "scripts.activity.started");
         // Start() must stay synchronous (the global hotkey calls it through Toggle), so the
         // quota check trails the start and stops the script again if the month is used up.
         // Vision scripts and stops never count.
@@ -207,7 +207,7 @@ public abstract class AutomationScriptBase : IDisposable
         if (notify)
         {
             Notifications.ShowInfo(Localizer.T("scripts.toast.stopped", _displayName));
-            TryActivity(Localizer.T("scripts.activity.stopped", _displayName), "info");
+            TryActivity(Localizer.T("scripts.activity.stopped", _displayName), "info", "scripts.activity.stopped");
         }
         RaiseChanged();
     }
@@ -352,9 +352,9 @@ public abstract class AutomationScriptBase : IDisposable
         catch (Exception ex) { Logger.LogWarning(ex, "{Script} Changed subscriber threw", _displayName); }
     }
 
-    protected void TryActivity(string title, string type)
+    protected void TryActivity(string title, string type, string? key = null)
     {
-        try { Activity.AddActivity(title, type); }
+        try { Activity.AddActivity(title, type, key); }
         catch { /* activity is best-effort */ }
     }
 

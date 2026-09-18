@@ -207,7 +207,7 @@ public sealed class InputRecorderService : IInputRecorderService
                 return false;
             }
 
-            TryActivity(_localizer.T("recorder.activity.started"), "info");
+            TryActivity(_localizer.T("recorder.activity.started"), "info", "recorder.activity.started");
             RaiseStateChanged();
             return true;
         }
@@ -243,7 +243,7 @@ public sealed class InputRecorderService : IInputRecorderService
             };
         }
 
-        TryActivity(_localizer.T("recorder.activity.stopped", recording.Events.Count), "info");
+        TryActivity(_localizer.T("recorder.activity.stopped", recording.Events.Count), "info", "recorder.activity.stopped");
         RaiseStateChanged();
         return recording;
     }
@@ -465,12 +465,12 @@ public sealed class InputRecorderService : IInputRecorderService
                 }
             }
 
-            TryActivity(_localizer.T("recorder.activity.replaycompleted", displayName), "success");
+            TryActivity(_localizer.T("recorder.activity.replaycompleted", displayName), "success", "recorder.activity.replaycompleted");
             return true;
         }
         catch (OperationCanceledException)
         {
-            TryActivity(_localizer.T("recorder.activity.replaystopped", displayName), "warning");
+            TryActivity(_localizer.T("recorder.activity.replaystopped", displayName), "warning", "recorder.activity.replaystopped");
             return false;
         }
         catch (Exception ex)
@@ -544,7 +544,7 @@ public sealed class InputRecorderService : IInputRecorderService
             var json = JsonSerializer.Serialize(recording, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(tmp, json);
             File.Move(tmp, path, overwrite: true);
-            TryActivity(_localizer.T("recorder.activity.saved", recording.Name), "success");
+            TryActivity(_localizer.T("recorder.activity.saved", recording.Name), "success", "recorder.activity.saved");
             return true;
         }
         catch (Exception ex)
@@ -579,7 +579,7 @@ public sealed class InputRecorderService : IInputRecorderService
             var path = PathFor(SanitizeName(name));
             if (!File.Exists(path)) return false;
             File.Delete(path);
-            TryActivity(_localizer.T("recorder.activity.deleted", name), "info");
+            TryActivity(_localizer.T("recorder.activity.deleted", name), "info", "recorder.activity.deleted");
             return true;
         }
         catch (Exception ex)
@@ -632,9 +632,9 @@ public sealed class InputRecorderService : IInputRecorderService
         catch { /* subscriber errors are not ours */ }
     }
 
-    private void TryActivity(string title, string type)
+    private void TryActivity(string title, string type, string? key = null)
     {
-        try { _activity.AddActivity(title, type); }
+        try { _activity.AddActivity(title, type, key); }
         catch { /* activity is best-effort */ }
     }
 

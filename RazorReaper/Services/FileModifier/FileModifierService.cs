@@ -203,7 +203,7 @@ public sealed class FileModifierService : IFileModifierService
 
                 AddEntry(new FileModEntry(Guid.NewGuid().ToString("N"), relative!, FileModAction.Removed, size, DateTime.UtcNow));
                 _logger.LogInformation("File modifier removed {Relative}", relative);
-                TryActivity(_localizer.T("filemodifier.activity.removed", Path.GetFileName(relative!)), "warning");
+                TryActivity(_localizer.T("filemodifier.activity.removed", Path.GetFileName(relative!)), "warning", "filemodifier.activity.removed");
                 return new FileModResult(true, _localizer.T("filemodifier.result.removed", Path.GetFileName(relative!)));
             }
             catch (OperationCanceledException) { throw; }
@@ -260,7 +260,7 @@ public sealed class FileModifierService : IFileModifierService
                     AddEntry(new FileModEntry(Guid.NewGuid().ToString("N"), relative!, FileModAction.Replaced, originalSize, DateTime.UtcNow));
                 }
                 _logger.LogInformation("File modifier replaced {Relative}", relative);
-                TryActivity(_localizer.T("filemodifier.activity.replaced", Path.GetFileName(relative!)), "warning");
+                TryActivity(_localizer.T("filemodifier.activity.replaced", Path.GetFileName(relative!)), "warning", "filemodifier.activity.replaced");
                 return new FileModResult(true, _localizer.T("filemodifier.result.replaced", Path.GetFileName(relative!)));
             }
             catch (OperationCanceledException) { throw; }
@@ -492,7 +492,7 @@ public sealed class FileModifierService : IFileModifierService
             }
 
             if (freed > 0)
-                TryActivity(_localizer.T("filemodifier.activity.freed", FormatBytes(freed)), "success");
+                TryActivity(_localizer.T("filemodifier.activity.freed", FormatBytes(freed)), "success", "filemodifier.activity.freed");
 
             var message = failures == 0
                 ? _localizer.T("filemodifier.result.freed", FormatBytes(freed))
@@ -606,9 +606,9 @@ public sealed class FileModifierService : IFileModifierService
         catch (Exception ex) { _logger.LogWarning(ex, "FileModifier Changed subscriber threw"); }
     }
 
-    private void TryActivity(string title, string type)
+    private void TryActivity(string title, string type, string? key = null)
     {
-        try { _activity.AddActivity(title, type); }
+        try { _activity.AddActivity(title, type, key); }
         catch { /* best-effort */ }
     }
 

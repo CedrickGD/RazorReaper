@@ -615,7 +615,7 @@
         updateTimer.Start();
 
         // Add initial activity
-        ActivityService.AddActivity(Localizer.T("home.activity.loaded"), "success");
+        ActivityService.AddActivity(Localizer.T("home.activity.loaded"), "success", "home.activity.loaded");
 
         // Start resource monitoring in background to prevent UI blocking
         _ = Task.Run(() => StartResourceMonitoring());
@@ -1807,7 +1807,7 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", Path.GetFileName(path)), "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", Path.GetFileName(path)), "info", "home.activity.openedfolder");
             Logger.LogInformation("Opened folder in explorer: {Path}", path);
         }
         catch (Exception ex)
@@ -1867,7 +1867,7 @@
             }
 
             NotificationService.ShowSuccess(Localizer.T("home.paths.saved"));
-            ActivityService.AddActivity(Localizer.T("home.activity.pathset", arkInstallPath), "success");
+            ActivityService.AddActivity(Localizer.T("home.activity.pathset", arkInstallPath), "success", "home.activity.pathset");
             Logger.LogInformation("Custom ARK path saved: {Path}", arkInstallPath);
 
             StateHasChanged();
@@ -1893,7 +1893,7 @@
             customArkPath = "";
 
             NotificationService.ShowSuccess(Localizer.T("home.paths.resetdone"));
-            ActivityService.AddActivity(Localizer.T("home.activity.pathreset"), "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.pathreset"), "info", "home.activity.pathreset");
 
             StateHasChanged();
         }

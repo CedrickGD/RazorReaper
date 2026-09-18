@@ -151,7 +151,7 @@ public sealed class CalibrationService : ICalibrationService
             }
 
             _notifications.ShowSuccess(_localizer.T("scripts.cal.toast.pointcaptured", point.Name, point.X, point.Y));
-            _activity.AddActivity(_localizer.T("scripts.cal.activity.pointcaptured", point.Name), "success");
+            _activity.AddActivity(_localizer.T("scripts.cal.activity.pointcaptured", point.Name), "success", "scripts.cal.activity.pointcaptured");
             return point;
         }
         catch (OperationCanceledException)
@@ -233,7 +233,7 @@ public sealed class CalibrationService : ICalibrationService
                 region.Name,
                 region.Right - region.Left,
                 region.Bottom - region.Top));
-            _activity.AddActivity(_localizer.T("scripts.cal.activity.regioncaptured", region.Name), "success");
+            _activity.AddActivity(_localizer.T("scripts.cal.activity.regioncaptured", region.Name), "success", "scripts.cal.activity.regioncaptured");
             return region;
         }
         catch (OperationCanceledException)

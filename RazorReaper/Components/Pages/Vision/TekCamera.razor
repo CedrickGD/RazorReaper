@@ -231,7 +231,7 @@
                     bUseOldThirdPersonCameraTrace = true;
                     bUseOldThirdPersonCameraOffset = true;
                     NotificationService.ShowSuccess(Localizer.T("vision.tek.toast.enabled"));
-                    ActivityService.AddActivity(Localizer.T("vision.tek.toast.enabled"), "success");
+                    ActivityService.AddActivity(Localizer.T("vision.tek.toast.enabled"), "success", "vision.tek.toast.enabled");
                     StateHasChanged();
                 }));
             });
@@ -269,7 +269,7 @@
                     bUseOldThirdPersonCameraTrace = false;
                     bUseOldThirdPersonCameraOffset = false;
                     NotificationService.ShowWarning(Localizer.T("vision.tek.toast.disabled"));
-                    ActivityService.AddActivity(Localizer.T("vision.tek.toast.disabled"), "warning");
+                    ActivityService.AddActivity(Localizer.T("vision.tek.toast.disabled"), "warning", "vision.tek.toast.disabled");
                     StateHasChanged();
                 }));
             });
@@ -308,7 +308,7 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info", "home.activity.openedfolder");
         }
         catch (Exception ex)
         {

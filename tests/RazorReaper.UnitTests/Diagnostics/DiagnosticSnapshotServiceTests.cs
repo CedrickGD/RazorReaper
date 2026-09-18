@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
@@ -6,6 +7,7 @@ using RazorReaper.Models;
 using RazorReaper.Navigation;
 using RazorReaper.Services;
 using RazorReaper.Services.Diagnostics;
+using RazorReaper.Services.Localization;
 using RazorReaper.Services.Media;
 using RazorReaper.UnitTests.Infrastructure;
 
@@ -107,6 +109,66 @@ public sealed class DiagnosticSnapshotServiceTests
         Assert.Equal("Desync failed: administrator required", SettingsOperationsDiagnosticProvider.ClassifyActivity(
             "Desync failed: administrator required"));
     }
+
+    /// <summary>
+    /// The bundle's whole point is that someone who cannot reproduce the problem can read what
+    /// happened. Classifying the row by the words in its sentence only ever worked for a reader
+    /// whose app was in English: the same failure written in German matched none of the three
+    /// words the classifier looked for and arrived as the bare "Desync operation", so the users
+    /// hardest to support were the ones whose bundle said least.
+    ///
+    /// The row carries its dictionary key now, which is the same string in every language. These
+    /// four are the ones German loses — "administrator" and "firewall" survive translation by
+    /// luck, "ARK not running", "executable", "activated" and "revert" do not — so each case
+    /// asserts both halves: the key gives the precise label in both languages, and the German
+    /// sentence on its own still degrades, which is what the key is there to stop mattering.
+    /// </summary>
+    [Theory]
+    [InlineData("desync.activity.failed.notrunning", "Desync failed: ARK not running")]
+    [InlineData("desync.activity.failed.executable", "Desync failed: executable unavailable")]
+    [InlineData("desync.activity.activated", "Desync activated")]
+    [InlineData("desync.activity.reverted", "Desync reverted")]
+    public void AGermanTimelineRowClassifiesAsPreciselyAsTheEnglishOne(string key, string expected)
+    {
+        var localizer = new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US"));
+        var english = Row(key, localizer.T(key, 30));
+
+        localizer.SetLanguage(AppLanguages.German);
+        var german = Row(key, localizer.T(key, 30));
+
+        Assert.NotEqual(english.Title, german.Title);
+        Assert.Equal(expected, SettingsOperationsDiagnosticProvider.ClassifyActivity(english));
+        Assert.Equal(expected, SettingsOperationsDiagnosticProvider.ClassifyActivity(german));
+
+        // What the old reading of the same row gives, and why it is only a fallback now.
+        Assert.Equal("Desync operation", SettingsOperationsDiagnosticProvider.ClassifyActivity(german.Title));
+    }
+
+    /// <summary>
+    /// And through the provider itself, because the classifier being right is no use if the row
+    /// never reaches it: the per-route lookup matched English words too, so a German timeline
+    /// reported no last operation at all rather than a coarse one.
+    /// </summary>
+    [Fact]
+    public async Task TheBundleReportsAGermanRowsOperationRatherThanNothing()
+    {
+        var localizer = new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US"));
+        localizer.SetLanguage(AppLanguages.German);
+
+        var provider = new SettingsOperationsDiagnosticProvider(
+            new FakePreferencesStore(),
+            new StubActivityService(
+                [Row("desync.activity.failed.notrunning", localizer.T("desync.activity.failed.notrunning"))]),
+            Options.Create(new AppConfiguration()));
+
+        var report = await provider.CaptureAsync(new DiagnosticCaptureContext("troubleshoot"));
+
+        var operation = Assert.Single(report.Checks, check => check.Key == "operation_1");
+        Assert.Equal("Desync failed: ARK not running", operation.Value);
+    }
+
+    private static ActivityItem Row(string key, string title)
+        => new() { Title = title, Key = key, Type = "warning", Timestamp = DateTime.Now };
 
     [Fact]
     public async Task FullFeatureManifestFitsBudgetWithoutDroppingUsefulRouteValues()
@@ -254,7 +316,7 @@ public sealed class DiagnosticSnapshotServiceTests
     {
         public event EventHandler<ActivityItem>? ActivityAdded { add { } remove { } }
 
-        public void AddActivity(string title, string type = "info") => throw new NotSupportedException();
+        public void AddActivity(string title, string type = "info", string? key = null) => throw new NotSupportedException();
         public IReadOnlyList<ActivityItem> GetRecentActivities() => activities;
         public void ClearActivities() => throw new NotSupportedException();
     }

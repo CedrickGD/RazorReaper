@@ -459,7 +459,7 @@
             if (ok)
             {
                 NotificationService.ShowSuccess(Localizer.T("game.toast.commandsent", commandLabel));
-                ActivityService.AddActivity(Localizer.T("game.activity.commandsent", commandLabel), "success");
+                ActivityService.AddActivity(Localizer.T("game.activity.commandsent", commandLabel), "success", "game.activity.commandsent");
             }
             else
             {
@@ -483,7 +483,7 @@
             var launch = ArkLauncher.LaunchNormal();
             if (launch.Ok) NotificationService.ShowSuccess(launch.Message);
             else NotificationService.ShowError(launch.Message);
-            ActivityService.AddActivity(Localizer.T(launch.Ok ? "game.activity.launched" : "game.activity.launchfailed"), launch.Ok ? "success" : "warning");
+            ActivityService.AddActivity(Localizer.T(launch.Ok ? "game.activity.launched" : "game.activity.launchfailed"), launch.Ok ? "success" : "warning", launch.Ok ? "game.activity.launched" : "game.activity.launchfailed");
 
             await Task.Delay(5000);
             CheckGameStatus();
@@ -514,7 +514,7 @@
 
                 CheckGameStatus();
                 NotificationService.ShowSuccess(Localizer.T("game.toast.closed"));
-                ActivityService.AddActivity(Localizer.T("game.activity.closed"), "warning");
+                ActivityService.AddActivity(Localizer.T("game.activity.closed"), "warning", "game.activity.closed");
             }
             finally
             {

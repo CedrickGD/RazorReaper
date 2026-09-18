@@ -848,13 +848,13 @@
                 existing.CurrentMap = currentServer.CurrentMap;
                 existing.Version = currentServer.Version;
                 NotificationService.ShowSuccess(Localizer.T("server.success.updated", currentServer.Name));
-                ActivityService.AddActivity(Localizer.T("server.activity.updated", currentServer.Name), "info");
+                ActivityService.AddActivity(Localizer.T("server.activity.updated", currentServer.Name), "info", "server.activity.updated");
             }
             else
             {
                 servers.Add(currentServer);
                 NotificationService.ShowSuccess(Localizer.T("server.success.saved", currentServer.Name, servers.Count));
-                ActivityService.AddActivity(Localizer.T("server.activity.saved", currentServer.Name), "success");
+                ActivityService.AddActivity(Localizer.T("server.activity.saved", currentServer.Name), "success", "server.activity.saved");
             }
 
             await SaveServersToStorage();
@@ -870,7 +870,7 @@
     {
         servers.Remove(server);
         await SaveServersToStorage();
-        ActivityService.AddActivity(Localizer.T("server.activity.removed", server.Name), "warning");
+        ActivityService.AddActivity(Localizer.T("server.activity.removed", server.Name), "warning", "server.activity.removed");
         if (selectedServer == server)
         {
             selectedServer = null;
@@ -888,7 +888,7 @@
             var steamUrl = $"steam://run/346110//+connect {currentServer.IpAddress}:{currentServer.Port}";
             await JSRuntime.InvokeVoidAsync("window.open", steamUrl, "_blank");
             NotificationService.ShowSuccess(Localizer.T("server.success.launching"));
-            ActivityService.AddActivity(Localizer.T("server.activity.connecting", currentServer.Name, currentServer.IpAddress), "success");
+            ActivityService.AddActivity(Localizer.T("server.activity.connecting", currentServer.Name, currentServer.IpAddress), "success", "server.activity.connecting");
         }
         catch (Exception ex)
         {
@@ -1109,7 +1109,8 @@
             {
                 ActivityService.AddActivity(
                     Localizer.T(added == 1 ? "server.bulk.activity.one" : "server.bulk.activity.many", added),
-                    "success");
+                    "success",
+                    added == 1 ? "server.bulk.activity.one" : "server.bulk.activity.many");
             }
         }
         catch (Exception ex)

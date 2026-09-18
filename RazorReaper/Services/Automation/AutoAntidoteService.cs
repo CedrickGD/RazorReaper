@@ -224,7 +224,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         }
 
         _notifications.ShowSuccess(_localizer.T("scripts.antidote.toast.watching"));
-        TryActivity(_localizer.T("scripts.antidote.activity.started"), "success");
+        TryActivity(_localizer.T("scripts.antidote.activity.started"), "success", "scripts.antidote.activity.started");
         RaiseChanged();
         return true;
     }
@@ -260,7 +260,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         if (notify)
         {
             _notifications.ShowInfo(_localizer.T("scripts.antidote.toast.stopped"));
-            TryActivity(_localizer.T("scripts.antidote.activity.stopped"), "info");
+            TryActivity(_localizer.T("scripts.antidote.activity.stopped"), "info", "scripts.antidote.activity.stopped");
         }
         RaiseChanged();
     }
@@ -315,7 +315,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
             _sampler.CaptureReference(ReferenceKey, region);
             _lastMatchPercent = null;
             _notifications.ShowSuccess(_localizer.T("scripts.antidote.toast.referencecaptured"));
-            TryActivity(_localizer.T("scripts.antidote.activity.referencecaptured"), "success");
+            TryActivity(_localizer.T("scripts.antidote.activity.referencecaptured"), "success", "scripts.antidote.activity.referencecaptured");
             RaiseChanged();
             return true;
         }
@@ -470,7 +470,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
                 {
                     StopCore(notify: false);
                     _notifications.ShowWarning(_localizer.T("scripts.antidote.toast.noregion"));
-                    TryActivity(_localizer.T("scripts.antidote.activity.noregion"), "warning");
+                    TryActivity(_localizer.T("scripts.antidote.activity.noregion"), "warning", "scripts.antidote.activity.noregion");
                     return;
                 }
 
@@ -566,7 +566,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         _triggerCount++;
         _lastTriggerAt = DateTime.Now;
         RaiseChanged();
-        TryActivity(_localizer.T("scripts.antidote.activity.triggered", _triggerCount), "info");
+        TryActivity(_localizer.T("scripts.antidote.activity.triggered", _triggerCount), "info", "scripts.antidote.activity.triggered");
 
         var presses = Math.Clamp(Settings.BurstPresses, 1, MaxBurstPresses);
         var delay = Math.Clamp(Settings.BurstDelayMs, 0, MaxBurstDelayMs);
@@ -588,7 +588,7 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         }, ct);
 
         if (!completed && !ct.IsCancellationRequested)
-            TryActivity(_localizer.T("scripts.antidote.activity.burstfailed"), "warning");
+            TryActivity(_localizer.T("scripts.antidote.activity.burstfailed"), "warning", "scripts.antidote.activity.burstfailed");
 
         var cooldown = Math.Clamp(Settings.CooldownSeconds, 0, MaxCooldownSeconds);
         if (cooldown > 0)
@@ -756,9 +756,9 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         catch (Exception ex) { _logger.LogWarning(ex, "Auto Antidote Changed subscriber threw"); }
     }
 
-    private void TryActivity(string title, string type)
+    private void TryActivity(string title, string type, string? key = null)
     {
-        try { _activity.AddActivity(title, type); }
+        try { _activity.AddActivity(title, type, key); }
         catch { /* activity is best-effort */ }
     }
 

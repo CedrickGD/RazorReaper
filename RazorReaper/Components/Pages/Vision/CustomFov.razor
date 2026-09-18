@@ -273,7 +273,7 @@
 
             currentFov = targetValue;
             NotificationService.ShowSuccess(Localizer.T("vision.fov.toast.set", targetValue.ToString("F2", CultureInfo.InvariantCulture)));
-            ActivityService.AddActivity(Localizer.T("vision.fov.activity.applied", targetValue.ToString("F2", CultureInfo.InvariantCulture)), "success");
+            ActivityService.AddActivity(Localizer.T("vision.fov.activity.applied", targetValue.ToString("F2", CultureInfo.InvariantCulture)), "success", "vision.fov.activity.applied");
         }
         catch (Exception ex)
         {
@@ -320,7 +320,7 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", path), "info", "home.activity.openedfolder");
         }
         catch (Exception ex)
         {

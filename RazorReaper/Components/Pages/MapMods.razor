@@ -603,7 +603,7 @@
         {
             await Clipboard.Default.SetTextAsync(spot.SetPlayerPos);
             NotificationService.ShowSuccess(Localizer.T("mapmods.toast.copied"));
-            ActivityService.AddActivity(Localizer.T("mapmods.activity.copied", spot.Name), "info");
+            ActivityService.AddActivity(Localizer.T("mapmods.activity.copied", spot.Name), "info", "mapmods.activity.copied");
         }
         catch (Exception ex)
         {

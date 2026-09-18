@@ -333,7 +333,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity(Localizer.T("charmanager.activity.renamed", _renameValue.Trim()), "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.renamed", _renameValue.Trim()), "success", "charmanager.activity.renamed");
                 if (_editorFile == fileName) CloseEditor();
                 CancelRename();
             }
@@ -367,7 +367,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity(Localizer.T("charmanager.activity.duplicated", preset.Name), "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.duplicated", preset.Name), "success", "charmanager.activity.duplicated");
             }
             else
             {
@@ -411,7 +411,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity(Localizer.T("charmanager.activity.deleted", preset.Name), "warning");
+                Activity.AddActivity(Localizer.T("charmanager.activity.deleted", preset.Name), "warning", "charmanager.activity.deleted");
                 if (_editorFile == preset.FileName) CloseEditor();
             }
             else
@@ -468,7 +468,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity(Localizer.T("charmanager.activity.imported"), "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.imported"), "success", "charmanager.activity.imported");
             }
             else
             {
@@ -512,7 +512,7 @@
             if (result.Success)
             {
                 Notifications.ShowSuccess(result.Message);
-                Activity.AddActivity(Localizer.T("charmanager.activity.exported", preset.Name), "success");
+                Activity.AddActivity(Localizer.T("charmanager.activity.exported", preset.Name), "success", "charmanager.activity.exported");
             }
             else
             {
@@ -623,7 +623,8 @@
                 Notifications.ShowSuccess(result.Message);
                 Activity.AddActivity(
                     Localizer.T("charmanager.activity.edited", Path.GetFileNameWithoutExtension(_document.FileName)),
-                    "success");
+                    "success",
+                    "charmanager.activity.edited");
                 _originalValues = _document.ColorSliders.Concat(_document.BoneSliders).Select(s => s.Value).ToList();
                 _editorDirty = false;
             }
