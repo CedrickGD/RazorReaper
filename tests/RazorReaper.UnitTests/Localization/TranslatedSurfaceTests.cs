@@ -66,7 +66,52 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Shared/SharedNavbar.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            "Welcome, @userName",
+            "ARK: Survival Evolved Configuration & Server Management Tool",
+            "<h3>Status</h3>",
+            "<h3>Storage</h3>",
+            "<h3>System Resources</h3>",
+            "<h3>Hardware</h3>",
+            ">Recent Activity</h3>",
+            ">Clear All</button>",
+            "<h3>Sound Settings</h3>",
+            "Control UI click and notification audio.",
+            "<h3>System Paths</h3>",
+        })
+        {
+            data.Add("Components/Pages/Home.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Page not found",
+            "Back to Home",
+            "This link points at a page RazorReaper no longer has.",
+        })
+        {
+            data.Add("Components/Pages/NotFound.razor", literal);
+        }
+
         return data;
+    }
+
+    /// <summary>
+    /// The English these surfaces used to spell out, pinned where it moved to. Layout tests used
+    /// to assert this wording against the razor files; it is a dictionary entry now, and it still
+    /// may not drift by accident.
+    /// </summary>
+    [Theory]
+    [InlineData("settings.title", "Settings")]
+    [InlineData("settings.updates.description", "Updates install themselves and restart the app. There is no opt-out.")]
+    [InlineData("notfound.title", "Page not found")]
+    [InlineData("notfound.back", "Back to Home")]
+    [InlineData("nav.page.feedback", "Feedback & Support")]
+    public void TheEnglishWordingIsWhatItWas(string key, string expected)
+    {
+        Assert.True(TranslationParityTests.Read("en").TryGetValue(key, out var english), $"missing {key}");
+        Assert.Equal(expected, english);
     }
 
     [Theory]

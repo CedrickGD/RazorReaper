@@ -90,8 +90,10 @@ public sealed class AccountNavigationTests
         // The component it points at exists, is not routable, and offers the way back.
         var page = File.ReadAllText(ComponentPath("Pages", "NotFound.razor"));
         Assert.False(Regex.IsMatch(page, @"^@page\b", RegexOptions.Multiline), "NotFound.razor must not be routable.");
-        Assert.Contains("<h1 class=\"page-title\">Page not found</h1>", page, StringComparison.Ordinal);
-        Assert.Contains("<a class=\"rr-pill-btn ghost sm\" href=\"/home\">Back to Home</a>", page, StringComparison.Ordinal);
+        // Translated since c6184d9: the wording itself lives in Resources/i18n, and
+        // TranslatedSurfaceTests holds the English to what it was.
+        Assert.Contains("<h1 class=\"page-title\">@Localizer.T(\"notfound.title\")</h1>", page, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"rr-pill-btn ghost sm\" href=\"/home\">@Localizer.T(\"notfound.back\")</a>", page, StringComparison.Ordinal);
     }
 
     private static string ComponentPath(string folder, string file)
