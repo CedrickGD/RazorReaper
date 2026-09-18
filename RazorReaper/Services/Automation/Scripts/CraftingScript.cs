@@ -190,10 +190,31 @@ public sealed class CraftingScript : CalibratableScriptBase
         RaiseChanged();
     }
 
+    /// <summary>
+    /// Drops an access key that was saved from the stock table's old wrong answer. That table said
+    /// "E" for Access Inventory while ARK's own DefaultInput.ini says F, and <see cref="SaveSettings"/>
+    /// writes every field — so changing the ping or the scan interval was enough to persist the E,
+    /// on every install from 1.4.9 to 1.5.2 whose Input.ini did not happen to list AccessInventory.
+    /// Once, and only for that exact value: a player who really did pick E keeps it from then on,
+    /// and one whose ARK is genuinely bound to E gets E straight back from the scan.
+    /// </summary>
+    private static void DropAccessKeySavedFromTheOldStockTable()
+    {
+        const string repaired = $"{Key}.accesskey.rechecked";
+        if (Preferences.ContainsKey(repaired)) return;
+
+        if (Preferences.Get($"{Key}.accesskey", string.Empty) == "E")
+            Preferences.Remove($"{Key}.accesskey");
+
+        Preferences.Set(repaired, true);
+    }
+
     private void LoadSettings()
     {
         try
         {
+            DropAccessKeySavedFromTheOldStockTable();
+
             var mode = Preferences.Get($"{Key}.mode", (int)CraftingMode.Watcher);
             Mode = Enum.IsDefined(typeof(CraftingMode), mode) ? (CraftingMode)mode : CraftingMode.Watcher;
             // "Use" is what actually starts a craft on the highlighted recipe; the access key is
