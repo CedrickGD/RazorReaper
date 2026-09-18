@@ -1,3 +1,5 @@
+using RazorReaper.Services.Localization;
+
 namespace RazorReaper.Models;
 
 /// <summary>
@@ -21,21 +23,25 @@ public class ActivityItem
     public string Type { get; set; } = "info";
 
     /// <summary>
-    /// Gets a human-readable representation of how long ago the activity occurred.
+    /// How long ago the activity occurred, in the reader's language: "Just now", "5m ago",
+    /// "2h ago", "3d ago", or a date like "Jan 15".
     /// </summary>
-    /// <returns>A string like "Just now", "5m ago", "2h ago", "3d ago", or a date like "Jan 15".</returns>
-    public string GetTimeAgo()
+    /// <remarks>
+    /// Resolved on read rather than stored. An item sits in the list for the life of the
+    /// session, so a stored wording would be as stale as the age it describes.
+    /// </remarks>
+    public string GetTimeAgo(ILocalizer localizer)
     {
         var span = DateTime.Now - Timestamp;
 
         if (span.TotalSeconds < 60)
-            return "Just now";
+            return localizer.T("activity.justnow");
         if (span.TotalMinutes < 60)
-            return $"{(int)span.TotalMinutes}m ago";
+            return localizer.T("activity.minutes", (int)span.TotalMinutes);
         if (span.TotalHours < 24)
-            return $"{(int)span.TotalHours}h ago";
+            return localizer.T("activity.hours", (int)span.TotalHours);
         if (span.TotalDays < 7)
-            return $"{(int)span.TotalDays}d ago";
+            return localizer.T("activity.days", (int)span.TotalDays);
 
         return Timestamp.ToString("MMM dd");
     }

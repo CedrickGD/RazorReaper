@@ -43,35 +43,35 @@
                 </div>
                 <div class="status-grid">
                     <div class="system-item">
-                        <div class="system-label">System uptime</div>
+                        <div class="system-label">@Localizer.T("home.status.uptime")</div>
                         <div class="system-value">@systemUptime</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">App session</div>
+                        <div class="system-label">@Localizer.T("home.status.session")</div>
                         <div class="system-value">@appSessionDuration</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">Network</div>
-                        <div class="system-value">@wifiName</div>
+                        <div class="system-label">@Localizer.T("home.status.network")</div>
+                        <div class="system-value">@(wifiName ?? Localizer.T("home.status.notconnected"))</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">Signal</div>
-                        <div class="system-value">@wifiSignalStrength</div>
+                        <div class="system-label">@Localizer.T("home.status.signal")</div>
+                        <div class="system-value">@(wifiSignalStrength ?? Localizer.T("common.na"))</div>
                     </div>
                     @* Came back from the old Local Time card. The clock itself is in the
                        title bar now, but these three don't tick — they're reference, and
                        reference belongs in the status block. *@
                     <div class="system-item status-item-wide">
-                        <div class="system-label">Timezone</div>
+                        <div class="system-label">@Localizer.T("home.status.timezone")</div>
                         <div class="system-value">@timeZoneInfo</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">UTC offset</div>
+                        <div class="system-label">@Localizer.T("home.status.utcoffset")</div>
                         <div class="system-value">@utcOffset</div>
                     </div>
                     <div class="system-item">
-                        <div class="system-label">Week</div>
-                        <div class="system-value">@weekNumber of @currentTime.Year</div>
+                        <div class="system-label">@Localizer.T("home.status.week")</div>
+                        <div class="system-value">@Localizer.T("home.status.week.value", weekNumber, currentTime.Year)</div>
                     </div>
                 </div>
             </div>
@@ -87,13 +87,13 @@
                     <h3>@Localizer.T("home.storage.title")</h3>
                 </div>
                 <div class="storage-summary">
-                    <span class="storage-label">Installed Drives</span>
+                    <span class="storage-label">@Localizer.T("home.storage.drives")</span>
                     <span class="storage-value">@driveCount</span>
                 </div>
                 <div class="drive-list">
                     @if (driveInfos.Count == 0)
                     {
-                        <div class="drive-empty">Drive info unavailable</div>
+                        <div class="drive-empty">@Localizer.T("home.storage.unavailable")</div>
                     }
                     else
                     {
@@ -106,7 +106,7 @@
                                     <span class="drive-format">@drive.FileSystem</span>
                                 </div>
                                 <div class="drive-meta">
-                                    <span>@drive.UsedPercent% used</span>
+                                    <span>@Localizer.T("home.storage.used", drive.UsedPercent)</span>
                                     <span>@FormatBytes(drive.UsedBytes) / @FormatBytes(drive.TotalBytes)</span>
                                 </div>
                                 <div class="drive-bar">
@@ -116,7 +116,7 @@
                         }
                         if (driveInfos.Count > MaxDriveCards)
                         {
-                            <div class="drive-more">+@(driveInfos.Count - MaxDriveCards) more drives</div>
+                            <div class="drive-more">@Localizer.T("home.storage.more", driveInfos.Count - MaxDriveCards)</div>
                         }
                     }
                 </div>
@@ -135,7 +135,7 @@
                         <div class="resource-usage">
                             <div class="resource-item">
                                 <div class="resource-header">
-                                    <span class="resource-label">CPU Usage</span>
+                                    <span class="resource-label">@Localizer.T("home.resources.cpu")</span>
                                     <span class="resource-value">@cpuUsage%</span>
                                 </div>
                                 <div class="resource-bar">
@@ -146,7 +146,7 @@
                             {
                                 <div class="resource-item">
                                     <div class="resource-header">
-                                        <span class="resource-label">GPU Usage</span>
+                                        <span class="resource-label">@Localizer.T("home.resources.gpu")</span>
                                         <span class="resource-value">@gpuUsage%</span>
                                     </div>
                                     <div class="resource-bar">
@@ -156,7 +156,7 @@
                             }
                             <div class="resource-item">
                                 <div class="resource-header">
-                                    <span class="resource-label">RAM Usage</span>
+                                    <span class="resource-label">@Localizer.T("home.resources.ram")</span>
                                     <span class="resource-value">@ramUsage%</span>
                                 </div>
                                 <div class="resource-bar">
@@ -165,11 +165,11 @@
                             </div>
                             <div class="resource-info">
                                 <div class="resource-detail">
-                                    <span>Total Memory:</span>
+                                    <span>@Localizer.T("home.resources.total")</span>
                                     <span>@ramUsedGB GB / @ramTotalGB GB</span>
                                 </div>
                                 <div class="resource-detail">
-                                    <span>App Usage:</span>
+                                    <span>@Localizer.T("home.resources.app")</span>
                                     <span>@processMemoryMB MB</span>
                                 </div>
                             </div>
@@ -182,7 +182,7 @@
                                 <svg fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                                 </svg>
-                                <p>Initializing system monitoring...</p>
+                                <p>@Localizer.T("home.resources.initializing")</p>
                             </div>
                         </div>
                     }
@@ -198,16 +198,16 @@
                 </div>
                 <div class="hardware-info">
                     <div class="hardware-item">
-                        <div class="hardware-label">CPU</div>
-                        <div class="hardware-value">@cpuName</div>
+                        <div class="hardware-label">@Localizer.T("home.hardware.cpu")</div>
+                        <div class="hardware-value">@(cpuName ?? Localizer.T("common.unknown"))</div>
                     </div>
                     <div class="hardware-item">
-                        <div class="hardware-label">GPU</div>
-                        <div class="hardware-value">@gpuName</div>
+                        <div class="hardware-label">@Localizer.T("home.hardware.gpu")</div>
+                        <div class="hardware-value">@(gpuName ?? Localizer.T("common.unknown"))</div>
                     </div>
                     <div class="hardware-item">
-                        <div class="hardware-label">Motherboard</div>
-                        <div class="hardware-value">@motherboardName</div>
+                        <div class="hardware-label">@Localizer.T("home.hardware.motherboard")</div>
+                        <div class="hardware-value">@(motherboardName ?? Localizer.T("common.unknown"))</div>
                     </div>
                 </div>
             </div>
@@ -226,7 +226,7 @@
                         <svg fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                         </svg>
-                        <p>No recent activity</p>
+                        <p>@Localizer.T("home.activity.empty")</p>
                     </div>
                 }
                 else
@@ -261,7 +261,7 @@
                                     </div>
                                     <div class="timeline-body">
                                         <div class="timeline-title">@activity.Title</div>
-                                        <div class="timeline-time">@activity.GetTimeAgo()</div>
+                                        <div class="timeline-time">@activity.GetTimeAgo(Localizer)</div>
                                     </div>
                                 </div>
                             </div>
@@ -279,14 +279,14 @@
                 </div>
                 <div class="collapsible-actions">
                     <span class="sound-toggle sound-toggle-master">
-                        <CheckBox Value="soundsEnabled" ValueChanged="SetSoundsEnabledAsync">Enable UI sounds</CheckBox>
+                        <CheckBox Value="soundsEnabled" ValueChanged="SetSoundsEnabledAsync">@Localizer.T("home.sound.enable")</CheckBox>
                     </span>
                     <button type="button"
                             class="collapsible-toggle"
                             @onclick="ToggleSoundSettings"
                             aria-expanded="@isSoundSettingsOpen"
                             aria-controls="sound-settings-content">
-                        <span class="collapsible-toggle-label">@(isSoundSettingsOpen ? "Collapse" : "Expand")</span>
+                        <span class="collapsible-toggle-label">@Localizer.T(isSoundSettingsOpen ? "common.collapse" : "common.expand")</span>
                         <svg class="collapsible-toggle-icon" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
                         </svg>
@@ -297,60 +297,60 @@
                 <div class="sound-settings-grid">
                     <div class="sound-setting">
                         <div class="sound-setting-header">
-                            <span class="sound-setting-title">Notification Sound</span>
+                            <span class="sound-setting-title">@Localizer.T("home.sound.notification")</span>
                             <span class="sound-toggle sound-toggle-inline">
-                                <CheckBox Value="notificationSoundEnabled" ValueChanged="SetNotificationSoundEnabledAsync">Enabled</CheckBox>
+                                <CheckBox Value="notificationSoundEnabled" ValueChanged="SetNotificationSoundEnabledAsync">@Localizer.T("home.sound.on")</CheckBox>
                             </span>
                         </div>
                         <div class="sound-setting-body">
                             <div class="sound-source">
-                                <span class="sound-source-label">Current</span>
-                                <span class="sound-source-value">@notificationSoundLabel</span>
+                                <span class="sound-source-label">@Localizer.T("home.sound.current")</span>
+                                <span class="sound-source-value">@SoundDisplay(notificationSoundCustom, notificationSoundLabel, Localizer.T("home.sound.default.notification"))</span>
                             </div>
                             <div class="sound-actions">
-                                <label class="btn-small sound-upload-button" for="notificationSoundUpload">Upload</label>
+                                <label class="btn-small sound-upload-button" for="notificationSoundUpload">@Localizer.T("home.sound.upload")</label>
                                 <InputFile id="notificationSoundUpload"
                                            class="sound-upload-input"
                                            OnChange="HandleNotificationSoundUpload"
                                            accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
-                                <button class="btn-small" @onclick="ResetNotificationSound">Reset</button>
-                                <button class="btn-small" data-sound-skip="true" @onclick="PlayNotificationPreview">Test</button>
+                                <button class="btn-small" @onclick="ResetNotificationSound">@Localizer.T("common.reset")</button>
+                                <button class="btn-small" data-sound-skip="true" @onclick="PlayNotificationPreview">@Localizer.T("home.sound.test")</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="sound-setting">
                         <div class="sound-setting-header">
-                            <span class="sound-setting-title">Click Sound</span>
+                            <span class="sound-setting-title">@Localizer.T("home.sound.click")</span>
                             <span class="sound-toggle sound-toggle-inline">
-                                <CheckBox Value="clickSoundEnabled" ValueChanged="SetClickSoundEnabledAsync">Enabled</CheckBox>
+                                <CheckBox Value="clickSoundEnabled" ValueChanged="SetClickSoundEnabledAsync">@Localizer.T("home.sound.on")</CheckBox>
                             </span>
                         </div>
                         <div class="sound-setting-body">
                             <div class="sound-source">
-                                <span class="sound-source-label">Current</span>
-                                <span class="sound-source-value">@clickSoundLabel</span>
+                                <span class="sound-source-label">@Localizer.T("home.sound.current")</span>
+                                <span class="sound-source-value">@SoundDisplay(clickSoundCustom, clickSoundLabel, Localizer.T("home.sound.default.click"))</span>
                             </div>
                             <div class="sound-actions">
-                                <label class="btn-small sound-upload-button" for="clickSoundUpload">Upload</label>
+                                <label class="btn-small sound-upload-button" for="clickSoundUpload">@Localizer.T("home.sound.upload")</label>
                                 <InputFile id="clickSoundUpload"
                                            class="sound-upload-input"
                                            OnChange="HandleClickSoundUpload"
                                            accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" />
-                                <button class="btn-small" @onclick="ResetClickSound">Reset</button>
-                                <button class="btn-small" data-sound-skip="true" @onclick="PlayClickPreview">Test</button>
+                                <button class="btn-small" @onclick="ResetClickSound">@Localizer.T("common.reset")</button>
+                                <button class="btn-small" data-sound-skip="true" @onclick="PlayClickPreview">@Localizer.T("home.sound.test")</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="sound-folder">
                     <div class="sound-folder-info">
-                        <div class="sound-folder-label">Custom sounds folder</div>
+                        <div class="sound-folder-label">@Localizer.T("home.sound.folder")</div>
                         <div class="sound-folder-path">@customSoundFolderDisplay</div>
                     </div>
-                    <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">Open Folder</button>
+                    <button class="btn-small" @onclick="OpenCustomSoundFolder" disabled="@(!customSoundFolderAvailable)">@Localizer.T("home.sound.openfolder")</button>
                 </div>
-                <div class="sound-folder-note">Supports MP3, WAV, OGG, M4A, AAC. Keep files under @MaxSoundFileMb MB for fast playback.</div>
+                <div class="sound-folder-note">@Localizer.T("home.sound.formats", MaxSoundFileMb)</div>
             </div>
         </div>
 
@@ -363,7 +363,7 @@
                         <svg fill="currentColor" viewBox="0 0 20 20" style="width: 14px; height: 14px;">
                             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                         </svg>
-                        Change ARK Path
+                        @Localizer.T("home.paths.change")
                     </button>
                 }
             </div>
@@ -376,8 +376,8 @@
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                         </svg>
                         <div>
-                            <p>Set a custom ARK installation path. This will be used for all file operations.</p>
-                            <p class="path-edit-hint">Paste the ARK install folder (contains ShooterGame). Config/INI files live in:</p>
+                            <p>@Localizer.T("home.paths.edit.lede")</p>
+                            <p class="path-edit-hint">@Localizer.T("home.paths.edit.hint")</p>
                             <div class="path-edit-path">@GetConfigPathHint(customArkPath)</div>
                         </div>
                     </div>
@@ -389,19 +389,19 @@
                             <svg fill="currentColor" viewBox="0 0 20 20" style="width: 16px; height: 16px;">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                             </svg>
-                            Save Path
+                            @Localizer.T("home.paths.save")
                         </button>
                         <button class="btn btn-secondary" @onclick="CancelEditingArkPath">
                             <svg fill="currentColor" viewBox="0 0 20 20" style="width: 16px; height: 16px;">
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
-                            Cancel
+                            @Localizer.T("common.cancel")
                         </button>
                         <button class="btn btn-secondary" @onclick="ResetToAutoDetect">
                             <svg fill="currentColor" viewBox="0 0 20 20" style="width: 16px; height: 16px;">
                                 <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
                             </svg>
-                            Auto-Detect
+                            @Localizer.T("home.paths.autodetect")
                         </button>
                     </div>
                 </div>
@@ -416,8 +416,8 @@
                             </svg>
                         </div>
                         <div class="path-details">
-                            <div class="path-label">ARK Installation</div>
-                            <div class="path-value">@(string.IsNullOrEmpty(arkInstallPath) ? "Not found" : arkInstallPath)</div>
+                            <div class="path-label">@Localizer.T("home.paths.install")</div>
+                            <div class="path-value">@(string.IsNullOrEmpty(arkInstallPath) ? Localizer.T("home.paths.notfound") : arkInstallPath)</div>
                         </div>
                     </div>
                     <div class="path-action">
@@ -435,8 +435,8 @@
                             </svg>
                         </div>
                         <div class="path-details">
-                            <div class="path-label">Config Directory</div>
-                            <div class="path-value">@(string.IsNullOrEmpty(configPath) ? "Not found" : configPath)</div>
+                            <div class="path-label">@Localizer.T("home.paths.config")</div>
+                            <div class="path-value">@(string.IsNullOrEmpty(configPath) ? Localizer.T("home.paths.notfound") : configPath)</div>
                         </div>
                     </div>
                     <div class="path-action">
@@ -494,11 +494,14 @@
     private static readonly TimeSpan StorageRefreshInterval = TimeSpan.FromSeconds(20);
 
     // WiFi and hardware info
-    private string wifiName = "Not Connected";
-    private string wifiSignalStrength = "N/A";
-    private string cpuName = "Unknown";
-    private string gpuName = "Unknown";
-    private string motherboardName = "Unknown";
+    // Null is "not read yet / not available". These are written by timers on pool threads and
+    // read on the renderer, and the wording is resolved where they are rendered — a field holding
+    // "Unknown" would stay English until the next 10- or 20-second refresh after a switch.
+    private string? wifiName;
+    private string? wifiSignalStrength;
+    private string? cpuName;
+    private string? gpuName;
+    private string? motherboardName;
 
     // ARK Path Management
     private string arkInstallPath = "";
@@ -514,8 +517,10 @@
     private bool clickSoundEnabled = true;
     private bool notificationSoundCustom = false;
     private bool clickSoundCustom = false;
-    private string notificationSoundLabel = DefaultNotificationLabel;
-    private string clickSoundLabel = DefaultClickLabel;
+    // Only meaningful while the matching *Custom flag is set; the default's name is a
+    // dictionary entry, resolved where the row renders.
+    private string notificationSoundLabel = "";
+    private string clickSoundLabel = "";
     private string notificationSoundSource = DefaultNotificationSound;
     private string clickSoundSource = DefaultClickSound;
     private string customSoundFolderPath = "";
@@ -523,8 +528,6 @@
     private bool customSoundFolderAvailable = false;
     private const string DefaultNotificationSound = "assets/sounds/notify.mp3";
     private const string DefaultClickSound = "assets/sounds/globalclick.mp3";
-    private const string DefaultNotificationLabel = "Default (Notify)";
-    private const string DefaultClickLabel = "Default (Global Click)";
     private const string CustomSoundFolderRelative = @"wwwroot\assets\sounds\custom";
     private const long MaxSoundFileBytes = 2 * 1024 * 1024;
     private const int MaxSoundFileMb = 2;
@@ -593,7 +596,7 @@
         updateTimer.Start();
 
         // Add initial activity
-        ActivityService.AddActivity("Dashboard loaded", "success");
+        ActivityService.AddActivity(Localizer.T("home.activity.loaded"), "success");
 
         // Start resource monitoring in background to prevent UI blocking
         _ = Task.Run(() => StartResourceMonitoring());
@@ -697,25 +700,18 @@
             ? DefaultClickSound
             : settings.ClickSource;
 
-        notificationSoundLabel = ResolveSoundLabel(
-            settings.NotificationLabel,
-            notificationSoundCustom,
-            DefaultNotificationLabel);
-        clickSoundLabel = ResolveSoundLabel(
-            settings.ClickLabel,
-            clickSoundCustom,
-            DefaultClickLabel);
+        notificationSoundLabel = settings.NotificationLabel?.Trim() ?? "";
+        clickSoundLabel = settings.ClickLabel?.Trim() ?? "";
     }
 
-    private static string ResolveSoundLabel(string? label, bool isCustom, string fallback)
-    {
-        if (!string.IsNullOrWhiteSpace(label))
-        {
-            return label;
-        }
-
-        return isCustom ? "Custom" : fallback;
-    }
+    /// <summary>
+    /// What the "Current" row reads. The two built-in sounds have no file name to show, so they
+    /// are named from the dictionary here rather than stored under an English one; an uploaded
+    /// file keeps the name the user gave it, in any language.
+    /// </summary>
+    private string SoundDisplay(bool isCustom, string label, string defaultName)
+        => !isCustom ? defaultName
+            : string.IsNullOrWhiteSpace(label) ? Localizer.T("home.sound.customfile") : label;
 
     private void ResolveCustomSoundFolder()
     {
@@ -738,7 +734,7 @@
     {
         if (!customSoundFolderAvailable)
         {
-            NotificationService.ShowError("Custom sound folder not found.");
+            NotificationService.ShowError(Localizer.T("home.sound.folder.missing"));
             return;
         }
 
@@ -755,20 +751,20 @@
 
         if (!IsSupportedSoundFile(file))
         {
-            NotificationService.ShowWarning("Unsupported audio format. Use MP3, WAV, OGG, M4A, or AAC.");
+            NotificationService.ShowWarning(Localizer.T("home.sound.error.format"));
             return;
         }
 
         if (file.Size > MaxSoundFileBytes)
         {
-            NotificationService.ShowWarning($"Sound file too large. Max size is {MaxSoundFileMb} MB.");
+            NotificationService.ShowWarning(Localizer.T("home.sound.error.toolarge", MaxSoundFileMb));
             return;
         }
 
         var dataUrl = await ReadSoundFileAsDataUrl(file);
         if (string.IsNullOrWhiteSpace(dataUrl))
         {
-            NotificationService.ShowError("Could not read the sound file.");
+            NotificationService.ShowError(Localizer.T("home.sound.error.read"));
             return;
         }
 
@@ -777,7 +773,7 @@
         notificationSoundCustom = true;
 
         await PersistSoundSettingsAsync();
-        NotificationService.ShowSuccess("Notification sound updated");
+        NotificationService.ShowSuccess(Localizer.T("home.sound.updated.notification"));
     }
 
     private async Task HandleClickSoundUpload(InputFileChangeEventArgs args)
@@ -790,20 +786,20 @@
 
         if (!IsSupportedSoundFile(file))
         {
-            NotificationService.ShowWarning("Unsupported audio format. Use MP3, WAV, OGG, M4A, or AAC.");
+            NotificationService.ShowWarning(Localizer.T("home.sound.error.format"));
             return;
         }
 
         if (file.Size > MaxSoundFileBytes)
         {
-            NotificationService.ShowWarning($"Sound file too large. Max size is {MaxSoundFileMb} MB.");
+            NotificationService.ShowWarning(Localizer.T("home.sound.error.toolarge", MaxSoundFileMb));
             return;
         }
 
         var dataUrl = await ReadSoundFileAsDataUrl(file);
         if (string.IsNullOrWhiteSpace(dataUrl))
         {
-            NotificationService.ShowError("Could not read the sound file.");
+            NotificationService.ShowError(Localizer.T("home.sound.error.read"));
             return;
         }
 
@@ -812,7 +808,7 @@
         clickSoundCustom = true;
 
         await PersistSoundSettingsAsync();
-        NotificationService.ShowSuccess("Click sound updated");
+        NotificationService.ShowSuccess(Localizer.T("home.sound.updated.click"));
     }
 
     private async Task<string?> ReadSoundFileAsDataUrl(IBrowserFile file)
@@ -867,7 +863,7 @@
     private async Task ResetNotificationSound()
     {
         notificationSoundSource = DefaultNotificationSound;
-        notificationSoundLabel = DefaultNotificationLabel;
+        notificationSoundLabel = "";
         notificationSoundCustom = false;
 
         await PersistSoundSettingsAsync();
@@ -876,7 +872,7 @@
     private async Task ResetClickSound()
     {
         clickSoundSource = DefaultClickSound;
-        clickSoundLabel = DefaultClickLabel;
+        clickSoundLabel = "";
         clickSoundCustom = false;
 
         await PersistSoundSettingsAsync();
@@ -1395,7 +1391,7 @@
                 {
                     Logger.LogDebug(ex, "WiFi detection output read did not complete");
                     wifiName = "Timed Out";
-                    wifiSignalStrength = "N/A";
+                    wifiSignalStrength = null;
                     return;
                 }
 
@@ -1403,7 +1399,7 @@
                 {
                     Logger.LogDebug("WiFi detection timed out");
                     wifiName = "Timed Out";
-                    wifiSignalStrength = "N/A";
+                    wifiSignalStrength = null;
                     return;
                 }
 
@@ -1415,7 +1411,7 @@
                 if (output.Contains("There is no wireless interface on the system", StringComparison.OrdinalIgnoreCase))
                 {
                     wifiName = "No WiFi Adapter";
-                    wifiSignalStrength = "N/A";
+                    wifiSignalStrength = null;
                     return;
                 }
 
@@ -1424,8 +1420,8 @@
                 bool foundWifi = false;
                 string state = string.Empty;
 
-                wifiName = "Not Connected";
-                wifiSignalStrength = "N/A";
+                wifiName = null;
+                wifiSignalStrength = null;
 
                 foreach (var line in lines)
                 {
@@ -1448,7 +1444,7 @@
                             wifiName = parts[1].Trim();
                             if (string.IsNullOrWhiteSpace(wifiName))
                             {
-                                wifiName = "Not Connected";
+                                wifiName = null;
                             }
                             else
                             {
@@ -1470,8 +1466,8 @@
                     state.Equals("disconnecting", StringComparison.OrdinalIgnoreCase) ||
                     state.Equals("not ready", StringComparison.OrdinalIgnoreCase))
                 {
-                    wifiName = "Not Connected";
-                    wifiSignalStrength = "N/A";
+                    wifiName = null;
+                    wifiSignalStrength = null;
                     Logger.LogDebug("WiFi adapter is present but not connected");
                     return;
                 }
@@ -1489,14 +1485,14 @@
             {
                 Logger.LogDebug("Failed to start netsh process - WiFi detection unavailable");
                 wifiName = "Unable to detect";
-                wifiSignalStrength = "N/A";
+                wifiSignalStrength = null;
             }
         }
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "Could not detect WiFi information (this is normal for Ethernet-only systems)");
             wifiName = "Not Available";
-            wifiSignalStrength = "N/A";
+            wifiSignalStrength = null;
         }
     }
 
@@ -1511,7 +1507,7 @@
                 {
                     foreach (ManagementObject processor in searcher.Get())
                     {
-                        cpuName = processor["Name"]?.ToString()?.Trim() ?? "Unknown";
+                        cpuName = processor["Name"]?.ToString()?.Trim();
                         break;
                     }
                 }
@@ -1519,7 +1515,7 @@
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "Could not detect CPU name");
-                cpuName = "Unknown";
+                cpuName = null;
             }
 
             // Get GPU name - works for NVIDIA, AMD, Intel, and all GPU brands
@@ -1544,7 +1540,7 @@
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "Could not detect GPU name");
-                gpuName = "Unknown";
+                gpuName = null;
             }
 
             // Get Motherboard name
@@ -1559,7 +1555,7 @@
                         motherboardName = $"{manufacturer} {product}".Trim();
                         if (string.IsNullOrWhiteSpace(motherboardName))
                         {
-                            motherboardName = "Unknown";
+                            motherboardName = null;
                         }
                         break;
                     }
@@ -1568,7 +1564,7 @@
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "Could not detect motherboard name");
-                motherboardName = "Unknown";
+                motherboardName = null;
             }
 
             Logger.LogInformation("Hardware detected: CPU={CPU}, GPU={GPU}, Motherboard={Motherboard}", cpuName, gpuName, motherboardName);
@@ -1775,7 +1771,7 @@
         {
             if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
             {
-                NotificationService.ShowError("Path does not exist");
+                NotificationService.ShowError(Localizer.T("home.paths.error.missing"));
                 return;
             }
 
@@ -1786,12 +1782,12 @@
                 UseShellExecute = true
             });
 
-            ActivityService.AddActivity($"Opened folder: {Path.GetFileName(path)}", "info");
+            ActivityService.AddActivity(Localizer.T("home.activity.openedfolder", Path.GetFileName(path)), "info");
             Logger.LogInformation("Opened folder in explorer: {Path}", path);
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Failed to open folder: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.open", ex.Message));
             Logger.LogError(ex, "Error opening folder in explorer");
         }
     }
@@ -1817,19 +1813,19 @@
             var normalizedPath = NormalizeCustomArkPath(customArkPath, out var wasAdjusted);
             if (string.IsNullOrWhiteSpace(normalizedPath))
             {
-                NotificationService.ShowError("Please enter a valid ARK installation path");
+                NotificationService.ShowError(Localizer.T("home.paths.error.empty"));
                 return;
             }
 
             if (!Directory.Exists(normalizedPath))
             {
-                NotificationService.ShowError("The specified directory does not exist");
+                NotificationService.ShowError(Localizer.T("home.paths.error.nodir"));
                 return;
             }
 
             if (!ArkPathProvider.IsValidArkPath(normalizedPath))
             {
-                NotificationService.ShowError("This doesn't appear to be a valid ARK installation. Paste the folder that contains ShooterGame.");
+                NotificationService.ShowError(Localizer.T("home.paths.error.notark"));
                 return;
             }
 
@@ -1842,18 +1838,18 @@
 
             if (wasAdjusted)
             {
-                NotificationService.ShowInfo($"Detected a subfolder. Using ARK install root: {arkInstallPath}");
+                NotificationService.ShowInfo(Localizer.T("home.paths.adjusted", arkInstallPath));
             }
 
-            NotificationService.ShowSuccess("Custom ARK path saved successfully");
-            ActivityService.AddActivity($"ARK path set to: {arkInstallPath}", "success");
+            NotificationService.ShowSuccess(Localizer.T("home.paths.saved"));
+            ActivityService.AddActivity(Localizer.T("home.activity.pathset", arkInstallPath), "success");
             Logger.LogInformation("Custom ARK path saved: {Path}", arkInstallPath);
 
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error saving path: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.save", ex.Message));
             Logger.LogError(ex, "Error saving custom ARK path");
         }
     }
@@ -1871,14 +1867,14 @@
             isEditingArkPath = false;
             customArkPath = "";
 
-            NotificationService.ShowSuccess("Reset to auto-detect mode");
-            ActivityService.AddActivity("ARK path reset to auto-detect", "info");
+            NotificationService.ShowSuccess(Localizer.T("home.paths.resetdone"));
+            ActivityService.AddActivity(Localizer.T("home.activity.pathreset"), "info");
 
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            NotificationService.ShowError($"Error resetting path: {ex.Message}");
+            NotificationService.ShowError(Localizer.T("home.paths.error.reset", ex.Message));
             Logger.LogError(ex, "Error resetting to auto-detect");
         }
     }
