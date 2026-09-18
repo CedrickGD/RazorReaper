@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services;
+using RazorReaper.Services.Localization;
 using RazorReaper.Services.Media;
 
 namespace RazorReaper.Services
@@ -118,18 +119,24 @@ namespace RazorReaper.Services.Implementations
         private readonly IArkPathProvider _arkPathProvider;
         private readonly IFfmpegProvider _ffmpeg;
         private readonly IVideoConverter _converter;
+
+        // The page shows whatever this returns verbatim, so the message is worded here or it is
+        // worded in English — the same reason FeedbackService carries one.
+        private readonly ILocalizer _localizer;
         private readonly string _backupRoot;
 
         public LoadingScreenService(
             ILogger<LoadingScreenService> logger,
             IArkPathProvider arkPathProvider,
             IFfmpegProvider ffmpeg,
-            IVideoConverter converter)
+            IVideoConverter converter,
+            ILocalizer localizer)
         {
             _logger = logger;
             _arkPathProvider = arkPathProvider;
             _ffmpeg = ffmpeg;
             _converter = converter;
+            _localizer = localizer;
             _backupRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "RazorReaper",
@@ -240,18 +247,18 @@ namespace RazorReaper.Services.Implementations
 
                     if (!IsSafeFileName(movieFileName))
                     {
-                        return new MovieOperationResult(false, "Invalid movie file name.");
+                        return new MovieOperationResult(false, _localizer.T("loadingscreen.result.badname"));
                     }
 
                     var targetExtension = Path.GetExtension(movieFileName).ToLowerInvariant();
                     if (!SupportedExtensions.Contains(targetExtension, StringComparer.OrdinalIgnoreCase))
                     {
-                        return new MovieOperationResult(false, $"{movieFileName} is not a supported ARK movie file (.mp4 / .wmv).");
+                        return new MovieOperationResult(false, _localizer.T("loadingscreen.result.unsupported", movieFileName));
                     }
 
                     if (string.IsNullOrWhiteSpace(userFilePath) || !File.Exists(userFilePath))
                     {
-                        return new MovieOperationResult(false, "The selected video file no longer exists.");
+                        return new MovieOperationResult(false, _localizer.T("loadingscreen.result.sourcemissing"));
                     }
 
                     // Basic playability probe: correct container extension + non-empty file.
@@ -259,8 +266,12 @@ namespace RazorReaper.Services.Implementations
                     var userExtension = Path.GetExtension(userFilePath).ToLowerInvariant();
                     if (!string.Equals(userExtension, targetExtension, StringComparison.OrdinalIgnoreCase))
                     {
+                        var picked = string.IsNullOrEmpty(userExtension)
+                            ? _localizer.T("loadingscreen.result.noextension")
+                            : _localizer.T("loadingscreen.result.extensionfile", userExtension);
+
                         return new MovieOperationResult(false,
-                            $"Wrong format: {movieFileName} needs a {targetExtension} file, but you picked a {(string.IsNullOrEmpty(userExtension) ? "file without an extension" : userExtension + " file")}. RazorReaper does not convert videos — pick a {targetExtension} video.");
+                            _localizer.T("loadingscreen.result.wrongformat", movieFileName, targetExtension, picked));
                     }
 
                     long userSize;
@@ -271,18 +282,18 @@ namespace RazorReaper.Services.Implementations
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Could not read size of {FilePath}", userFilePath);
-                        return new MovieOperationResult(false, "The selected video file could not be read.");
+                        return new MovieOperationResult(false, _localizer.T("loadingscreen.result.sourceunreadable"));
                     }
 
                     if (userSize <= 0)
                     {
-                        return new MovieOperationResult(false, "The selected video file is empty (0 bytes).");
+                        return new MovieOperationResult(false, _localizer.T("loadingscreen.result.sourceempty"));
                     }
 
                     var targetPath = Path.Combine(moviesDir, movieFileName);
                     if (string.Equals(Path.GetFullPath(userFilePath), Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase))
                     {
-                        return new MovieOperationResult(false, "That is the game's own video file — pick your replacement video instead.");
+                        return new MovieOperationResult(false, _localizer.T("loadingscreen.result.samefile"));
                     }
 
                     cancellationToken.ThrowIfCancellationRequested();
@@ -295,7 +306,7 @@ namespace RazorReaper.Services.Implementations
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to replace movie {FileName}", movieFileName);
-                    return new MovieOperationResult(false, $"Replacing {movieFileName} failed: {ex.Message}");
+                    return new MovieOperationResult(false, _localizer.T("loadingscreen.result.replacefailed", movieFileName, ex.Message));
                 }
             }, cancellationToken);
         }
@@ -318,17 +329,17 @@ namespace RazorReaper.Services.Implementations
 
                 if (!IsSafeFileName(movieFileName))
                 {
-                    return new MovieOperationResult(false, "Invalid movie file name.");
+                    return new MovieOperationResult(false, _localizer.T("loadingscreen.result.badname"));
                 }
 
                 if (string.IsNullOrWhiteSpace(userFilePath) || !File.Exists(userFilePath))
                 {
-                    return new MovieOperationResult(false, "The selected video file no longer exists.");
+                    return new MovieOperationResult(false, _localizer.T("loadingscreen.result.sourcemissing"));
                 }
 
                 if (!_ffmpeg.IsInstalled)
                 {
-                    return new MovieOperationResult(false, "The video converter isn't ready yet — let ffmpeg finish downloading.");
+                    return new MovieOperationResult(false, _localizer.T("loadingscreen.result.converternotready"));
                 }
 
                 // Work out which container(s) to produce. "Both formats" targets the .mp4 and
@@ -383,8 +394,10 @@ namespace RazorReaper.Services.Implementations
                     }
 
                     progress?.Report(100);
-                    var what = succeeded == 1 ? targets[0] : $"{succeeded} formats of {baseName}";
-                    return new MovieOperationResult(true, $"{what} converted and replaced — plays on the next game start.");
+                    var what = succeeded == 1
+                        ? targets[0]
+                        : _localizer.T("loadingscreen.result.formats", succeeded, baseName);
+                    return new MovieOperationResult(true, _localizer.T("loadingscreen.result.converted", what));
                 }
                 finally
                 {
@@ -399,7 +412,7 @@ namespace RazorReaper.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to convert+replace movie {FileName}", movieFileName);
-                return new MovieOperationResult(false, $"Converting {movieFileName} failed: {ex.Message}");
+                return new MovieOperationResult(false, _localizer.T("loadingscreen.result.convertfailed", movieFileName, ex.Message));
             }
         }
 
@@ -412,7 +425,7 @@ namespace RazorReaper.Services.Implementations
 
             if (!hasBackup && !File.Exists(targetPath))
             {
-                return new MovieOperationResult(false, $"{movieFileName} was not found in the Movies folder, so there is no original to replace.");
+                return new MovieOperationResult(false, _localizer.T("loadingscreen.result.notinfolder", movieFileName));
             }
 
             // Back up the pristine original exactly once. Replacing again later keeps
@@ -427,7 +440,7 @@ namespace RazorReaper.Services.Implementations
             File.Copy(sourcePath, targetPath, overwrite: true);
             _logger.LogInformation("Replaced movie {FileName} from {SourcePath}", movieFileName, sourcePath);
 
-            return new MovieOperationResult(true, $"{movieFileName} replaced — your video plays on the next game start.");
+            return new MovieOperationResult(true, _localizer.T("loadingscreen.result.replaced", movieFileName));
         }
 
         public Task<MovieOperationResult> RestoreAsync(string movieFileName, CancellationToken cancellationToken = default)
@@ -456,7 +469,8 @@ namespace RazorReaper.Services.Implementations
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to enumerate movie backups");
-                    return new MovieRestoreSummary(0, 1, new[] { $"Could not read the backup folder: {ex.Message}" });
+                    return new MovieRestoreSummary(0, 1,
+                        new[] { _localizer.T("loadingscreen.result.backupunreadable", ex.Message) });
                 }
 
                 foreach (var name in backupNames)
@@ -493,13 +507,13 @@ namespace RazorReaper.Services.Implementations
 
                 if (!IsSafeFileName(movieFileName))
                 {
-                    return new MovieOperationResult(false, "Invalid movie file name.");
+                    return new MovieOperationResult(false, _localizer.T("loadingscreen.result.badname"));
                 }
 
                 var backupPath = GetBackupPath(movieFileName);
                 if (!File.Exists(backupPath))
                 {
-                    return new MovieOperationResult(false, $"No backup found for {movieFileName} — it has not been replaced.");
+                    return new MovieOperationResult(false, _localizer.T("loadingscreen.result.nobackup", movieFileName));
                 }
 
                 var targetPath = Path.Combine(moviesDir, movieFileName);
@@ -510,12 +524,12 @@ namespace RazorReaper.Services.Implementations
                 File.Delete(backupPath);
                 _logger.LogInformation("Restored original movie {FileName}", movieFileName);
 
-                return new MovieOperationResult(true, $"{movieFileName} restored to the original.");
+                return new MovieOperationResult(true, _localizer.T("loadingscreen.result.restored", movieFileName));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to restore movie {FileName}", movieFileName);
-                return new MovieOperationResult(false, $"Restoring {movieFileName} failed: {ex.Message}");
+                return new MovieOperationResult(false, _localizer.T("loadingscreen.result.restorefailed", movieFileName, ex.Message));
             }
         }
 
@@ -524,12 +538,12 @@ namespace RazorReaper.Services.Implementations
             var moviesDir = GetMoviesFolderPath();
             if (moviesDir is null)
             {
-                return (null, "ARK installation not found — is the game installed through Steam?");
+                return (null, _localizer.T("loadingscreen.result.noark"));
             }
 
             if (!Directory.Exists(moviesDir))
             {
-                return (null, $"ARK's Movies folder is missing: {moviesDir}");
+                return (null, _localizer.T("loadingscreen.result.nomoviesfolder", moviesDir));
             }
 
             return (moviesDir, null);

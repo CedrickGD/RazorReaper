@@ -2,18 +2,20 @@
 @using Microsoft.Extensions.Logging
 @using RazorReaper.Services
 @using RazorReaper.Services.Media
+@using RazorReaper.Services.Localization
 
 @inject ILoadingScreenService MovieService
 @inject INotificationService Notifications
 @inject IActivityService Activity
 @inject IProcessService ProcessService
 @inject IUsageGateService UsageGate
+@inject ILocalizer Localizer
 @inject ILogger<LoadingScreen> Logger
 
 <div class="loading-screen-page">
     <header class="page-header">
-        <h1 class="page-title">Custom Loading Screen</h1>
-        <p class="page-subtitle">Swap ARK's startup and loading videos for your own — fully reversible.</p>
+        <h1 class="page-title">@Localizer.T("loadingscreen.title")</h1>
+        <p class="page-subtitle">@Localizer.T("loadingscreen.subtitle")</p>
     </header>
 
     @if (!_arkFound)
@@ -24,9 +26,9 @@
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.92c.75 1.334-.214 2.98-1.743 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
             </div>
-            <h3>ARK installation not found</h3>
-            <p>ARK wasn't found through Steam — make sure it's installed, then rescan.</p>
-            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
+            <h3>@Localizer.T("loadingscreen.noark.title")</h3>
+            <p>@Localizer.T("loadingscreen.noark.text")</p>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">@Localizer.T("loadingscreen.rescan")</button>
         </div>
     }
     else if (!_moviesFolderFound)
@@ -37,10 +39,10 @@
                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                 </svg>
             </div>
-            <h3>Movies folder missing</h3>
-            <p>The Movies folder doesn't exist — verify the game files in Steam, then rescan.</p>
+            <h3>@Localizer.T("loadingscreen.nomovies.title")</h3>
+            <p>@Localizer.T("loadingscreen.nomovies.text")</p>
             <p class="ls-empty-path">@_moviesPath</p>
-            <button type="button" class="btn btn-primary" @onclick="Refresh">Rescan</button>
+            <button type="button" class="btn btn-primary" @onclick="Refresh">@Localizer.T("loadingscreen.rescan")</button>
         </div>
     }
     else
@@ -48,12 +50,12 @@
         <StatusHeader State="@HeaderState" Label="@HeaderLabel" Description="@HeaderDescription">
             <Actions>
                 <UsageChip Feature="@UsageFeatures.LoadingScreen" />
-                <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">Rescan</button>
+                <button type="button" class="btn btn-secondary" @onclick="Refresh" disabled="@_busy">@Localizer.T("loadingscreen.rescan")</button>
                 <button type="button"
                         class="btn btn-warning"
                         @onclick="RestoreAllMoviesAsync"
                         disabled="@(_busy || _replacedCount == 0)">
-                    @(_restoringAll ? "Restoring…" : "Restore all")
+                    @Localizer.T(_restoringAll ? "loadingscreen.restoringall" : "loadingscreen.restoreall")
                 </button>
             </Actions>
         </StatusHeader>
@@ -63,18 +65,19 @@
            so this only needs to say where the backups go and where to get the right format. *@
         <div class="ls-info-card">
             <p class="ls-info-text">
-                Pick any video and it is converted to ARK's format for you. Originals are backed up to
-                <code>@_backupFolder</code> and changes apply on the next game start.
-                Wrong format? The <a class="ls-convert-link" href="/convert">Convert</a> page makes the
-                <code>.wmv</code> variant ARK expects alongside the <code>.mp4</code>.
+                @Localizer.T("loadingscreen.info.backup")
+                <code>@_backupFolder</code>
+                @Localizer.T("loadingscreen.info.applies")
+                <a class="ls-convert-link" href="/convert">@Localizer.T("nav.page.convert")</a>
+                @Localizer.T("loadingscreen.info.format")
             </p>
         </div>
 
         <div class="content-card ls-options-card">
             <div class="ls-option-row">
                 <div class="ls-option-label">
-                    <span class="ls-option-title">Audio volume</span>
-                    <span class="ls-option-desc">Applied to the converted video. 100% keeps the original loudness; 0% mutes it.</span>
+                    <span class="ls-option-title">@Localizer.T("loadingscreen.volume.title")</span>
+                    <span class="ls-option-desc">@Localizer.T("loadingscreen.volume.description")</span>
                 </div>
                 <div class="ls-volume">
                     <input type="range" class="ls-slider" min="0" max="200" step="1"
@@ -101,7 +104,7 @@
         <div class="content-card ls-movies-card">
             @if (_movies.Count == 0)
             {
-                <div class="ls-no-movies">No video files found in the Movies folder.</div>
+                <div class="ls-no-movies">@Localizer.T("loadingscreen.nofiles")</div>
             }
             else
             {
@@ -117,26 +120,26 @@
                 <div class="ls-list">
                     @foreach (var group in MovieGroups)
                     {
-                        <div class="ls-group" @key="@("g:" + group.Title)">
-                            <div class="ls-group-title">@group.Title</div>
+                        <div class="ls-group" @key="@("g:" + group.Kind)">
+                            <div class="ls-group-title">@GroupTitle(group.Kind)</div>
                             @foreach (var entry in group.Entries)
                             {
                                 <div class="ls-row @(entry.IsReplaced ? "replaced" : null)" @key="@("m:" + entry.Name)">
                                     <span class="ls-row-name" title="@entry.Name">@entry.Name</span>
                                     @if (entry.IsReplaced)
                                     {
-                                        <span class="ls-badge">Custom</span>
+                                        <span class="ls-badge">@Localizer.T("loadingscreen.badge.custom")</span>
                                     }
                                     <span class="ls-row-size">@entry.SizeLabel</span>
                                     <span class="ls-row-actions">
                                         @if (entry.IsReplaced)
                                         {
                                             <button type="button" class="btn btn-secondary"
-                                                    @onclick="() => RestoreEntryAsync(entry)" disabled="@_busy">Restore</button>
+                                                    @onclick="() => RestoreEntryAsync(entry)" disabled="@_busy">@Localizer.T("loadingscreen.restore")</button>
                                         }
                                         <button type="button" class="btn btn-primary"
                                                 @onclick="() => ReplaceEntryAsync(entry)" disabled="@_busy">
-                                            @(entry.IsReplaced ? "Change" : "Replace")
+                                            @Localizer.T(entry.IsReplaced ? "loadingscreen.change" : "loadingscreen.replace")
                                         </button>
                                     </span>
                                 </div>
@@ -150,6 +153,9 @@
 </div>
 
 @code {
+    [CascadingParameter(Name = "Language")]
+    private string? Language { get; set; }
+
     private List<ArkMovieInfo> _movies = new();
     private string? _moviesPath;
     private string _backupFolder = "";
@@ -165,13 +171,25 @@
     private string _progressLabel = "";
     private int _progressPercent;
 
-    private static readonly (ArkMovieKind Kind, string Title)[] GroupOrder =
+    private static readonly ArkMovieKind[] GroupOrder =
     {
-        (ArkMovieKind.Loading, "Loading screen"),
-        (ArkMovieKind.Startup, "Startup & title"),
-        (ArkMovieKind.Cinematic, "Map cinematics"),
-        (ArkMovieKind.Other, "Other video files"),
+        ArkMovieKind.Loading,
+        ArkMovieKind.Startup,
+        ArkMovieKind.Cinematic,
+        ArkMovieKind.Other,
     };
+
+    /// <summary>
+    /// Resolved where the group heading renders, not where the order is declared: a static
+    /// initializer cannot reach the localizer, and a title baked in once would survive a switch.
+    /// </summary>
+    private string GroupTitle(ArkMovieKind kind) => Localizer.T(kind switch
+    {
+        ArkMovieKind.Loading => "loadingscreen.group.loading",
+        ArkMovieKind.Startup => "loadingscreen.group.startup",
+        ArkMovieKind.Cinematic => "loadingscreen.group.cinematic",
+        _ => "loadingscreen.group.other",
+    });
 
     /// <summary>
     /// One movie and every container it ships in. ARK stores most movies as an .mp4 and a
@@ -192,12 +210,12 @@
         public ArkMovieInfo Primary => Variants[0];
     }
 
-    private IEnumerable<(string Title, List<MovieEntry> Entries)> MovieGroups =>
+    private IEnumerable<(ArkMovieKind Kind, List<MovieEntry> Entries)> MovieGroups =>
         GroupOrder
-            .Select(g => (
-                g.Title,
+            .Select(kind => (
+                Kind: kind,
                 Entries: _movies
-                    .Where(m => m.Kind == g.Kind)
+                    .Where(m => m.Kind == kind)
                     .GroupBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
                     .Select(grp => new MovieEntry(grp.Key, grp.ToList()))
                     .ToList()))
@@ -216,12 +234,12 @@
     private string HeaderState => _replacedCount > 0 ? "warning" : "online";
 
     private string HeaderLabel => _replacedCount > 0
-        ? $"{_replacedCount} of {_movies.Count} videos replaced"
-        : "All original videos intact";
+        ? Localizer.T("loadingscreen.header.replaced", _replacedCount, _movies.Count)
+        : Localizer.T("loadingscreen.header.intact");
 
-    private string HeaderDescription => _replacedCount > 0
-        ? "Custom videos play on the next game start."
-        : "ARK's stock startup and loading videos are untouched.";
+    private string HeaderDescription => Localizer.T(_replacedCount > 0
+        ? "loadingscreen.header.replaced.description"
+        : "loadingscreen.header.intact.description");
 
     protected override void OnInitialized()
     {
@@ -249,7 +267,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load the ARK movie list");
-            Notifications.ShowError("Could not read the ARK Movies folder — see the log for details.");
+            Notifications.ShowError(Localizer.T("loadingscreen.toast.readfailed"));
         }
     }
 
@@ -262,7 +280,7 @@
         {
             if (ProcessService.IsProcessRunning("ShooterGame"))
             {
-                Notifications.ShowWarning("ARK is running — it may lock these files. Close the game if the change fails.");
+                Notifications.ShowWarning(Localizer.T("loadingscreen.toast.arkrunning"));
             }
         }
         catch (Exception ex)
@@ -290,7 +308,7 @@
             });
             var result = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = $"Select a video for {movie.DisplayName}",
+                PickerTitle = Localizer.T("loadingscreen.picker.title", movie.DisplayName),
                 FileTypes = fileTypes
             });
             picked = result?.FullPath;
@@ -298,7 +316,7 @@
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Movie file picker failed");
-            Notifications.ShowError("Could not open the file picker.");
+            Notifications.ShowError(Localizer.T("loadingscreen.toast.pickerfailed"));
             return;
         }
 
@@ -317,15 +335,15 @@
             if (!MovieService.ConverterReady)
             {
                 _progressActive = true;
-                _progressLabel = "Downloading video converter…";
+                _progressLabel = Localizer.T("loadingscreen.progress.downloading");
                 _progressPercent = -1;
                 await InvokeAsync(StateHasChanged);
 
                 var setupProgress = new Progress<FfmpegSetupProgress>(p =>
                 {
-                    _progressLabel = p.Phase == FfmpegSetupPhase.Extracting
-                        ? "Preparing video converter…"
-                        : "Downloading video converter…";
+                    _progressLabel = Localizer.T(p.Phase == FfmpegSetupPhase.Extracting
+                        ? "loadingscreen.progress.preparing"
+                        : "loadingscreen.progress.downloading");
                     _progressPercent = p.Percent;
                     this.DispatchRender(() => InvokeAsync(StateHasChanged), Logger);
                 });
@@ -333,7 +351,7 @@
                 var ready = await MovieService.EnsureConverterAsync(setupProgress);
                 if (!ready)
                 {
-                    Notifications.ShowError("Could not download the video converter — check your connection and try again.");
+                    Notifications.ShowError(Localizer.T("loadingscreen.toast.converterfailed"));
                     return;
                 }
             }
@@ -343,12 +361,12 @@
             var gate = await UsageGate.TryConsumeAsync(UsageFeatures.LoadingScreen);
             if (!gate.Allowed)
             {
-                Notifications.ShowWarning($"Free monthly limit reached ({gate.Limit} loading-screen replacements). Resets next month — Premium is unlimited.");
+                Notifications.ShowWarning(Localizer.T("loadingscreen.toast.limit", gate.Limit));
                 return;
             }
 
             _progressActive = true;
-            _progressLabel = "Converting…";
+            _progressLabel = Localizer.T("loadingscreen.progress.converting");
             _progressPercent = 0;
             await InvokeAsync(StateHasChanged);
 
@@ -365,7 +383,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Replacing movie {FileName} failed", movie.FileName);
-            Notifications.ShowError($"Replacing {movie.FileName} failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("loadingscreen.toast.replacefailed", movie.FileName));
         }
         finally
         {
@@ -380,7 +398,7 @@
         if (op.Success)
         {
             Notifications.ShowSuccess(op.Message);
-            Activity.AddActivity($"Replaced ARK video {movie.DisplayName}", "success");
+            Activity.AddActivity(Localizer.T("loadingscreen.activity.replaced", movie.DisplayName), "success");
         }
         else
         {
@@ -400,7 +418,7 @@
             if (op.Success)
             {
                 Notifications.ShowSuccess(op.Message);
-                Activity.AddActivity($"Restored ARK video {movie.FileName}", "success");
+                Activity.AddActivity(Localizer.T("loadingscreen.activity.restored", movie.FileName), "success");
             }
             else
             {
@@ -410,7 +428,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Restoring movie {FileName} failed", movie.FileName);
-            Notifications.ShowError($"Restoring {movie.FileName} failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("loadingscreen.toast.restorefailed", movie.FileName));
         }
         finally
         {
@@ -431,23 +449,26 @@
             var summary = await MovieService.RestoreAllAsync();
             if (summary.Failed == 0 && summary.Restored > 0)
             {
-                Notifications.ShowSuccess($"Restored {summary.Restored} original video(s).");
-                Activity.AddActivity($"Restored all ARK videos ({summary.Restored})", "success");
+                Notifications.ShowSuccess(Localizer.T("loadingscreen.toast.restoredall", summary.Restored));
+                Activity.AddActivity(Localizer.T("loadingscreen.activity.restoredall", summary.Restored), "success");
             }
             else if (summary.Failed > 0)
             {
-                var firstError = summary.Errors.Count > 0 ? $" First error: {summary.Errors[0]}" : "";
-                Notifications.ShowError($"Restored {summary.Restored} video(s), {summary.Failed} failed.{firstError}");
+                var firstError = summary.Errors.Count > 0
+                    ? " " + Localizer.T("loadingscreen.toast.firsterror", summary.Errors[0])
+                    : "";
+                Notifications.ShowError(
+                    Localizer.T("loadingscreen.toast.restoredpartial", summary.Restored, summary.Failed) + firstError);
             }
             else
             {
-                Notifications.ShowInfo("Nothing to restore — no videos are currently replaced.");
+                Notifications.ShowInfo(Localizer.T("loadingscreen.toast.nothingtorestore"));
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Movie restore-all failed");
-            Notifications.ShowError("Restoring the original videos failed — see the log for details.");
+            Notifications.ShowError(Localizer.T("loadingscreen.toast.restoreallfailed"));
         }
         finally
         {

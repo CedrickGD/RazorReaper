@@ -1309,6 +1309,78 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/StretchedRes.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Custom Loading Screen</h1>",
+            "Swap ARK's startup and loading videos for your own",
+            "<h3>ARK installation not found</h3>",
+            "ARK wasn't found through Steam",
+            "<h3>Movies folder missing</h3>",
+            "The Movies folder doesn't exist",
+            ">Rescan</button>",
+            "\"Restoring…\" : \"Restore all\"",
+            "Pick any video and it is converted",
+            ">Convert</a>",
+            ">Audio volume</span>",
+            "Applied to the converted video.",
+            "No video files found in the Movies folder.",
+            ">Custom</span>",
+            ">Restore</button>",
+            "\"Change\" : \"Replace\"",
+            "\"Loading screen\"",
+            "\"Startup & title\"",
+            "\"Map cinematics\"",
+            "\"Other video files\"",
+            "videos replaced\"",
+            "\"All original videos intact\"",
+            "Custom videos play on the next game start.",
+            "stock startup and loading videos are untouched",
+            "Could not read the ARK Movies folder",
+            "ARK is running — it may lock these files",
+            "$\"Select a video for",
+            "\"Could not open the file picker.\"",
+            "\"Downloading video converter…\"",
+            "\"Preparing video converter…\"",
+            "\"Converting…\"",
+            "Could not download the video converter",
+            "Free monthly limit reached",
+            "Replaced ARK video",
+            "Restored ARK video",
+            "Restored all ARK videos",
+            "original video(s).",
+            "First error:",
+            "Nothing to restore",
+            "Restoring the original videos failed",
+        })
+        {
+            data.Add("Components/Pages/LoadingScreen.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "\"Invalid movie file name.\"",
+            "is not a supported ARK movie file",
+            "\"The selected video file no longer exists.\"",
+            "Wrong format:",
+            "file without an extension",
+            "\"The selected video file could not be read.\"",
+            "\"The selected video file is empty (0 bytes).\"",
+            "That is the game's own video file",
+            "The video converter isn't ready yet",
+            "formats of {baseName}",
+            "converted and replaced — plays on the next game start.",
+            "was not found in the Movies folder",
+            "replaced — your video plays on the next game start.",
+            "Could not read the backup folder:",
+            "No backup found for",
+            "restored to the original.",
+            "ARK installation not found — is the game installed through Steam?",
+            "ARK's Movies folder is missing:",
+        })
+        {
+            data.Add("Services/LoadingScreenService.cs", literal);
+        }
+
         return data;
     }
 
