@@ -80,10 +80,20 @@
                             <span class="nav-icon-wrap">@((MarkupString)entry.IconSvg)</span>
                             <span class="panel-label">@Localizer.T(entry.LabelKey)</span>
                             @* Only the pages that are not in every plan carry one, so the row
-                               stays a plain label everywhere else. *@
+                               stays a plain label everywhere else.
+
+                               A glyph, not the word. Spelled out, "LIFETIME" took 57.4px of the
+                               109.2px this row has for label and marker together and left the
+                               label 42.2px — narrower than any spelling of the page's name, so
+                               the only row in the app carrying a marker was also the only one
+                               that could not show its own label. The word is still here as the
+                               title and the accessible name, and the gate the row leads to opens
+                               with it. navbar.css carries the arithmetic. *@
                             @if (!string.IsNullOrWhiteSpace(entry.Badge))
                             {
-                                <span class="panel-badge">@entry.Badge</span>
+                                <span class="panel-badge" role="img" title="@entry.Badge" aria-label="@entry.Badge">
+                                    @((MarkupString)NavIcons.LifetimeMarker)
+                                </span>
                             }
                         </a>
                     </li>

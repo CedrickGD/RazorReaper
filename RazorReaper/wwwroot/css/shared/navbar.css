@@ -388,27 +388,48 @@ html[data-sidebar-resizing] .sidebar {
     text-overflow: ellipsis;
 }
 
-/* Plan marker on a row whose page is not in every plan. Same chip as the licence
-   overlay's plan pill, sized down to sit inside a nav row — no new colour, and it
-   keeps to the accent so it reads as a state and not as a warning. The label gives
-   up its space first, so the marker never gets clipped when the sidebar is narrow:
-   flex-shrink: 0 here, and the label's ellipsis above. Measured rather than assumed —
-   rendered in Chromium, "Lifetime" comes out 57px wide and sits inside the panel both
-   at the default 240px sidebar and at 171px, where its own row's label is down to an
-   ellipsis and 54px of text. */
+/* Plan marker on a row whose page is not in every plan.
+
+   It was the word, in a chip cut down from the licence overlay's plan pill, and the row it
+   marks had no room for both. The arithmetic, at the 226px sidebar that navbar.js uses for
+   both the default and the minimum — so this is the worst case and also the usual one:
+
+     226 total - 54 rail - 1 rail rule            = 171.0  panel
+     171.0 - 2 x 8 (.panel-list padding)          = 155.0
+     155.0 - 2 x 9.6 (.panel-link padding)        = 135.8
+     135.8 - 17 (page icon) - 9.6 (gap)           = 109.2  label + marker
+     109.2 - 9.6 (gap) - 57.4 ("LIFETIME")        =  42.2  label
+
+   42.2px seats no spelling of that page's name: "Dino levels" wants 65.0px, "Уровни дино"
+   80.7px. The only row in the app carrying a marker was the only one that could not show
+   its own label, and the marker was why.
+
+   A glyph takes its declared width and nothing else — no padding, no border, no text to
+   measure, and nothing that a longer word or a wider font can move. At 14px the same sum
+   ends 109.2 - 9.6 - 14 = 85.6px, which seats all four spellings with room over. Those are
+   the declarations doing the work, so none of them may grow back.
+
+   The lock is the one PremiumLock draws across the gate this row leads to: a marker worth
+   having is one you recognise when you arrive. Same accent as the chip it replaces, muted a
+   little further because a glyph at this size reads heavier than a word did — no new colour.
+   The label still gives up its space first if the sidebar is dragged wider and back:
+   flex-shrink: 0 here, and the label's ellipsis above. */
 .panel-badge {
     flex-shrink: 0;
     margin-left: auto;
-    padding: 0.05rem 0.34rem;
-    border: 1px solid rgba(var(--accent-purple-rgb), 0.35);
-    border-radius: var(--radius-chip);
-    background: rgba(var(--accent-purple-rgb), 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
     color: var(--accent-purple-light);
-    font-size: 0.62rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    line-height: 1.55;
-    text-transform: uppercase;
+    opacity: 0.75;
+}
+
+.panel-badge svg {
+    width: 14px;
+    height: 14px;
+    display: block;
 }
 
 .nav-icon-wrap {

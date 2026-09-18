@@ -66,8 +66,62 @@ public sealed class DinoLevelGuideTests
         Assert.Single(Regex.Matches(catalog, @"Badge: ""[^""]+"""));
 
         var navbar = Component("Shared", "SharedNavbar.razor");
-        Assert.Contains("<span class=\"panel-badge\">@entry.Badge</span>", navbar, StringComparison.Ordinal);
         Assert.Contains("@if (!string.IsNullOrWhiteSpace(entry.Badge))", navbar, StringComparison.Ordinal);
+        Assert.Contains("(MarkupString)NavIcons.LifetimeMarker", navbar, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The marker is a glyph, and a glyph says nothing out loud. The word it replaced is what the
+    /// row is announced and hovered as, and it comes from the catalog rather than being spelled a
+    /// second time in the markup — one "Lifetime" in the app, not two that can disagree.
+    /// </summary>
+    [Fact]
+    public void TheMarkerStillSaysLifetimeToAnyoneWhoAsks()
+    {
+        var navbar = Component("Shared", "SharedNavbar.razor");
+
+        var marker = Regex.Match(navbar, @"<span class=""panel-badge""[^>]*>", RegexOptions.Singleline);
+        Assert.True(marker.Success, "the sidebar must still render the marker in the .panel-badge slot");
+
+        Assert.Contains("role=\"img\"", marker.Value, StringComparison.Ordinal);
+        Assert.Contains("title=\"@entry.Badge\"", marker.Value, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@entry.Badge\"", marker.Value, StringComparison.Ordinal);
+
+        // …and the word itself is not written into the sidebar as a literal anywhere. (The glyph
+        // arrives as NavIcons.LifetimeMarker, which is a name, not the word being rendered.)
+        Assert.DoesNotContain("\"Lifetime\"", navbar, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The marker and the panel it leads to are the same lock. A row marked with one symbol that
+    /// opens onto another is a row that has to be read twice, so the two path definitions are
+    /// pinned equal rather than left to drift apart at the next tidy-up.
+    /// </summary>
+    [Fact]
+    public void TheMarkerIsTheSameLockTheGatePanelDraws()
+    {
+        var icons = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "Navigation", "NavIcons.cs"));
+        var marker = Regex.Match(icons, @"LifetimeMarker = """"""(.*?)""""""", RegexOptions.Singleline);
+        Assert.True(marker.Success, "NavIcons must define LifetimeMarker");
+
+        var gate = Regex.Match(
+            Component("Shared", "PremiumLock.razor"),
+            @"<svg[^>]*lifetime-gate-icon[^>]*>.*?</svg>",
+            RegexOptions.Singleline);
+        Assert.True(gate.Success, "PremiumLock must still draw the gate icon");
+
+        // Same numbers only mean the same shape on the same grid, so the grid is checked first.
+        Assert.Contains("viewBox=\"0 0 24 24\"", marker.Value, StringComparison.Ordinal);
+        Assert.Contains("viewBox=\"0 0 24 24\"", gate.Value, StringComparison.Ordinal);
+
+        Assert.Equal(Geometry(gate.Value), Geometry(marker.Value));
+
+        // The lookbehind keeps stroke-width out of it.
+        static string[] Geometry(string svg)
+            => Regex.Matches(svg, @"(?<![-\w])(x|y|width|height|rx|d)=""([^""]+)""")
+                .Select(m => m.Groups[1].Value + "=" + m.Groups[2].Value)
+                .ToArray();
     }
 
     // ---- The gate -----------------------------------------------------------

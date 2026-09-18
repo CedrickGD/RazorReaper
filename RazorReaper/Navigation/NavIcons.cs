@@ -76,4 +76,18 @@ public static class NavIcons
 
     /// <summary>Lightning bolt — the generic command marker.</summary>
     public const string Command = """<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5 4.5 11H9l-.6 6.5L15.5 9H11l.5-6.5Z"/></svg>""";
+
+    // ---- Plan markers ----
+
+    /// <summary>
+    /// Padlock — the sidebar's marker for a row whose page is not in every plan.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately the same lock, at the same 24-unit viewBox and the same path data, that
+    /// PremiumLock draws across the top of the gate the row leads to. The marker is meant to be
+    /// recognised on arrival rather than read as a second symbol, so the two are pinned equal in
+    /// DinoLevelGuideTests. It is the one icon here that is not 20x20: matching the gate's
+    /// geometry is worth more than matching the grid, and the sidebar sizes it in CSS anyway.
+    /// </remarks>
+    public const string LifetimeMarker = """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>""";
 }
