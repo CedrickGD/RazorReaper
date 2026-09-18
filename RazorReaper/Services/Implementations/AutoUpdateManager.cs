@@ -64,7 +64,11 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
     /// A line the app did not word: a server or exception message out of the update check. It is
     /// shown as it arrived, because inventing a translation for it would be inventing its content.
     /// </param>
-    private sealed record StatusLine(string Key, object?[] Args, string? Verbatim = null);
+    private sealed record StatusLine(string Key, object?[] Args, string? Verbatim = null)
+    {
+        /// <summary>A line the check reported rather than one the app worded.</summary>
+        public static StatusLine Reported(string text) => new(string.Empty, [], text);
+    }
 
     private readonly IUpdateService updateService;
     private readonly ILocalizer localizer;
@@ -238,9 +242,15 @@ public sealed class AutoUpdateManager : IAutoUpdateManager
 
         if (!result.IsSuccess)
         {
-            status = result.ErrorMessage is { } reported
-                ? new StatusLine(string.Empty, [], reported)
-                : new StatusLine("update.check.failed", []);
+            if (result.ErrorMessage is { } reported)
+            {
+                status = StatusLine.Reported(reported);
+            }
+            else
+            {
+                SetStatus("update.check.failed");
+            }
+
             OnStateChanged();
             return;
         }
