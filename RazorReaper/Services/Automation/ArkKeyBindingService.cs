@@ -240,9 +240,9 @@ public static class ArkKeyDefaults
     }
 
     /// <summary>
-    /// Re-reads Input.ini whatever its timestamp says. For the two places that know something
-    /// changed without the file changing: the Scripts page's Rescan button, and the ARK path
-    /// setting moving to a different install.
+    /// Re-reads Input.ini whatever its timestamp says, for a caller that knows something changed
+    /// without the file changing — the ARK path setting moving to a different install. Pages that
+    /// hold the service itself (the Scripts page's Rescan) call it there instead.
     /// </summary>
     public static void Refresh()
     {
@@ -250,24 +250,14 @@ public static class ArkKeyDefaults
         catch { /* a scan that cannot run leaves the last good one in place */ }
     }
 
-    /// <summary>Where the keys come from, or "not found" when there is no container to ask.</summary>
-    public static ArkKeyBindingStatus Status
-    {
-        get
-        {
-            try { return Service?.Status ?? ArkKeyBindingStatus.NotFound; }
-            catch { return ArkKeyBindingStatus.NotFound; }
-        }
-    }
-
     /// <summary>
-    /// How the statics above find the service. Replaceable for the same reason
+    /// How the statics above find the service, declared before the property that reads it because
+    /// static initializers run in source order. Replaceable for the same reason
     /// <see cref="AutomationScriptBase.ResolveUsageGate"/> is: the headless test harnesses build
     /// scripts and macros with no MAUI application, so without a seam here every key default in a
     /// test is the hard-coded fallback and a test of "the scan reaches this key" would pass
-    /// whether the scan reached it or not. Reset it in a finally — it is process-wide.
+    /// whether the scan reached it or not. Restore it afterwards — it is process-wide.
     /// </summary>
-    /// <summary>Declared before the property below: static initializers run in source order.</summary>
     internal static readonly Func<IArkKeyBindingService?> DefaultResolver =
         static () => IPlatformApplication.Current?.Services?.GetService(typeof(IArkKeyBindingService)) as IArkKeyBindingService;
 
