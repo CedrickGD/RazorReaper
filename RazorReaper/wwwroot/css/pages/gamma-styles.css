@@ -116,11 +116,12 @@ input.gm-preset-name {
     font-size: 0.85rem !important;
 }
 
+/* Box, padding and type size come from input[type="number"] in shared/primitives.css —
+   which also lines this field up with the preset-name field beside it, where the padding
+   used to be a quarter rem wider. */
 input.gm-preset-val {
     width: 76px;
     flex-shrink: 0;
-    padding: var(--space-2) var(--space-2) !important;
-    font-size: 0.85rem !important;
     text-align: center;
 }
 

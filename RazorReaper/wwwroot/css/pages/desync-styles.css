@@ -98,10 +98,10 @@
     background: rgba(var(--accent-purple-rgb), 0.12);
 }
 
+/* Box, padding and type size come from input[type="number"] in shared/primitives.css.
+   Only the width and the centring are this page's business. */
 input.dsy-num {
     width: 110px;
-    padding: var(--space-2) var(--space-3) !important;
-    font-size: 0.85rem !important;
     text-align: center;
 }
 

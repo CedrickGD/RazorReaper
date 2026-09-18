@@ -129,10 +129,9 @@ h3.hud-card-title {
 
 /* ── Numbers, units, sliders, dropdown ──────────────────────────────────── */
 
+/* Box, padding and type size come from input[type="number"] in shared/primitives.css. */
 input.hud-num {
     width: 96px;
-    padding: var(--space-2) var(--space-3) !important;
-    font-size: 0.85rem !important;
     text-align: center;
 }
 

@@ -224,14 +224,11 @@
     line-height: 1.1;
     letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
-    -moz-appearance: textfield;
 }
 
-.autoclicker-layout .interval-input::-webkit-outer-spin-button,
-.autoclicker-layout .interval-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
+/* The native spinner arrows used to be hidden here, for this page only. That rule is now
+   input[type="number"] in shared/primitives.css and covers all nine pages that have a
+   number field, so this page no longer has to know about them. */
 
 /* Unit suffix as a small chip pinned to the right of the value */
 .autoclicker-layout .interval-tag {

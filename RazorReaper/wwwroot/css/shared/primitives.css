@@ -514,6 +514,58 @@ input[type="range"].theme-hue-slider::-webkit-slider-runnable-track {
         #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
 }
 
+/* ── Number field ───────────────────────────────────────────────────────────
+   The same design for every input[type="number"] in the app, for the same reason the
+   slider above is shared: nine pages each brought their own box, and three of them
+   brought none at all and fell through to the global input{} rule in theme.css — so
+   Stretched resolution, Scripts and Custom FOV rendered a 43px field where Desync,
+   HUD overlay, Gamma and the Line list rendered a 34px one.
+
+   The spinners are the part the owner actually sees. Chromium draws the up/down
+   arrows itself, from the OS light theme, so 56 of the 67 fields wore a pair of pale
+   native glyphs on a dark field — Auto clicker was the only page that had ever hidden
+   them, and that rule is deleted now that this one covers everything. color-scheme
+   tells the engine the rest of its own chrome (caret, selection, any control we have
+   not restyled) is being painted on dark, so nothing light leaks back in.
+
+   Radius, focus ring and the dark fill are NOT repeated here: theme.css:372 already
+   gives every input one of each, and they were never the inconsistent part.
+
+   !important is not laziness — that same theme.css rule is itself !important, so a
+   plain declaration here cannot reach a number input at all. Pages that deliberately
+   differ still win on specificity: the two fields that sit INSIDE a chip (Crosshair's
+   .num-stepper, Auto clicker's .interval-cell) keep their transparent, padding-free
+   look through `.crosshair-layout .num-input` / `.autoclicker-layout .interval-input`,
+   and the Line list keeps the tighter horizontal padding its six-column stat grid
+   needs. Both are two-part selectors, so they outrank this one. */
+input[type="number"] {
+    padding: var(--space-2) var(--space-3) !important;
+    font-size: 0.85rem !important;
+    /* Digits are the only content these ever hold, and a proportional font re-flows the
+       number under the caret as you type. Five of the nine pages had already reached for
+       the mono stack on their own. */
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color-scheme: dark;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* Nothing in the app said "this field is off" before: a disabled number input was
+       pixel-identical to a live one, so Stretched resolution's width/height fields looked
+       editable while an apply was running. Same two declarations the slider and the
+       buttons already use, so "disabled" reads the same whatever the control is. */
+    input[type="number"]:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+    }
+
 /* --- HotkeyLink -------------------------------------------------------- */
 /* Read-only binding plus an accent link to Global Hotkeys, used by every feature
    page instead of its own capture field. See Components/Shared/HotkeyLink.razor. */
