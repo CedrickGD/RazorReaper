@@ -1564,6 +1564,13 @@
   "loadingscreen.result.nobackup": "No backup found for {0} — it has not been replaced.",
   "loadingscreen.result.restored": "{0} restored to the original.",
   "loadingscreen.result.restorefailed": "Restoring {0} failed: {1}",
+  "loadingscreen.convert.sourcemissing": "The source video no longer exists.",
+  "loadingscreen.convert.noffmpeg": "ffmpeg is not available. Try again so it can download.",
+  "loadingscreen.convert.unsupported": "Unsupported target format '{0}'.",
+  "loadingscreen.convert.failed": "Conversion failed — the source video could not be converted. See the log for details.",
+  "loadingscreen.convert.nooutput": "Conversion produced no output.",
+  "loadingscreen.convert.crashed": "Conversion failed: {0}",
+  "loadingscreen.convert.done": "Conversion complete.",
 
   "filemodifier.title": "File Modifier",
   "filemodifier.subtitle": "Remove or replace individual ARK files, and clear redundant cooked data to reclaim disk.",

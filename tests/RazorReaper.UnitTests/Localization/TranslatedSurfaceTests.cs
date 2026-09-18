@@ -1376,9 +1376,26 @@ public sealed class TranslatedSurfaceTests
             "restored to the original.",
             "ARK installation not found — is the game installed through Steam?",
             "ARK's Movies folder is missing:",
+            "$\"{target}: {convert.Message}\"",
         })
         {
             data.Add("Services/LoadingScreenService.cs", literal);
+        }
+
+        // The converter behind the Replace-in-ARK path. Its result message is what the page
+        // shows when a conversion refuses, so it is the Loading Screen's wording, not its own.
+        foreach (var literal in new[]
+        {
+            "\"The source video no longer exists.\"",
+            "ffmpeg is not available.",
+            "Unsupported target format",
+            "the source video could not be converted",
+            "\"Conversion produced no output.\"",
+            "\"Conversion complete.\"",
+            "$\"Conversion failed: {ex.Message}\"",
+        })
+        {
+            data.Add("Services/Media/VideoConverter.cs", literal);
         }
 
         foreach (var literal in new[]

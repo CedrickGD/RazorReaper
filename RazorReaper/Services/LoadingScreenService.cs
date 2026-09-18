@@ -382,7 +382,12 @@ namespace RazorReaper.Services.Implementations
                         var convert = await _converter.ConvertAsync(userFilePath, tempOut, volumePercent, stepProgress, cancellationToken);
                         if (!convert.Success || convert.OutputPath is null)
                         {
-                            return new MovieOperationResult(false, $"{target}: {convert.Message}");
+                            // The converter words its own refusals now, so this names the file
+                            // the run stopped on and passes the reason through. Splicing the raw
+                            // message in put an English sentence inside a German window, and was
+                            // the one failure path on this page that was not a key.
+                            return new MovieOperationResult(false,
+                                _localizer.T("loadingscreen.result.convertfailed", target, convert.Message));
                         }
 
                         var apply = ApplyReplacementCore(moviesDir, target, convert.OutputPath);

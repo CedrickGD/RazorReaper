@@ -1564,6 +1564,13 @@
   "loadingscreen.result.nobackup": "未找到 {0} 的备份，它没有被替换过。",
   "loadingscreen.result.restored": "{0} 已还原为原始文件。",
   "loadingscreen.result.restorefailed": "还原 {0} 失败：{1}",
+  "loadingscreen.convert.sourcemissing": "源视频已不存在。",
+  "loadingscreen.convert.noffmpeg": "ffmpeg 不可用。请重试，让它下载完成。",
+  "loadingscreen.convert.unsupported": "不支持的目标格式“{0}”。",
+  "loadingscreen.convert.failed": "转换失败 —— 源视频无法转换。详情见日志。",
+  "loadingscreen.convert.nooutput": "转换没有生成文件。",
+  "loadingscreen.convert.crashed": "转换失败：{0}",
+  "loadingscreen.convert.done": "转换完成。",
 
   "filemodifier.title": "文件修改",
   "filemodifier.subtitle": "删除或替换 ARK 的单个文件，并清理多余的预编译数据以腾出磁盘空间。",

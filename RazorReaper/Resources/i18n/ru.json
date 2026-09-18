@@ -1564,6 +1564,13 @@
   "loadingscreen.result.nobackup": "Резервная копия для {0} не найдена — файл не заменялся.",
   "loadingscreen.result.restored": "{0} восстановлено до оригинала.",
   "loadingscreen.result.restorefailed": "Не удалось восстановить {0}: {1}",
+  "loadingscreen.convert.sourcemissing": "Исходное видео больше не существует.",
+  "loadingscreen.convert.noffmpeg": "ffmpeg недоступен. Повторите попытку, чтобы он загрузился.",
+  "loadingscreen.convert.unsupported": "Целевой формат «{0}» не поддерживается.",
+  "loadingscreen.convert.failed": "Не удалось преобразовать исходное видео. Подробности — в журнале.",
+  "loadingscreen.convert.nooutput": "Преобразование не создало файл.",
+  "loadingscreen.convert.crashed": "Не удалось преобразовать: {0}",
+  "loadingscreen.convert.done": "Преобразование завершено.",
 
   "filemodifier.title": "Изменение файлов",
   "filemodifier.subtitle": "Удаляйте или заменяйте отдельные файлы ARK и очищайте избыточные скомпилированные данные, чтобы освободить место на диске.",

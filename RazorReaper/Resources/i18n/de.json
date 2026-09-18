@@ -1564,6 +1564,13 @@
   "loadingscreen.result.nobackup": "Kein Backup für {0} gefunden — es wurde nicht ersetzt.",
   "loadingscreen.result.restored": "{0} auf das Original zurückgesetzt.",
   "loadingscreen.result.restorefailed": "{0} konnte nicht wiederhergestellt werden: {1}",
+  "loadingscreen.convert.sourcemissing": "Das Quellvideo gibt es nicht mehr.",
+  "loadingscreen.convert.noffmpeg": "ffmpeg ist nicht verfügbar. Versuch es erneut, damit es geladen werden kann.",
+  "loadingscreen.convert.unsupported": "Zielformat „{0}“ wird nicht unterstützt.",
+  "loadingscreen.convert.failed": "Konvertierung fehlgeschlagen — das Quellvideo ließ sich nicht umwandeln. Details stehen im Log.",
+  "loadingscreen.convert.nooutput": "Die Konvertierung hat keine Datei erzeugt.",
+  "loadingscreen.convert.crashed": "Konvertierung fehlgeschlagen: {0}",
+  "loadingscreen.convert.done": "Konvertierung abgeschlossen.",
 
   "filemodifier.title": "Dateien ändern",
   "filemodifier.subtitle": "Entferne oder ersetze einzelne ARK-Dateien und räume überflüssige vorberechnete Daten weg, um Platz zu schaffen.",

@@ -3,10 +3,15 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using RazorReaper.Services.Localization;
 
 namespace RazorReaper.Services.Media;
 
-/// <summary>Outcome of a conversion. OutputPath is set only on success.</summary>
+/// <summary>
+/// Outcome of a conversion. OutputPath is set only on success. <c>Message</c> is worded for the
+/// reader — the Loading Screen page shows a failed one verbatim — so it is resolved here rather
+/// than handed on as English.
+/// </summary>
 public sealed record VideoConvertResult(bool Success, string Message, string? OutputPath);
 
 /// <summary>
@@ -37,11 +42,13 @@ public sealed class VideoConverter : IVideoConverter
 
     private readonly ILogger<VideoConverter> _logger;
     private readonly IFfmpegProvider _ffmpeg;
+    private readonly ILocalizer _localizer;
 
-    public VideoConverter(ILogger<VideoConverter> logger, IFfmpegProvider ffmpeg)
+    public VideoConverter(ILogger<VideoConverter> logger, IFfmpegProvider ffmpeg, ILocalizer localizer)
     {
         _logger = logger;
         _ffmpeg = ffmpeg;
+        _localizer = localizer;
     }
 
     public async Task<VideoConvertResult> ConvertAsync(
@@ -53,20 +60,20 @@ public sealed class VideoConverter : IVideoConverter
     {
         if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
         {
-            return new VideoConvertResult(false, "The source video no longer exists.", null);
+            return new VideoConvertResult(false, _localizer.T("loadingscreen.convert.sourcemissing"), null);
         }
 
         var ffmpegPath = _ffmpeg.FfmpegPath;
         if (!File.Exists(ffmpegPath))
         {
-            return new VideoConvertResult(false, "ffmpeg is not available. Try again so it can download.", null);
+            return new VideoConvertResult(false, _localizer.T("loadingscreen.convert.noffmpeg"), null);
         }
 
         var targetExt = Path.GetExtension(outputPath).ToLowerInvariant();
         var arguments = BuildArguments(sourcePath, outputPath, targetExt, volumePercent);
         if (arguments is null)
         {
-            return new VideoConvertResult(false, $"Unsupported target format '{targetExt}'.", null);
+            return new VideoConvertResult(false, _localizer.T("loadingscreen.convert.unsupported", targetExt), null);
         }
 
         try
@@ -144,17 +151,16 @@ public sealed class VideoConverter : IVideoConverter
                 lock (stderrTail) tail = stderrTail.ToString();
                 _logger.LogWarning("ffmpeg exited {Code} converting {Source}: {Tail}", process.ExitCode, sourcePath, tail);
                 TryDelete(outputPath);
-                return new VideoConvertResult(false,
-                    "Conversion failed — the source video could not be converted. See the log for details.", null);
+                return new VideoConvertResult(false, _localizer.T("loadingscreen.convert.failed"), null);
             }
 
             if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
             {
-                return new VideoConvertResult(false, "Conversion produced no output.", null);
+                return new VideoConvertResult(false, _localizer.T("loadingscreen.convert.nooutput"), null);
             }
 
             progress?.Report(100);
-            return new VideoConvertResult(true, "Conversion complete.", outputPath);
+            return new VideoConvertResult(true, _localizer.T("loadingscreen.convert.done"), outputPath);
         }
         catch (OperationCanceledException)
         {
@@ -165,7 +171,7 @@ public sealed class VideoConverter : IVideoConverter
         {
             _logger.LogError(ex, "ffmpeg conversion of {Source} failed", sourcePath);
             TryDelete(outputPath);
-            return new VideoConvertResult(false, $"Conversion failed: {ex.Message}", null);
+            return new VideoConvertResult(false, _localizer.T("loadingscreen.convert.crashed", ex.Message), null);
         }
     }
 
