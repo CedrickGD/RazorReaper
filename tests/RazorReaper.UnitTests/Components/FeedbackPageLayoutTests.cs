@@ -15,7 +15,8 @@ public sealed class FeedbackPageLayoutTests
     {
         var page = File.ReadAllText(PagePath());
 
-        Assert.Contains("Feedback & Support", page, StringComparison.Ordinal);
+        // Translated: the wording lives in Resources/i18n now, pinned by TranslatedSurfaceTests.
+        Assert.Contains("@Localizer.T(\"feedback.title\")", page, StringComparison.Ordinal);
         Assert.Contains("role=\"tablist\"", page, StringComparison.Ordinal);
         Assert.Equal(2, Regex.Matches(page, @"<button\s+type=""button""\s+role=""tab""").Count);
         Assert.Contains("id=\"feedback-tab-feedback\"", page, StringComparison.Ordinal);
@@ -44,9 +45,9 @@ public sealed class FeedbackPageLayoutTests
         Assert.Contains("FeedbackService.SubmitAsync(_message, _contact)", page, StringComparison.Ordinal);
         Assert.Contains("FeedbackService.SubmitDiagnosticsAsync(_message, _contact,", page, StringComparison.Ordinal);
         Assert.DoesNotContain("SubmitWithDiagnosticsAsync", page, StringComparison.Ordinal);
-        Assert.Contains("A system and feature snapshot is attached when you send your report.", page, StringComparison.Ordinal);
+        Assert.Contains("@Localizer.T(\"feedback.attach.note\")", page, StringComparison.Ordinal);
         Assert.Contains("string.IsNullOrWhiteSpace(_message)", page, StringComparison.Ordinal);
-        Assert.Contains("Report ID: @_reportId", page, StringComparison.Ordinal);
+        Assert.Contains("@Localizer.T(\"feedback.reportid\", _reportId)", page, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -26,7 +26,7 @@ public sealed class AccountNavigationTests
         // The promise nothing in the app keeps.
         Assert.DoesNotContain("Manage license", account, StringComparison.Ordinal);
 
-        var trigger = Regex.Match(account, @"<button[^>]*>View license</button>", RegexOptions.Singleline);
+        var trigger = Regex.Match(account, @"<button[^>]*>@Localizer\.T\(""account\.viewlicense""\)</button>", RegexOptions.Singleline);
         Assert.True(trigger.Success, "\"View license\" must be a <button>, not a link.");
         Assert.Contains("type=\"button\"", trigger.Value, StringComparison.Ordinal);
         Assert.Contains("class=\"rr-pill-btn ghost sm\"", trigger.Value, StringComparison.Ordinal);
@@ -46,14 +46,14 @@ public sealed class AccountNavigationTests
     {
         var account = File.ReadAllText(ComponentPath("Pages", "Account.razor"));
 
-        var redeem = Regex.Match(account, @"<button[^>]*>Redeem key</button>", RegexOptions.Singleline);
+        var redeem = Regex.Match(account, @"<button[^>]*>@Localizer\.T\(""account\.redeemkey""\)</button>", RegexOptions.Singleline);
         Assert.True(redeem.Success, "\"Redeem key\" must be a <button>, not a link.");
         Assert.Contains("type=\"button\"", redeem.Value, StringComparison.Ordinal);
         Assert.Contains("class=\"rr-pill-btn ghost sm\"", redeem.Value, StringComparison.Ordinal);
         Assert.Contains("aria-haspopup=\"dialog\"", redeem.Value, StringComparison.Ordinal);
         Assert.Contains("@onclick=\"OpenLicenseOverlay\"", redeem.Value, StringComparison.Ordinal);
 
-        var buy = Regex.Match(account, @"<a[^>]*>Buy Premium</a>", RegexOptions.Singleline);
+        var buy = Regex.Match(account, @"<a[^>]*>@Localizer\.T\(""account\.buypremium""\)</a>", RegexOptions.Singleline);
         Assert.True(buy.Success, "\"Buy Premium\" must be a link to the shop.");
         Assert.Contains("class=\"rr-pill-btn ghost sm\"", buy.Value, StringComparison.Ordinal);
         Assert.Contains("target=\"_blank\"", buy.Value, StringComparison.Ordinal);

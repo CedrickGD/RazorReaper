@@ -1,20 +1,22 @@
 @page "/feedback"
 @using RazorReaper.Services
+@using RazorReaper.Services.Localization
 @inject IFeedbackService FeedbackService
 @inject INotificationService NotificationService
 @inject NavigationManager Navigation
+@inject ILocalizer Localizer
 @implements IDisposable
 
 <header class="page-header">
-    <h1 class="page-title">Feedback & Support</h1>
-    <p class="page-subtitle">Share an idea or an opinion, or report a problem with a system snapshot attached.</p>
+    <h1 class="page-title">@Localizer.T("feedback.title")</h1>
+    <p class="page-subtitle">@Localizer.T("feedback.subtitle")</p>
 </header>
 
 @* Two sections on one page, not two routes: the form is the same shape on both sides and
    only what it sends differs (kind "feedback" without diagnostics, kind "support" with the
    snapshot). /feedback?section=support opens the Support side directly — that is where
    SendDiagnosticsButton links to. Switching is an instant re-render, no animation. *@
-<div class="feedback-tabs" role="tablist" aria-label="Feedback or support">
+<div class="feedback-tabs" role="tablist" aria-label="@Localizer.T("feedback.tabs.aria")">
     <button type="button"
             role="tab"
             id="feedback-tab-feedback"
@@ -22,7 +24,7 @@
             aria-selected="@(IsSupport ? "false" : "true")"
             aria-controls="feedback-panel"
             @onclick="ShowFeedback">
-        Feedback
+        @Localizer.T("feedback.tab.feedback")
     </button>
     <button type="button"
             role="tab"
@@ -31,14 +33,14 @@
             aria-selected="@(IsSupport ? "true" : "false")"
             aria-controls="feedback-panel"
             @onclick="ShowSupport">
-        Support
+        @Localizer.T("feedback.tab.support")
     </button>
 </div>
 
 <div id="feedback-panel" class="feedback-layout" role="tabpanel" aria-labelledby="@(IsSupport ? "feedback-tab-support" : "feedback-tab-feedback")">
 <div class="content-card feedback-card">
     <div class="feedback-field">
-        <label class="feedback-label" for="feedback-message">@(IsSupport ? "What went wrong? (required)" : "Your feedback (required)")</label>
+        <label class="feedback-label" for="feedback-message">@(IsSupport ? Localizer.T("feedback.message.support") : Localizer.T("feedback.message.feedback"))</label>
         <textarea id="feedback-message"
                   class="feedback-textarea"
                   placeholder="@MessagePlaceholder"
@@ -52,11 +54,11 @@
     </div>
 
     <div class="feedback-field">
-        <label class="feedback-label" for="feedback-contact">Contact (optional)</label>
+        <label class="feedback-label" for="feedback-contact">@Localizer.T("feedback.contact.label")</label>
         <input id="feedback-contact"
                class="feedback-input"
                type="text"
-               placeholder="Discord or email — an additional way to reach you"
+               placeholder="@Localizer.T("feedback.contact.placeholder")"
                maxlength="256"
                @bind="_contact"
                @bind:event="oninput"
@@ -65,7 +67,7 @@
 
     @if (IsSupport)
     {
-        <p class="feedback-attach-note">A system and feature snapshot is attached when you send your report.</p>
+        <p class="feedback-attach-note">@Localizer.T("feedback.attach.note")</p>
     }
 
     <div class="feedback-actions">
@@ -73,18 +75,18 @@
             @if (_submitting)
             {
                 <span class="feedback-spinner"></span>
-                <span>Sending…</span>
+                <span>@Localizer.T("feedback.sending")</span>
             }
             else
             {
-                <span>@(IsSupport ? "Send Report" : "Send Feedback")</span>
+                <span>@(IsSupport ? Localizer.T("feedback.send.support") : Localizer.T("feedback.send.feedback"))</span>
             }
         </button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(_reportId))
     {
-        <div class="feedback-report-id" role="status">Report ID: @_reportId</div>
+        <div class="feedback-report-id" role="status">@Localizer.T("feedback.reportid", _reportId)</div>
     }
 </div>
 
@@ -94,38 +96,28 @@
 <aside class="content-card feedback-side">
     @if (IsSupport)
     {
-        <h3 class="feedback-side-title">Attached automatically</h3>
+        <h3 class="feedback-side-title">@Localizer.T("feedback.side.support.title")</h3>
         <ul class="feedback-side-list">
-            <li>Machine name</li>
-            <li>Install and hardware IDs</li>
-            <li>License key and status</li>
-            <li>App and Windows versions</li>
-            <li>ARK and feature prerequisites</li>
-            <li>Safe settings and recent operation outcomes</li>
+            <li>@Localizer.T("feedback.side.support.1")</li>
+            <li>@Localizer.T("feedback.side.support.2")</li>
+            <li>@Localizer.T("feedback.side.support.3")</li>
+            <li>@Localizer.T("feedback.side.support.4")</li>
+            <li>@Localizer.T("feedback.side.support.5")</li>
+            <li>@Localizer.T("feedback.side.support.6")</li>
         </ul>
-        <p class="feedback-note">
-            Sending your report attaches a read-only snapshot automatically so support can
-            reproduce the issue. It never includes screenshots, clipboard text, server passwords,
-            command text, raw file paths, IP addresses, or log contents.
-        </p>
+        <p class="feedback-note">@Localizer.T("feedback.side.support.note")</p>
     }
     else
     {
-        <h3 class="feedback-side-title">Good to know</h3>
+        <h3 class="feedback-side-title">@Localizer.T("feedback.side.feedback.title")</h3>
         <ul class="feedback-side-list">
-            <li>Ideas, opinions and feature requests all belong here</li>
-            <li>Only your message, contact and app identity are sent</li>
-            <li>Something broken? Use the Support section instead</li>
+            <li>@Localizer.T("feedback.side.feedback.1")</li>
+            <li>@Localizer.T("feedback.side.feedback.2")</li>
+            <li>@Localizer.T("feedback.side.feedback.3")</li>
         </ul>
-        <p class="feedback-note">
-            Feedback is sent without a diagnostic snapshot. If you are reporting a problem,
-            switch to Support so the system and feature details travel with it.
-        </p>
+        <p class="feedback-note">@Localizer.T("feedback.side.feedback.note")</p>
     }
-    <p class="feedback-note">
-        Answers appear privately in your Inbox. The bell beside your tier in the sidebar shows
-        a dot when a reply arrives; you don't need to leave a contact to receive an answer here.
-    </p>
+    <p class="feedback-note">@Localizer.T("feedback.side.inbox.note")</p>
 </aside>
 </div>
 
@@ -151,8 +143,8 @@
     private bool IsSupport => _isSupport;
 
     private string MessagePlaceholder => IsSupport
-        ? "Describe what happened, what you expected, and the steps that led there..."
-        : "Share an idea, an opinion, or anything you'd like to see next...";
+        ? Localizer.T("feedback.placeholder.support")
+        : Localizer.T("feedback.placeholder.feedback");
 
     protected override void OnInitialized()
     {
@@ -269,7 +261,7 @@
             _reportId = result.ReportId;
             NotificationService.ShowSuccess(result.ReportId is null
                 ? result.Message
-                : $"{result.Message} Report ID: {result.ReportId}");
+                : $"{result.Message} {Localizer.T("feedback.reportid", result.ReportId)}");
             _message = string.Empty;
             _contact = string.Empty;
         }

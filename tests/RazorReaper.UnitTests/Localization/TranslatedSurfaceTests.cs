@@ -94,6 +94,56 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/NotFound.razor", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Feedback & Support</h1>",
+            "Share an idea or an opinion, or report a problem",
+            "A system and feature snapshot is attached when you send your report.",
+            "Report ID: @_reportId",
+            "\"What went wrong? (required)\"",
+            "\"Your feedback (required)\"",
+            ">Contact (optional)</label>",
+            "Discord or email — an additional way to reach you",
+            "\"Send Report\"",
+            "\"Send Feedback\"",
+            ">Attached automatically</h3>",
+            ">Good to know</h3>",
+            "<li>Machine name</li>",
+            "Answers appear privately in your Inbox.",
+        })
+        {
+            data.Add("Components/Pages/Feedback.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">My account</h1>",
+            "Your profile, Discord and RazorReaper installations, together.",
+            ">Loading your account…</p>",
+            ">Your profile</h3>",
+            ">Display name</label>",
+            "\"Save profile\"",
+            ">Connected accounts</h3>",
+            ">Your installations</h3>",
+            ">View license</button>",
+            ">Redeem key</button>",
+            ">Buy Premium</a>",
+            ">Sign out</button>",
+            "One profile.<br />Every installation.",
+            ">Create account with Discord</button>",
+            ">Cancel</button>",
+            "\"Connect your account\"",
+            "\"Is this you?\"",
+            "Waiting for Discord authorization",
+            "RazorReaper will connect to your Discord identity.",
+            "\"Continue with Discord\"",
+            "The connection timed out. Please try again.",
+            "Your profile has been saved.",
+        })
+        {
+            data.Add("Components/Pages/Account.razor", literal);
+        }
+
         return data;
     }
 

@@ -2,17 +2,19 @@
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
 @using Microsoft.AspNetCore.Components.Forms
+@using RazorReaper.Services.Localization
 @inject ICustomerAccountService Accounts
 @inject INotificationService Notifications
 @inject ILicenseService License
 @inject IClientIdentityService Identity
 @inject ILicenseOverlayService LicenseOverlay
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 @implements IDisposable
 
 <header class="page-header">
-    <h1 class="page-title">My account</h1>
-    <p class="page-subtitle">Your profile, Discord and RazorReaper installations, together.</p>
+    <h1 class="page-title">@Localizer.T("account.title")</h1>
+    <p class="page-subtitle">@Localizer.T("account.subtitle")</p>
 </header>
 <div class="account-page">
     @if (!string.IsNullOrEmpty(_error))
@@ -21,7 +23,7 @@
     }
     @if (_loading)
     {
-        <section class="content-card"><p>Loading your account…</p></section>
+        <section class="content-card"><p>@Localizer.T("account.loading")</p></section>
     }
     else if (Accounts.Profile is { } profile)
     {
@@ -29,52 +31,52 @@
             <div class="account-photo">
                 @if (!string.IsNullOrEmpty(_avatar ?? profile.Avatar) && !_removeAvatar)
                 {
-                    <img src="@(_avatar ?? profile.Avatar)" alt="Your profile picture" />
+                    <img src="@(_avatar ?? profile.Avatar)" alt="@Localizer.T("account.avatar.alt")" />
                 }
                 else { <span>@profile.DisplayName[..1].ToUpperInvariant()</span> }
             </div>
             <div class="account-profile-fields">
-                <h3>Your profile</h3>
-                <p>Your chosen name and picture are saved to your account and appear in the support panel.</p>
-                <label for="account-name">Display name</label>
+                <h3>@Localizer.T("account.profile.title")</h3>
+                <p>@Localizer.T("account.profile.description")</p>
+                <label for="account-name">@Localizer.T("account.displayname")</label>
                 <input id="account-name" class="account-input" @bind="_name" maxlength="60" disabled="@_busy" />
                 <div class="account-actions">
-                    <label class="rr-pill-btn ghost account-file">Choose picture<InputFile OnChange="ChooseAvatar" accept="image/png,image/jpeg,image/webp" disabled="@_busy" /></label>
-                    <button class="rr-pill-btn ghost" @onclick="RemoveAvatar" disabled="@_busy">Use Discord picture</button>
-                    <button class="rr-pill-btn" @onclick="SaveProfile" disabled="@_busy">@(_busy ? "Saving…" : "Save profile")</button>
+                    <label class="rr-pill-btn ghost account-file">@Localizer.T("account.choosepicture")<InputFile OnChange="ChooseAvatar" accept="image/png,image/jpeg,image/webp" disabled="@_busy" /></label>
+                    <button class="rr-pill-btn ghost" @onclick="RemoveAvatar" disabled="@_busy">@Localizer.T("account.usediscordpicture")</button>
+                    <button class="rr-pill-btn" @onclick="SaveProfile" disabled="@_busy">@(_busy ? Localizer.T("account.saving") : Localizer.T("account.saveprofile"))</button>
                 </div>
-                <p class="account-hint">PNG, JPG or WebP. The center is cropped into a square.</p>
+                <p class="account-hint">@Localizer.T("account.picture.hint")</p>
             </div>
         </section>
         <section class="content-card">
-            <h3>Connected accounts</h3>
-            <div class="account-row"><span>Discord</span><strong>@@@profile.DiscordUsername</strong><span>Connected</span></div>
-            <div class="account-row"><span>This installation</span><strong>RazorReaper</strong><span>Linked to your account</span></div>
+            <h3>@Localizer.T("account.connected.title")</h3>
+            <div class="account-row"><span>Discord</span><strong>@@@profile.DiscordUsername</strong><span>@Localizer.T("account.row.connected")</span></div>
+            <div class="account-row"><span>@Localizer.T("account.row.installation")</span><strong>RazorReaper</strong><span>@Localizer.T("account.row.linked")</span></div>
             @* There is nothing to "manage": the overlay shows the licence and, on the free tier,
                takes a key. So the button says which of the two this click is, and the free tier
                gets the way to buy one next to it. *@
-            <div class="account-row"><span>License on this device</span><strong>@(License.IsActivated ? "Active" : "Free")</strong><span class="account-actions">@if (License.IsActivated)
+            <div class="account-row"><span>@Localizer.T("account.row.license")</span><strong>@(License.IsActivated ? Localizer.T("account.license.active") : Localizer.T("account.license.free"))</strong><span class="account-actions">@if (License.IsActivated)
                 {
-                    <button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">View license</button>
+                    <button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">@Localizer.T("account.viewlicense")</button>
                 }
                 else
                 {
-                    <button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">Redeem key</button>
-                    <a class="rr-pill-btn ghost sm" href="@StoreLinks.Store" target="_blank" rel="noopener">Buy Premium</a>
+                    <button type="button" class="rr-pill-btn ghost sm" aria-haspopup="dialog" @onclick="OpenLicenseOverlay">@Localizer.T("account.redeemkey")</button>
+                    <a class="rr-pill-btn ghost sm" href="@StoreLinks.Store" target="_blank" rel="noopener">@Localizer.T("account.buypremium")</a>
                 }</span></div>
-            <p class="account-hint">Sign in with the same Discord account on another computer to use this profile there. License activation remains tied to the licensed device.</p>
+            <p class="account-hint">@Localizer.T("account.connected.hint")</p>
         </section>
         <section class="content-card">
-            <h3>Your installations</h3>
+            <h3>@Localizer.T("account.installations.title")</h3>
             @foreach (var device in Accounts.Devices)
             {
-                <div class="account-row"><strong>@(device.InstallId == Identity.GetIdentity().InstallId ? "This computer" : "RazorReaper installation")</strong><span>Version @(device.AppVersion ?? "unknown")</span><span>@(device.SignedIn == 1 ? "Signed in" : "Signed out")</span></div>
+                <div class="account-row"><strong>@(device.InstallId == Identity.GetIdentity().InstallId ? Localizer.T("account.device.this") : Localizer.T("account.device.other"))</strong><span>@Localizer.T("account.device.version", device.AppVersion ?? Localizer.T("account.device.unknownversion"))</span><span>@(device.SignedIn == 1 ? Localizer.T("account.device.signedin") : Localizer.T("account.device.signedout"))</span></div>
             }
             @if (_confirmSignOut)
             {
-                <div class="account-notice"><p>Sign out on this computer? Your saved profile and license will remain available.</p><div class="account-actions"><button class="rr-pill-btn ghost" @onclick="() => _confirmSignOut = false" disabled="@_busy">Stay signed in</button><button class="rr-pill-btn" @onclick="SignOut" disabled="@_busy">Sign out</button></div></div>
+                <div class="account-notice"><p>@Localizer.T("account.signout.confirm")</p><div class="account-actions"><button class="rr-pill-btn ghost" @onclick="() => _confirmSignOut = false" disabled="@_busy">@Localizer.T("account.signout.stay")</button><button class="rr-pill-btn" @onclick="SignOut" disabled="@_busy">@Localizer.T("account.signout")</button></div></div>
             }
-            else { <button class="rr-pill-btn ghost" @onclick="() => _confirmSignOut = true" disabled="@_busy">Sign out</button> }
+            else { <button class="rr-pill-btn ghost" @onclick="() => _confirmSignOut = true" disabled="@_busy">@Localizer.T("account.signout")</button> }
         </section>
     }
     else
@@ -82,44 +84,44 @@
         <section class="content-card account-signin">
             <div class="account-welcome">
                 <img class="account-brand" src="images/RRlogo.png" alt="RazorReaper" />
-                <h2>One profile.<br />Every installation.</h2>
-                <p>Make RazorReaper yours. Connect Discord, choose your picture and keep your profile with you.</p>
-                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="OpenSignIn" disabled="@_busy">Create account with Discord</button><button class="rr-pill-btn" @onclick="OpenSignIn" disabled="@_busy">Sign in</button></div>
+                <h2>@Localizer.T("account.welcome.line1")<br />@Localizer.T("account.welcome.line2")</h2>
+                <p>@Localizer.T("account.welcome.text")</p>
+                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="OpenSignIn" disabled="@_busy">@Localizer.T("account.create")</button><button class="rr-pill-btn" @onclick="OpenSignIn" disabled="@_busy">@Localizer.T("account.signin")</button></div>
             </div>
             <div class="account-benefits">
-                <div><span aria-hidden="true">01</span><div><h3>Your identity</h3><p>Choose the name and picture people see in support.</p></div></div>
-                <div><span aria-hidden="true">02</span><div><h3>Connected to Discord</h3><p>Use your existing account. No extra password to remember.</p></div></div>
-                <div><span aria-hidden="true">03</span><div><h3>Across your computers</h3><p>Your profile follows you when you sign in on another installation.</p></div></div>
+                <div><span aria-hidden="true">01</span><div><h3>@Localizer.T("account.benefit.1.title")</h3><p>@Localizer.T("account.benefit.1.text")</p></div></div>
+                <div><span aria-hidden="true">02</span><div><h3>@Localizer.T("account.benefit.2.title")</h3><p>@Localizer.T("account.benefit.2.text")</p></div></div>
+                <div><span aria-hidden="true">03</span><div><h3>@Localizer.T("account.benefit.3.title")</h3><p>@Localizer.T("account.benefit.3.text")</p></div></div>
             </div>
         </section>
     }
 </div>
 
 <dialog @ref="_dialog" class="account-auth-dialog" aria-labelledby="account-auth-title">
-    <button class="account-dialog-close" aria-label="Close sign-in" @onclick="CancelSignIn" disabled="@_busy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+    <button class="account-dialog-close" aria-label="@Localizer.T("account.dialog.close")" @onclick="CancelSignIn" disabled="@_busy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
     <div class="account-auth-brand"><img src="images/RRlogo.png" alt="RazorReaper" /><span aria-hidden="true">↔</span><strong>Discord</strong></div>
-    <h2 id="account-auth-title">@(_candidate is null ? "Connect your account" : "Is this you?")</h2>
+    <h2 id="account-auth-title">@(_candidate is null ? Localizer.T("account.dialog.title.connect") : Localizer.T("account.dialog.title.isthisyou"))</h2>
     @if (!string.IsNullOrEmpty(_error)) { <p class="account-notice" role="alert">@_error</p> }
             @if (_candidate is { } candidate)
             {
-                @if (!string.IsNullOrEmpty(candidate.Avatar)) { <img class="account-candidate-photo" src="@candidate.Avatar" alt="Discord profile picture" /> }
+                @if (!string.IsNullOrEmpty(candidate.Avatar)) { <img class="account-candidate-photo" src="@candidate.Avatar" alt="@Localizer.T("account.dialog.avatar.alt")" /> }
                 <h3>@candidate.DisplayName</h3><p>@@@candidate.DiscordUsername</p>
-                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="ConfirmSignIn" disabled="@_busy">Continue as @candidate.DisplayName</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn" disabled="@_busy">Cancel</button></div>
+                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="ConfirmSignIn" disabled="@_busy">@Localizer.T("account.dialog.continueas", candidate.DisplayName)</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn" disabled="@_busy">@Localizer.T("common.cancel")</button></div>
             }
             else if (_login is { } login)
             {
-                <p>Check that this code matches the one in your browser:</p>
+                <p>@Localizer.T("account.dialog.codematch")</p>
                 <strong class="account-code">@login.UserCode</strong>
-                <p class="account-waiting"><i aria-hidden="true"></i>Waiting for Discord authorization</p>
-                <p>Approve the connection in your browser, then return here to confirm your profile.</p>
-                <div class="account-actions"><button class="rr-pill-btn" @onclick="ReopenBrowser">Open Discord again</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn">Cancel</button></div>
+                <p class="account-waiting"><i aria-hidden="true"></i>@Localizer.T("account.dialog.waiting")</p>
+                <p>@Localizer.T("account.dialog.approve")</p>
+                <div class="account-actions"><button class="rr-pill-btn" @onclick="ReopenBrowser">@Localizer.T("account.dialog.reopen")</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn">@Localizer.T("common.cancel")</button></div>
             }
             else
             {
-                <p>RazorReaper will connect to your Discord identity.</p>
-                <ul class="account-permissions"><li>Read your Discord name and profile picture</li><li>Save your chosen RazorReaper name and picture</li><li>Link this installation to your account</li></ul>
-                <p class="account-hint">Discord opens its official authorization in your browser. RazorReaper never sees your password.</p>
-                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="BeginSignIn" disabled="@_busy">@(_busy ? "Connecting…" : "Continue with Discord")</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn" disabled="@_busy">Cancel</button></div>
+                <p>@Localizer.T("account.dialog.intro")</p>
+                <ul class="account-permissions"><li>@Localizer.T("account.dialog.perm.1")</li><li>@Localizer.T("account.dialog.perm.2")</li><li>@Localizer.T("account.dialog.perm.3")</li></ul>
+                <p class="account-hint">@Localizer.T("account.dialog.hint")</p>
+                <div class="account-actions"><button class="rr-pill-btn primary" @onclick="BeginSignIn" disabled="@_busy">@(_busy ? Localizer.T("account.dialog.connecting") : Localizer.T("account.dialog.continue"))</button><button class="rr-pill-btn ghost" @onclick="CancelSignIn" disabled="@_busy">@Localizer.T("common.cancel")</button></div>
             }
 </dialog>
 
@@ -160,14 +162,14 @@
         if (_busy) return;
         _busy = true; _error = null;
         try { await operation(); }
-        catch (OperationCanceledException) { if (!_lifetime.IsCancellationRequested) _error = "The connection timed out. Please try again."; }
-        catch (Exception ex) { _error = ex is InvalidOperationException ? ex.Message : "The account service could not be reached. Please try again."; }
+        catch (OperationCanceledException) { if (!_lifetime.IsCancellationRequested) _error = Localizer.T("account.error.timeout"); }
+        catch (Exception ex) { _error = ex is InvalidOperationException ? ex.Message : Localizer.T("account.error.unreachable"); }
         finally { _busy = false; }
     }
     private Task BeginSignIn() => Execute(async () => {
         _login = await Accounts.BeginSignInAsync(_lifetime.Token);
         var launched = await Launcher.Default.OpenAsync(_login.VerificationUrl);
-        if (!launched) { _login = null; throw new InvalidOperationException("Could not open your browser. Please try again."); }
+        if (!launched) { _login = null; throw new InvalidOperationException(Localizer.T("account.error.browser")); }
         // Cancel without disposing: the previous Poll may still hold this token, and a disposed
         // source turns its next Task.Delay into an ObjectDisposedException nobody observes.
         _poll?.Cancel();
@@ -187,7 +189,7 @@
                 await InvokeAsync(() => { _candidate = candidate; StateHasChanged(); });
                 return;
             }
-            await InvokeAsync(() => { _login = null; _error = "Sign-in expired. Please start again."; StateHasChanged(); });
+            await InvokeAsync(() => { _login = null; _error = Localizer.T("account.error.expired"); StateHasChanged(); });
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         // This loop is started with `_ = Poll(...)`, so the handler itself must not be able to
@@ -195,7 +197,7 @@
         catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
-            var message = ex is InvalidOperationException ? ex.Message : "Sign-in was interrupted. Please start again.";
+            var message = ex is InvalidOperationException ? ex.Message : Localizer.T("account.error.interrupted");
             this.DispatchRender(() => InvokeAsync(() => { _login = null; _error = message; StateHasChanged(); }));
         }
     }
@@ -203,7 +205,7 @@
     private Task ConfirmSignIn() => Execute(async () => {
         if (_login is null) return;
         await Accounts.ConfirmSignInAsync(_login.RequestId, _lifetime.Token);
-        CancelSignIn(); LoadProfile(); Notifications.ShowSuccess("Your account is connected.");
+        CancelSignIn(); LoadProfile(); Notifications.ShowSuccess(Localizer.T("account.connected.toast"));
     });
     private Task ChooseAvatar(InputFileChangeEventArgs args) => Execute(async () => {
         await using var stream = args.File.OpenReadStream(8 * 1024 * 1024, _lifetime.Token);
@@ -217,7 +219,7 @@
         // CDN URLs are never sent back as custom uploads; null restores the verified Discord picture.
         var avatar = _removeAvatar ? null : _avatar ?? (Accounts.Profile?.Avatar?.StartsWith("data:image/", StringComparison.Ordinal) == true ? Accounts.Profile.Avatar : null);
         await Accounts.SaveProfileAsync(_name, avatar, _lifetime.Token);
-        LoadProfile(); Notifications.ShowSuccess("Your profile has been saved.");
+        LoadProfile(); Notifications.ShowSuccess(Localizer.T("account.saved.toast"));
     });
     private Task SignOut() => Execute(async () => { await Accounts.SignOutAsync(_lifetime.Token); _confirmSignOut = false; });
     public void Dispose()
