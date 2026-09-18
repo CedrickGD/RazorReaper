@@ -84,7 +84,7 @@ public sealed class FlakScript : CalibratableScriptBase
     /// workflow neither applies nor appears on the page.</summary>
     public override bool UsesReference => false;
 
-    public override string RegionTitle => "Durability numbers";
+    public override string RegionTitleKey => RegionTitles.Durability;
 
     protected override bool CanStart(out string? reason)
     {

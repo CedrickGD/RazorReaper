@@ -18,8 +18,12 @@ public interface ICalibratableScript
     /// </summary>
     bool UsesReference { get; }
 
-    /// <summary>What the region should be calibrated over, e.g. "Button region".</summary>
-    string RegionTitle { get; }
+    /// <summary>
+    /// A dictionary key for what the region should be calibrated over, not the words themselves:
+    /// a script has no localizer, and the Scripts page resolves this where the row renders so a
+    /// language switch re-words it. The keys a script may publish are <see cref="RegionTitles"/>.
+    /// </summary>
+    string RegionTitleKey { get; }
 
     /// <summary>True when a reference snapshot has been captured this session.</summary>
     bool HasReference { get; }

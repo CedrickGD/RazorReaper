@@ -2279,6 +2279,111 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Media/MediaConverter.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Scripts</h1>",
+            "Premade automation that runs natively",
+            "<span>All scripts</span>",
+            "IsRunning) running</span>",
+            ">Stop</button>",
+            ">Start</button>",
+            "<h3>Settings</h3>",
+            "<h3>Calibration</h3>",
+            "Title=\"Roar key\"",
+            "Title=\"Interval\"",
+            "Title=\"Movement\"",
+            "Title=\"Forward key\"",
+            "Title=\"Sprint key\"",
+            "Title=\"Chat command\"",
+            "Title=\"Delay\"",
+            "Title=\"Destination\"",
+            "Title=\"Confirm with Enter\"",
+            "Title=\"Click interval\"",
+            "Title=\"Match threshold\"",
+            "Title=\"Click delay\"",
+            "Title=\"Restore after\"",
+            "Title=\"Pulse interval\"",
+            "Title=\"Inventory key\"",
+            "Title=\"Interval (seconds)\"",
+            "Title=\"Transfer key\"",
+            "Title=\"Transfer presses\"",
+            "Title=\"Scan interval\"",
+            "Title=\"Swap below\"",
+            "$\"Row {row + 1} hotbar key\"",
+            "Title=\"Last read\"",
+            "Title=\"Presses\"",
+            "Title=\"Mode\"",
+            "Title=\"Craft key\"",
+            "Title=\"Access key\"",
+            "Title=\"Craft presses\"",
+            "Title=\"Ping compensation\"",
+            "Title=\"Walk time\"",
+            "Title=\"Trigger\"",
+            "Title=\"Burst key\"",
+            "Title=\"Burst presses\"",
+            "Title=\"Timer threshold\"",
+            "Title=\"Cooldown\"",
+            "Title=\"Live match\"",
+            "Title=\"Icon region\"",
+            "Title=\"Open key\"",
+            "Title=\"Search filter\"",
+            "Title=\"Exit key\"",
+            "Title=\"Presses per cycle\"",
+            "Title=\"Wait after open\"",
+            "Title=\"Reference snapshot\"",
+            "Title=\"Ignore background\"",
+            "Title=\"Start / Stop hotkey\"",
+            "Title=\"@cal.RegionTitle\"",
+            "Description=\"Milliseconds between scans.\"",
+            "TriggerCount fired",
+            ">Calibrate region</button>",
+            ">Capture reference</button>",
+            ">Ignore background</button>",
+            "\"Not set for this resolution.\"",
+            "\"Captured.\" :",
+            "Capture with the icon visible on screen.",
+            "Capture with the target visible on screen.",
+            "Turn the camera so the background changes",
+            "\"Hover one corner of the icon",
+            "$\"Hover corner {pr.CornerIndex}",
+            "$\"Hover corner {p.CornerIndex}",
+            "\"Region captured.\"",
+            "\"Reference captured.\"",
+            "\"Icon appears\"",
+            "\"Icon disappears\"",
+            "\"Timer below\"",
+            "new(\"Walk\", \"Walk\")",
+            "new(nameof(CraftingMode.Watcher), \"Watcher\")",
+            "\"Start the script to see what it reads.\"",
+            "\"Waiting for ARK to be in the foreground…\"",
+            "No number recognised",
+            "$\"Lowest {low}",
+            "last swap {t.ToLocalTime()",
+            "is not a key that can be sent",
+            "Hotbar slot holding the spare",
+            "Leave empty if you carry no spare for this row.",
+            "Spams the Yutyrannus courage roar",
+            "Holds the forward key so you keep running",
+            "Alternates left/right clicks",
+            "fires the Astrocetus downward-teleport sequence",
+            "Repeats a chat command (default /download)",
+            "With the teleport menu open, types a destination",
+            "Clicks the container Take-All button",
+            "While the Tek Saddle buff is up",
+            "Detects the Noglin mind-control icon",
+            "Shift+right-click spam to inflate inventory",
+            "Opens/closes inventory on an interval",
+            "When a turret inventory is open, presses transfer",
+            "Reads the durability numbers next to your armor",
+            "Single-stat leveler:",
+            "Crafts at Fabricator/Chem Bench/Replicator",
+            "Watches a calibrated icon and presses a hotbar key",
+            "Transmitter loop: opens it,",
+        })
+        {
+            data.Add("Components/Pages/Scripts.razor", literal);
+        }
+
         return data;
     }
 
@@ -2479,6 +2584,14 @@ public sealed class TranslatedSurfaceTests
             {
                 yield return ("LaunchOptions.razor", key);
             }
+        }
+
+        // The two calibration-row titles a vision script can publish. A script has no localizer,
+        // so it hands the Scripts page a key and the page resolves it — neither key is ever a
+        // literal inside a T( call, and a grep would call both of them dead.
+        foreach (var key in RazorReaper.Services.Automation.Scripts.RegionTitles.All)
+        {
+            yield return ("CalibratableScriptBase.cs", key);
         }
 
         // The Lifetime guide numbers its steps rather than naming them: a key named after a

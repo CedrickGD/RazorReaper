@@ -11,6 +11,19 @@ namespace RazorReaper.Services.Automation.Scripts;
 /// memory. Region/reference are keyed off the script key, scoped per resolution by the calibration
 /// service.
 /// </summary>
+/// <summary>
+/// The calibration-row titles a script can publish. Listing them is what lets
+/// TranslatedSurfaceTests read them off a real catalog: neither key is ever a literal inside a
+/// <c>T(…)</c> call, so a grep would call both of them dead.
+/// </summary>
+public static class RegionTitles
+{
+    public const string Button = "scripts.region.button";
+    public const string Durability = "scripts.region.durability";
+
+    public static IReadOnlyList<string> All { get; } = new[] { Button, Durability };
+}
+
 public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratableScript
 {
     protected readonly IScreenSampler Sampler;
@@ -50,7 +63,7 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
     /// <summary>Snapshot matching is the default; OCR scripts override this to false.</summary>
     public virtual bool UsesReference => true;
 
-    public virtual string RegionTitle => "Button region";
+    public virtual string RegionTitleKey => RegionTitles.Button;
 
     /// <summary>"312 of 29,607 px" once the background has been masked out, empty before that.</summary>
     public string MaskSummary

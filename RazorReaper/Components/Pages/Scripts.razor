@@ -4,13 +4,15 @@
 @using RazorReaper.Services.Automation.Scripts
 @inject IEnumerable<AutomationScriptBase> AllScripts
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @* The page claims the window height and scrolls inside its own panes, so nothing here
    has to be shrunk to fit and .main-content never grows past the bottom edge. *@
 <div class="scripts-page">
 <header class="page-header">
-    <h1 class="page-title">Scripts</h1>
-    <p class="page-subtitle">Premade automation that runs natively — no AutoHotkey or other external tools. External input only.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.scripts")</h1>
+    <p class="page-subtitle">@Localizer.T("scripts.subtitle")</p>
 </header>
 
 <div class="scripts-layout">
@@ -19,8 +21,8 @@
        of the content area, so the page reads as two full-height panes. *@
     <aside class="scripts-list rr-scroll">
         <div class="scripts-list-head">
-            <span>All scripts</span>
-            <span class="scripts-list-count">@_scripts.Count(s => s.IsRunning) running</span>
+            <span>@Localizer.T("scripts.list.all")</span>
+            <span class="scripts-list-count">@Localizer.T("scripts.list.running", _scripts.Count(s => s.IsRunning))</span>
         </div>
         @foreach (var script in _scripts)
         {
@@ -55,11 +57,11 @@
                         }
                         @if (_selected.IsRunning)
                         {
-                            <button class="btn btn-danger" @onclick="() => _selected.Stop()">Stop</button>
+                            <button class="btn btn-danger" @onclick="() => _selected.Stop()">@Localizer.T("scripts.stop")</button>
                         }
                         else
                         {
-                            <button class="btn btn-primary" @onclick="() => _selected.Start()">Start</button>
+                            <button class="btn btn-primary" @onclick="() => _selected.Start()">@Localizer.T("scripts.start")</button>
                         }
                     </Actions>
                 </StatusHeader>
@@ -67,119 +69,119 @@
 
             <div class="script-panels">
             <div class="content-card script-settings">
-                <h3>Settings</h3>
+                <h3>@Localizer.T("scripts.settings")</h3>
 
                 @if (_selected is YutyScript yuty)
                 {
-                    <SettingRow Title="Roar key" Description="Key pressed each interval. ARK exposes no binding for the Yuty roar, so set this one yourself.">
+                    <SettingRow Title="@Localizer.T("scripts.yuty.roarkey")" Description="@Localizer.T("scripts.yuty.roarkey.desc")">
                         <input class="script-input" value="@yuty.RoarKey" @onchange="SetYutyKey" />
                     </SettingRow>
-                    <SettingRow Title="Interval" Description="Milliseconds between roars.">
+                    <SettingRow Title="@Localizer.T("scripts.field.interval")" Description="@Localizer.T("scripts.yuty.interval.desc")">
                         <input class="script-input" type="number" min="200" max="60000" value="@yuty.IntervalMs" @onchange="SetYutyInterval" />
                     </SettingRow>
                 }
                 else if (_selected is AutoWalkScript walk)
                 {
-                    <SettingRow Title="Movement" Description="Walk at normal speed, or hold sprint the whole time.">
+                    <SettingRow Title="@Localizer.T("scripts.walk.movement")" Description="@Localizer.T("scripts.walk.movement.desc")">
                         <Dropdown Value="@(walk.Sprint ? "Sprint" : "Walk")" ValueChanged="SetWalkMode" Options="WalkModeOptions" />
                     </SettingRow>
-                    <SettingRow Title="Forward key" Description="Held to move forward — prefilled from your ARK 'Move forward' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.field.forwardkey")" Description="@Localizer.T("scripts.walk.forwardkey.desc")">
                         <input class="script-input" value="@walk.ForwardKey" @onchange="SetWalkKey" />
                     </SettingRow>
                     @if (walk.Sprint)
                     {
-                        <SettingRow Title="Sprint key" Description="Held alongside forward — prefilled from your ARK 'Run' binding.">
+                        <SettingRow Title="@Localizer.T("scripts.walk.sprintkey")" Description="@Localizer.T("scripts.walk.sprintkey.desc")">
                             <input class="script-input" value="@walk.SprintKey" @onchange="SetWalkSprintKey" />
                         </SettingRow>
                     }
                 }
                 else if (_selected is MammothScript mammoth)
                 {
-                    <SettingRow Title="Interval" Description="Milliseconds between drum cycles (left + right click).">
+                    <SettingRow Title="@Localizer.T("scripts.field.interval")" Description="@Localizer.T("scripts.mammoth.interval.desc")">
                         <input class="script-input" type="number" min="100" max="10000" value="@mammoth.IntervalMs" @onchange="SetMammothInterval" />
                     </SettingRow>
                 }
                 else if (_selected is AutoDownloadScript download)
                 {
-                    <SettingRow Title="Chat command" Description="Sent each cycle (opens chat, types, sends).">
+                    <SettingRow Title="@Localizer.T("scripts.download.command")" Description="@Localizer.T("scripts.download.command.desc")">
                         <input class="script-input" value="@download.Command" @onchange="SetDownloadCommand" />
                     </SettingRow>
-                    <SettingRow Title="Delay" Description="Milliseconds between sends.">
+                    <SettingRow Title="@Localizer.T("scripts.download.delay")" Description="@Localizer.T("scripts.download.delay.desc")">
                         <input class="script-input" type="number" min="500" max="120000" value="@download.DelayMs" @onchange="SetDownloadDelay" />
                     </SettingRow>
                 }
                 else if (_selected is FastTpScript fasttp)
                 {
-                    <SettingRow Title="Destination" Description="Name typed into the teleport search field.">
+                    <SettingRow Title="@Localizer.T("scripts.fasttp.destination")" Description="@Localizer.T("scripts.fasttp.destination.desc")">
                         <input class="script-input" value="@fasttp.Destination" @onchange="SetTpDestination" />
                     </SettingRow>
-                    <SettingRow Title="Confirm with Enter" Description="Press Enter after typing to pick the first match.">
+                    <SettingRow Title="@Localizer.T("scripts.fasttp.confirm")" Description="@Localizer.T("scripts.fasttp.confirm.desc")">
                         <Switch Value="fasttp.ConfirmWithEnter" ValueChanged="SetTpConfirm" />
                     </SettingRow>
                 }
                 else if (_selected is TakeAllScript takeall)
                 {
-                    <SettingRow Title="Click interval" Description="Milliseconds between scan + click attempts.">
+                    <SettingRow Title="@Localizer.T("scripts.takeall.clickinterval")" Description="@Localizer.T("scripts.takeall.clickinterval.desc")">
                         <input class="script-input" type="number" min="20" max="2000" value="@takeall.ClickIntervalMs" @onchange="SetTakeAllInterval" />
                     </SettingRow>
-                    <SettingRow Title="Match threshold" Description="Similarity % at which the button counts as visible.">
+                    <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.takeall.threshold.desc")">
                         <input class="script-input" type="number" min="50" max="100" value="@takeall.MatchThresholdPercent" @onchange="SetTakeAllThreshold" />
                     </SettingRow>
                 }
                 else if (_selected is TekSaddleScript tek)
                 {
-                    <SettingRow Title="Match threshold" Description="Similarity % at which the buff counts as active.">
+                    <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.tek.threshold.desc")">
                         <input class="script-input" type="number" min="50" max="100" value="@tek.MatchThresholdPercent" @onchange="SetTekThreshold" />
                     </SettingRow>
-                    <SettingRow Title="Click delay" Description="Milliseconds between spammed clicks (20 ≈ 50/s).">
+                    <SettingRow Title="@Localizer.T("scripts.field.clickdelay")" Description="@Localizer.T("scripts.tek.clickdelay.desc")">
                         <input class="script-input" type="number" min="5" max="500" value="@tek.ClickDelayMs" @onchange="SetTekDelay" />
                     </SettingRow>
                 }
                 else if (_selected is NoglinScript noglin)
                 {
-                    <SettingRow Title="Match threshold" Description="Similarity % at which the mind-control icon counts as visible.">
+                    <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.noglin.threshold.desc")">
                         <input class="script-input" type="number" min="50" max="100" value="@noglin.MatchThresholdPercent" @onchange="SetNoglinThreshold" />
                     </SettingRow>
-                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                    <SettingRow Title="@Localizer.T("scripts.field.scaninterval")" Description="@Localizer.T("scripts.desc.scaninterval")">
                         <input class="script-input" type="number" min="100" max="5000" value="@noglin.ScanIntervalMs" @onchange="SetNoglinScan" />
                     </SettingRow>
-                    <SettingRow Title="Restore after" Description="Clean scans before FPS is restored.">
+                    <SettingRow Title="@Localizer.T("scripts.noglin.restore")" Description="@Localizer.T("scripts.noglin.restore.desc")">
                         <input class="script-input" type="number" min="1" max="20" value="@noglin.RestoreAfterCleanScans" @onchange="SetNoglinCleanScans" />
                     </SettingRow>
                 }
                 else if (_selected is InvSizeScript invsize)
                 {
-                    <SettingRow Title="Pulse interval" Description="Milliseconds between Shift+right-click pulses.">
+                    <SettingRow Title="@Localizer.T("scripts.invsize.pulse")" Description="@Localizer.T("scripts.invsize.pulse.desc")">
                         <input class="script-input" type="number" min="20" max="2000" value="@invsize.IntervalMs" @onchange="SetInvSizeInterval" />
                     </SettingRow>
                 }
                 else if (_selected is AntiAfkScript antiafk)
                 {
-                    <SettingRow Title="Inventory key" Description="Toggles your inventory — prefilled from your ARK 'Show my inventory' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.antiafk.invkey")" Description="@Localizer.T("scripts.antiafk.invkey.desc")">
                         <input class="script-input" value="@antiafk.InventoryKey" @onchange="SetAntiAfkKey" />
                     </SettingRow>
-                    <SettingRow Title="Interval (seconds)" Description="Seconds between pulses.">
+                    <SettingRow Title="@Localizer.T("scripts.antiafk.interval")" Description="@Localizer.T("scripts.antiafk.interval.desc")">
                         <input class="script-input" type="number" min="30" max="3600" value="@antiafk.IntervalSeconds" @onchange="SetAntiAfkInterval" />
                     </SettingRow>
                 }
                 else if (_selected is TurretManagerScript turret)
                 {
-                    <SettingRow Title="Match threshold" Description="Similarity % at which the turret inventory counts as open.">
+                    <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.turret.threshold.desc")">
                         <input class="script-input" type="number" min="50" max="100" value="@turret.MatchThresholdPercent" @onchange="SetTurretThreshold" />
                     </SettingRow>
-                    <SettingRow Title="Transfer key" Description="Pushes ammo into the turret — prefilled from your ARK 'Transfer item' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.field.transferkey")" Description="@Localizer.T("scripts.turret.transferkey.desc")">
                         <input class="script-input" value="@turret.TransferKey" @onchange="SetTurretKey" />
                     </SettingRow>
-                    <SettingRow Title="Transfer presses" Description="Presses per detection.">
+                    <SettingRow Title="@Localizer.T("scripts.turret.presses")" Description="@Localizer.T("scripts.turret.presses.desc")">
                         <input class="script-input" type="number" min="1" max="20" value="@turret.TransferPresses" @onchange="SetTurretPresses" />
                     </SettingRow>
-                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                    <SettingRow Title="@Localizer.T("scripts.field.scaninterval")" Description="@Localizer.T("scripts.desc.scaninterval")">
                         <input class="script-input" type="number" min="100" max="5000" value="@turret.ScanIntervalMs" @onchange="SetTurretScan" />
                     </SettingRow>
                 }
                 else if (_selected is FlakScript flak)
                 {
-                    <SettingRow Title="Swap below" Description="Durability points left on a piece before it is replaced. An absolute number, so it means the same on any server multiplier.">
+                    <SettingRow Title="@Localizer.T("scripts.flak.swapbelow")" Description="@Localizer.T("scripts.flak.swapbelow.desc")">
                         <input class="script-input" type="number" min="1" max="100000" value="@flak.DurabilityThreshold" @onchange="SetFlakThreshold" />
                     </SettingRow>
 
@@ -189,132 +191,132 @@
                     {
                         var row = i;
                         var rowKey = flak.RowKeys[row];
-                        <SettingRow Title="@($"Row {row + 1} hotbar key")"
+                        <SettingRow Title="@Localizer.T("scripts.flak.rowkey", row + 1)"
                                     Description="@RowKeyHint(row, rowKey)">
                             <input class="script-input" value="@rowKey" @onchange="@(e => SetFlakRowKey(row, e))" />
                         </SettingRow>
                     }
 
-                    <SettingRow Title="Scan interval" Description="Milliseconds between reads.">
+                    <SettingRow Title="@Localizer.T("scripts.field.scaninterval")" Description="@Localizer.T("scripts.flak.scan.desc")">
                         <input class="script-input" type="number" min="500" max="10000" value="@flak.ScanIntervalMs" @onchange="SetFlakScan" />
                     </SettingRow>
 
                     @* The whole thing hangs on whether the numbers are read correctly, so the page
                        shows what it just read. Without this there is no way to tell a bad region
                        from a bad threshold from OCR that cannot see the digits at all. *@
-                    <SettingRow Title="Last read" Description="@FlakReadingHint(flak)">
+                    <SettingRow Title="@Localizer.T("scripts.flak.lastread")" Description="@FlakReadingHint(flak)">
                         <span class="script-reading">@(string.IsNullOrEmpty(flak.LastReading) ? "—" : flak.LastReading)</span>
                     </SettingRow>
                 }
                 else if (_selected is DinoReadyScript dino)
                 {
-                    <SettingRow Title="Presses" Description="How many times to click the calibrated + button.">
+                    <SettingRow Title="@Localizer.T("scripts.dino.presses")" Description="@Localizer.T("scripts.dino.presses.desc")">
                         <input class="script-input" type="number" min="1" max="200" value="@dino.Presses" @onchange="SetDinoPresses" />
                     </SettingRow>
-                    <SettingRow Title="Click delay" Description="Milliseconds between clicks.">
+                    <SettingRow Title="@Localizer.T("scripts.field.clickdelay")" Description="@Localizer.T("scripts.dino.clickdelay.desc")">
                         <input class="script-input" type="number" min="20" max="1000" value="@dino.ClickDelayMs" @onchange="SetDinoDelay" />
                     </SettingRow>
                 }
                 else if (_selected is CraftingScript crafting)
                 {
-                    <SettingRow Title="Mode" Description="Watcher = you walk and open stations; Walk = the script walks the row.">
+                    <SettingRow Title="@Localizer.T("scripts.craft.mode")" Description="@Localizer.T("scripts.craft.mode.desc")">
                         <Dropdown Value="@crafting.Mode.ToString()" ValueChanged="SetCraftMode" Options="CraftModeOptions" />
                     </SettingRow>
-                    <SettingRow Title="Craft key" Description="Starts a craft in the open station — prefilled from your ARK 'Use' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.craft.craftkey")" Description="@Localizer.T("scripts.craft.craftkey.desc")">
                         <input class="script-input" value="@crafting.CraftKey" @onchange="SetCraftKey" />
                     </SettingRow>
-                    <SettingRow Title="Access key" Description="Opens and closes the station — prefilled from your ARK 'Access inventory' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.craft.accesskey")" Description="@Localizer.T("scripts.craft.accesskey.desc")">
                         <input class="script-input" value="@crafting.AccessKey" @onchange="SetCraftAccess" />
                     </SettingRow>
-                    <SettingRow Title="Craft presses" Description="Craft presses per station.">
+                    <SettingRow Title="@Localizer.T("scripts.craft.presses")" Description="@Localizer.T("scripts.craft.presses.desc")">
                         <input class="script-input" type="number" min="1" max="20" value="@crafting.CraftPresses" @onchange="SetCraftPresses" />
                     </SettingRow>
-                    <SettingRow Title="Ping compensation" Description="Extra ms added to every wait so lag can't desync the sequence.">
+                    <SettingRow Title="@Localizer.T("scripts.craft.ping")" Description="@Localizer.T("scripts.craft.ping.desc")">
                         <input class="script-input" type="number" min="0" max="3000" value="@crafting.PingCompensationMs" @onchange="SetCraftPing" />
                     </SettingRow>
                     @if (crafting.Mode == CraftingMode.Watcher)
                     {
-                        <SettingRow Title="Match threshold" Description="Similarity % at which the station inventory counts as open.">
+                        <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.craft.threshold.desc")">
                             <input class="script-input" type="number" min="50" max="100" value="@crafting.MatchThresholdPercent" @onchange="SetCraftThreshold" />
                         </SettingRow>
-                        <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                        <SettingRow Title="@Localizer.T("scripts.field.scaninterval")" Description="@Localizer.T("scripts.desc.scaninterval")">
                             <input class="script-input" type="number" min="100" max="5000" value="@crafting.ScanIntervalMs" @onchange="SetCraftScan" />
                         </SettingRow>
                     }
                     else
                     {
-                        <SettingRow Title="Forward key" Description="Held to walk between stations — prefilled from your ARK 'Move forward' binding.">
+                        <SettingRow Title="@Localizer.T("scripts.field.forwardkey")" Description="@Localizer.T("scripts.craft.forwardkey.desc")">
                             <input class="script-input" value="@crafting.ForwardKey" @onchange="SetCraftForward" />
                         </SettingRow>
-                        <SettingRow Title="Walk time" Description="Milliseconds held forward between stations.">
+                        <SettingRow Title="@Localizer.T("scripts.craft.walktime")" Description="@Localizer.T("scripts.craft.walktime.desc")">
                             <input class="script-input" type="number" min="100" max="10000" value="@crafting.WalkMs" @onchange="SetCraftWalkMs" />
                         </SettingRow>
                     }
                 }
                 else if (_selected is AutoAntidoteScript antidote)
                 {
-                    <SettingRow Title="Trigger" Description="When the watcher fires: the icon appearing, disappearing, or its timer running low.">
+                    <SettingRow Title="@Localizer.T("scripts.antidote.trigger")" Description="@Localizer.T("scripts.antidote.trigger.desc")">
                         <Dropdown Value="@antidote.Service.Settings.Mode.ToString()" ValueChanged="SetAntidoteMode" Options="AntidoteModeOptions" />
                     </SettingRow>
-                    <SettingRow Title="Burst key" Description="Hotbar key pressed when it fires.">
+                    <SettingRow Title="@Localizer.T("scripts.antidote.burstkey")" Description="@Localizer.T("scripts.antidote.burstkey.desc")">
                         <input class="script-input" value="@antidote.Service.Settings.BurstKey" @onchange="SetAntidoteBurstKey" />
                     </SettingRow>
-                    <SettingRow Title="Burst presses" Description="Presses per trigger.">
+                    <SettingRow Title="@Localizer.T("scripts.antidote.burstpresses")" Description="@Localizer.T("scripts.antidote.burstpresses.desc")">
                         <input class="script-input" type="number" min="1" max="20" value="@antidote.Service.Settings.BurstPresses" @onchange="SetAntidoteBurstPresses" />
                     </SettingRow>
                     @if (antidote.Service.Settings.Mode == AutoAntidoteTriggerMode.TimerBelow)
                     {
-                        <SettingRow Title="Timer threshold" Description="Fires at or below this many seconds remaining.">
+                        <SettingRow Title="@Localizer.T("scripts.antidote.timer")" Description="@Localizer.T("scripts.antidote.timer.desc")">
                             <input class="script-input" type="number" min="1" max="600" value="@antidote.Service.Settings.TimerThresholdSeconds" @onchange="SetAntidoteTimer" />
                         </SettingRow>
                     }
                     else
                     {
-                        <SettingRow Title="Match threshold" Description="Similarity % at which the icon counts as visible.">
+                        <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.antidote.threshold.desc")">
                             <input class="script-input" type="number" min="50" max="100" value="@antidote.Service.Settings.MatchThresholdPercent" @onchange="SetAntidoteThreshold" />
                         </SettingRow>
                     }
-                    <SettingRow Title="Scan interval" Description="Milliseconds between scans.">
+                    <SettingRow Title="@Localizer.T("scripts.field.scaninterval")" Description="@Localizer.T("scripts.desc.scaninterval")">
                         <input class="script-input" type="number" min="100" max="10000" value="@antidote.Service.Settings.ScanIntervalMs" @onchange="SetAntidoteScan" />
                     </SettingRow>
-                    <SettingRow Title="Cooldown" Description="Seconds before it may fire again.">
+                    <SettingRow Title="@Localizer.T("scripts.antidote.cooldown")" Description="@Localizer.T("scripts.antidote.cooldown.desc")">
                         <input class="script-input" type="number" min="0" max="600" value="@antidote.Service.Settings.CooldownSeconds" @onchange="SetAntidoteCooldown" />
                     </SettingRow>
                     @* Without this you are guessing at the threshold: the number moves live while
                        the watcher scans, so you can read off what "present" and "absent" actually
                        score on your screen and set the cut-off between them. *@
-                    <SettingRow Title="Live match" Description="Similarity of the last scan, and how often it has fired.">
+                    <SettingRow Title="@Localizer.T("scripts.antidote.livematch")" Description="@Localizer.T("scripts.antidote.livematch.desc")">
                         <span class="setting-value">
                             @(antidote.Service.LastMatchPercent is { } pct ? $"{pct:0.#}%" : "—")
-                            · @antidote.Service.TriggerCount fired
+                            @Localizer.T("scripts.antidote.fired", antidote.Service.TriggerCount)
                         </span>
                     </SettingRow>
                 }
                 else if (_selected is FedSuitScript fed)
                 {
-                    <SettingRow Title="Open key" Description="Opens the transmitter — prefilled from your ARK 'Access inventory' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.fed.openkey")" Description="@Localizer.T("scripts.fed.openkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.OpenKey" @onchange="SetFedOpenKey" />
                     </SettingRow>
-                    <SettingRow Title="Search filter" Description="Typed into the inventory search to narrow what gets moved (e.g. exo). Leave empty to transfer what is already listed.">
+                    <SettingRow Title="@Localizer.T("scripts.fed.searchfilter")" Description="@Localizer.T("scripts.fed.searchfilter.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.SearchFilter" @onchange="SetFedSearchFilter" />
                     </SettingRow>
-                    <SettingRow Title="Transfer key" Description="Moves a batch — prefilled from your ARK 'Transfer item' binding.">
+                    <SettingRow Title="@Localizer.T("scripts.field.transferkey")" Description="@Localizer.T("scripts.fed.transferkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.TransferKey" @onchange="SetFedTransferKey" />
                     </SettingRow>
-                    <SettingRow Title="Exit key" Description="Closes the transmitter between cycles.">
+                    <SettingRow Title="@Localizer.T("scripts.fed.exitkey")" Description="@Localizer.T("scripts.fed.exitkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.ExitKey" @onchange="SetFedExitKey" />
                     </SettingRow>
-                    <SettingRow Title="Presses per cycle" Description="Transfer presses before closing.">
+                    <SettingRow Title="@Localizer.T("scripts.fed.presses")" Description="@Localizer.T("scripts.fed.presses.desc")">
                         <input class="script-input" type="number" min="1" max="200" value="@fed.Macro.Settings.PressesPerCycle" @onchange="SetFedPresses" />
                     </SettingRow>
-                    <SettingRow Title="Wait after open" Description="Milliseconds to let the inventory finish opening.">
+                    <SettingRow Title="@Localizer.T("scripts.fed.wait")" Description="@Localizer.T("scripts.fed.wait.desc")">
                         <input class="script-input" type="number" min="0" max="5000" value="@fed.Macro.Settings.WaitAfterOpenMs" @onchange="SetFedWait" />
                     </SettingRow>
                 }
 
                 @* Full width (see scripts-styles.css): squeezed into half, the combo and its
                    link wrapped onto a second line and dragged the whole grid row taller. *@
-                <SettingRow Class="script-hotkey-row" Title="Start / Stop hotkey" Description="System-wide toggle — works even while ARK is focused.">
+                <SettingRow Class="script-hotkey-row" Title="@Localizer.T("scripts.hotkey.title")" Description="@Localizer.T("scripts.hotkey.desc")">
                     <HotkeyLink Value="@_selected.StartStopHotkey" />
                 </SettingRow>
             </div>
@@ -322,12 +324,12 @@
             @if (_selected is AutoAntidoteScript antidoteCal)
             {
                 <div class="content-card scripts-calibration">
-                    <h3>Calibration</h3>
-                    <SettingRow Title="Icon region" Description='@(antidoteCal.Service.HasRegion ? antidoteCal.Service.RegionSummary : "Not set for this resolution.")'>
-                        <button class="btn btn-secondary" @onclick="CalibrateAntidoteRegion" disabled="@_calibrating">Calibrate region</button>
+                    <h3>@Localizer.T("scripts.calibration")</h3>
+                    <SettingRow Title="@Localizer.T("scripts.antidote.region")" Description='@(antidoteCal.Service.HasRegion ? antidoteCal.Service.RegionSummary : Localizer.T("scripts.region.notset"))'>
+                        <button class="btn btn-secondary" @onclick="CalibrateAntidoteRegion" disabled="@_calibrating">@Localizer.T("scripts.calibrate")</button>
                     </SettingRow>
-                    <SettingRow Title="Reference snapshot" Description='@(antidoteCal.Service.HasReference ? "Captured." : "Capture with the icon visible on screen.")'>
-                        <button class="btn btn-secondary" @onclick="CaptureAntidoteReference" disabled="@(!antidoteCal.Service.HasRegion || _calibrating)">Capture reference</button>
+                    <SettingRow Title="@Localizer.T("scripts.reference.title")" Description='@Localizer.T(antidoteCal.Service.HasReference ? "scripts.reference.captured" : "scripts.reference.capture.icon")'>
+                        <button class="btn btn-secondary" @onclick="CaptureAntidoteReference" disabled="@(!antidoteCal.Service.HasRegion || _calibrating)">@Localizer.T("scripts.capturereference")</button>
                     </SettingRow>
                     @if (!string.IsNullOrEmpty(_calStatus))
                     {
@@ -338,22 +340,22 @@
             else if (_selected is ICalibratableScript cal)
             {
                 <div class="content-card scripts-calibration">
-                    <h3>Calibration</h3>
-                    <SettingRow Title="@cal.RegionTitle" Description='@(cal.HasRegion ? cal.RegionSummary : "Not set for this resolution.")'>
-                        <button class="btn btn-secondary" @onclick="CalibrateRegion" disabled="@_calibrating">Calibrate region</button>
+                    <h3>@Localizer.T("scripts.calibration")</h3>
+                    <SettingRow Title="@Localizer.T(cal.RegionTitleKey)" Description='@(cal.HasRegion ? cal.RegionSummary : Localizer.T("scripts.region.notset"))'>
+                        <button class="btn btn-secondary" @onclick="CalibrateRegion" disabled="@_calibrating">@Localizer.T("scripts.calibrate")</button>
                     </SettingRow>
                     @* OCR scripts read the region as text; offering them the snapshot/mask
                        workflow sent people off capturing references that changed nothing. *@
                     @if (cal.UsesReference)
                     {
-                        <SettingRow Title="Reference snapshot" Description='@(cal.HasReference ? "Captured." : "Capture with the target visible on screen.")'>
-                            <button class="btn btn-secondary" @onclick="CaptureReferenceSnapshot" disabled="@(!cal.HasRegion || _calibrating)">Capture reference</button>
+                        <SettingRow Title="@Localizer.T("scripts.reference.title")" Description='@Localizer.T(cal.HasReference ? "scripts.reference.captured" : "scripts.reference.capture.target")'>
+                            <button class="btn btn-secondary" @onclick="CaptureReferenceSnapshot" disabled="@(!cal.HasRegion || _calibrating)">@Localizer.T("scripts.capturereference")</button>
                         </SettingRow>
                         @* Anything drawn over the live game world needs this or it never matches twice:
                            the world behind it moves and the comparison is over the whole region. *@
-                        <SettingRow Title="Ignore background"
-                                    Description='@(cal.MaskSummary is { Length: > 0 } m ? m : "Turn the camera so the background changes, keep the target on screen, then press.")'>
-                            <button class="btn btn-secondary" @onclick="RefineReferenceMask" disabled="@(!cal.HasReference || _calibrating)">Ignore background</button>
+                        <SettingRow Title="@Localizer.T("scripts.ignorebackground")"
+                                    Description='@(cal.MaskSummary is { Length: > 0 } m ? m : Localizer.T("scripts.mask.hint"))'>
+                            <button class="btn btn-secondary" @onclick="RefineReferenceMask" disabled="@(!cal.HasReference || _calibrating)">@Localizer.T("scripts.ignorebackground")</button>
                         </SettingRow>
                     }
                     @if (!string.IsNullOrEmpty(_calStatus))
@@ -370,6 +372,13 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Repaints the page when the language changes; why the cascade rather than a subscription
+    /// of this page's own is explained in MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private readonly List<AutomationScriptBase> _scripts = new();
     private AutomationScriptBase? _selected;
 
@@ -380,25 +389,28 @@
         foreach (var s in _scripts) s.Changed += OnScriptChanged;
     }
 
-    private static string Describe(AutomationScriptBase script) => script switch
+    // Not static: the description is looked up where the header renders, so a switch re-words
+    // it on the next repaint. The script's own DisplayName stays English — the community calls
+    // them Yuty, Noglin and Fed Suit, and diagnostics report that same name.
+    private string Describe(AutomationScriptBase script) => script switch
     {
-        YutyScript => "Spams the Yutyrannus courage roar on an interval while mounted.",
-        AutoWalkScript => "Holds the forward key so you keep running hands-free (released when ARK loses focus).",
-        MammothScript => "Alternates left/right clicks to keep the Mammoth war drum going AFK.",
-        AstroScript => "One-shot: fires the Astrocetus downward-teleport sequence when you press Start.",
-        AutoDownloadScript => "Repeats a chat command (default /download) on an interval.",
-        FastTpScript => "With the teleport menu open, types a destination and confirms (one-shot).",
-        TakeAllScript => "Clicks the container Take-All button whenever it's visible (calibrated region).",
-        TekSaddleScript => "While the Tek Saddle buff is up and you hold left-click, spams extra clicks.",
-        NoglinScript => "Detects the Noglin mind-control icon and drops FPS to 1 until it clears.",
-        InvSizeScript => "Experimental: Shift+right-click spam to inflate inventory (needs your blueprint hotkeys; lag/loss risk).",
-        AntiAfkScript => "Opens/closes inventory on an interval to avoid the idle kick.",
-        TurretManagerScript => "When a turret inventory is open, presses transfer to refill its ammo.",
-        FlakScript => "Reads the durability numbers next to your armor and swaps in a fresh piece from the hotbar — flak, riot or tek, without opening anything.",
-        DinoReadyScript => "Single-stat leveler: clicks a calibrated stat + button N times (one-shot).",
-        CraftingScript => "Crafts at Fabricator/Chem Bench/Replicator — Watcher or Walk mode, with ping compensation.",
-        AutoAntidoteScript => "Watches a calibrated icon and presses a hotbar key when it appears, disappears, or its timer runs low.",
-        FedSuitScript => "Transmitter loop: opens it, narrows to what you want, transfers a batch, closes, repeats.",
+        YutyScript => Localizer.T("scripts.desc.yuty"),
+        AutoWalkScript => Localizer.T("scripts.desc.autowalk"),
+        MammothScript => Localizer.T("scripts.desc.mammoth"),
+        AstroScript => Localizer.T("scripts.desc.astro"),
+        AutoDownloadScript => Localizer.T("scripts.desc.autodownload"),
+        FastTpScript => Localizer.T("scripts.desc.fasttp"),
+        TakeAllScript => Localizer.T("scripts.desc.takeall"),
+        TekSaddleScript => Localizer.T("scripts.desc.teksaddle"),
+        NoglinScript => Localizer.T("scripts.desc.noglin"),
+        InvSizeScript => Localizer.T("scripts.desc.invsize"),
+        AntiAfkScript => Localizer.T("scripts.desc.antiafk"),
+        TurretManagerScript => Localizer.T("scripts.desc.turret"),
+        FlakScript => Localizer.T("scripts.desc.flak"),
+        DinoReadyScript => Localizer.T("scripts.desc.dinoready"),
+        CraftingScript => Localizer.T("scripts.desc.crafting"),
+        AutoAntidoteScript => Localizer.T("scripts.desc.antidote"),
+        FedSuitScript => Localizer.T("scripts.desc.fedsuit"),
         _ => ""
     };
 
@@ -461,11 +473,12 @@
             ApplyFed(f, s => s.WaitAfterOpenMs = v);
     }
 
-    private static readonly IReadOnlyList<Dropdown.Option> AntidoteModeOptions = new List<Dropdown.Option>
+    // A property, not a static field: a list built once keeps the language it was built in.
+    private IReadOnlyList<Dropdown.Option> AntidoteModeOptions => new List<Dropdown.Option>
     {
-        new(nameof(AutoAntidoteTriggerMode.IconAppears), "Icon appears"),
-        new(nameof(AutoAntidoteTriggerMode.IconDisappears), "Icon disappears"),
-        new(nameof(AutoAntidoteTriggerMode.TimerBelow), "Timer below"),
+        new(nameof(AutoAntidoteTriggerMode.IconAppears), Localizer.T("scripts.antidote.mode.appears")),
+        new(nameof(AutoAntidoteTriggerMode.IconDisappears), Localizer.T("scripts.antidote.mode.disappears")),
+        new(nameof(AutoAntidoteTriggerMode.TimerBelow), Localizer.T("scripts.antidote.mode.timer")),
     };
 
     private void SaveAntidote(AutoAntidoteScript a) => a.Service.SaveSettings();
@@ -514,18 +527,18 @@
         if (_selected is not AutoAntidoteScript a) return;
 
         _calibrating = true;
-        _calStatus = "Hover one corner of the icon, then the opposite corner.";
+        _calStatus = Localizer.T("scripts.cal.hovercorners");
         StateHasChanged();
         try
         {
             var progress = new Progress<RegionCaptureProgress>(pr =>
             {
-                _calStatus = $"Hover corner {pr.CornerIndex} — capturing in {pr.SecondsRemaining}s...";
+                _calStatus = Localizer.T("scripts.cal.progress", pr.CornerIndex, pr.SecondsRemaining);
                 this.DispatchRender(() => InvokeAsync(StateHasChanged));
             });
 
             var ok = await a.Service.CaptureRegionAsync(progress);
-            _calStatus = ok ? "Region captured." : "Region capture cancelled.";
+            _calStatus = Localizer.T(ok ? "scripts.cal.captured" : "scripts.cal.cancelled");
         }
         finally
         {
@@ -537,7 +550,7 @@
     private void CaptureAntidoteReference()
     {
         if (_selected is not AutoAntidoteScript a) return;
-        _calStatus = a.Service.CaptureReference() ? "Reference captured." : "Could not capture the reference.";
+        _calStatus = Localizer.T(a.Service.CaptureReference() ? "scripts.cal.ref.captured" : "scripts.cal.ref.failed");
     }
 
     private void SetWalkMode(string value)
@@ -709,52 +722,58 @@
     private void SetTurretScan(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.ScanIntervalMs = v; t.SaveSettings(); } }
 
     /// <summary>The line under "Last read": what was seen, and what the script made of it.</summary>
-    private static string FlakReadingHint(FlakScript f)
+    private string FlakReadingHint(FlakScript f)
     {
-        if (!f.IsRunning) return "Start the script to see what it reads.";
+        if (!f.IsRunning) return Localizer.T("scripts.flak.hint.notrunning");
 
         // Empty LastReading means no scan has happened yet — the loop only ticks while ARK
         // is the foreground window, which it never is while you sit on this page. Blaming
         // the calibration here sent people off recalibrating a region that was never read.
-        if (string.IsNullOrEmpty(f.LastReading)) return "Waiting for ARK to be in the foreground…";
-        if (f.Lowest is not { } low) return "No number recognised — check the calibrated region.";
+        if (string.IsNullOrEmpty(f.LastReading)) return Localizer.T("scripts.flak.hint.waiting");
+        if (f.Lowest is not { } low) return Localizer.T("scripts.flak.hint.nonumber");
 
         // Absolute time, not "Ns ago": the counter only re-renders on a tick, and ticks
         // stop the moment you alt-tab here — a frozen live counter is a lie.
-        var swapped = f.LastSwapUtc is { } t ? $" · last swap {t.ToLocalTime():HH:mm:ss}" : "";
-        return low <= f.DurabilityThreshold
-            ? $"Lowest {low} — at or below {f.DurabilityThreshold}, swapping{swapped}"
-            : $"Lowest {low} — above {f.DurabilityThreshold}, nothing to do{swapped}";
+        // The separating space is in the join, not in the dictionary — a value whose leading
+        // space is load bearing is a value the next person trims.
+        var swapped = f.LastSwapUtc is { } t
+            ? " " + Localizer.T("scripts.flak.hint.lastswap", t.ToLocalTime().ToString("HH:mm:ss"))
+            : "";
+
+        return Localizer.T(
+            low <= f.DurabilityThreshold ? "scripts.flak.hint.swapping" : "scripts.flak.hint.nothing",
+            low, f.DurabilityThreshold, swapped);
     }
 
     private void SetFlakThreshold(ChangeEventArgs e) { if (_selected is FlakScript f && int.TryParse(e.Value?.ToString(), out var v)) { f.DurabilityThreshold = v; f.SaveSettings(); } }
     private void SetFlakRowKey(int row, ChangeEventArgs e) { if (_selected is FlakScript f && row >= 0 && row < FlakScript.MaxRows) { f.RowKeys[row] = e.Value?.ToString() ?? ""; f.SaveSettings(); } }
 
     /// <summary>Says outright when a typed key cannot be sent — the script skips those silently.</summary>
-    private static string RowKeyHint(int row, string? key)
+    private string RowKeyHint(int row, string? key)
     {
         if (!string.IsNullOrWhiteSpace(key) && !FlakScript.IsUsableKey(key))
-            return $"'{key}' is not a key that can be sent — use a single character like 8, or a name like F5.";
+            return Localizer.T("scripts.flak.rowkey.badkey", key);
 
-        return row == 0
-            ? "Hotbar slot holding the spare for the top armor row. Leave a row empty to ignore it."
-            : "Leave empty if you carry no spare for this row.";
+        return Localizer.T(row == 0 ? "scripts.flak.rowkey.top" : "scripts.flak.rowkey.other");
     }
     private void SetFlakScan(ChangeEventArgs e) { if (_selected is FlakScript f && int.TryParse(e.Value?.ToString(), out var v)) { f.ScanIntervalMs = v; f.SaveSettings(); } }
 
     private void SetDinoPresses(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.Presses = v; d.SaveSettings(); } }
     private void SetDinoDelay(ChangeEventArgs e) { if (_selected is DinoReadyScript d && int.TryParse(e.Value?.ToString(), out var v)) { d.ClickDelayMs = v; d.SaveSettings(); } }
 
-    private static readonly IReadOnlyList<Dropdown.Option> WalkModeOptions = new List<Dropdown.Option>
+    // The value stays "Walk"/"Sprint" — SetWalkMode compares against it — and only the label moves.
+    private IReadOnlyList<Dropdown.Option> WalkModeOptions => new List<Dropdown.Option>
     {
-        new("Walk", "Walk"),
-        new("Sprint", "Sprint"),
+        new("Walk", Localizer.T("scripts.walk.mode.walk")),
+        new("Sprint", Localizer.T("scripts.walk.mode.sprint")),
     };
 
-    private static readonly IReadOnlyList<Dropdown.Option> CraftModeOptions = new List<Dropdown.Option>
+    // Watcher and Walk are the mode's own names, in the description as well as here, so the
+    // label is a key that reads the same in English and can be adjusted per language.
+    private IReadOnlyList<Dropdown.Option> CraftModeOptions => new List<Dropdown.Option>
     {
-        new(nameof(CraftingMode.Watcher), "Watcher"),
-        new(nameof(CraftingMode.Walk), "Walk"),
+        new(nameof(CraftingMode.Watcher), Localizer.T("scripts.craft.mode.watcher")),
+        new(nameof(CraftingMode.Walk), Localizer.T("scripts.craft.mode.walk")),
     };
 
     private void SetCraftMode(string value) { if (_selected is CraftingScript c && Enum.TryParse<CraftingMode>(value, out var m)) { c.Mode = m; c.SaveSettings(); } }
@@ -776,7 +795,7 @@
         _calibrating = true;
         var progress = new Progress<RegionCaptureProgress>(p =>
         {
-            _calStatus = $"Hover corner {p.CornerIndex} of the button — capturing in {p.SecondsRemaining}s…";
+            _calStatus = Localizer.T("scripts.cal.progress.button", p.CornerIndex, p.SecondsRemaining);
             this.DispatchRender(() => InvokeAsync(StateHasChanged));
         });
         try { await cal.CalibrateRegionAsync(progress); }
