@@ -319,6 +319,7 @@ namespace RazorReaper
             services.AddSingleton<RazorReaper.Services.Media.IMediaProbe, RazorReaper.Services.Media.MediaProbe>();
             services.AddSingleton<ILoadingScreenService, LoadingScreenService>();
             services.AddSingleton<ICharPresetService, CharPresetService>();
+            services.AddSingleton<IDisplayApi, Win32DisplayApi>();
             services.AddSingleton<IStretchedResService, StretchedResService>();
             services.AddSingleton<RazorReaper.Services.Gamma.IGammaService, RazorReaper.Services.Gamma.GammaService>();
 
