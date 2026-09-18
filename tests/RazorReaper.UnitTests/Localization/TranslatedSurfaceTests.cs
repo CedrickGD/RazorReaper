@@ -307,6 +307,63 @@ public sealed class TranslatedSurfaceTests
             data.Add("Services/Implementations/AutoUpdateManager.cs", literal);
         }
 
+        foreach (var literal in new[]
+        {
+            ">Stretched Res</h1>",
+            "Switch the desktop to a stretched resolution",
+            "Keep this resolution?</div>",
+            "automatically if you don't confirm",
+            "\"the new mode\"",
+            "\"the previous mode\"",
+            "-unit\">s</span>",
+            ">Keep resolution</button>",
+            ">Revert now</button>",
+            "Restore native",
+            ">Current</div>",
+            ">Native</div>",
+            "The panel's full resolution",
+            ">Graphics</div>",
+            "? \"Unknown\" :",
+            "GPU scaling supported",
+            "Set your GPU to full-screen scaling",
+            "\"Awaiting confirmation\"",
+            "\"Stretched resolution active\"",
+            "\"Native resolution\"",
+            "Desktop is at",
+            "Could not read the current desktop resolution.",
+            "<h3>Stretched presets",
+            "Each applies the desktop resolution temporarily",
+            "· stretched",
+            "· native",
+            "\"Not detected\"",
+            ">Width</span>",
+            ">Height</span>",
+            ">Apply custom</button>",
+            "If the screen goes black or unreadable",
+            "<h3>Make the GPU stretch the image</h3>",
+            "A stretched resolution only fills the screen",
+            "Your NVIDIA GPU handles this",
+            "<strong>NVIDIA Control Panel</strong>",
+            "Adjust desktop size and position",
+            "Perform scaling on",
+            "<strong>GPU Scaling</strong>",
+            "Maintain Display Scaling",
+            "<h3>ARK game resolution</h3>",
+            "Title=\"Write resolution to GameUserSettings.ini\"",
+            "sets ARK's ResolutionSizeX/Y",
+            "\"Close ARK first\"",
+            "\"Choose a resolution first\"",
+            "$\"Write {lastChosenWidth}",
+            "Close ARK before writing",
+            "Free monthly limit reached",
+            "\"Could not apply that resolution.\"",
+            "\"Could not write ARK's resolution.\"",
+            "ARK write failed:",
+        })
+        {
+            data.Add("Components/Pages/StretchedRes.razor", literal);
+        }
+
         return data;
     }
 
@@ -344,6 +401,14 @@ public sealed class TranslatedSurfaceTests
     [InlineData("update.gated", "Close ARK (or stop the running macro) first, then restart to update.")]
     [InlineData("update.status.ready", "Update v{0} is ready — restart to install.")]
     [InlineData("update.install.failed.retry", "Update to v{0} could not be installed (installer exit code {1}). Restart & update to try again.")]
+    [InlineData("stretchedres.title", "Stretched Res")]
+    [InlineData("stretchedres.monitor.label", "Monitor")]
+    [InlineData("stretchedres.monitor.option", "Monitor {0} — {1}×{2}")]
+    [InlineData("stretchedres.monitor.option.primary", "Monitor {0} — {1}×{2} (primary)")]
+    [InlineData("stretchedres.monitor.fallback", "The monitor you last used is not connected — {0} is selected instead.")]
+    [InlineData("stretchedres.confirm.title", "Keep this resolution?")]
+    [InlineData("stretchedres.custom.title", "Custom resolution")]
+    [InlineData("stretchedres.ark.title", "ARK game resolution")]
     public void TheEnglishWordingIsWhatItWas(string key, string expected)
     {
         Assert.True(TranslationParityTests.Read("en").TryGetValue(key, out var english), $"missing {key}");
