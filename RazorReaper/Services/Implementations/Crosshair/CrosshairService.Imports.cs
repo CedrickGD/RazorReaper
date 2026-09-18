@@ -34,6 +34,18 @@ public partial class CrosshairService
             var nativeExt = ImageFormatDetection.SniffNativeImageExtension(bytes);
             if (nativeExt != null)
             {
+                // …except that a still PNG still has to be trimmed to its content. The overlay
+                // centres the image's CANVAS, so a crosshair sitting off-centre inside a padded
+                // canvas renders off-centre on screen — which is exactly the "it's never really in
+                // the middle" complaint, and most crosshair PNGs found online are padded like
+                // that. The SkiaSharp path below has always cropped; the native path did not, so
+                // the commonest format was the one that skipped it. GIF is left alone (cropping it
+                // would mean re-encoding the animation) and JPEG has no alpha to crop.
+                if (nativeExt == ".png")
+                {
+                    var trimmed = TryTrimTransparentBorders(bytes);
+                    if (trimmed != null) bytes = trimmed;
+                }
                 return await SaveImportedAsync(bytes, nativeExt);
             }
 
@@ -96,6 +108,35 @@ public partial class CrosshairService
         {
             _logger.LogError(ex, "Image import failed for {File}", fileName);
             _notifications.ShowError($"Image import failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Re-encode <paramref name="bytes"/> with its fully-transparent border removed, or null when
+    /// there is nothing to trim (already tight, fully transparent, or undecodable) so the caller
+    /// keeps the original bytes untouched rather than paying for a pointless transcode.
+    /// </summary>
+    private byte[]? TryTrimTransparentBorders(byte[] bytes)
+    {
+        try
+        {
+            using var decoded = SkiaSharp.SKBitmap.Decode(bytes);
+            if (decoded == null) return null;
+
+            using var cropped = ImageFormatDetection.AutoCropTransparentBorders(decoded);
+            if (cropped == null) return null;
+
+            using var image = SkiaSharp.SKImage.FromBitmap(cropped);
+            using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            var result = data?.ToArray();
+            return result is { Length: > 0 } ? result : null;
+        }
+        catch (Exception ex)
+        {
+            // A decode failure here is not fatal — storing the original bytes is still correct,
+            // it just leaves the image padded.
+            _logger.LogWarning(ex, "Auto-crop of an imported PNG failed; storing it unchanged");
             return null;
         }
     }
