@@ -102,6 +102,50 @@ public sealed class ScriptCatalogueHonestyTests
         Assert.Contains(@"Localizer.T(""scripts.field.matchthreshold"")", page, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The same honesty, one card down. Those three rows are only true of a script that compares
+    /// a captured snapshot, and two of the seven on this base never do: Armor Swap reads its
+    /// region as text, and Dino Ready only clicks the middle of it.
+    ///
+    /// Armor Swap said so from the start. Dino Ready inherited the default and got the whole
+    /// workflow — a capture button that changed nothing it does, and worse, a live-match
+    /// percentage scored against a snapshot no run of it ever reads and a mismatch banner over a
+    /// calibration that moving screens cannot invalidate. Only Dino Ready is built here: Armor
+    /// Swap needs an OCR engine to construct, and its flag is not the one that regressed.
+    /// </summary>
+    [Fact]
+    public void AScriptThatNeverComparesASnapshotIsNotOfferedOne()
+    {
+        using var dino = DinoReady();
+        using var takeAll = TakeAll();
+
+        Assert.False(((ICalibratableScript)dino).UsesReference);
+
+        // And the ones that do compare keep all of it — a flag that said "no" everywhere would
+        // buy the honesty by deleting the feature.
+        Assert.True(((ICalibratableScript)takeAll).UsesReference);
+    }
+
+    /// <summary>
+    /// And the page has to honour the flag for the rows that answer "is the snapshot matching?",
+    /// not only for the buttons that capture one. They sit inside the gate; a percentage and a
+    /// monitor banner outside it would be the same lie rendered one indent to the left.
+    /// </summary>
+    [Fact]
+    public void TheLiveMatchAndDisplayRowsSitBehindTheReferenceFlag()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "RazorReaper", "Components", "Pages", "Scripts.razor"));
+
+        var gate = page.IndexOf("cal.UsesReference", StringComparison.Ordinal);
+        Assert.True(gate >= 0, "the calibration card no longer asks whether the script uses a reference");
+
+        Assert.True(page.IndexOf("cal.CurrentSimilarityPercent", StringComparison.Ordinal) > gate,
+            "the live-match row is drawn for scripts that never match anything");
+        Assert.True(page.IndexOf("MonitorLine(cal.Monitor)", StringComparison.Ordinal) > gate,
+            "the monitor row is drawn for scripts with no snapshot to invalidate");
+    }
+
     /// <summary>The mismatch row needs a style, or it renders as an ordinary row saying nothing.</summary>
     [Fact]
     public void TheChipAndTheMismatchRowAreStyled()
@@ -145,6 +189,11 @@ public sealed class ScriptCatalogueHonestyTests
         new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
         Gate(), Hotkeys(), Toasts(), Activity(), English(),
         NullLogger<TakeAllScript>.Instance);
+
+    private static DinoReadyScript DinoReady() => new(
+        new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
+        Gate(), Hotkeys(), Toasts(), Activity(), English(),
+        NullLogger<DinoReadyScript>.Instance);
 
     private static FakeForegroundGate Gate() => new(gameIsForeground: false);
 

@@ -39,6 +39,16 @@ public sealed class DinoReadyScript : CalibratableScriptBase
         LoadSettings();
     }
 
+    /// <summary>
+    /// No snapshot matching — the region is a point to click, not a picture to recognise. The
+    /// run below never compares anything, so the reference and mask buttons changed nothing, the
+    /// live-match row scored the "+" button against a snapshot it does not use, and the monitor
+    /// row could announce a mismatch on a calibration that was never at risk from one. Same
+    /// reason as <see cref="FlakScript.UsesReference"/>, different cause: Armor Swap reads its
+    /// region as text, this one only aims at it.
+    /// </summary>
+    public override bool UsesReference => false;
+
     // Only needs the region (the button to click) — no reference snapshot required.
     protected override bool CanStart(out string? reason)
     {
