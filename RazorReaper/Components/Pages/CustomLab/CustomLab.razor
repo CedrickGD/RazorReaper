@@ -3,10 +3,12 @@
 
 @inject ICustomLabSettingsService LabSettings
 @inject IDiscordPresenceService DiscordPresence
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Sky Changer</h1>
-    <p class="page-subtitle">Replace the in-game sky with an image or solid color — patches your local sky files, safe on any server.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.custom-lab")</h1>
+    <p class="page-subtitle">@Localizer.T("customlab.subtitle")</p>
 </header>
 
 <div class="sky-changer-body">
@@ -21,6 +23,14 @@
 </style>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         await LabSettings.LoadAsync();

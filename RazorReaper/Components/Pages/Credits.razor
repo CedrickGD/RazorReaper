@@ -4,10 +4,12 @@
 @using RazorReaper.Services
 @inject INotificationService NotificationService
 @inject ILogger<Credits> Logger
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Credits</h1>
-    <p class="page-subtitle">Developer, community, and tools behind RazorReaper.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.credits")</h1>
+    <p class="page-subtitle">@Localizer.T("credits.subtitle")</p>
 </header>
 
 <div class="credits-page">
@@ -24,7 +26,7 @@
             </div>
             <div class="cr-dev-info">
                 <h2 class="cr-dev-name">itssomeguy.</h2>
-                <span class="cr-dev-role">ARK: Survival Evolved Tools Developer</span>
+                <span class="cr-dev-role">@Localizer.T("credits.role")</span>
             </div>
         </div>
         <div class="cr-links-row">
@@ -43,8 +45,8 @@
     <section class="content-card credits-section cr-community-card">
         <div class="cr-community-inner">
             <div class="cr-community-text">
-                <h3>Community & Support</h3>
-                <p>Describe the problem in your in-app report. System and feature context is attached automatically when you send it. Discord remains available for community chat.</p>
+                <h3>@Localizer.T("credits.community.title")</h3>
+                <p>@Localizer.T("credits.community.text")</p>
             </div>
             <SendDiagnosticsButton SourceRoute="credits" />
             <button class="cr-discord-join" @onclick="OpenDiscordServer">
@@ -56,7 +58,7 @@
 
     @* ── Technologies ── *@
     <section class="content-card credits-section">
-        <h3 class="cr-section-label">Built With</h3>
+        <h3 class="cr-section-label">@Localizer.T("credits.builtwith")</h3>
         <div class="cr-tech-row">
             <a href="https://dotnet.microsoft.com/en-us/apps/aspnet/web-apps/blazor" target="_blank" class="cr-tech">C# Blazor</a>
             <a href="https://dotnet.microsoft.com/en-us/apps/aspnet" target="_blank" class="cr-tech">ASP.NET Core</a>
@@ -68,18 +70,26 @@
 
     @* ── Help ── *@
     <section class="content-card credits-section cr-help-card">
-        <h3 class="cr-section-label">Need Help?</h3>
-        <p class="cr-help-text">Found a bug or need assistance? In-app diagnostics give support the details needed to investigate; use Discord for follow-up conversation.</p>
+        <h3 class="cr-section-label">@Localizer.T("credits.help.title")</h3>
+        <p class="cr-help-text">@Localizer.T("credits.help.text")</p>
         <div class="cr-help-tags">
             <span class="cr-tag">Discord: itssomeguy.</span>
-            <span class="cr-tag">In-App Feedback</span>
-            <span class="cr-tag">Bug Reports</span>
+            <span class="cr-tag">@Localizer.T("credits.tag.feedback")</span>
+            <span class="cr-tag">@Localizer.T("credits.tag.bugs")</span>
         </div>
     </section>
 
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private void OpenDiscordServer() => OpenExternalUrl("http://discord.gg/TZJm7Rg53d", "Discord server");
     private void OpenDiscordProfile() => OpenExternalUrl("https://discord.com", "Discord");
     private void OpenYouTube() => OpenExternalUrl("https://youtube.com/@ISG_3332", "YouTube");
@@ -93,7 +103,7 @@
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to open external URL '{Label}': {Url}", label, url);
-            NotificationService.ShowError($"Could not open {label}. Check your default browser settings.");
+            NotificationService.ShowError(Localizer.T("credits.openfailed", label));
         }
     }
 }

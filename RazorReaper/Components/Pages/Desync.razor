@@ -3,41 +3,43 @@
 @using RazorReaper.Services.Desync
 @inject IDesyncService DesyncService
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Desync</h1>
-    <p class="page-subtitle">Freezes your character server-side by blocking ARK's outbound traffic. Always auto-reverts.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.desync")</h1>
+    <p class="page-subtitle">@Localizer.T("desync.subtitle")</p>
 </header>
 
 <div class="content-card">
     <StatusHeader State="@(DesyncService.IsActive ? "warning" : "off")"
-                  Label="@(DesyncService.IsActive ? "Active" : "Inactive")"
-                  Description="Adds a temporary Windows Firewall rule blocking outbound traffic for ShooterGame.exe.">
+                  Label="@Localizer.T(DesyncService.IsActive ? "common.active" : "desync.inactive")"
+                  Description="@Localizer.T("desync.status.description")">
         <Actions>
             <UsageChip Feature="@UsageFeatures.Desync" />
             @if (!DesyncService.IsActive)
             {
-                <button class="btn btn-primary" @onclick="StartAsync" disabled="@(!DesyncService.IsAdministrator)">Activate</button>
+                <button class="btn btn-primary" @onclick="StartAsync" disabled="@(!DesyncService.IsAdministrator)">@Localizer.T("desync.activate")</button>
             }
         </Actions>
     </StatusHeader>
 
-    <ElevationPrompt Message="Desync needs administrator rights to add its temporary firewall rule." />
+    <ElevationPrompt Message="@Localizer.T("desync.elevation")" />
 
     @if (DesyncService.IsActive)
     {
         <div class="dsy-countdown">
             <div class="dsy-count-num">@DesyncService.RemainingSeconds<span class="dsy-count-unit">s</span></div>
-            <div class="dsy-count-label">until traffic is restored</div>
+            <div class="dsy-count-label">@Localizer.T("desync.countdown")</div>
             <div class="dsy-count-bar">
                 <div class="dsy-count-fill" style="width: @(ProgressPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%"></div>
             </div>
-            <button class="btn btn-danger dsy-stop" @onclick="StopAsync">Stop now</button>
+            <button class="btn btn-danger dsy-stop" @onclick="StopAsync">@Localizer.T("desync.stopnow")</button>
         </div>
     }
     else
     {
-        <SettingRow Title="Duration" Description="Seconds before it reverts automatically (max 600).">
+        <SettingRow Title="@Localizer.T("desync.duration.title")" Description="@Localizer.T("desync.duration.description")">
             <div class="dsy-duration">
                 @foreach (var preset in Presets)
                 {
@@ -51,24 +53,28 @@
 </div>
 
 <div class="content-card">
-    <div class="dsy-section-title">How it works</div>
+    <div class="dsy-section-title">@Localizer.T("desync.how.title")</div>
     <ol class="dsy-steps">
-        <li>Activate adds an outbound block rule for ShooterGame.exe — the server stops receiving your position.</li>
-        <li>Your character freezes in place server-side while the game keeps running for you.</li>
-        <li>The rule is removed when the timer ends, when you stop it, or when RazorReaper closes.</li>
+        <li>@Localizer.T("desync.how.1")</li>
+        <li>@Localizer.T("desync.how.2")</li>
+        <li>@Localizer.T("desync.how.3")</li>
     </ol>
 
-    <SettingRow Title="In-game countdown" Description="While active, the HUD overlay's Desync module shows the remaining seconds on top of the game." />
-    <SettingRow Title="Instant stop" Description="Stop now removes the rule immediately — traffic resumes within a second." />
+    <SettingRow Title="@Localizer.T("desync.ingame.title")" Description="@Localizer.T("desync.ingame.description")" />
+    <SettingRow Title="@Localizer.T("desync.instant.title")" Description="@Localizer.T("desync.instant.description")" />
 
-    <div class="dsy-note">
-        Your position freezes on the server while downloads keep working; the server usually disconnects
-        you after a while. The rule is always removed automatically — on revert, on timeout, and when
-        RazorReaper closes. Use at your own risk: this is detectable and against most servers' rules.
-    </div>
+    <div class="dsy-note">@Localizer.T("desync.note")</div>
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private static readonly int[] Presets = { 10, 30, 60, 120 };
 
     private int _seconds = 30;

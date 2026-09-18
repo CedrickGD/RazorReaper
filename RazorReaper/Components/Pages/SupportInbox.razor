@@ -2,38 +2,40 @@
 @using RazorReaper.Services
 @inject ISupportInboxService Inbox
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">Inbox</h1>
-    <p class="page-subtitle">Private answers from support, linked to your reports.</p>
+    <h1 class="page-title">@Localizer.T("inbox.title")</h1>
+    <p class="page-subtitle">@Localizer.T("inbox.subtitle")</p>
 </header>
-<div class="support-inbox-actions"><a href="/feedback" class="btn btn-secondary">Report an issue</a></div>
+<div class="support-inbox-actions"><a href="/feedback" class="btn btn-secondary">@Localizer.T("diagnostics.report")</a></div>
 @if (Inbox.Error is not null)
 {
     <p role="status" class="feedback-note">@Inbox.Error</p>
 }
 @if (!Inbox.HasLoaded && Inbox.Error is null)
 {
-    <p>Loading your inbox…</p>
+    <p>@Localizer.T("inbox.loading")</p>
 }
 else if (Inbox.HasLoaded && Inbox.Replies.Count == 0)
 {
-    <div class="content-card"><h3>No replies yet</h3><p>Your replies will appear here automatically. The bell beside your tier in the sidebar shows a dot when support answers.</p></div>
+    <div class="content-card"><h3>@Localizer.T("inbox.empty.title")</h3><p>@Localizer.T("inbox.empty.text")</p></div>
 }
 <div class="support-replies">
 @foreach (var reply in Inbox.Replies)
 {
     <article @key="reply.Id" class="content-card support-reply @(reply.ReadAt is null ? "is-unread" : "")">
         <button type="button" class="support-reply-heading" aria-expanded="@_opened.Contains(reply.Id)" @onclick="() => OpenAsync(reply)">
-            <span><strong>Support replied</strong><span class="support-reply-meta">@reply.ReportId · @reply.CreatedAt.ToLocalTime().ToString("g")</span></span>
-            @if (reply.ReadAt is null) { <span class="support-unread">New</span> }
+            <span><strong>@Localizer.T("inbox.replied")</strong><span class="support-reply-meta">@reply.ReportId · @reply.CreatedAt.ToLocalTime().ToString("g")</span></span>
+            @if (reply.ReadAt is null) { <span class="support-unread">@Localizer.T("inbox.new")</span> }
             <span aria-hidden="true">@(_opened.Contains(reply.Id) ? "−" : "+")</span>
         </button>
         @if (_opened.Contains(reply.Id))
         {
             <div class="support-reply-content">
                 <p class="support-answer">@reply.Message</p>
-                <div class="support-original"><strong>Your report</strong><p>@reply.OriginalMessage</p></div>
+                <div class="support-original"><strong>@Localizer.T("inbox.yourreport")</strong><p>@reply.OriginalMessage</p></div>
             </div>
         }
     </article>
@@ -41,10 +43,18 @@ else if (Inbox.HasLoaded && Inbox.Replies.Count == 0)
 </div>
 @if (Inbox.NextBefore is not null)
 {
-    <button class="btn btn-secondary" disabled="@_loadingOlder" @onclick="LoadOlderAsync">Earlier replies</button>
+    <button class="btn btn-secondary" disabled="@_loadingOlder" @onclick="LoadOlderAsync">@Localizer.T("inbox.older")</button>
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private readonly HashSet<long> _opened = [];
     private bool _loadingOlder;
     private long? _appliedOpen;

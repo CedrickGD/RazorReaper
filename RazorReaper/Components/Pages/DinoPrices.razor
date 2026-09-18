@@ -1,28 +1,30 @@
 @page "/dino-prices"
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 
         <header class="page-header">
-            <h1 class="page-title">Gen2 Mutagen Dino Prices</h1>
-            <p class="page-subtitle">Browse creature mutation values and search by name</p>
+            <h1 class="page-title">@Localizer.T("dinoprices.title")</h1>
+            <p class="page-subtitle">@Localizer.T("dinoprices.subtitle")</p>
         </header>
 
         <div class="dino-layout">
             <div class="dino-toolbar">
                 <div class="search-block">
-                    <label class="filter-label">Search by Name</label>
+                    <label class="filter-label">@Localizer.T("dinoprices.search.label")</label>
                     <div class="search-wrapper">
                         <svg class="search-icon" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                         </svg>
                         <input type="text"
                                class="search-input"
-                               placeholder="Search dinos..."
+                               placeholder="@Localizer.T("dinoprices.search.placeholder")"
                                @bind="searchQuery"
                                @bind:event="oninput" />
                     </div>
                 </div>
                 <div class="dino-count">
-                    <span>Showing:</span>
+                    <span>@Localizer.T("dinoprices.showing")</span>
                     <span class="stat-value">@filteredDinos.Count / @allDinos.Count</span>
                 </div>
             </div>
@@ -34,8 +36,8 @@
                         <div class="dino-table">
                             <div class="table-header">
                                 <div class="th-rank">#</div>
-                                <div class="th-name">Creature Name</div>
-                                <div class="th-value">Mutagen Value</div>
+                                <div class="th-name">@Localizer.T("dinoprices.column.name")</div>
+                                <div class="th-value">@Localizer.T("dinoprices.column.value")</div>
                             </div>
                             <div class="table-body">
                                 @{
@@ -63,8 +65,8 @@
                             <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                             </svg>
-                            <h3>No creatures found</h3>
-                            <p>Try adjusting your search query</p>
+                            <h3>@Localizer.T("dinoprices.empty.title")</h3>
+                            <p>@Localizer.T("dinoprices.empty.text")</p>
                         </div>
                     }
                 </div>
@@ -73,6 +75,14 @@
 
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private string _searchQuery = "";
     private string searchQuery
     {

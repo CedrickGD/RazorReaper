@@ -386,6 +386,133 @@ public sealed class TranslatedSurfaceTests
 
         foreach (var literal in new[]
         {
+            ">Global Hotkeys</h1>",
+            "Every system-wide hotkey, set in one place",
+            ">Set on its page</a>",
+            "Placeholder=\"Press a combination\"",
+            "@binding.Description",
+        })
+        {
+            data.Add("Components/Pages/GlobalHotkeys.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "Group = \"Scripts\"",
+            "Group = \"Overlays\"",
+            "Group = \"Automation\"",
+            "Description = \"Starts or stops the script.\"",
+            "Description = \"Shows or hides the crosshair.\"",
+            "Description = \"Starts or stops clicking.\"",
+        })
+        {
+            data.Add("Services/Automation/HotkeyRegistry.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Credits</h1>",
+            "Developer, community, and tools behind",
+            ">ARK: Survival Evolved Tools Developer</span>",
+            "<h3>Community & Support</h3>",
+            "Describe the problem in your in-app report",
+            ">Built With</h3>",
+            ">Need Help?</h3>",
+            "Found a bug or need assistance?",
+            ">In-App Feedback</span>",
+            ">Bug Reports</span>",
+            "$\"Could not open {label}.",
+        })
+        {
+            data.Add("Components/Pages/Credits.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Desync</h1>",
+            "Freezes your character server-side",
+            "\"Active\" : \"Inactive\"",
+            "Adds a temporary Windows Firewall rule",
+            ">Activate</button>",
+            "Message=\"Desync needs administrator rights",
+            ">until traffic is restored</div>",
+            ">Stop now</button>",
+            "Title=\"Duration\"",
+            ">How it works</div>",
+            "<li>Activate adds an outbound block rule",
+            "Title=\"In-game countdown\"",
+            "Title=\"Instant stop\"",
+            "Use at your own risk",
+        })
+        {
+            data.Add("Components/Pages/Desync.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Inbox</h1>",
+            "Private answers from support",
+            ">Report an issue</a>",
+            "<p>Loading your inbox…</p>",
+            "<h3>No replies yet</h3>",
+            "Your replies will appear here automatically",
+            "<strong>Support replied</strong>",
+            ">New</span>",
+            "<strong>Your report</strong>",
+            ">Earlier replies</button>",
+        })
+        {
+            data.Add("Components/Pages/SupportInbox.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Sky Changer</h1>",
+            "Replace the in-game sky with an image",
+        })
+        {
+            data.Add("Components/Pages/CustomLab/CustomLab.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">Gen2 Mutagen Dino Prices</h1>",
+            "Browse creature mutation values and search",
+            ">Search by Name</label>",
+            "placeholder=\"Search dinos...\"",
+            "<span>Showing:</span>",
+            ">Creature Name</div>",
+            ">Mutagen Value</div>",
+            "<h3>No creatures found</h3>",
+            "Try adjusting your search query",
+        })
+        {
+            data.Add("Components/Pages/DinoPrices.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            ">OC BPs</h1>",
+            "Genesis 2 mission rewards for overcapped blueprints.</p>",
+            "<h3>How to get them</h3>",
+            "Run the listed Gen2 missions",
+            "Entries.Count items",
+            "<span>Item</span>",
+            "<span>Mission</span>",
+            "<span>Difficulty</span>",
+            "Title = \"Armor\"",
+            "Title = \"Weapons\"",
+            "Title = \"Saddles\"",
+            "=> \"Best rolls\"",
+            "=> \"Solid rolls\"",
+            "=> \"Lowest rolls\"",
+        })
+        {
+            data.Add("Components/Pages/OcBps.razor", literal);
+        }
+
+        foreach (var literal in new[]
+        {
             "= \"TP Locations\"",
             "= \"Underwater Drops\"",
             "= \"Map Mods\"",
@@ -869,6 +996,13 @@ public sealed class TranslatedSurfaceTests
             yield return ("HudModels.cs", RazorReaper.Services.Overlay.HudSettings.AnchorKey(anchor));
         }
 
+        // The hotkeys page renders its labels off the binding, so a grep for T("…") cannot
+        // see them. The registry publishes the set instead.
+        foreach (var key in RazorReaper.Services.Automation.HotkeyRegistry.Keys)
+        {
+            yield return ("HotkeyRegistry.cs", key);
+        }
+
         // The Lifetime guide numbers its steps rather than naming them: a key named after a
         // step would put the method in the markup above the paywall.
         for (var step = 1; step <= RazorReaper.Components.Pages.DinoLevelGuide.StepCount; step++)
@@ -914,6 +1048,19 @@ public sealed class TranslatedSurfaceTests
     /// </summary>
     private static readonly Regex KeyShaped = new(@"^[a-z][a-z0-9]*(?:\.[a-z0-9\-]+)+$");
 
+    /// <summary>
+    /// A key handed to something that will resolve it later rather than resolved on the spot:
+    /// <c>TitleKey = "ocbps.category.armor"</c> on a record the page renders through
+    /// <c>T(category.TitleKey)</c>.
+    /// </summary>
+    /// <remarks>
+    /// The names are listed rather than matched on the "Key" suffix alone, because the app is
+    /// full of <c>PreferenceKey</c>s: "rr.ui.language" is key-shaped, is assigned to something
+    /// ending in Key, and is a Preferences address rather than a translation.
+    /// </remarks>
+    private static readonly Regex KeyField =
+        new(@"\b(?:Title|Label|Description|Name|Group|Text|Hint|Note|Subtitle)Key\s*[:=]\s*""(?<key>[^""]*)""");
+
     private static IEnumerable<string> KeysAskedFor(string source)
     {
         foreach (Match call in CallSite.Matches(source))
@@ -922,6 +1069,12 @@ public sealed class TranslatedSurfaceTests
             {
                 if (KeyShaped.IsMatch(literal)) yield return literal;
             }
+        }
+
+        foreach (Match field in KeyField.Matches(source))
+        {
+            var key = field.Groups["key"].Value;
+            if (KeyShaped.IsMatch(key)) yield return key;
         }
     }
 

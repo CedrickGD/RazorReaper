@@ -3,6 +3,8 @@
 @inject IHotkeyRegistry Registry
 @inject IEnumerable<AutomationScriptBase> AllScripts
 @implements IDisposable
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 @*
     The single place system-wide hotkeys are set. Feature pages show their binding
@@ -13,14 +15,14 @@
 *@
 
 <header class="page-header">
-    <h1 class="page-title">Global Hotkeys</h1>
-    <p class="page-subtitle">Every system-wide hotkey, set in one place. They work even while ARK has focus.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.hotkeys")</h1>
+    <p class="page-subtitle">@Localizer.T("hotkeys.subtitle")</p>
 </header>
 
-@foreach (var group in Bindings.GroupBy(b => b.Group))
+@foreach (var group in Bindings.GroupBy(b => b.GroupKey))
 {
     <div class="content-card hk-card" @key="group.Key">
-        <h3 class="hk-group-title">@group.Key</h3>
+        <h3 class="hk-group-title">@Localizer.T(group.Key)</h3>
 
         <div class="hk-list">
             @foreach (var binding in group)
@@ -29,22 +31,22 @@
                     <span class="hk-dot @(binding.IsActive?.Invoke() == true ? "on" : "")"></span>
 
                     <span class="hk-text">
-                        <span class="hk-name">@binding.Name</span>
-                        <span class="hk-desc">@binding.Description</span>
+                        <span class="hk-name">@(binding.NameKey is null ? binding.Name : Localizer.T(binding.NameKey))</span>
+                        <span class="hk-desc">@Localizer.T(binding.DescriptionKey)</span>
                     </span>
 
                     @if (binding.ReadOnlyHere)
                     {
                         @* Registration for these still lives in page-local state, so the
                            only honest thing is to point at where it can actually be set. *@
-                        <a class="hk-link" href="@binding.OwnerRoute">Set on its page</a>
+                        <a class="hk-link" href="@binding.OwnerRoute">@Localizer.T("hotkeys.setonpage")</a>
                     }
                     else
                     {
                         <span class="hk-field">
                             <HotkeyField Value="@binding.Get()"
                                          ValueChanged="@(v => Apply(binding, v))"
-                                         Placeholder="Press a combination" />
+                                         Placeholder="@Localizer.T("hotkeys.presscombo")" />
                         </span>
                     }
                 </div>
@@ -54,6 +56,14 @@
 }
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private IReadOnlyList<HotkeyBinding> Bindings = Array.Empty<HotkeyBinding>();
     private List<AutomationScriptBase> _scripts = new();
 

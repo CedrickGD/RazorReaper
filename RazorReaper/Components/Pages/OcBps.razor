@@ -1,8 +1,10 @@
 @page "/oc-bps"
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
 
 <header class="page-header">
-    <h1 class="page-title">OC BPs</h1>
-    <p class="page-subtitle">Genesis 2 mission rewards for overcapped blueprints.</p>
+    <h1 class="page-title">@Localizer.T("nav.page.oc-bps")</h1>
+    <p class="page-subtitle">@Localizer.T("ocbps.subtitle")</p>
 </header>
 
 <div class="ocbps-layout">
@@ -15,8 +17,8 @@
                 </svg>
             </div>
             <div>
-                <h3>How to get them</h3>
-                <p>Run the listed Gen2 missions on the shown difficulty to roll overcapped blueprints.</p>
+                <h3>@Localizer.T("ocbps.how.title")</h3>
+                <p>@Localizer.T("ocbps.how.text")</p>
             </div>
         </div>
     </div>
@@ -26,14 +28,14 @@
         {
             <section class="content-card ocbps-card">
                 <div class="ocbps-card-header">
-                    <h2>@category.Title</h2>
-                    <span class="ocbps-count">@category.Entries.Count items</span>
+                    <h2>@Localizer.T(category.TitleKey)</h2>
+                    <span class="ocbps-count">@Localizer.T("ocbps.count", category.Entries.Count)</span>
                 </div>
                 <div class="ocbps-table">
                     <div class="ocbps-row ocbps-row-header">
-                        <span>Item</span>
-                        <span>Mission</span>
-                        <span>Difficulty</span>
+                        <span>@Localizer.T("ocbps.column.item")</span>
+                        <span>@Localizer.T("ocbps.column.mission")</span>
+                        <span>@Localizer.T("ocbps.column.difficulty")</span>
                     </div>
                     @foreach (var entry in category.Entries)
                     {
@@ -60,7 +62,7 @@
                                 }
                             </div>
                             <div>
-                                <span class="ocbps-tag @entry.Difficulty.ToLowerInvariant()" title="@GetDifficultyHint(entry.Difficulty)">@entry.Difficulty</span>
+                                <span class="ocbps-tag @entry.Difficulty.ToLowerInvariant()" title="@DifficultyHint(entry.Difficulty)">@entry.Difficulty</span>
                             </div>
                         </div>
                     }
@@ -71,11 +73,19 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Never read: declaring it is what makes a language switch repaint this component. The
+    /// cascade, and why the layout re-rendering is not enough on its own, is explained in
+    /// MainLayout.
+    /// </summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
     private readonly List<BpCategory> categories = new()
     {
         new BpCategory
         {
-            Title = "Armor",
+            TitleKey = "ocbps.category.armor",
             Entries = new List<BpEntry>
             {
                 new BpEntry { Item = "Flak Helmet", Mission = "Maewing Poach", Difficulty = "Beta" },
@@ -88,7 +98,7 @@
         },
         new BpCategory
         {
-            Title = "Weapons",
+            TitleKey = "ocbps.category.weapons",
             Entries = new List<BpEntry>
             {
                 new BpEntry { Item = "Fabby BP", Mission = "Bulbdog Fetch / Ferox Cull", Difficulty = "Beta", Note = "both" },
@@ -102,7 +112,7 @@
         },
         new BpCategory
         {
-            Title = "Saddles",
+            TitleKey = "ocbps.category.saddles",
             Entries = new List<BpEntry>
             {
                 new BpEntry { Item = "Giga", Mission = "Shadowmane Prowl", Difficulty = "Alpha" },
@@ -133,18 +143,17 @@
 
     private sealed class BpCategory
     {
-        public string Title { get; init; } = "";
+        public string TitleKey { get; init; } = "";
         public List<BpEntry> Entries { get; init; } = new();
     }
 
-    private static string GetDifficultyHint(string difficulty)
+    // ARK's own difficulty names, so the tag itself stays Alpha/Beta/Gamma; only what they
+    // are worth is translated.
+    private string DifficultyHint(string difficulty) => difficulty switch
     {
-        return difficulty switch
-        {
-            "Alpha" => "Best rolls",
-            "Beta" => "Solid rolls",
-            "Gamma" => "Lowest rolls",
-            _ => ""
-        };
-    }
+        "Alpha" => Localizer.T("ocbps.difficulty.alpha"),
+        "Beta" => Localizer.T("ocbps.difficulty.beta"),
+        "Gamma" => Localizer.T("ocbps.difficulty.gamma"),
+        _ => ""
+    };
 }

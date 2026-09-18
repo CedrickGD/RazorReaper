@@ -13,14 +13,18 @@ public sealed class HotkeyBinding
 {
     public required string Id { get; init; }
 
-    /// <summary>Shown as the row label, e.g. "Yuty Roar".</summary>
+    /// <summary>
+    /// Shown as the row label, e.g. "Yuty Roar". A feature's own name, which stays as the
+    /// feature is called — the scripts are listed here under the names the community uses for
+    /// them, and those are the same words in every language.
+    /// </summary>
     public required string Name { get; init; }
 
-    /// <summary>Section heading on the hotkeys page.</summary>
-    public required string Group { get; init; }
+    /// <summary>Dictionary key for the section heading on the hotkeys page.</summary>
+    public required string GroupKey { get; init; }
 
-    /// <summary>What pressing it does.</summary>
-    public required string Description { get; init; }
+    /// <summary>Dictionary key for what pressing it does.</summary>
+    public required string DescriptionKey { get; init; }
 
     /// <summary>Route of the feature this belongs to, for the link back.</summary>
     public required string OwnerRoute { get; init; }
@@ -29,6 +33,12 @@ public sealed class HotkeyBinding
 
     /// <summary>Applies and persists. Owners validate; an unusable combo is left unchanged.</summary>
     public required Action<string> Set { get; init; }
+
+    /// <summary>
+    /// Dictionary key for <see cref="Name"/>, where the row's label is a description rather than
+    /// a feature name. Null leaves <see cref="Name"/> as it stands.
+    /// </summary>
+    public string? NameKey { get; init; }
 
     /// <summary>Live on/off state where the owner has one, for the status dot.</summary>
     public Func<bool>? IsActive { get; init; }
@@ -51,6 +61,22 @@ public interface IHotkeyRegistry
 
 public sealed class HotkeyRegistry : IHotkeyRegistry
 {
+    /// <summary>
+    /// Every dictionary key a binding can carry. The page renders them off the binding, so a
+    /// grep for T("…") cannot see them; TranslatedSurfaceTests reads this list instead, which
+    /// keeps the "no key nothing renders" check honest without standing the registry up.
+    /// </summary>
+    public static IReadOnlyList<string> Keys { get; } =
+    [
+        "hotkeys.group.scripts",
+        "hotkeys.group.overlays",
+        "hotkeys.group.automation",
+        "hotkeys.script.description",
+        "hotkeys.crosshair.name",
+        "hotkeys.crosshair.description",
+        "hotkeys.autoclicker.description",
+    ];
+
     private readonly IEnumerable<AutomationScriptBase> scripts;
     private readonly ICrosshairService crosshair;
 
@@ -88,8 +114,8 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
             {
                 Id = $"script:{s.ScriptKey}",
                 Name = s.DisplayName,
-                Group = "Scripts",
-                Description = "Starts or stops the script.",
+                GroupKey = "hotkeys.group.scripts",
+                DescriptionKey = "hotkeys.script.description",
                 OwnerRoute = "/scripts",
                 Get = () => s.StartStopHotkey ?? "",
                 Set = value =>
@@ -112,8 +138,9 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
         {
             Id = "crosshair:toggle",
             Name = "Crosshair overlay",
-            Group = "Overlays",
-            Description = "Shows or hides the crosshair.",
+            NameKey = "hotkeys.crosshair.name",
+            GroupKey = "hotkeys.group.overlays",
+            DescriptionKey = "hotkeys.crosshair.description",
             OwnerRoute = "/crosshair",
             Get = () => crosshair.GetHotkey().Label ?? "",
             Set = value =>
@@ -146,8 +173,9 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
         {
             Id = "autoclicker:toggle",
             Name = "Auto Clicker",
-            Group = "Automation",
-            Description = "Starts or stops clicking.",
+            NameKey = "nav.page.autoclicker",
+            GroupKey = "hotkeys.group.automation",
+            DescriptionKey = "hotkeys.autoclicker.description",
             OwnerRoute = "/autoclicker",
             Get = () => AutoClickerHotkey.Display,
             Set = value =>
