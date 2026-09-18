@@ -2511,6 +2511,8 @@
   "scripts.cal.cancelled": "Снятие области отменено.",
   "scripts.cal.ref.captured": "Эталон снят.",
   "scripts.cal.ref.failed": "Не удалось снять эталон.",
+  "scripts.cal.livematch": "Совпадение сейчас",
+  "scripts.cal.livematch.desc": "Насколько область сейчас похожа на эталон. Посмотрите значение с целью на экране и без неё, затем задайте порог между ними.",
   "scripts.cal.monitor.title": "Экран",
   "scripts.cal.monitor.match": "Снято на мониторе {0} · {1}.",
   "scripts.cal.monitor.mismatch": "Снято на мониторе {0} · {1} — сейчас ARK на мониторе {2} · {3}. Сравнение приостановлено до новой съёмки.",

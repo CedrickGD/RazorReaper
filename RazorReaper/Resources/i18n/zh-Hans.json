@@ -2511,6 +2511,8 @@
   "scripts.cal.cancelled": "区域拍摄已取消。",
   "scripts.cal.ref.captured": "参考图已拍下。",
   "scripts.cal.ref.failed": "没能拍下参考图。",
+  "scripts.cal.livematch": "实时匹配",
+  "scripts.cal.livematch.desc": "该区域此刻与参考图的相似度。分别在目标出现和消失时观察数值，再把阈值设在两者之间。",
   "scripts.cal.monitor.title": "显示器",
   "scripts.cal.monitor.match": "采集于显示器 {0} · {1}。",
   "scripts.cal.monitor.mismatch": "采集于显示器 {0} · {1} —— ARK 现在在显示器 {2} · {3} 上。重新采集前暂停比对。",

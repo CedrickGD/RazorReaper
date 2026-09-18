@@ -383,6 +383,13 @@
                                     Description="@MaskLine(cal.MaskCoverage)">
                             <button class="btn btn-secondary" @onclick="RefineReferenceMask" disabled="@(!cal.HasReference || _calibrating)">@Localizer.T("scripts.ignorebackground")</button>
                         </SettingRow>
+                        @* The number the threshold above is set against. Auto-Antidote has shown
+                           it since it shipped and the other five were tuned blind: "90%" means
+                           nothing until you can watch what the target scores when it is there and
+                           when it is not. It moves on this page's own 1.5 s tick. *@
+                        <SettingRow Title="@Localizer.T("scripts.cal.livematch")" Description="@Localizer.T("scripts.cal.livematch.desc")">
+                            <span class="script-reading">@SimilarityValue(cal.CurrentSimilarityPercent)</span>
+                        </SettingRow>
                         @* Which screen the snapshot belongs to. Without it a reference taken on
                            the second monitor and compared against the first reads as a script
                            that simply never fires — the numbers are all there and all nonsense. *@
@@ -606,6 +613,14 @@
     /// <summary>The short form in the control column — the numbers, with the sentence beside them.</summary>
     private static string MonitorValue(CalibrationMonitorInfo? monitor)
         => monitor is null ? "—" : $"{monitor.StoredIndex} · {monitor.StoredResolution}";
+
+    /// <summary>
+    /// The live similarity, formatted the way Auto-Antidote's is. Invariant, like every other
+    /// number on this page: a score read as 92.5 in one language and 92,5 in the next is a score
+    /// nobody can compare against a threshold typed as 92.
+    /// </summary>
+    private static string SimilarityValue(double? percent)
+        => percent is { } p ? p.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%" : "—";
 
     private void SetYutyKey(ChangeEventArgs e)
     {

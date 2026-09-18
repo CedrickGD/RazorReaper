@@ -63,6 +63,14 @@ public interface ICalibratableScript
     /// </summary>
     CalibrationMonitorInfo? Monitor { get; }
 
+    /// <summary>
+    /// Similarity of the calibrated region against its reference, 0–100, or null when there is
+    /// nothing to compare (no snapshot, a capture that failed, or a reference from another
+    /// screen). Without it a threshold is a guess: the number moves live, so what "present" and
+    /// "absent" actually score on this screen can be read off and the cut-off put between them.
+    /// </summary>
+    double? CurrentSimilarityPercent { get; }
+
     /// <summary>Discards the reference snapshot.</summary>
     void ClearReference();
 }

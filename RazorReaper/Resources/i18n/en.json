@@ -2511,6 +2511,8 @@
   "scripts.cal.cancelled": "Region capture cancelled.",
   "scripts.cal.ref.captured": "Reference captured.",
   "scripts.cal.ref.failed": "Could not capture the reference.",
+  "scripts.cal.livematch": "Live match",
+  "scripts.cal.livematch.desc": "How similar the region looks to its reference right now. Watch it with the target on screen and off it, then set the threshold between the two.",
   "scripts.cal.monitor.title": "Display",
   "scripts.cal.monitor.match": "Captured on Monitor {0} · {1}.",
   "scripts.cal.monitor.mismatch": "Captured on Monitor {0} · {1} — ARK is on Monitor {2} · {3} now. Matching is paused until you recapture.",

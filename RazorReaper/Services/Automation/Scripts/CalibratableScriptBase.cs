@@ -132,8 +132,68 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
         // random" is one they blame on the game.
         if (MonitorMismatch) return false;
 
-        var tolerance = (1.0 - Math.Clamp(thresholdPercent, 50, 100) / 100.0) * 255.0;
-        return Sampler.MatchesReference(_regionKey, region, tolerance);
+        // The percentage rather than the boolean, so the scan's own number is what the page
+        // shows. The two are the same comparison — MatchesReference thresholds on the mean
+        // difference this percentage is derived from — and asking for the boolean would mean a
+        // second capture per tick just to put a number on a card.
+        var similarity = Sampler.SimilarityPercent(_regionKey, region);
+        RecordSimilarity(similarity);
+        return similarity is { } value && value >= Math.Clamp(thresholdPercent, 50, 100);
+    }
+
+    // ─── Live similarity ───────────────────────────────────────────────────────
+
+    private readonly object _similarityGate = new();
+    private double? _similarity;
+    private long _similarityAt = long.MinValue;
+
+    /// <summary>
+    /// How long a cached reading stands before the page pays for a capture of its own. A running
+    /// script refreshes it every scan; this only matters while one is not.
+    /// </summary>
+    private const int SimilarityRefreshMs = 400;
+
+    private void RecordSimilarity(double? value)
+    {
+        lock (_similarityGate)
+        {
+            _similarity = value;
+            _similarityAt = Environment.TickCount64;
+        }
+    }
+
+    /// <summary>
+    /// Similarity of the region against its reference, 0–100, or null when there is nothing to
+    /// compare. A running script's own scan feeds this; with the script stopped it captures on
+    /// demand, throttled, because the Scripts page repaints on a timer and a full region grab per
+    /// render would be a capture storm in service of one number.
+    ///
+    /// The number is the whole reason a threshold can be set rather than guessed: it moves while
+    /// you watch, so the score of "target present" and the score of "target absent" can be read
+    /// off your own screen and the cut-off put between them. Auto-Antidote has had this since it
+    /// shipped; the five scripts on this base did not, and their sliders were set blind.
+    /// </summary>
+    public double? CurrentSimilarityPercent
+    {
+        get
+        {
+            if (!HasReference || MonitorMismatch) return null;
+            if (!Calibration.TryGetRegion(_regionKey, out Rectangle region)) return null;
+
+            lock (_similarityGate)
+            {
+                var now = Environment.TickCount64;
+
+                // The sentinel is compared, not subtracted from — see ForegroundGate for what
+                // arithmetic on long.MinValue did the last time.
+                if (_similarityAt != long.MinValue && now - _similarityAt < SimilarityRefreshMs)
+                    return _similarity;
+
+                _similarity = Sampler.SimilarityPercent(_regionKey, region);
+                _similarityAt = now;
+                return _similarity;
+            }
+        }
     }
 
     protected override bool CanStart(out string? reason)

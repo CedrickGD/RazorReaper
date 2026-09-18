@@ -327,7 +327,14 @@ public sealed class FakeScreenSampler : IScreenSampler
     /// <summary>Reference snapshots the fake claims to hold.</summary>
     public HashSet<string> References { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>What the fake scores when <see cref="TargetVisible"/> is set.</summary>
     public double SimilarityPercentValue { get; set; } = 100;
+
+    /// <summary>What it scores when it is not. Kept well under every script's default threshold.</summary>
+    public double AbsentSimilarityPercentValue { get; set; } = 10;
+
+    /// <summary>Set to make the sampler claim it cannot compare at all (capture failed, size changed).</summary>
+    public bool SimilarityUnavailable { get; set; }
 
     public ScreenCapture CaptureRegion(Rectangle region)
         => new(Math.Max(region.Width, 1), Math.Max(region.Height, 1), new byte[Math.Max(region.Width, 1) * Math.Max(region.Height, 1) * 4]);
@@ -344,7 +351,13 @@ public sealed class FakeScreenSampler : IScreenSampler
 
     public (int Kept, int Total) ReferenceMaskInfo(string key) => (0, 0);
 
-    public double? SimilarityPercent(string key, Rectangle region) => SimilarityPercentValue;
+    /// <summary>
+    /// Derived from <see cref="TargetVisible"/> rather than set apart from it: the two are the
+    /// same comparison in the real sampler, and a fake that could say "not visible" and "100%
+    /// similar" in the same breath would let a script pass a test it fails on a real screen.
+    /// </summary>
+    public double? SimilarityPercent(string key, Rectangle region)
+        => SimilarityUnavailable ? null : TargetVisible ? SimilarityPercentValue : AbsentSimilarityPercentValue;
 
     public void ClearReference(string key) => References.Remove(key);
 

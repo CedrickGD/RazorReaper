@@ -2511,6 +2511,8 @@
   "scripts.cal.cancelled": "Aufnahme abgebrochen.",
   "scripts.cal.ref.captured": "Referenz aufgenommen.",
   "scripts.cal.ref.failed": "Die Referenz konnte nicht aufgenommen werden.",
+  "scripts.cal.livematch": "Live-Treffer",
+  "scripts.cal.livematch.desc": "Wie ähnlich der Bereich seiner Referenz gerade sieht. Beobachte den Wert mit und ohne Ziel im Bild und setz die Schwelle dazwischen.",
   "scripts.cal.monitor.title": "Bildschirm",
   "scripts.cal.monitor.match": "Auf Monitor {0} · {1} aufgenommen.",
   "scripts.cal.monitor.mismatch": "Auf Monitor {0} · {1} aufgenommen — ARK läuft jetzt auf Monitor {2} · {3}. Der Abgleich pausiert, bis du neu aufnimmst.",
