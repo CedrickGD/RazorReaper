@@ -1,3 +1,5 @@
+using Rectangle = System.Drawing.Rectangle;
+
 namespace RazorReaper.Services.Automation.Scripts;
 
 /// <summary>
@@ -28,8 +30,13 @@ public interface ICalibratableScript
     /// <summary>True when a reference snapshot has been captured this session.</summary>
     bool HasReference { get; }
 
-    /// <summary>Human-readable summary of the calibrated region, or "" when none.</summary>
-    string RegionSummary { get; }
+    /// <summary>
+    /// The calibrated region for the current resolution, or null when there is none. The numbers,
+    /// not the sentence: "1920x1080 px at 0, 0" built here would be English in a German window
+    /// for the same reason <see cref="RegionTitleKey"/> is a key — a script has no localizer —
+    /// and the Scripts page words it where the row renders.
+    /// </summary>
+    Rectangle? CalibratedRegion { get; }
 
     /// <summary>Runs the two-corner countdown capture for the region (stops the script first).</summary>
     Task<bool> CalibrateRegionAsync(IProgress<RegionCaptureProgress>? progress = null, CancellationToken ct = default);
@@ -43,8 +50,11 @@ public interface ICalibratableScript
     /// </summary>
     bool RefineReferenceMask();
 
-    /// <summary>How much of the region survives the mask, or "" while the whole region is compared.</summary>
-    string MaskSummary { get; }
+    /// <summary>
+    /// How much of the region survives the mask, or null while the whole of it is compared — the
+    /// two counts rather than the line they read as, for the reason above.
+    /// </summary>
+    (int Kept, int Total)? MaskCoverage { get; }
 
     /// <summary>Discards the reference snapshot.</summary>
     void ClearReference();

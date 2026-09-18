@@ -77,8 +77,12 @@ public interface IAutoAntidoteService : IDisposable
     bool HasRegion { get; }
     /// <summary>True when a reference snapshot exists (captured this app session).</summary>
     bool HasReference { get; }
-    /// <summary>Human-readable summary of the calibrated region, or "" when none.</summary>
-    string RegionSummary { get; }
+    /// <summary>
+    /// The calibrated icon region for the current resolution, or null when there is none. The
+    /// Scripts page words it, the way it words <c>ICalibratableScript.CalibratedRegion</c> on
+    /// the row this one is drawn beside.
+    /// </summary>
+    Rectangle? CalibratedRegion { get; }
     /// <summary>Live settings instance. Mutate, then call <see cref="SaveSettings"/>.</summary>
     AutoAntidoteSettings Settings { get; }
 
@@ -185,10 +189,8 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
     public bool HasReference => _reference is { IsEmpty: false };
     public AutoAntidoteSettings Settings { get; } = new();
 
-    public string RegionSummary
-        => _calibration.TryGetRegion(RegionName, out Rectangle r)
-            ? $"{r.Width}x{r.Height} px at {r.X}, {r.Y}"
-            : "";
+    public Rectangle? CalibratedRegion
+        => _calibration.TryGetRegion(RegionName, out Rectangle r) ? r : null;
 
     public event Action? Changed;
 

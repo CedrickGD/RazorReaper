@@ -65,20 +65,24 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
 
     public virtual string RegionTitleKey => RegionTitles.Button;
 
-    /// <summary>"312 of 29,607 px" once the background has been masked out, empty before that.</summary>
-    public string MaskSummary
+    /// <summary>
+    /// The 312 and the 29,607 behind "312 of 29,607 px compared", once the background has been
+    /// masked out; null before that and null while the whole region is still compared, which is
+    /// the state the page shows its hint for. The words are the page's: this class has no
+    /// localizer, and a sentence built here stayed English through a language switch.
+    /// </summary>
+    public (int Kept, int Total)? MaskCoverage
     {
         get
         {
-            if (!HasReference) return "";
+            if (!HasReference) return null;
             var (kept, total) = Sampler.ReferenceMaskInfo(_regionKey);
-            return kept == total ? "" : $"{kept:N0} of {total:N0} px compared";
+            return kept == total ? null : (kept, total);
         }
     }
 
-    public string RegionSummary => Calibration.TryGetRegion(_regionKey, out Rectangle r)
-        ? $"{r.Width}x{r.Height} px at {r.X}, {r.Y}"
-        : "";
+    public Rectangle? CalibratedRegion =>
+        Calibration.TryGetRegion(_regionKey, out Rectangle r) ? r : null;
 
     /// <summary>Gets the calibrated region for the current resolution.</summary>
     protected bool TryGetRegion(out Rectangle region) => Calibration.TryGetRegion(_regionKey, out region);

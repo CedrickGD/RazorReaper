@@ -325,7 +325,7 @@
             {
                 <div class="content-card scripts-calibration">
                     <h3>@Localizer.T("scripts.calibration")</h3>
-                    <SettingRow Title="@Localizer.T("scripts.antidote.region")" Description='@(antidoteCal.Service.HasRegion ? antidoteCal.Service.RegionSummary : Localizer.T("scripts.region.notset"))'>
+                    <SettingRow Title="@Localizer.T("scripts.antidote.region")" Description="@RegionLine(antidoteCal.Service.CalibratedRegion)">
                         <button class="btn btn-secondary" @onclick="CalibrateAntidoteRegion" disabled="@_calibrating">@Localizer.T("scripts.calibrate")</button>
                     </SettingRow>
                     <SettingRow Title="@Localizer.T("scripts.reference.title")" Description='@Localizer.T(antidoteCal.Service.HasReference ? "scripts.reference.captured" : "scripts.reference.capture.icon")'>
@@ -341,7 +341,7 @@
             {
                 <div class="content-card scripts-calibration">
                     <h3>@Localizer.T("scripts.calibration")</h3>
-                    <SettingRow Title="@Localizer.T(cal.RegionTitleKey)" Description='@(cal.HasRegion ? cal.RegionSummary : Localizer.T("scripts.region.notset"))'>
+                    <SettingRow Title="@Localizer.T(cal.RegionTitleKey)" Description="@RegionLine(cal.CalibratedRegion)">
                         <button class="btn btn-secondary" @onclick="CalibrateRegion" disabled="@_calibrating">@Localizer.T("scripts.calibrate")</button>
                     </SettingRow>
                     @* OCR scripts read the region as text; offering them the snapshot/mask
@@ -354,7 +354,7 @@
                         @* Anything drawn over the live game world needs this or it never matches twice:
                            the world behind it moves and the comparison is over the whole region. *@
                         <SettingRow Title="@Localizer.T("scripts.ignorebackground")"
-                                    Description='@(cal.MaskSummary is { Length: > 0 } m ? m : Localizer.T("scripts.mask.hint"))'>
+                                    Description="@MaskLine(cal.MaskCoverage)">
                             <button class="btn btn-secondary" @onclick="RefineReferenceMask" disabled="@(!cal.HasReference || _calibrating)">@Localizer.T("scripts.ignorebackground")</button>
                         </SettingRow>
                     }
@@ -413,6 +413,23 @@
         FedSuitScript => Localizer.T("scripts.desc.fedsuit"),
         _ => ""
     };
+
+    // The two calibration-card lines. A script has no localizer — it publishes the rectangle and
+    // the two pixel counts, the same reason RegionTitleKey is a key — so the sentence is built
+    // here, where a language switch repaints it. Both numbers are formatted invariantly, which is
+    // what every other number in the app does: a region read as 1,920 in one language and 1 920
+    // in the next is a region nobody can compare.
+    private string RegionLine(System.Drawing.Rectangle? region)
+        => region is { } r
+            ? Localizer.T("scripts.region.summary", r.Width, r.Height, r.X, r.Y)
+            : Localizer.T("scripts.region.notset");
+
+    private string MaskLine((int Kept, int Total)? coverage)
+        => coverage is { } c
+            ? Localizer.T("scripts.mask.summary",
+                c.Kept.ToString("N0", System.Globalization.CultureInfo.InvariantCulture),
+                c.Total.ToString("N0", System.Globalization.CultureInfo.InvariantCulture))
+            : Localizer.T("scripts.mask.hint");
 
     private void SetYutyKey(ChangeEventArgs e)
     {

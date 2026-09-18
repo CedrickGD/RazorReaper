@@ -2401,6 +2401,25 @@ public sealed class TranslatedSurfaceTests
             data.Add("Components/Pages/Scripts.razor", literal);
         }
 
+        // The two calibration-card lines the page words for it. The class has no localizer and
+        // is not migrated — its toasts are still English — so only the summaries are pinned.
+        foreach (var literal in new[]
+        {
+            "px at {r.X}, {r.Y}",
+            "px compared",
+        })
+        {
+            data.Add("Services/Automation/Scripts/CalibratableScriptBase.cs", literal);
+        }
+
+        foreach (var literal in new[]
+        {
+            "px at {r.X}, {r.Y}",
+        })
+        {
+            data.Add("Services/Automation/AutoAntidoteService.cs", literal);
+        }
+
         foreach (var literal in new[]
         {
             ">Crosshair</h1>",
