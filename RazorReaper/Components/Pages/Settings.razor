@@ -1,11 +1,13 @@
 @page "/settings"
 @using RazorReaper.Services
 @using RazorReaper.Services.Implementations
+@using RazorReaper.Services.Localization
 @using RazorReaper.Components.Shared
 @inject IAppearanceService Appearance
 @inject IDiscordPresenceService DiscordPresence
 @inject IArkLinkService ArkLink
 @inject INotificationService NotificationService
+@inject ILocalizer Localizer
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -16,14 +18,25 @@
 *@
 
 <header class="page-header">
-    <h1 class="page-title">Settings</h1>
-    <p class="page-subtitle">Appearance, audio and app behaviour. Hotkeys live on their own page.</p>
+    <h1 class="page-title">@Localizer.T("settings.title")</h1>
+    <p class="page-subtitle">@Localizer.T("settings.subtitle")</p>
 </header>
 
 <div class="settings-page">
     <section class="content-card">
-        <SettingRow Title="My account" Description="Your profile picture, Discord account and connected computers.">
-            <a class="rr-pill-btn ghost sm" href="/account">Manage account</a>
+        <SettingRow Title="@Localizer.T("settings.account.title")" Description="@Localizer.T("settings.account.description")">
+            <a class="rr-pill-btn ghost sm" href="/account">@Localizer.T("settings.account.action")</a>
+        </SettingRow>
+    </section>
+
+    @* ── Language ────────────────────────────────────────────────────────────
+       A card of its own rather than a row inside Appearance: that card's "Reset"
+       button undoes the interface scale, and a language sitting under it would read
+       as something that button also throws away. Switching is live — MainLayout
+       re-renders the window off the localizer's change event, no restart. *@
+    <section class="content-card">
+        <SettingRow Title="@Localizer.T("language.label")" Description="@Localizer.T("language.description")">
+            <Dropdown Value="@Localizer.Language" ValueChanged="OnLanguageChanged" Options="LanguageOptions" />
         </SettingRow>
     </section>
 
@@ -31,18 +44,16 @@
     <section class="content-card">
         <div class="settings-section-head">
             <div>
-                <h3>Appearance</h3>
-                <p class="settings-section-desc">
-                    The accent recolours the whole app — every surface reads it from one variable.
-                </p>
+                <h3>@Localizer.T("settings.appearance.title")</h3>
+                <p class="settings-section-desc">@Localizer.T("settings.appearance.description")</p>
             </div>
             @if (!Appearance.IsDefault)
             {
-                <button class="rr-pill-btn ghost sm" @onclick="ResetAppearanceAsync">Reset</button>
+                <button class="rr-pill-btn ghost sm" @onclick="ResetAppearanceAsync">@Localizer.T("common.reset")</button>
             }
         </div>
 
-        <SettingRow Title="Interface scale" Description="Scales every element. Useful on very high or very low resolutions.">
+        <SettingRow Title="@Localizer.T("settings.scale.title")" Description="@Localizer.T("settings.scale.description")">
             <div class="settings-scale">
                 @* step 1 + oninput: at step 5 the handle jumped between notches and the
                    page only re-scaled once you let go. *@
@@ -66,29 +77,29 @@
     <section class="content-card">
         <div class="settings-section-head">
             <div>
-                <h3>App behaviour</h3>
-                <p class="settings-section-desc">How Razor Reaper behaves alongside ARK and Discord.</p>
+                <h3>@Localizer.T("settings.behaviour.title")</h3>
+                <p class="settings-section-desc">@Localizer.T("settings.behaviour.description")</p>
             </div>
         </div>
 
-        <SettingRow Title="Discord Rich Presence"
-                    Description="Shows your current tool and version on your Discord profile.">
+        <SettingRow Title="@Localizer.T("settings.discord.title")"
+                    Description="@Localizer.T("settings.discord.description")">
             <Switch Value="DiscordPresence.IsEnabled" ValueChanged="OnDiscordChanged" />
         </SettingRow>
 
-        <SettingRow Title="Start with ARK"
-                    Description="A lightweight watcher launches Razor Reaper as soon as ARK starts.">
+        <SettingRow Title="@Localizer.T("settings.startwithark.title")"
+                    Description="@Localizer.T("settings.startwithark.description")">
             <Switch Value="ArkLink.StartWithArk" ValueChanged="OnStartWithArkChanged" />
         </SettingRow>
 
-        <SettingRow Title="Close with ARK"
-                    Description="Exits Razor Reaper when ARK closes.">
+        <SettingRow Title="@Localizer.T("settings.closewithark.title")"
+                    Description="@Localizer.T("settings.closewithark.description")">
             <Switch Value="ArkLink.CloseWithArk" ValueChanged="OnCloseWithArkChanged" />
         </SettingRow>
 
-        <SettingRow Title="Updates"
-                    Description="Updates install themselves and restart the app. There is no opt-out.">
-            <span class="settings-static">Automatic</span>
+        <SettingRow Title="@Localizer.T("settings.updates.title")"
+                    Description="@Localizer.T("settings.updates.description")">
+            <span class="settings-static">@Localizer.T("common.automatic")</span>
         </SettingRow>
     </section>
 
@@ -96,22 +107,29 @@
     <section class="content-card">
         <div class="settings-section-head">
             <div>
-                <h3>Elsewhere</h3>
-                <p class="settings-section-desc">Settings that have a page of their own.</p>
+                <h3>@Localizer.T("settings.elsewhere.title")</h3>
+                <p class="settings-section-desc">@Localizer.T("settings.elsewhere.description")</p>
             </div>
         </div>
 
-        <SettingRow Title="Global hotkeys" Description="Every system-wide hotkey, in one place.">
-            <a class="rr-pill-btn ghost sm" href="/hotkeys">Open</a>
+        <SettingRow Title="@Localizer.T("settings.hotkeys.title")" Description="@Localizer.T("settings.hotkeys.description")">
+            <a class="rr-pill-btn ghost sm" href="/hotkeys">@Localizer.T("common.open")</a>
         </SettingRow>
 
-        <SettingRow Title="Gamma triggers" Description="Gamma supports mouse buttons and Logitech G HUB, so its triggers are configured on its own page.">
-            <a class="rr-pill-btn ghost sm" href="/gamma">Open</a>
+        <SettingRow Title="@Localizer.T("settings.gamma.title")" Description="@Localizer.T("settings.gamma.description")">
+            <a class="rr-pill-btn ghost sm" href="/gamma">@Localizer.T("common.open")</a>
         </SettingRow>
     </section>
 </div>
 
 @code {
+    /// <summary>
+    /// Every language in its own script and spelling. Someone who ended up in the wrong one has
+    /// to find their way back without reading the one they cannot.
+    /// </summary>
+    private static readonly IReadOnlyList<Dropdown.Option> LanguageOptions =
+        AppLanguages.All.Select(l => new Dropdown.Option(l.Code, l.NativeName)).ToList();
+
     protected override void OnInitialized()
     {
         Appearance.Changed += OnAppearanceChanged;
@@ -127,6 +145,14 @@
     }
 
     private void OnAppearanceChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
+
+    // ---- Language ---------------------------------------------------------
+
+    /// <summary>
+    /// No re-render of our own: the localizer raises its change event, MainLayout answers it,
+    /// and this page comes back with the rest of the window. One owner for the repaint.
+    /// </summary>
+    private void OnLanguageChanged(string code) => Localizer.SetLanguage(code);
 
     // ---- Appearance -------------------------------------------------------
 
@@ -151,7 +177,7 @@
             // Falls back to re-applying the (now default) values below.
         }
         await ApplyAppearanceAsync();
-        NotificationService.ShowSuccess("Appearance reset to defaults.");
+        NotificationService.ShowSuccess(Localizer.T("settings.appearance.reset.done"));
     }
 
     private async Task ApplyAppearanceAsync()

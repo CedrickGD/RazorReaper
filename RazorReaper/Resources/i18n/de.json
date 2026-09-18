@@ -1,4 +1,35 @@
 {
+  "common.automatic": "Automatisch",
+  "common.open": "Öffnen",
+  "common.reset": "Zurücksetzen",
+
   "language.label": "Sprache",
-  "language.description": "Die Sprache der Oberfläche von Razor Reaper. Seiten, die noch nicht übersetzt sind, bleiben auf Englisch."
+  "language.description": "Die Sprache der Oberfläche von Razor Reaper. Seiten, die noch nicht übersetzt sind, bleiben auf Englisch.",
+
+  "settings.title": "Einstellungen",
+  "settings.subtitle": "Darstellung, Ton und Verhalten der App. Tastenkürzel haben eine eigene Seite.",
+  "settings.account.title": "Mein Konto",
+  "settings.account.description": "Dein Profilbild, dein Discord-Konto und die verbundenen Computer.",
+  "settings.account.action": "Konto verwalten",
+  "settings.appearance.title": "Darstellung",
+  "settings.appearance.description": "Die Akzentfarbe färbt die ganze App — jede Fläche liest sie aus einer einzigen Variable.",
+  "settings.appearance.reset.done": "Darstellung auf die Standardwerte zurückgesetzt.",
+  "settings.scale.title": "Oberflächengröße",
+  "settings.scale.description": "Skaliert jedes Element. Nützlich bei sehr hohen oder sehr niedrigen Auflösungen.",
+  "settings.behaviour.title": "Verhalten der App",
+  "settings.behaviour.description": "Wie sich Razor Reaper neben ARK und Discord verhält.",
+  "settings.discord.title": "Discord Rich Presence",
+  "settings.discord.description": "Zeigt dein aktuelles Werkzeug und die Version in deinem Discord-Profil.",
+  "settings.startwithark.title": "Mit ARK starten",
+  "settings.startwithark.description": "Ein schlanker Wächter startet Razor Reaper, sobald ARK startet.",
+  "settings.closewithark.title": "Mit ARK schließen",
+  "settings.closewithark.description": "Beendet Razor Reaper, wenn ARK geschlossen wird.",
+  "settings.updates.title": "Updates",
+  "settings.updates.description": "Updates installieren sich selbst und starten die App neu. Abschalten geht nicht.",
+  "settings.elsewhere.title": "An anderer Stelle",
+  "settings.elsewhere.description": "Einstellungen, die eine eigene Seite haben.",
+  "settings.hotkeys.title": "Globale Tastenkürzel",
+  "settings.hotkeys.description": "Alle systemweiten Tastenkürzel an einem Ort.",
+  "settings.gamma.title": "Gamma-Auslöser",
+  "settings.gamma.description": "Gamma unterstützt Maustasten und Logitech G HUB, darum werden seine Auslöser auf der eigenen Seite eingestellt."
 }

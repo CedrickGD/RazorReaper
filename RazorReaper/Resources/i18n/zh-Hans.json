@@ -1,4 +1,35 @@
 {
+  "common.automatic": "自动",
+  "common.open": "打开",
+  "common.reset": "重置",
+
   "language.label": "语言",
-  "language.description": "Razor Reaper 界面使用的语言。尚未翻译的页面仍为英文。"
+  "language.description": "Razor Reaper 界面使用的语言。尚未翻译的页面仍为英文。",
+
+  "settings.title": "设置",
+  "settings.subtitle": "外观、声音和应用行为。快捷键在自己的页面上。",
+  "settings.account.title": "我的账户",
+  "settings.account.description": "你的头像、Discord 账户和已连接的电脑。",
+  "settings.account.action": "管理账户",
+  "settings.appearance.title": "外观",
+  "settings.appearance.description": "强调色会为整个应用重新着色 —— 每个界面都从同一个变量读取它。",
+  "settings.appearance.reset.done": "外观已恢复为默认值。",
+  "settings.scale.title": "界面缩放",
+  "settings.scale.description": "缩放每一个元素。在极高或极低分辨率下很有用。",
+  "settings.behaviour.title": "应用行为",
+  "settings.behaviour.description": "Razor Reaper 与 ARK 和 Discord 一起运行时的表现。",
+  "settings.discord.title": "Discord Rich Presence",
+  "settings.discord.description": "在你的 Discord 个人资料上显示当前使用的工具和版本。",
+  "settings.startwithark.title": "随 ARK 启动",
+  "settings.startwithark.description": "一个轻量的监视程序会在 ARK 启动时立刻启动 Razor Reaper。",
+  "settings.closewithark.title": "随 ARK 关闭",
+  "settings.closewithark.description": "ARK 关闭时退出 Razor Reaper。",
+  "settings.updates.title": "更新",
+  "settings.updates.description": "更新会自动安装并重启应用。无法关闭。",
+  "settings.elsewhere.title": "其他位置",
+  "settings.elsewhere.description": "拥有独立页面的设置。",
+  "settings.hotkeys.title": "全局快捷键",
+  "settings.hotkeys.description": "所有系统级快捷键集中在一处。",
+  "settings.gamma.title": "Gamma 触发器",
+  "settings.gamma.description": "Gamma 支持鼠标按键和 Logitech G HUB，因此它的触发器在它自己的页面上设置。"
 }

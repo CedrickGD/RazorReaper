@@ -1,4 +1,35 @@
 {
+  "common.automatic": "Автоматически",
+  "common.open": "Открыть",
+  "common.reset": "Сбросить",
+
   "language.label": "Язык",
-  "language.description": "Язык интерфейса Razor Reaper. Страницы, которые ещё не переведены, остаются на английском."
+  "language.description": "Язык интерфейса Razor Reaper. Страницы, которые ещё не переведены, остаются на английском.",
+
+  "settings.title": "Настройки",
+  "settings.subtitle": "Оформление, звук и поведение приложения. Горячие клавиши — на отдельной странице.",
+  "settings.account.title": "Мой аккаунт",
+  "settings.account.description": "Ваш аватар, аккаунт Discord и подключённые компьютеры.",
+  "settings.account.action": "Управление аккаунтом",
+  "settings.appearance.title": "Оформление",
+  "settings.appearance.description": "Акцентный цвет перекрашивает всё приложение — каждая поверхность читает его из одной переменной.",
+  "settings.appearance.reset.done": "Оформление сброшено к значениям по умолчанию.",
+  "settings.scale.title": "Масштаб интерфейса",
+  "settings.scale.description": "Масштабирует каждый элемент. Полезно при очень высоком или очень низком разрешении.",
+  "settings.behaviour.title": "Поведение приложения",
+  "settings.behaviour.description": "Как Razor Reaper ведёт себя рядом с ARK и Discord.",
+  "settings.discord.title": "Discord Rich Presence",
+  "settings.discord.description": "Показывает текущий инструмент и версию в вашем профиле Discord.",
+  "settings.startwithark.title": "Запускать вместе с ARK",
+  "settings.startwithark.description": "Лёгкий наблюдатель запускает Razor Reaper, как только стартует ARK.",
+  "settings.closewithark.title": "Закрывать вместе с ARK",
+  "settings.closewithark.description": "Закрывает Razor Reaper, когда закрывается ARK.",
+  "settings.updates.title": "Обновления",
+  "settings.updates.description": "Обновления устанавливаются сами и перезапускают приложение. Отключить нельзя.",
+  "settings.elsewhere.title": "В других местах",
+  "settings.elsewhere.description": "Настройки, у которых есть собственная страница.",
+  "settings.hotkeys.title": "Глобальные горячие клавиши",
+  "settings.hotkeys.description": "Все системные горячие клавиши в одном месте.",
+  "settings.gamma.title": "Триггеры гаммы",
+  "settings.gamma.description": "Гамма поддерживает кнопки мыши и Logitech G HUB, поэтому её триггеры настраиваются на её собственной странице."
 }
