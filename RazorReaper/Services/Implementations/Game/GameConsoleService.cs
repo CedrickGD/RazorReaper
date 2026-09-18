@@ -5,24 +5,41 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Storage;
 using RazorReaper.Configuration;
 using RazorReaper.Models;
+using RazorReaper.Services.Automation;
 
 namespace RazorReaper.Services.Implementations.Game;
 
 /// <summary>
-/// Console-injection engine. Owns the user32 P/Invoke + console-key resolution + clipboard
-/// save/restore that previously lived inline in Game.razor. Behavior is preserved 1:1
-/// (same focus sequence, delays, paste/type logic, clipboard restore).
+/// Console-injection engine. Owns the window focus + console-key resolution + clipboard
+/// save/restore that previously lived inline in Game.razor.
+///
+/// Keystrokes go through <see cref="IInputSimulator"/> rather than raw <c>keybd_event</c>: the
+/// command text is typed as Unicode key events, so every character arrives as itself instead of
+/// as whatever virtual key shares its code point, and the keys we do press as keys (the console
+/// key, Enter, Ctrl+V) carry scan codes and are recorded in <see cref="SynthesizedInput"/>, so
+/// our own global hotkeys no longer fire on our own keystrokes.
 /// </summary>
 public sealed class GameConsoleService : IGameConsoleService
 {
     private const int SW_RESTORE = 9;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
     private const byte VK_TAB = 0x09;
     private const byte VK_RETURN = 0x0D;
     private const byte VK_CONTROL = 0x11;
     private const byte VK_V = 0x56;
     private const string DefaultConsoleKey = "TAB";
     private const string ConsoleKeyPreferenceKey = "GameConsoleKey";
+
+    /// <summary>Down-to-up gap for the keys we press as keys. One 60 Hz frame is ~17 ms.</summary>
+    private const int KeyHoldMs = 50;
+
+    /// <summary>Gap between typed characters — ARK's console drops text typed faster than this.</summary>
+    private const int TypeDelayMs = 25;
+
+    /// <summary>Time the console overlay needs to open and take the caret.</summary>
+    private const int ConsoleOpenSettleMs = 300;
+
+    /// <summary>Time the typed text needs to land in the field before Enter commits it.</summary>
+    private const int BeforeEnterSettleMs = 200;
 
     private static readonly Dictionary<string, byte> ConsoleKeyMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -62,17 +79,22 @@ public sealed class GameConsoleService : IGameConsoleService
 
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     private readonly IProcessService _process;
+    private readonly IInputSimulator _input;
     private readonly IOptions<AppConfiguration> _config;
     private readonly ILogger<GameConsoleService> _logger;
 
     private byte _consoleKeyCode = VK_TAB;
 
-    public GameConsoleService(IProcessService process, IOptions<AppConfiguration> config, ILogger<GameConsoleService> logger)
+    public GameConsoleService(
+        IProcessService process,
+        IInputSimulator input,
+        IOptions<AppConfiguration> config,
+        ILogger<GameConsoleService> logger)
     {
         _process = process;
+        _input = input;
         _config = config;
         _logger = logger;
         RefreshConsoleKey();
@@ -115,26 +137,7 @@ public sealed class GameConsoleService : IGameConsoleService
                 SetForegroundWindow(hwnd);
                 await Task.Delay(500, ct);
 
-                keybd_event(_consoleKeyCode, 0, 0, UIntPtr.Zero);
-                await Task.Delay(50, ct);
-                keybd_event(_consoleKeyCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-                await Task.Delay(300, ct);
-
-                if (useClipboard)
-                {
-                    if (!await PasteCommandAsync(command)) return false;
-                }
-                else
-                {
-                    await TypeCommandAsync(command, ct);
-                }
-
-                await Task.Delay(200, ct);
-                keybd_event(VK_RETURN, 0, 0, UIntPtr.Zero);
-                await Task.Delay(50, ct);
-                keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-
-                return true;
+                return await SendToFocusedConsoleAsync(command, useClipboard, ct);
             }
             finally
             {
@@ -175,23 +178,45 @@ public sealed class GameConsoleService : IGameConsoleService
         return new ConsoleBatchResult(list.Count, sent, failed.Count, running, failed);
     }
 
-    private async Task TypeCommandAsync(string command, CancellationToken ct)
+    /// <summary>
+    /// The keystroke half of <see cref="SendCommandAsync"/>: opens the console, puts the command
+    /// into it, presses Enter. Split off from the window handling so it can be driven against a
+    /// recording input layer — nothing below this line touches a window handle.
+    /// </summary>
+    internal async Task<bool> SendToFocusedConsoleAsync(string command, bool useClipboard, CancellationToken ct)
     {
-        foreach (var c in command.ToLowerInvariant())
+        await _input.KeyPressAsync(_consoleKeyCode, KeyHoldMs, ct: ct);
+        await _input.DelayAsync(ConsoleOpenSettleMs, ct: ct);
+
+        if (useClipboard)
         {
-            SendChar(c);
-            await Task.Delay(25, ct);
+            if (!await PasteCommandAsync(command, ct)) return false;
         }
+        else
+        {
+            await TypeCommandAsync(command, ct);
+        }
+
+        await _input.DelayAsync(BeforeEnterSettleMs, ct: ct);
+        await _input.KeyPressAsync(VK_RETURN, KeyHoldMs, ct: ct);
+        return true;
     }
 
-    private static void SendChar(char c)
-    {
-        var vk = (byte)char.ToUpperInvariant(c);
-        keybd_event(vk, 0, 0, UIntPtr.Zero);
-        keybd_event(vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-    }
+    /// <summary>
+    /// Types the command verbatim as Unicode key events.
+    ///
+    /// This used to cast each character to a virtual key and press that, which is only ever right
+    /// for A–Z and 0–9. '.' is 0x2E, and 0x2E is VK_DELETE — so "t.maxfps 1", the command the
+    /// Noglin counter-measure is built on, left the app as "tmaxfps 1" with a Delete keypress in
+    /// the middle of it, and the console never saw the command at all. KEYEVENTF_UNICODE carries
+    /// the character itself and does not consult the keyboard layout, so non-US layouts type
+    /// correctly too. The text is no longer lowercased on the way out either: ARK's command names
+    /// are case-insensitive, but the blueprint paths people paste are not.
+    /// </summary>
+    private Task TypeCommandAsync(string command, CancellationToken ct)
+        => _input.TypeTextAsync(command, TypeDelayMs, ct: ct);
 
-    private async Task<bool> PasteCommandAsync(string command)
+    private async Task<bool> PasteCommandAsync(string command, CancellationToken ct)
     {
         string? previousText = null;
         try
@@ -202,8 +227,8 @@ public sealed class GameConsoleService : IGameConsoleService
             await Clipboard.Default.SetTextAsync(command);
             await Task.Delay(50);
 
-            SendPasteShortcut();
-            await Task.Delay(120);
+            await SendPasteShortcutAsync(ct);
+            await Task.Delay(120, ct);
 
             if (!string.IsNullOrEmpty(previousText))
             {
@@ -212,6 +237,17 @@ public sealed class GameConsoleService : IGameConsoleService
             }
 
             return true;
+        }
+        catch (OperationCanceledException)
+        {
+            // A stop mid-paste still owes the user their clipboard back, but the cancellation
+            // itself belongs to the caller — swallowing it here would report a plain failure.
+            if (!string.IsNullOrEmpty(previousText))
+            {
+                try { await Clipboard.Default.SetTextAsync(previousText); }
+                catch { /* ignore clipboard restore failures */ }
+            }
+            throw;
         }
         catch (Exception ex)
         {
@@ -225,12 +261,18 @@ public sealed class GameConsoleService : IGameConsoleService
         }
     }
 
-    private static void SendPasteShortcut()
+    private async Task SendPasteShortcutAsync(CancellationToken ct)
     {
-        keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
-        keybd_event(VK_V, 0, 0, UIntPtr.Zero);
-        keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        _input.KeyDown(VK_CONTROL);
+        try
+        {
+            await _input.KeyPressAsync(VK_V, KeyHoldMs, ct: ct);
+        }
+        finally
+        {
+            // A stuck Ctrl turns the user's next keystroke into a shortcut.
+            _input.KeyUp(VK_CONTROL);
+        }
     }
 
     private static string NormalizeConsoleKey(string? rawKey)
