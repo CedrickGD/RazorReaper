@@ -111,10 +111,15 @@ public sealed class ContentCardOwnershipTests
         var highlights = WithoutComments(File.ReadAllText(Path.Combine(
             RepositoryRoot(), "RazorReaper", "wwwroot", "css", "shared", "widget-highlights.css")));
 
+        // Whatever follows the class name in a selector list: a comma mid-list, the closing paren
+        // of the :where() when it is the last entry, or a brace if someone gives it a rule of its
+        // own. Matched by regex rather than by concatenating Environment.NewLine, which is CRLF on
+        // Windows while .gitattributes checks this file out with LF — that comparison could never
+        // match, so the "last entry in the list" half of this guard was reading as passing however
+        // the file changed.
         foreach (var worn in new[] { ".content-card", ".widget-card", ".ocbps-card", ".ocbps-intro" })
         {
-            Assert.DoesNotContain(worn + ",", highlights, StringComparison.Ordinal);
-            Assert.DoesNotContain(worn + Environment.NewLine, highlights, StringComparison.Ordinal);
+            Assert.DoesNotMatch(Regex.Escape(worn) + @"\s*[,){]", highlights);
         }
 
         // The panels that are not cards keep it — this is a correction, not a deletion.
