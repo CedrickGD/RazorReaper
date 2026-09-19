@@ -30,8 +30,12 @@ public sealed class FedSuitSettings
     /// <c>TransferItem</c> binding, for the same reason as <see cref="OpenKey"/>.
     /// </summary>
     public string TransferKey { get; set; } = ArkKeyDefaults.For(ArkActions.TransferItem, "T");
-    /// <summary>Delay after each armour slot's transfer press, in milliseconds.</summary>
-    public int PressDelayMs { get; set; } = 40;
+    /// <summary>
+    /// Delay after each armour slot's transfer press, in milliseconds. 40 was tuned for 60 fps
+    /// and lost pieces at the frame rate an open ARK inventory actually runs at (30–40): the next
+    /// slot's key arrived before the game had registered the cursor sitting on it.
+    /// </summary>
+    public int PressDelayMs { get; set; } = 70;
     /// <summary>Wait after opening the transmitter before pressing, in milliseconds.</summary>
     public int WaitAfterOpenMs { get; set; } = 500;
     /// <summary>Delay before the next cycle starts, in milliseconds.</summary>
@@ -105,20 +109,30 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private const string RunnerName = "fed-suit";
 
     /// <summary>Let the tab switch draw before the cursor starts hopping between slots.</summary>
-    private const int TabSettleMs = 60;
+    private const int TabSettleMs = 100;
 
     /// <summary>
     /// How long the cursor rests on a slot before the transfer key is pressed. ARK reads what is
     /// under the cursor once per rendered frame, so a press sent in the same breath as the move
-    /// is a press aimed at wherever the cursor was a frame ago.
+    /// is a press aimed at wherever the cursor was a frame ago. 35 ms was one frame at 30 fps
+    /// with nothing to spare, and in game it cost the legs of every other suit — the slot under
+    /// the cursor had not become the hovered one yet, tooltip and all, when the key landed.
     /// </summary>
-    private const int HoverSettleMs = 35;
+    private const int HoverSettleMs = 80;
 
     /// <summary>Half-width of the box sampled at each slot centre for the "did anything move?" check.</summary>
     private const int SlotSampleHalf = 6;
 
     /// <summary>Mean-brightness change (0–255) that counts as a slot having emptied.</summary>
     private const double SlotMovedTolerance = 2.0;
+
+    /// <summary>
+    /// Mean-brightness change (0–255) below which the open key is taken to have done nothing at
+    /// all. Deliberately small: an inventory panel drawn over the world moves those five points by
+    /// tens of levels, while a still camera moves them by nothing, so anything in between is left
+    /// to the "nothing moved" check rather than stopping a run that is working.
+    /// </summary>
+    private const double InventoryOpenedTolerance = 4.0;
 
     /// <summary>Cycles that may move nothing at all before the macro gives up on its own.</summary>
     private const int IdleCyclesBeforeStop = 3;
@@ -143,6 +157,8 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private int _cyclesCompleted;
     private int _lastStepIndex;
     private int _firstTransferStepIndex;
+    private int _openKeyStepIndex;
+    private int _tabClickStepIndex;
     private (int Cycles, TimeSpan Elapsed)? _lastRun;
     private DateTime _runStartedUtc;
 
@@ -150,6 +166,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private Point[] _slotPoints = [];
     private Rectangle _slotsBounds;
     private double[]? _slotsBefore;
+    private double[]? _slotsShut;
     private int _idleCycles;
 
     public FedSuitMacro(
@@ -243,9 +260,12 @@ public sealed class FedSuitMacro : IFedSuitMacro
             _cyclesCompleted = 0;
             _lastStepIndex = plan.Sequence.Steps.Count - 1;
             _firstTransferStepIndex = plan.FirstTransferStep;
+            _openKeyStepIndex = plan.OpenKeyStep;
+            _tabClickStepIndex = plan.TabClickStep;
             _slotPoints = plan.Slots;
             _slotsBounds = BoxAround(plan.Slots);
             _slotsBefore = null;
+            _slotsShut = null;
             _idleCycles = 0;
             _runStartedUtc = DateTime.UtcNow;
         }
@@ -366,9 +386,11 @@ public sealed class FedSuitMacro : IFedSuitMacro
     {
         if (!_running) return;
 
-        // Outside the lock: these two grab pixels off the screen, and the step loop is waiting
-        // on this callback. See SampleSlots for why it is two captures and not ten.
-        if (stepIndex == _firstTransferStepIndex) _slotsBefore = SampleSlots();
+        // Outside the lock: these grab pixels off the screen, and the step loop is waiting on this
+        // callback. See SampleSlots for why each one is a single capture and not five.
+        if (stepIndex == _openKeyStepIndex) _slotsShut = SampleSlots();
+        else if (stepIndex == _tabClickStepIndex) StopIfStillShut();
+        else if (stepIndex == _firstTransferStepIndex) _slotsBefore = SampleSlots();
         else if (stepIndex == _lastStepIndex) StopIfNothingMoved();
 
         var changed = false;
@@ -390,8 +412,9 @@ public sealed class FedSuitMacro : IFedSuitMacro
         if (changed) RaiseChanged();
     }
 
-    /// <summary>One cycle's steps, plus what the "did anything move?" check has to watch.</summary>
-    private sealed record CyclePlan(MacroSequence Sequence, Point[] Slots, int FirstTransferStep);
+    /// <summary>One cycle's steps, plus the steps the two screen checks hang off.</summary>
+    private sealed record CyclePlan(
+        MacroSequence Sequence, Point[] Slots, int OpenKeyStep, int TabClickStep, int FirstTransferStep);
 
     private CyclePlan? BuildPlan(FedSuitSettings s)
     {
@@ -427,18 +450,19 @@ public sealed class FedSuitMacro : IFedSuitMacro
         var tab = ArkInventoryLayout.PlayerTab(client, uiScaling);
         var slots = ArkInventoryLayout.ArmorSlots(client, uiScaling);
 
-        var steps = new List<MacroStep>
-        {
-            MacroStep.FocusGameWindow(),
-            MacroStep.KeyPress(openVk),
-            MacroStep.Delay(s.WaitAfterOpenMs),
+        var steps = new List<MacroStep> { MacroStep.FocusGameWindow() };
 
-            // The transmitter opens with its own tab in front, and the transfer key moves what
-            // the panel in front is showing — so without this click the whole cycle transfers
-            // nothing, which is exactly what it used to do.
-            MacroStep.ClickAt(tab.X, tab.Y),
-            MacroStep.Delay(TabSettleMs)
-        };
+        var openKeyStep = steps.Count;
+        steps.Add(MacroStep.KeyPress(openVk));
+        steps.Add(MacroStep.Delay(s.WaitAfterOpenMs));
+
+        // The transmitter opens with its own tab in front, and the transfer key moves what the
+        // panel in front is showing — so without this click the whole cycle transfers nothing,
+        // which is exactly what it used to do. It is also the first step that touches the mouse,
+        // which is why the "did it open at all?" check sits in front of it.
+        var tabClickStep = steps.Count;
+        steps.Add(MacroStep.ClickAt(tab.X, tab.Y));
+        steps.Add(MacroStep.Delay(TabSettleMs));
 
         var firstTransferStep = steps.Count;
         foreach (var slot in slots)
@@ -464,7 +488,43 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 LoopDelayMs = s.RepeatDelayMs
             },
             slots,
+            openKeyStep,
+            tabClickStep,
             firstTransferStep);
+    }
+
+    /// <summary>
+    /// Stops the run before the tab is clicked when the open key changed nothing on screen — the
+    /// transmitter is out of reach, the server is lagging, or the key found no inventory to open.
+    /// Runs on the same two captures the "nothing moved" check uses, taken either side of the open
+    /// key instead of either side of the transfers.
+    ///
+    /// This is the step where the macro stops being harmless: everything before it is one key
+    /// press, everything after it is clicks and cursor jumps that land in gameplay when no panel
+    /// is there to catch them — the camera swings to the sky and the character punches. Cancelling
+    /// from here keeps the click that follows from ever being sent (see IMacroRunner.StepStarted).
+    ///
+    /// ponytail: a difference, not a recognition. It catches the key that did nothing; it cannot
+    /// tell an inventory opening from one our own key press just closed, so a run started with an
+    /// inventory already open still fires one out-of-phase cycle before this catches the next.
+    /// Upgrade path is a template match on the panel, which needs an ARK UI asset shipped with it.
+    /// </summary>
+    private void StopIfStillShut()
+    {
+        var shut = _slotsShut;
+        _slotsShut = null;
+        if (shut is null) return;
+
+        var opened = SampleSlots();
+        if (opened is null || opened.Length != shut.Length) return; // a capture that failed proves nothing
+
+        for (var i = 0; i < shut.Length; i++)
+            if (Math.Abs(shut[i] - opened[i]) > InventoryOpenedTolerance) return;
+
+        _logger.LogWarning("Fed-Suit stopped itself — the open key left the screen unchanged");
+        Stop();
+        try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.notopen")); }
+        catch { /* notifications are best-effort */ }
     }
 
     // ─── "Nothing moved" check ─────────────────────────────────────────────────

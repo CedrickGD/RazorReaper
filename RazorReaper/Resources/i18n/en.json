@@ -2761,6 +2761,7 @@
   "scripts.fed.toast.stopped.many": "Fed-Suit macro stopped — {0} cycles completed.",
   "scripts.fed.toast.noark": "Fed-Suit macro could not run — the ARK window was not available.",
   "scripts.fed.toast.nomove": "Fed-Suit stopped itself — three cycles moved nothing. Check that you are standing at a Tek Transmitter on Genesis 2, that the open key is the one ARK uses, and the interface scale in ARK's options.",
+  "scripts.fed.toast.notopen": "Fed-Suit stopped itself — the transmitter inventory did not open. Stand right at the Tek Transmitter and look at it, and close any inventory that is already open before you start.",
   "scripts.fed.toast.badkey.open": "Open Transmitter key \"{0}\" is not a supported key.",
   "scripts.fed.toast.badkey.exit": "Exit Transmitter key \"{0}\" is not a supported key.",
   "scripts.fed.toast.badkey.transfer": "Transfer key \"{0}\" is not a supported key.",

@@ -2761,6 +2761,7 @@
   "scripts.fed.toast.stopped.many": "Fed-Suit 宏已停止 —— 完成 {0} 个循环。",
   "scripts.fed.toast.noark": "Fed-Suit 宏无法运行 —— ARK 窗口不可用。",
   "scripts.fed.toast.nomove": "Fed-Suit 自己停了 —— 连续三个循环什么都没搬动。检查你是不是站在 Genesis 2 的 Tek 传送器前、打开键是否与 ARK 里的一致，以及 ARK 选项里的界面缩放。",
+  "scripts.fed.toast.notopen": "Fed-Suit 自己停了 —— 传送器背包没有打开。请紧贴 Tek 传送器并看着它，启动前先关掉已经打开的背包。",
   "scripts.fed.toast.badkey.open": "打开 Transmitter 的按键“{0}”不受支持。",
   "scripts.fed.toast.badkey.exit": "关闭 Transmitter 的按键“{0}”不受支持。",
   "scripts.fed.toast.badkey.transfer": "转移按键“{0}”不受支持。",

@@ -119,7 +119,11 @@ public interface IMacroRunner
 
     /// <summary>Raised whenever <see cref="State"/> changes. May fire on a background thread.</summary>
     event Action<MacroRunnerState>? StateChanged;
-    /// <summary>Raised when a step starts: (stepIndex, loopNumber). May fire on a background thread.</summary>
+    /// <summary>
+    /// Raised before a step runs: (stepIndex, loopNumber). May fire on a background thread.
+    /// Calling <see cref="Stop"/> from the handler cancels the run before that step executes, so a
+    /// subscriber that checks the screen can keep a click it does not like from ever being sent.
+    /// </summary>
     event Action<int, int>? StepStarted;
 
     /// <summary>
@@ -335,6 +339,12 @@ internal sealed class MacroRunner : IMacroRunner
                     CurrentStepIndex = i;
                     try { StepStarted?.Invoke(i, loop); }
                     catch { /* subscriber errors must not kill the run */ }
+
+                    // A subscriber that looked at the screen and did not like what it saw calls
+                    // Stop() from inside that callback — and this is what makes the step it was
+                    // warning about never happen. Without it the stop only takes effect after the
+                    // click it was meant to prevent had already been sent into the game.
+                    token.ThrowIfCancellationRequested();
 
                     await ExecuteStepAsync(sequence.Steps[i], sequence, sim, heldKeys, token);
 

@@ -2761,6 +2761,7 @@
   "scripts.fed.toast.stopped.many": "Fed-Suit-Makro gestoppt — {0} Zyklen abgeschlossen.",
   "scripts.fed.toast.noark": "Fed-Suit-Makro konnte nicht laufen — das ARK-Fenster war nicht verfügbar.",
   "scripts.fed.toast.nomove": "Fed-Suit hat sich selbst gestoppt — drei Zyklen haben nichts bewegt. Prüfe, ob du auf Genesis 2 an einem Tek-Transmitter stehst, ob die Öffnen-Taste die aus ARK ist, und die Interface-Skalierung in den ARK-Optionen.",
+  "scripts.fed.toast.notopen": "Fed-Suit hat sich selbst gestoppt — das Transmitter-Inventar ging nicht auf. Stell dich direkt an den Tek-Transmitter und schau ihn an, und schließ ein schon offenes Inventar, bevor du startest.",
   "scripts.fed.toast.badkey.open": "Die Taste \"{0}\" zum Öffnen des Transmitters wird nicht unterstützt.",
   "scripts.fed.toast.badkey.exit": "Die Taste \"{0}\" zum Schließen des Transmitters wird nicht unterstützt.",
   "scripts.fed.toast.badkey.transfer": "Die Transfer-Taste \"{0}\" wird nicht unterstützt.",
