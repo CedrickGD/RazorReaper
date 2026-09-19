@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using RazorReaper.Services.Localization;
+// Disambiguate from Microsoft.Maui.Graphics implicit usings.
+using Point = System.Drawing.Point;
+using Rectangle = System.Drawing.Rectangle;
 
 namespace RazorReaper.Services.Automation;
 
@@ -17,46 +20,40 @@ public sealed class FedSuitSettings
     public string OpenKey { get; set; } = ArkKeyDefaults.For(ArkActions.AccessInventory, "F");
 
     /// <summary>
-    /// Typed into the inventory search after opening, to narrow what the transfer presses move
-    /// (e.g. "exo" for element on a Gen2 transmitter). Empty transfers whatever is already listed.
-    /// </summary>
-    public string SearchFilter { get; set; } = string.Empty;
-
-    /// <summary>
     /// Key that closes the transmitter UI. Stays a literal: Escape is the engine's own close-UI
     /// key, not an ARK <c>ActionMapping</c>, so there is nothing in Input.ini to scan for it.
     /// </summary>
     public string ExitKey { get; set; } = "Esc";
 
     /// <summary>
-    /// Key pressed repeatedly to transfer items between slots — the player's own
+    /// Key pressed once per worn piece, with the cursor on its slot — the player's own
     /// <c>TransferItem</c> binding, for the same reason as <see cref="OpenKey"/>.
     /// </summary>
     public string TransferKey { get; set; } = ArkKeyDefaults.For(ArkActions.TransferItem, "T");
-    /// <summary>Transfer-key presses per cycle.</summary>
-    public int PressesPerCycle { get; set; } = 20;
-    /// <summary>Delay between transfer presses, in milliseconds.</summary>
-    public int PressDelayMs { get; set; } = 50;
+    /// <summary>Delay after each armour slot's transfer press, in milliseconds.</summary>
+    public int PressDelayMs { get; set; } = 40;
     /// <summary>Wait after opening the transmitter before pressing, in milliseconds.</summary>
-    public int WaitAfterOpenMs { get; set; } = 700;
+    public int WaitAfterOpenMs { get; set; } = 500;
     /// <summary>Delay before the next cycle starts, in milliseconds.</summary>
-    public int RepeatDelayMs { get; set; } = 500;
-    /// <summary>Global hotkey combo string (HotkeyField format) that starts the macro.</summary>
-    public string StartHotkey { get; set; } = "F5";
-    /// <summary>Global hotkey combo string (HotkeyField format) that stops the macro.</summary>
-    public string StopHotkey { get; set; } = "F6";
-    /// <summary>Click the calibrated first slot after opening the transmitter (off by default).</summary>
-    public bool ClickFirstSlot { get; set; }
+    public int RepeatDelayMs { get; set; } = 150;
+
+    /// <summary>
+    /// How many suits to farm before the macro stops itself; 0 keeps going until it is stopped.
+    /// One cycle is one suit, so this is the number the player actually thinks in.
+    /// </summary>
+    public int Runs { get; set; }
 
     /// <summary>Shallow copy so callers never share a mutable instance with the service.</summary>
     public FedSuitSettings Clone() => (FedSuitSettings)MemberwiseClone();
 }
 
 /// <summary>
-/// Fed-Suit transmitter automation: each cycle focuses ARK, opens the transmitter, waits, presses
-/// the transfer key N times with a delay, exits, then repeats until stopped. Runs as a singleton —
-/// it keeps going when the user navigates away from the page; the stop hotkey is system-wide
-/// (works while ARK has focus) and is the hard stop.
+/// Fed-Suit transmitter automation, for Genesis 2: opening a Tek Transmitter while wearing no
+/// federation exo suit puts a fresh set on the player, so each cycle focuses ARK, opens the
+/// transmitter, brings the player's own tab to the front, moves the five worn pieces into the
+/// transmitter with the transfer key, closes it again — and the next cycle finds a new suit on.
+/// Runs as a singleton: it keeps going when the user navigates away from the page, and the
+/// Scripts page's own hotkey is what stops it from inside the game.
 /// </summary>
 public interface IFedSuitMacro : IDisposable
 {
@@ -80,16 +77,10 @@ public interface IFedSuitMacro : IDisposable
     /// </summary>
     (int Cycles, TimeSpan Elapsed)? LastRun { get; }
 
-    /// <summary>True while the start hotkey holds a live system-wide registration.</summary>
-    bool StartHotkeyRegistered { get; }
-
-    /// <summary>True while the stop hotkey holds a live system-wide registration.</summary>
-    bool StopHotkeyRegistered { get; }
-
     /// <summary>Raised when running state, cycle counters, or settings change. May fire on a background thread.</summary>
     event Action? Changed;
 
-    /// <summary>Validates, persists, and applies new settings (re-registers hotkeys when they changed).</summary>
+    /// <summary>Validates, persists, and applies new settings.</summary>
     void UpdateSettings(FedSuitSettings settings);
 
     /// <summary>
@@ -111,15 +102,31 @@ public interface IFedSuitMacro : IDisposable
 /// <summary>Default <see cref="IFedSuitMacro"/> implementation built on the shared automation core.</summary>
 public sealed class FedSuitMacro : IFedSuitMacro
 {
-    /// <summary>Calibration point name for the first transmitter slot (per-resolution).</summary>
-    public const string FirstSlotPointName = "fedsuit-first-slot";
-
     private const string RunnerName = "fed-suit";
-    private const int SlotClickSettleMs = 150;
+
+    /// <summary>Let the tab switch draw before the cursor starts hopping between slots.</summary>
+    private const int TabSettleMs = 60;
+
+    /// <summary>
+    /// How long the cursor rests on a slot before the transfer key is pressed. ARK reads what is
+    /// under the cursor once per rendered frame, so a press sent in the same breath as the move
+    /// is a press aimed at wherever the cursor was a frame ago.
+    /// </summary>
+    private const int HoverSettleMs = 35;
+
+    /// <summary>Half-width of the box sampled at each slot centre for the "did anything move?" check.</summary>
+    private const int SlotSampleHalf = 6;
+
+    /// <summary>Mean-brightness change (0–255) that counts as a slot having emptied.</summary>
+    private const double SlotMovedTolerance = 2.0;
+
+    /// <summary>Cycles that may move nothing at all before the macro gives up on its own.</summary>
+    private const int IdleCyclesBeforeStop = 3;
 
     private readonly IMacroEngine _engine;
-    private readonly IAutomationHotkeyService _hotkeys;
-    private readonly ICalibrationService _calibration;
+    private readonly IGameDisplayService _displays;
+    private readonly IArkPathProvider _arkPath;
+    private readonly IScreenSampler _sampler;
     private readonly INotificationService _notifications;
     private readonly IActivityService _activity;
     private readonly ILocalizer _localizer;
@@ -129,21 +136,27 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private readonly object _gate = new();
 
     private FedSuitSettings _settings;
-    private int _startHotkeyId;
-    private int _stopHotkeyId;
     private volatile bool _running;
     private volatile bool _disposed;
     private bool _stopRequested;
     private int _currentCycle;
     private int _cyclesCompleted;
     private int _lastStepIndex;
+    private int _firstTransferStepIndex;
     private (int Cycles, TimeSpan Elapsed)? _lastRun;
     private DateTime _runStartedUtc;
 
+    /// <summary>Where the five slots are this run, and the one box that holds all of them.</summary>
+    private Point[] _slotPoints = [];
+    private Rectangle _slotsBounds;
+    private double[]? _slotsBefore;
+    private int _idleCycles;
+
     public FedSuitMacro(
         IMacroEngine engine,
-        IAutomationHotkeyService hotkeys,
-        ICalibrationService calibration,
+        IGameDisplayService displays,
+        IArkPathProvider arkPath,
+        IScreenSampler sampler,
         INotificationService notifications,
         IActivityService activity,
         IUsageGateService usageGate,
@@ -151,8 +164,9 @@ public sealed class FedSuitMacro : IFedSuitMacro
         ILogger<FedSuitMacro> logger)
     {
         _engine = engine;
-        _hotkeys = hotkeys;
-        _calibration = calibration;
+        _displays = displays;
+        _arkPath = arkPath;
+        _sampler = sampler;
         _notifications = notifications;
         _activity = activity;
         _localizer = localizer;
@@ -162,7 +176,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         _settings = LoadSettings();
         _runner = _engine.GetRunner(RunnerName);
         _runner.StepStarted += OnStepStarted;
-        // First registration is quiet (log only) — the page surfaces registration state inline.
     }
 
     public FedSuitSettings Settings
@@ -187,10 +200,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         get { lock (_gate) return _lastRun; }
     }
 
-    public bool StartHotkeyRegistered => _startHotkeyId > 0;
-
-    public bool StopHotkeyRegistered => _stopHotkeyId > 0;
-
     public event Action? Changed;
 
     public void UpdateSettings(FedSuitSettings settings)
@@ -198,15 +207,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
         if (_disposed || settings is null) return;
 
         var normalized = Normalize(settings);
-        bool rebind;
-        lock (_gate)
-        {
-            rebind = !string.Equals(_settings.StartHotkey, normalized.StartHotkey, StringComparison.OrdinalIgnoreCase)
-                  || !string.Equals(_settings.StopHotkey, normalized.StopHotkey, StringComparison.OrdinalIgnoreCase)
-                  || _startHotkeyId == 0
-                  || _stopHotkeyId == 0;
-            _settings = normalized;
-        }
+        lock (_gate) _settings = normalized;
 
         SaveSettings(normalized);
         RaiseChanged();
@@ -230,24 +231,37 @@ public sealed class FedSuitMacro : IFedSuitMacro
             snapshot = _settings.Clone();
         }
 
-        var sequence = BuildSequence(snapshot);
-        if (sequence is null) return false;
+        var plan = BuildPlan(snapshot);
+        if (plan is null) return false;
 
         lock (_gate)
         {
-            if (_running) return false; // raced with a hotkey press — first one wins
+            if (_running) return false; // raced with a second start — first one wins
             _running = true;
             _stopRequested = false;
             _currentCycle = 0;
             _cyclesCompleted = 0;
-            _lastStepIndex = sequence.Steps.Count - 1;
+            _lastStepIndex = plan.Sequence.Steps.Count - 1;
+            _firstTransferStepIndex = plan.FirstTransferStep;
+            _slotPoints = plan.Slots;
+            _slotsBounds = BoxAround(plan.Slots);
+            _slotsBefore = null;
+            _idleCycles = 0;
             _runStartedUtc = DateTime.UtcNow;
         }
 
-        try { _notifications.ShowInfo(_localizer.T("scripts.fed.toast.started", snapshot.StopHotkey)); }
+        try
+        {
+            // Only ever the key that really stops it: the macro's own F5/F6 pair was registered
+            // by nothing, and this toast named F6 for years with nothing listening to it.
+            var hotkey = ScriptHotkey();
+            _notifications.ShowInfo(string.IsNullOrWhiteSpace(hotkey)
+                ? _localizer.T("scripts.fed.toast.started.nokey")
+                : _localizer.T("scripts.fed.toast.started", hotkey));
+        }
         catch { /* notifications are best-effort */ }
 
-        _ = Task.Run(() => RunToCompletionAsync(sequence));
+        _ = Task.Run(() => RunToCompletionAsync(plan.Sequence));
         // Start() must stay synchronous (the global hotkey calls it), so the quota check runs
         // right behind the start and stops the macro again if the month is used up. Stops
         // themselves never count — and neither does a start the Scripts list already charged for.
@@ -290,18 +304,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
         try { Stop(); }
         catch { /* best-effort while shutting down */ }
 
-        try
-        {
-            if (_startHotkeyId > 0) _hotkeys.UnregisterHotkey(_startHotkeyId);
-            if (_stopHotkeyId > 0) _hotkeys.UnregisterHotkey(_stopHotkeyId);
-            _startHotkeyId = 0;
-            _stopHotkeyId = 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Fed-Suit hotkey cleanup failed");
-        }
-
         _runner.StepStarted -= OnStepStarted;
     }
 
@@ -309,9 +311,10 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
     private async Task RunToCompletionAsync(MacroSequence sequence)
     {
+        var ran = false;
         try
         {
-            await _runner.RunAsync(sequence);
+            ran = await _runner.RunAsync(sequence);
         }
         catch (Exception ex)
         {
@@ -334,7 +337,11 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
             try
             {
-                if (stoppedByUser || cycles > 0)
+                // A run nobody stopped that did not finish its loops is the focus step refusing
+                // to hand the game the foreground — mid-run just as much as on the first cycle.
+                // Reporting that as "stopped, 12 cycles" hid an alt-tab that left every press
+                // after it landing in whatever window took the focus.
+                if (stoppedByUser || ran)
                     _notifications.ShowInfo(_localizer.T(
                         cycles == 1 ? "scripts.fed.toast.stopped.one" : "scripts.fed.toast.stopped.many",
                         cycles));
@@ -359,6 +366,11 @@ public sealed class FedSuitMacro : IFedSuitMacro
     {
         if (!_running) return;
 
+        // Outside the lock: these two grab pixels off the screen, and the step loop is waiting
+        // on this callback. See SampleSlots for why it is two captures and not ten.
+        if (stepIndex == _firstTransferStepIndex) _slotsBefore = SampleSlots();
+        else if (stepIndex == _lastStepIndex) StopIfNothingMoved();
+
         var changed = false;
         lock (_gate)
         {
@@ -378,7 +390,10 @@ public sealed class FedSuitMacro : IFedSuitMacro
         if (changed) RaiseChanged();
     }
 
-    private MacroSequence? BuildSequence(FedSuitSettings s)
+    /// <summary>One cycle's steps, plus what the "did anything move?" check has to watch.</summary>
+    private sealed record CyclePlan(MacroSequence Sequence, Point[] Slots, int FirstTransferStep);
+
+    private CyclePlan? BuildPlan(FedSuitSettings s)
     {
         if (!FedSuitKeys.TryParseKey(s.OpenKey, out var openVk))
         {
@@ -396,50 +411,152 @@ public sealed class FedSuitMacro : IFedSuitMacro
             return null;
         }
 
+        // Where the panel is drawn, worked out rather than calibrated — see ArkInventoryLayout.
+        // Without a window there is no centre to measure from, and every click would land on
+        // the desktop instead.
+        var client = _displays.GameClientBounds;
+        if (client.Width <= 0 || client.Height <= 0)
+        {
+            _logger.LogWarning("Fed-Suit cannot place its clicks — ARK has no readable window");
+            try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.noark")); }
+            catch { /* notifications are best-effort */ }
+            return null;
+        }
+
+        var uiScaling = ArkInventoryLayout.ReadUiScaling(_arkPath.FindArkPath());
+        var tab = ArkInventoryLayout.PlayerTab(client, uiScaling);
+        var slots = ArkInventoryLayout.ArmorSlots(client, uiScaling);
+
         var steps = new List<MacroStep>
         {
             MacroStep.FocusGameWindow(),
             MacroStep.KeyPress(openVk),
-            MacroStep.Delay(s.WaitAfterOpenMs)
+            MacroStep.Delay(s.WaitAfterOpenMs),
+
+            // The transmitter opens with its own tab in front, and the transfer key moves what
+            // the panel in front is showing — so without this click the whole cycle transfers
+            // nothing, which is exactly what it used to do.
+            MacroStep.ClickAt(tab.X, tab.Y),
+            MacroStep.Delay(TabSettleMs)
         };
 
-        // Narrowing the target is either a typed filter or a click on a calibrated slot. Both
-        // used to be separate scripts; they are two ways of doing the same step.
-        if (!string.IsNullOrWhiteSpace(s.SearchFilter))
+        var firstTransferStep = steps.Count;
+        foreach (var slot in slots)
         {
-            steps.Add(MacroStep.TypeText(s.SearchFilter.Trim()));
-            steps.Add(MacroStep.Delay(SlotClickSettleMs));
-        }
-
-        if (s.ClickFirstSlot)
-        {
-            if (_calibration.TryGetPoint(FirstSlotPointName, out var slot))
-            {
-                steps.Add(MacroStep.ClickAt(slot.X, slot.Y));
-                steps.Add(MacroStep.Delay(SlotClickSettleMs));
-            }
-            else
-            {
-                try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.noslot")); }
-                catch { /* notifications are best-effort */ }
-            }
-        }
-
-        for (var i = 0; i < s.PressesPerCycle; i++)
-        {
+            steps.Add(MacroStep.MoveTo(slot.X, slot.Y));
+            steps.Add(MacroStep.Delay(HoverSettleMs));
             steps.Add(MacroStep.KeyPress(transferVk));
             steps.Add(MacroStep.Delay(s.PressDelayMs));
         }
 
+        // Back to the tab before the last look at the slots: the cursor highlights whatever it
+        // rests on, and a slot lit up by the cursor would read as "something moved" every cycle.
+        steps.Add(MacroStep.MoveTo(tab.X, tab.Y));
+        steps.Add(MacroStep.Delay(HoverSettleMs));
         steps.Add(MacroStep.KeyPress(exitVk));
 
-        return new MacroSequence
+        return new CyclePlan(
+            new MacroSequence
+            {
+                Name = "Fed-Suit",
+                Steps = steps,
+                RepeatCount = s.Runs, // 0 = until stopped
+                LoopDelayMs = s.RepeatDelayMs
+            },
+            slots,
+            firstTransferStep);
+    }
+
+    // ─── "Nothing moved" check ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Stops the run when three cycles in a row left all five slots looking exactly as they did
+    /// before the transfers. Silence is this macro's failure mode: a mis-aimed click or the wrong
+    /// place to stand loops forever with the tile happily counting cycles, which is how the old
+    /// version wasted whole evenings.
+    /// </summary>
+    private void StopIfNothingMoved()
+    {
+        var before = _slotsBefore;
+        _slotsBefore = null;
+        if (before is null) return;
+
+        var after = SampleSlots();
+        if (after is null || after.Length != before.Length) return; // a capture that failed proves nothing
+
+        for (var i = 0; i < before.Length; i++)
         {
-            Name = "Fed-Suit",
-            Steps = steps,
-            RepeatCount = 0, // until stopped
-            LoopDelayMs = s.RepeatDelayMs
-        };
+            if (Math.Abs(before[i] - after[i]) <= SlotMovedTolerance) continue;
+            _idleCycles = 0;
+            return;
+        }
+
+        if (++_idleCycles < IdleCyclesBeforeStop) return;
+
+        _logger.LogWarning("Fed-Suit stopped itself — {Cycles} cycles moved nothing", _idleCycles);
+        Stop();
+        try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.nomove")); }
+        catch { /* notifications are best-effort */ }
+    }
+
+    /// <summary>
+    /// Mean brightness of a small box at each slot centre, all five out of a single capture of
+    /// the box that holds them: this runs inside the macro's own step loop, so five separate
+    /// grabs would stand between the last transfer and the key that ends the cycle.
+    /// </summary>
+    private double[]? SampleSlots()
+    {
+        try
+        {
+            var slots = _slotPoints;
+            if (slots.Length == 0) return null;
+
+            var bounds = _slotsBounds;
+            var capture = _sampler.CaptureRegion(bounds);
+            if (capture.IsEmpty) return null;
+
+            var means = new double[slots.Length];
+            for (var i = 0; i < slots.Length; i++) means[i] = MeanAt(capture, bounds, slots[i]);
+            return means;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Fed-Suit slot sample failed — the cycle is not judged");
+            return null;
+        }
+    }
+
+    private static double MeanAt(ScreenCapture capture, Rectangle origin, Point centre)
+    {
+        long sum = 0;
+        var channels = 0;
+        for (var y = centre.Y - SlotSampleHalf; y <= centre.Y + SlotSampleHalf; y++)
+        {
+            var row = y - origin.Y;
+            if (row < 0 || row >= capture.Height) continue;
+
+            for (var x = centre.X - SlotSampleHalf; x <= centre.X + SlotSampleHalf; x++)
+            {
+                var column = x - origin.X;
+                if (column < 0 || column >= capture.Width) continue;
+
+                var i = (row * capture.Width + column) * 4;
+                sum += capture.Bgra[i] + capture.Bgra[i + 1] + capture.Bgra[i + 2];
+                channels += 3;
+            }
+        }
+        return channels == 0 ? 0 : sum / (double)channels;
+    }
+
+    private static Rectangle BoxAround(Point[] slots)
+    {
+        if (slots.Length == 0) return Rectangle.Empty;
+
+        var left = slots.Min(p => p.X) - SlotSampleHalf;
+        var top = slots.Min(p => p.Y) - SlotSampleHalf;
+        var right = slots.Max(p => p.X) + SlotSampleHalf;
+        var bottom = slots.Max(p => p.Y) + SlotSampleHalf;
+        return Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
     }
 
     /// <summary>
@@ -455,62 +572,19 @@ public sealed class FedSuitMacro : IFedSuitMacro
         catch { /* notifications are best-effort */ }
     }
 
-    // ─── Hotkeys ───────────────────────────────────────────────────────────────
-
-    private void RegisterHotkeys(bool notifyFailures)
-    {
-        try
-        {
-            FedSuitSettings s;
-            lock (_gate) s = _settings.Clone();
-
-            if (_startHotkeyId > 0) { _hotkeys.UnregisterHotkey(_startHotkeyId); _startHotkeyId = 0; }
-            if (_stopHotkeyId > 0) { _hotkeys.UnregisterHotkey(_stopHotkeyId); _stopHotkeyId = 0; }
-
-            if (FedSuitKeys.TryParseCombo(s.StartHotkey, out var startVk, out var startCtrl, out var startAlt, out var startShift))
-                _startHotkeyId = _hotkeys.RegisterHotkey(startVk, startCtrl, startAlt, startShift, OnStartHotkey);
-
-            if (FedSuitKeys.TryParseCombo(s.StopHotkey, out var stopVk, out var stopCtrl, out var stopAlt, out var stopShift))
-                _stopHotkeyId = _hotkeys.RegisterHotkey(stopVk, stopCtrl, stopAlt, stopShift, OnStopHotkey);
-
-            if (_startHotkeyId == 0)
-            {
-                _logger.LogWarning("Fed-Suit start hotkey '{Hotkey}' could not be registered", s.StartHotkey);
-                if (notifyFailures)
-                {
-                    try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.starthotkey", s.StartHotkey)); }
-                    catch { /* notifications are best-effort */ }
-                }
-            }
-            if (_stopHotkeyId == 0)
-            {
-                _logger.LogWarning("Fed-Suit stop hotkey '{Hotkey}' could not be registered", s.StopHotkey);
-                if (notifyFailures)
-                {
-                    try { _notifications.ShowWarning(_localizer.T("scripts.fed.toast.stophotkey", s.StopHotkey)); }
-                    catch { /* notifications are best-effort */ }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Fed-Suit hotkey registration failed");
-        }
-    }
-
-    private void OnStartHotkey()
-    {
-        if (_disposed || _running) return;
-        Start();
-    }
-
-    private void OnStopHotkey()
-    {
-        if (_disposed) return;
-        Stop();
-    }
-
     // ─── Settings persistence ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// The hotkey the Scripts page holds for this script, which is the only one that can stop a
+    /// run from inside the game. Read straight out of the preference rather than through the
+    /// script: the command palette starts the macro without one, and an empty string is the
+    /// honest answer there — no key is bound by default.
+    /// </summary>
+    private static string ScriptHotkey()
+    {
+        try { return Preferences.Get("script.fedsuit.hotkey", string.Empty); }
+        catch { return string.Empty; }
+    }
 
     private FedSuitSettings LoadSettings()
     {
@@ -522,15 +596,10 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 OpenKey = Preferences.Get("fedsuit.openkey", defaults.OpenKey),
                 ExitKey = Preferences.Get("fedsuit.exitkey", defaults.ExitKey),
                 TransferKey = Preferences.Get("fedsuit.transferkey", defaults.TransferKey),
-                PressesPerCycle = Preferences.Get("fedsuit.presses", defaults.PressesPerCycle),
                 PressDelayMs = Preferences.Get("fedsuit.pressdelay", defaults.PressDelayMs),
                 WaitAfterOpenMs = Preferences.Get("fedsuit.openwait", defaults.WaitAfterOpenMs),
                 RepeatDelayMs = Preferences.Get("fedsuit.repeatdelay", defaults.RepeatDelayMs),
-                StartHotkey = Preferences.Get("fedsuit.starthotkey", defaults.StartHotkey),
-                StopHotkey = Preferences.Get("fedsuit.stophotkey", defaults.StopHotkey),
-                ClickFirstSlot = Preferences.Get("fedsuit.clickslot", defaults.ClickFirstSlot),
-                // Carried over from the old Exo Suit script, whose only distinct behaviour this was.
-                SearchFilter = Preferences.Get("fedsuit.searchfilter", Preferences.Get("exosuit.search", defaults.SearchFilter))
+                Runs = Preferences.Get("fedsuit.runs", defaults.Runs)
             });
         }
         catch (Exception ex)
@@ -547,14 +616,10 @@ public sealed class FedSuitMacro : IFedSuitMacro
             Preferences.Set("fedsuit.openkey", s.OpenKey);
             Preferences.Set("fedsuit.exitkey", s.ExitKey);
             Preferences.Set("fedsuit.transferkey", s.TransferKey);
-            Preferences.Set("fedsuit.presses", s.PressesPerCycle);
             Preferences.Set("fedsuit.pressdelay", s.PressDelayMs);
             Preferences.Set("fedsuit.openwait", s.WaitAfterOpenMs);
             Preferences.Set("fedsuit.repeatdelay", s.RepeatDelayMs);
-            Preferences.Set("fedsuit.starthotkey", s.StartHotkey);
-            Preferences.Set("fedsuit.stophotkey", s.StopHotkey);
-            Preferences.Set("fedsuit.clickslot", s.ClickFirstSlot);
-            Preferences.Set("fedsuit.searchfilter", s.SearchFilter ?? string.Empty);
+            Preferences.Set("fedsuit.runs", s.Runs);
         }
         catch (Exception ex)
         {
@@ -597,23 +662,15 @@ public sealed class FedSuitMacro : IFedSuitMacro
             OpenKey = NormalizeKey(s.OpenKey, d.OpenKey),
             ExitKey = NormalizeKey(s.ExitKey, d.ExitKey),
             TransferKey = NormalizeKey(s.TransferKey, d.TransferKey),
-            PressesPerCycle = Math.Clamp(s.PressesPerCycle, 1, 500),
             PressDelayMs = Math.Clamp(s.PressDelayMs, 0, 10_000),
             WaitAfterOpenMs = Math.Clamp(s.WaitAfterOpenMs, 0, 30_000),
             RepeatDelayMs = Math.Clamp(s.RepeatDelayMs, 0, 60_000),
-            StartHotkey = NormalizeCombo(s.StartHotkey, d.StartHotkey),
-            StopHotkey = NormalizeCombo(s.StopHotkey, d.StopHotkey),
-            ClickFirstSlot = s.ClickFirstSlot
+            Runs = Math.Clamp(s.Runs, 0, 9_999)
         };
     }
 
     private static string NormalizeKey(string? value, string fallback)
         => !string.IsNullOrWhiteSpace(value) && FedSuitKeys.TryParseKey(value, out _)
-            ? value.Trim()
-            : fallback;
-
-    private static string NormalizeCombo(string? value, string fallback)
-        => !string.IsNullOrWhiteSpace(value) && FedSuitKeys.TryParseCombo(value, out _, out _, out _, out _)
             ? value.Trim()
             : fallback;
 
@@ -634,48 +691,13 @@ public sealed class FedSuitMacro : IFedSuitMacro
 }
 
 /// <summary>
-/// Parses HotkeyField strings ("F5", "Esc", "Ctrl + Alt + F") into Win32 virtual-key codes and
-/// modifier flags. Shared by the Fed-Suit macro; internal so other automation features in this
-/// assembly can reuse it.
+/// Parses a single key name ("F", "Esc", "T") into a Win32 virtual-key code. Shared by the
+/// Fed-Suit macro; internal so other automation features in this assembly can reuse it. Combos
+/// belong to <see cref="HotkeyParser"/> — this one only ever describes a key the macro presses.
 /// </summary>
 internal static class FedSuitKeys
 {
-    /// <summary>Parses a full combo ("Ctrl + Shift + F5") into vk + modifier flags.</summary>
-    public static bool TryParseCombo(string? combo, out int vk, out bool ctrl, out bool alt, out bool shift)
-    {
-        vk = 0;
-        ctrl = alt = shift = false;
-        if (string.IsNullOrWhiteSpace(combo)) return false;
-
-        var parts = combo.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return false;
-
-        for (var i = 0; i < parts.Length - 1; i++)
-        {
-            switch (parts[i].ToUpperInvariant())
-            {
-                case "CTRL":
-                case "CONTROL":
-                    ctrl = true;
-                    break;
-                case "ALT":
-                    alt = true;
-                    break;
-                case "SHIFT":
-                    shift = true;
-                    break;
-                case "WIN":
-                case "META":
-                    // The Win modifier is not supported by the hotkey service — ignored.
-                    break;
-                default:
-                    return false;
-            }
-        }
-        return TryParseKey(parts[^1], out vk);
-    }
-
-    /// <summary>Parses a single key name (last segment of a combo) into a virtual-key code.</summary>
+    /// <summary>Parses a single key name into a virtual-key code.</summary>
     public static bool TryParseKey(string? name, out int vk)
     {
         vk = 0;

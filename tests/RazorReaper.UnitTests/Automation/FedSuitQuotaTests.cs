@@ -89,8 +89,9 @@ public sealed class FedSuitQuotaTests
     private static FedSuitMacro Macro(IMacroEngine engine, IUsageGateService gate)
         => new(
             engine,
-            new NullAutomationHotkeyService(),
-            new FakeCalibrationService(),
+            new FakeGameDisplayService(),
+            new FakeArkInstall(),
+            new FakeScreenSampler(),
             new RecordingNotificationService(),
             new RecordingActivityService(),
             gate,

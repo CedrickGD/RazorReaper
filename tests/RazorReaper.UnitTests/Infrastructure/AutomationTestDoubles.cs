@@ -419,6 +419,9 @@ public sealed class FakeMacroRunner : IMacroRunner
     /// <summary>How many sequences this runner was asked to run.</summary>
     public int RunCount { get; private set; }
 
+    /// <summary>The last sequence handed over — the steps a caller built, to assert against.</summary>
+    public MacroSequence? LastSequence { get; private set; }
+
     public event Action<MacroRunnerState>? StateChanged;
 
     public event Action<int, int>? StepStarted;
@@ -426,6 +429,7 @@ public sealed class FakeMacroRunner : IMacroRunner
     public async Task<bool> RunAsync(MacroSequence sequence, CancellationToken ct = default)
     {
         RunCount++;
+        LastSequence = sequence;
         CurrentSequenceName = sequence.Name;
         TotalSteps = sequence.Steps.Count;
         SetState(MacroRunnerState.Running);
@@ -451,6 +455,13 @@ public sealed class FakeMacroRunner : IMacroRunner
         SetState(MacroRunnerState.Stopping);
         _run?.TrySetResult();
     }
+
+    /// <summary>
+    /// Reports a step the way a real run would. The fake presses nothing, so this is the only
+    /// way to exercise what a caller hangs off <see cref="StepStarted"/> — the Fed-Suit macro
+    /// watches the slots from there.
+    /// </summary>
+    public void FireStep(int stepIndex, int loopNumber) => StepStarted?.Invoke(stepIndex, loopNumber);
 
     private void SetState(MacroRunnerState next)
     {
@@ -482,6 +493,35 @@ public sealed class FakeMacroEngine : IMacroEngine
     {
         foreach (var r in _runners.Values) r.Stop();
     }
+}
+
+/// <summary>
+/// A game window wherever the test puts it. The client rectangle is what the computed inventory
+/// points are measured from, so it is settable on its own: a window and its client area only
+/// agree while the game is borderless.
+/// </summary>
+public sealed class FakeGameDisplayService : IGameDisplayService
+{
+    public IReadOnlyList<AttachedDisplay> Monitors { get; set; } =
+        [new(@"\\.\DISPLAY1", new Rectangle(0, 0, 1920, 1080), IsPrimary: true)];
+
+    public AttachedDisplay? GameMonitor => MonitorSelection.Choose(Monitors, GameWindowBounds);
+
+    public Rectangle GameWindowBounds { get; set; } = new(0, 0, 1920, 1080);
+
+    public Rectangle GameClientBounds { get; set; } = new(0, 0, 1920, 1080);
+}
+
+/// <summary>An ARK install wherever the test says it is, including nowhere.</summary>
+public sealed class FakeArkInstall(string? arkRoot = null) : IArkPathProvider
+{
+    public string? ArkRoot { get; set; } = arkRoot;
+
+    public string? FindArkPath() => ArkRoot;
+
+    public string? GetBaseDeviceProfilesPath() => null;
+
+    public bool IsValidArkPath(string path) => !string.IsNullOrWhiteSpace(path);
 }
 
 /// <summary>A usage gate that counts what was charged against which feature.</summary>

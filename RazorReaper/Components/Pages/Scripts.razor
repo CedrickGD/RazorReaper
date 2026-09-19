@@ -405,17 +405,14 @@
                     <SettingRow Title="@Localizer.T("scripts.fed.openkey")" Description="@Localizer.T("scripts.fed.openkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.OpenKey" @onchange="SetFedOpenKey" />
                     </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.fed.searchfilter")" Description="@Localizer.T("scripts.fed.searchfilter.desc")">
-                        <input class="script-input" value="@fed.Macro.Settings.SearchFilter" @onchange="SetFedSearchFilter" />
-                    </SettingRow>
                     <SettingRow Title="@Localizer.T("scripts.field.transferkey")" Description="@Localizer.T("scripts.fed.transferkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.TransferKey" @onchange="SetFedTransferKey" />
                     </SettingRow>
                     <SettingRow Title="@Localizer.T("scripts.fed.exitkey")" Description="@Localizer.T("scripts.fed.exitkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.ExitKey" @onchange="SetFedExitKey" />
                     </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.fed.presses")" Description="@Localizer.T("scripts.fed.presses.desc")">
-                        <input class="script-input" type="number" min="1" max="200" value="@fed.Macro.Settings.PressesPerCycle" @onchange="SetFedPresses" />
+                    <SettingRow Title="@Localizer.T("scripts.fed.runs")" Description="@Localizer.T("scripts.fed.runs.desc")">
+                        <input class="script-input" type="number" min="0" max="9999" value="@fed.Macro.Settings.Runs" @onchange="SetFedRuns" />
                     </SettingRow>
                     <SettingRow Title="@Localizer.T("scripts.fed.wait")" Description="@Localizer.T("scripts.fed.wait.desc")">
                         <input class="script-input" type="number" min="0" max="5000" value="@fed.Macro.Settings.WaitAfterOpenMs" @onchange="SetFedWait" />
@@ -772,11 +769,6 @@
         if (_selected is FedSuitScript f) ApplyFed(f, s => s.OpenKey = e.Value?.ToString() ?? "F");
     }
 
-    private void SetFedSearchFilter(ChangeEventArgs e)
-    {
-        if (_selected is FedSuitScript f) ApplyFed(f, s => s.SearchFilter = e.Value?.ToString() ?? string.Empty);
-    }
-
     private void SetFedTransferKey(ChangeEventArgs e)
     {
         if (_selected is FedSuitScript f) ApplyFed(f, s => s.TransferKey = e.Value?.ToString() ?? "T");
@@ -787,10 +779,10 @@
         if (_selected is FedSuitScript f) ApplyFed(f, s => s.ExitKey = e.Value?.ToString() ?? "Esc");
     }
 
-    private void SetFedPresses(ChangeEventArgs e)
+    private void SetFedRuns(ChangeEventArgs e)
     {
         if (_selected is FedSuitScript f && int.TryParse(e.Value?.ToString(), out var v))
-            ApplyFed(f, s => s.PressesPerCycle = v);
+            ApplyFed(f, s => s.Runs = v);
     }
 
     private void SetFedWait(ChangeEventArgs e)

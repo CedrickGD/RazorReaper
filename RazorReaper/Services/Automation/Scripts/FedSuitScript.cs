@@ -7,8 +7,9 @@ namespace RazorReaper.Services.Automation.Scripts;
 /// The Fed Suit transmitter loop: open, transfer a batch, exit, repeat.
 ///
 /// The loop itself lives in <see cref="IFedSuitMacro"/>, which predates the script catalogue and
-/// carried its own start and stop hotkeys. This wrapper puts it in the Scripts list so it behaves
-/// like every other script — one toggle, one hotkey, one place to find it.
+/// carried its own start and stop hotkeys until they were removed — nothing ever registered them,
+/// while the start toast told people to press one of them. This wrapper puts the macro in the
+/// Scripts list so it behaves like every other script: one toggle, one hotkey, one place to find it.
 /// </summary>
 public sealed class FedSuitScript : AutomationScriptBase
 {
