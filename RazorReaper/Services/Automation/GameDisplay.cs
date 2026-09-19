@@ -107,6 +107,15 @@ public interface IGameDisplayService
 
     /// <summary>ARK's window rectangle in virtual-desktop pixels, or empty when there is none.</summary>
     Rectangle GameWindowBounds { get; }
+
+    /// <summary>
+    /// The area ARK actually draws into, in virtual-desktop pixels, or empty when there is no
+    /// window. Identical to <see cref="GameWindowBounds"/> for a fullscreen or borderless game
+    /// and a title bar shorter for a windowed one — which matters to anything that computes a
+    /// position from the centre of the game's picture, because a frame counted as picture moves
+    /// that centre down and every point measured from it with it.
+    /// </summary>
+    Rectangle GameClientBounds { get; }
 }
 
 /// <summary>Default <see cref="IGameDisplayService"/> implementation.</summary>
@@ -119,6 +128,7 @@ public sealed class GameDisplayService : IGameDisplayService
 
     private readonly object _gate = new();
     private Rectangle _cachedBounds = Rectangle.Empty;
+    private Rectangle _cachedClient = Rectangle.Empty;
     private long _cachedAt = long.MinValue;
 
     /// <summary>
@@ -143,27 +153,29 @@ public sealed class GameDisplayService : IGameDisplayService
 
     public AttachedDisplay? GameMonitor => MonitorSelection.Choose(Enumerate(), GameWindowBounds);
 
-    public Rectangle GameWindowBounds
+    public Rectangle GameWindowBounds => Bounds().Window;
+
+    public Rectangle GameClientBounds => Bounds().Client;
+
+    /// <summary>Both rectangles come out of one lookup — they describe the same window.</summary>
+    private (Rectangle Window, Rectangle Client) Bounds()
     {
-        get
+        lock (_gate)
         {
-            lock (_gate)
-            {
-                var now = Environment.TickCount64;
+            var now = Environment.TickCount64;
 
-                // The sentinel is compared, never subtracted from: `now - long.MinValue`
-                // overflows negative and the refresh never runs. ForegroundGate carries the
-                // same note, because that exact arithmetic shut every script's gate once.
-                if (_cachedAt != long.MinValue && now - _cachedAt <= CacheMs) return _cachedBounds;
+            // The sentinel is compared, never subtracted from: `now - long.MinValue`
+            // overflows negative and the refresh never runs. ForegroundGate carries the
+            // same note, because that exact arithmetic shut every script's gate once.
+            if (_cachedAt != long.MinValue && now - _cachedAt <= CacheMs) return (_cachedBounds, _cachedClient);
 
-                _cachedAt = now;
-                _cachedBounds = ReadGameWindowBounds();
-                return _cachedBounds;
-            }
+            _cachedAt = now;
+            (_cachedBounds, _cachedClient) = ReadGameWindowBounds();
+            return (_cachedBounds, _cachedClient);
         }
     }
 
-    private Rectangle ReadGameWindowBounds()
+    private (Rectangle Window, Rectangle Client) ReadGameWindowBounds()
     {
         try
         {
@@ -172,7 +184,8 @@ public sealed class GameDisplayService : IGameDisplayService
             if (_foreground.IsGameForeground())
             {
                 var fg = GetForegroundWindow();
-                if (fg != IntPtr.Zero && TryGetWindowBounds(fg, out var focused)) return focused;
+                if (fg != IntPtr.Zero && TryGetWindowBounds(fg, out var focused, out var focusedClient))
+                    return (focused, focusedClient);
             }
 
             var processes = _process.GetProcessesByName(_config.Value.Ark.GameProcessName);
@@ -181,7 +194,8 @@ public sealed class GameDisplayService : IGameDisplayService
                 foreach (var process in processes)
                 {
                     var hwnd = process.MainWindowHandle;
-                    if (hwnd != IntPtr.Zero && TryGetWindowBounds(hwnd, out var bounds)) return bounds;
+                    if (hwnd != IntPtr.Zero && TryGetWindowBounds(hwnd, out var bounds, out var client))
+                        return (bounds, client);
                 }
             }
             finally
@@ -196,12 +210,12 @@ public sealed class GameDisplayService : IGameDisplayService
             _logger.LogDebug(ex, "Could not read ARK's window bounds — falling back to the primary display");
         }
 
-        return Rectangle.Empty;
+        return (Rectangle.Empty, Rectangle.Empty);
     }
 
-    private static bool TryGetWindowBounds(IntPtr hwnd, out Rectangle bounds)
+    private static bool TryGetWindowBounds(IntPtr hwnd, out Rectangle bounds, out Rectangle client)
     {
-        bounds = Rectangle.Empty;
+        bounds = client = Rectangle.Empty;
         if (!GetWindowRect(hwnd, out var rect)) return false;
 
         var width = rect.Right - rect.Left;
@@ -209,6 +223,14 @@ public sealed class GameDisplayService : IGameDisplayService
         if (width <= 0 || height <= 0) return false;
 
         bounds = new Rectangle(rect.Left, rect.Top, width, height);
+
+        // GetClientRect is window-relative and always starts at 0,0, so its origin has to be
+        // mapped through ClientToScreen. A refusal (BattlEye strips handle rights) leaves the
+        // window rectangle standing in — wrong by a border rather than empty.
+        var origin = default(NATIVEPOINT);
+        client = GetClientRect(hwnd, out var cr) && cr.Right > 0 && cr.Bottom > 0 && ClientToScreen(hwnd, ref origin)
+            ? new Rectangle(origin.X, origin.Y, cr.Right, cr.Bottom)
+            : bounds;
         return true;
     }
 
@@ -279,6 +301,9 @@ public sealed class GameDisplayService : IGameDisplayService
     [StructLayout(LayoutKind.Sequential)]
     private struct NATIVERECT { public int Left, Top, Right, Bottom; }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NATIVEPOINT { public int X, Y; }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct MONITORINFOEX
     {
@@ -303,6 +328,12 @@ public sealed class GameDisplayService : IGameDisplayService
 
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd, out NATIVERECT rect);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetClientRect(IntPtr hWnd, out NATIVERECT rect);
+
+    [DllImport("user32.dll")]
+    private static extern bool ClientToScreen(IntPtr hWnd, ref NATIVEPOINT point);
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
