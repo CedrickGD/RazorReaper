@@ -262,6 +262,72 @@ public sealed class DiagnosticSnapshotServiceTests
         }
     }
 
+    /// <summary>
+    /// The panel matches every check key against this pattern and rejects the WHOLE report on the
+    /// first miss, and it also rejects a key repeated inside one provider
+    /// (RR-Admin-Panel/functions/_lib/feedback-diagnostics.ts, lines 60/240/268). The nested route
+    /// "/guides/dino-level" kept its slash and made support reports impossible to send on 1.5.3.
+    /// </summary>
+    private const string PanelKeyPattern = "^[a-z0-9][a-z0-9._:-]{0,63}$";
+
+    [Fact]
+    public async Task EveryKeyTheRealCatalogueEmitsSurvivesThePanelValidator()
+    {
+        var providers = new IDiagnosticProvider[]
+        {
+            new AppRuntimeDiagnosticProvider(TimeProvider.System),
+            new WindowsHostDiagnosticProvider(),
+            new FeatureCatalogDiagnosticProvider("core_features", "Core"),
+            new FeatureCatalogDiagnosticProvider("ark_tweaks", "ARK Tweaks"),
+            new FeatureCatalogDiagnosticProvider("custom_ark", "Custom ARK"),
+            new FeatureCatalogDiagnosticProvider("automation", "Automation", includeScripts: true),
+            new FeatureCatalogDiagnosticProvider("mods_intel", "Mods & Intel"),
+            new FeatureCatalogDiagnosticProvider("utilities", "Utilities"),
+            new FeatureCatalogDiagnosticProvider("help_support", "Help & About"),
+        };
+
+        // A generous timeout: this asserts on the emitted keys, not on collector speed.
+        var service = new DiagnosticSnapshotService(
+            providers,
+            TimeProvider.System,
+            NullLogger<DiagnosticSnapshotService>.Instance,
+            TimeSpan.FromSeconds(30));
+
+        var snapshot = await service.CaptureAsync("/guides/dino-level");
+        var checks = snapshot.Providers.SelectMany(provider => provider.Checks).ToList();
+
+        Assert.NotEmpty(checks);
+        Assert.All(checks, check => Assert.Matches(PanelKeyPattern, check.Key));
+
+        // Two routes must not collapse into one key inside a provider.
+        Assert.All(snapshot.Providers, provider => Assert.Equal(
+            provider.Checks.Count,
+            provider.Checks.Select(check => check.Key).Distinct(StringComparer.Ordinal).Count()));
+
+        // The route that broke the ticket, and the script keys, still arrive under a stable spelling.
+        Assert.Contains(checks, check => check.Key == "route_guides_dino_level");
+        Assert.Equal(18, checks.Count(check => check.Key.StartsWith("script_", StringComparison.Ordinal)));
+    }
+
+    [Theory]
+    [InlineData("route_guides/dino_level", "route_guides_dino_level")]
+    [InlineData("Route_Mixed Case", "route_mixed_case")]
+    [InlineData("_leading", "k_leading")]
+    [InlineData("", "k")]
+    [InlineData("script_fed_suit", "script_fed_suit")]
+    [InlineData("keeps.dots:and-dashes", "keeps.dots:and-dashes")]
+    public void SanitizeKeyProducesAKeyThePanelAccepts(string raw, string expected)
+    {
+        var sanitized = DiagnosticSnapshotService.SanitizeKey(raw);
+
+        Assert.Equal(expected, sanitized);
+        Assert.Matches(PanelKeyPattern, sanitized);
+    }
+
+    [Fact]
+    public void SanitizeKeyNeverExceedsThePanelsLengthLimit()
+        => Assert.Matches(PanelKeyPattern, DiagnosticSnapshotService.SanitizeKey(new string('/', 200)));
+
     private static void Replace(List<IDiagnosticProvider> providers, IDiagnosticProvider replacement)
     {
         var index = providers.FindIndex(provider => provider.ProviderId == replacement.ProviderId);

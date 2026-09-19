@@ -208,7 +208,7 @@ public sealed class DiagnosticSnapshotService : IDiagnosticSnapshotService
 
         return new DiagnosticCheck
         {
-            Key = Limit(check.Key, 64),
+            Key = SanitizeKey(check.Key),
             Label = Limit(check.Label, 120),
             Status = NormalizeCheckStatus(check.Status),
             Value = value,
@@ -281,6 +281,35 @@ public sealed class DiagnosticSnapshotService : IDiagnosticSnapshotService
 
     private static int ClampDuration(long durationMs)
         => (int)Math.Clamp(durationMs, 0, 120_000);
+
+    /// <summary>
+    /// The backend accepts a check key only as <c>^[a-z0-9][a-z0-9._:-]{0,63}$</c>
+    /// (RR-Admin-Panel/functions/_lib/feedback-diagnostics.ts) and rejects the whole report over a
+    /// single bad one — the nested route "/guides/dino-level" kept its slash and made every support
+    /// report from 1.5.3 impossible to send. Every provider's checks pass through here, so this is
+    /// the one place that has to know the rule; no key builder has to remember it.
+    /// </summary>
+    internal static string SanitizeKey(string? key)
+    {
+        var source = Limit(key, 64);
+        var sanitized = string.Create(source.Length, source, static (span, text) =>
+        {
+            for (var i = 0; i < span.Length; i++)
+            {
+                var c = char.ToLowerInvariant(text[i]);
+                span[i] = IsKeyBody(c) ? c : '_';
+            }
+        });
+
+        // A key must also START with a letter or digit, and an empty one is rejected outright.
+        return sanitized.Length > 0 && IsKeyStart(sanitized[0])
+            ? sanitized
+            : Limit("k" + sanitized, 64);
+    }
+
+    private static bool IsKeyStart(char c) => c is (>= 'a' and <= 'z') or (>= '0' and <= '9');
+
+    private static bool IsKeyBody(char c) => IsKeyStart(c) || c is '.' or '_' or ':' or '-';
 
     private static string Limit(string? value, int maxLength)
     {
