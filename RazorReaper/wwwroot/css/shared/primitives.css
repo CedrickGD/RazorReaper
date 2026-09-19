@@ -606,6 +606,23 @@ input[type="number"] {
     opacity: 0.8;
 }
 
+/* A stored combo Windows refused to hand over. The row keeps showing the key — that is
+   what the user set — so it has to say in the same breath that nothing is listening to
+   it. Shared by HotkeyLink and the Global Hotkeys row; the existing warning accent, no
+   new colour. */
+.hk-warn {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-orange);
+    white-space: nowrap;
+    cursor: help;
+}
+
+.hk-inline-combo.hk-dead {
+    color: var(--accent-orange);
+    border-color: rgba(var(--accent-orange-rgb), 0.45);
+}
+
 .hk-inline-link {
     font-size: 0.8rem;
     color: var(--accent-purple-light);

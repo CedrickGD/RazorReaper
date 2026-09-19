@@ -194,6 +194,37 @@ public sealed class NullAutomationHotkeyService : IAutomationHotkeyService
     public void Dispose() { }
 }
 
+/// <summary>
+/// A hotkey service that hands out registration ids, and refuses the keys a test puts in
+/// <see cref="Refuse"/> — the Win32 "someone else already has this key" answer, without
+/// needing someone else. Nothing system-wide is ever claimed.
+/// </summary>
+public sealed class FakeAutomationHotkeyService : IAutomationHotkeyService
+{
+    private readonly HashSet<int> _live = new();
+    private int _nextId;
+
+    /// <summary>Virtual-key codes this service will not hand over.</summary>
+    public HashSet<int> Refuse { get; } = new();
+
+    public int RegisterHotkey(int virtualKey, bool ctrl, bool alt, bool shift, Action callback)
+    {
+        if (Refuse.Contains(virtualKey)) return 0;
+
+        var id = ++_nextId;
+        _live.Add(id);
+        return id;
+    }
+
+    public void UnregisterHotkey(int registrationId) => _live.Remove(registrationId);
+
+    public bool IsRegistered(int registrationId) => _live.Contains(registrationId);
+
+    public void UnregisterAll() => _live.Clear();
+
+    public void Dispose() => _live.Clear();
+}
+
 /// <summary>Collects the toasts a service or script raised, so a test can read them back.</summary>
 public sealed class RecordingNotificationService : INotificationService
 {

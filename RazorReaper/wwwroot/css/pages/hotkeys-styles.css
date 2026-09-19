@@ -61,9 +61,15 @@
     color: var(--text-secondary);
 }
 
+/* Flex rather than inline flow, so the "not active" note sits on the field's baseline
+   instead of nudging it — see .hk-warn in primitives.css. */
 .hk-field {
     justify-self: end;
     min-width: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 /* Row-level link for bindings still owned by their own page. */

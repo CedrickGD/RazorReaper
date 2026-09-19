@@ -155,6 +155,13 @@ public abstract class AutomationScriptBase : IDisposable
     /// <summary>Bindable start/stop hotkey (HotkeyField text). Set it, then call <see cref="SaveHotkey"/>.</summary>
     public string StartStopHotkey { get; set; }
 
+    /// <summary>
+    /// A hotkey is stored but nothing is listening to it: Windows refused the registration and
+    /// the text kept on looking bound. Read from the live registration rather than remembered,
+    /// so it answers the same after a restart — where the retry fails without a word.
+    /// </summary>
+    public bool HotkeyFailed => !string.IsNullOrWhiteSpace(StartStopHotkey) && _hotkeyId == 0;
+
     // ─── Lifecycle ─────────────────────────────────────────────────────────────
 
     public bool Start() => Start(fromHotkey: false);
@@ -760,7 +767,40 @@ public abstract class AutomationScriptBase : IDisposable
         }
         else if (notifyOnFailure)
         {
-            Notifications.ShowWarning(Localizer.T("scripts.toast.hotkey.inuse", text));
+            // "Another app" was wrong as often as it was right: F8 is the crosshair's own default,
+            // and the app knows every key it holds. Blame the neighbour by name where there is one.
+            var owner = ConflictOwner(text);
+            Notifications.ShowWarning(owner is null
+                ? Localizer.T("scripts.toast.hotkey.inuse", text)
+                : Localizer.T("scripts.toast.hotkey.conflict", text, owner));
+        }
+    }
+
+    /// <summary>
+    /// How a script finds the hotkey registry, resolved late for the same reason the usage gate
+    /// is — and one more: the registry is built *from* the scripts, so taking it in the
+    /// constructor would make every script construct all the others. Only the notifying path
+    /// asks, which is long after construction.
+    /// </summary>
+    internal Func<IHotkeyRegistry?> ResolveHotkeyRegistry { get; set; }
+        = static () => IPlatformApplication.Current?.Services?.GetService<IHotkeyRegistry>();
+
+    /// <summary>The name of the RazorReaper feature already holding <paramref name="text"/>, or null.</summary>
+    private string? ConflictOwner(string text)
+    {
+        try
+        {
+            var owner = ResolveHotkeyRegistry()?.OwnerOf(text, $"script:{_scriptKey}");
+            if (owner is null) return null;
+
+            // The hotkeys page names a row the same way: a feature name stands as it is, a row
+            // whose label is a description resolves its key.
+            return owner.NameKey is null ? owner.Name : Localizer.T(owner.NameKey);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "{Script} hotkey conflict lookup failed", _displayName);
+            return null;
         }
     }
 

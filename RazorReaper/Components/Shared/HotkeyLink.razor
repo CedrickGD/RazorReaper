@@ -13,7 +13,11 @@
     }
     else
     {
-        <kbd class="hk-inline-combo">@Value</kbd>
+        <kbd class="hk-inline-combo @(Failed ? "hk-dead" : "")">@Value</kbd>
+    }
+    @if (Failed)
+    {
+        <span class="hk-warn" title="@Localizer.T("hotkey.notactive.hint")">@Localizer.T("hotkey.notactive")</span>
     }
     <a class="hk-inline-link" href="/hotkeys">@(LinkText ?? Localizer.T("hotkey.changelink"))</a>
 </span>
@@ -32,4 +36,11 @@
 
     /// <summary>The link's wording. Null takes the general "Change in Global Hotkeys".</summary>
     [Parameter] public string? LinkText { get; set; }
+
+    /// <summary>
+    /// The combo is stored but was never registered, so pressing it does nothing. Passed in
+    /// from the owner's live state — the warning has to come back after a restart, where the
+    /// failed retry says nothing at all.
+    /// </summary>
+    [Parameter] public bool Failed { get; set; }
 }

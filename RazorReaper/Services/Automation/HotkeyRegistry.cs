@@ -44,6 +44,12 @@ public sealed class HotkeyBinding
     public Func<bool>? IsActive { get; init; }
 
     /// <summary>
+    /// True when a combo is stored but Windows refused to hand it over, so nothing is listening.
+    /// Null for owners that cannot yet tell — the page only warns where it knows.
+    /// </summary>
+    public Func<bool>? HasFailed { get; init; }
+
+    /// <summary>
     /// True when the binding can only be edited on its own page. Set for owners whose
     /// registration still lives in page-local state.
     /// </summary>
@@ -57,6 +63,13 @@ public interface IHotkeyRegistry
 
     /// <summary>The bindings owned by one page, for its read-only summary.</summary>
     IReadOnlyList<HotkeyBinding> ForRoute(string route);
+
+    /// <summary>
+    /// Which RazorReaper binding already holds <paramref name="combo"/>, ignoring the one with
+    /// <paramref name="exceptId"/> (the asker's own). Null when nothing here owns it — which is
+    /// what makes "another app has this key" an honest thing to say rather than a guess.
+    /// </summary>
+    HotkeyBinding? OwnerOf(string? combo, string? exceptId = null);
 }
 
 public sealed class HotkeyRegistry : IHotkeyRegistry
@@ -105,6 +118,11 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
             .ToList();
     }
 
+    public HotkeyBinding? OwnerOf(string? combo, string? exceptId = null)
+        => GetBindings().FirstOrDefault(b =>
+            !string.Equals(b.Id, exceptId, StringComparison.Ordinal)
+            && HotkeyParser.SameCombo(combo, b.Get()));
+
     private void AddScripts(List<HotkeyBinding> list)
     {
         foreach (var script in scripts)
@@ -123,7 +141,8 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
                     s.StartStopHotkey = value ?? "";
                     s.SaveHotkey();
                 },
-                IsActive = () => s.IsRunning
+                IsActive = () => s.IsRunning,
+                HasFailed = () => s.HotkeyFailed
             });
         }
     }

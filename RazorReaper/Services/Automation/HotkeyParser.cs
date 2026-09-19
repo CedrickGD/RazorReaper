@@ -100,4 +100,14 @@ public static class HotkeyParser
 
         return main is not null && TryParseKey(main, out virtualKey);
     }
+
+    /// <summary>
+    /// Whether two labels name the same combination. Compared as parsed keys rather than as
+    /// text: "Ctrl + F8", "ctrl+f8" and "F8 + Ctrl" are one key and only the parser knows it.
+    /// A label the parser cannot read never matches — an unusable binding holds nothing.
+    /// </summary>
+    public static bool SameCombo(string? a, string? b)
+        => TryParseHotkey(a, out var vk, out var ctrl, out var alt, out var shift)
+           && TryParseHotkey(b, out var otherVk, out var otherCtrl, out var otherAlt, out var otherShift)
+           && (vk, ctrl, alt, shift) == (otherVk, otherCtrl, otherAlt, otherShift);
 }

@@ -44,6 +44,14 @@
                     else
                     {
                         <span class="hk-field">
+                            @* A key Windows refused stays in the field and stays dead, and the
+                               toast that said so is gone in three seconds. This is what is left
+                               behind — derived from the live registration, so a restart still
+                               shows it. *@
+                            @if (binding.HasFailed?.Invoke() == true)
+                            {
+                                <span class="hk-warn" title="@Localizer.T("hotkey.notactive.hint")">@Localizer.T("hotkey.notactive")</span>
+                            }
                             <HotkeyField Value="@binding.Get()"
                                          ValueChanged="@(v => Apply(binding, v))"
                                          Placeholder="@Localizer.T("hotkeys.presscombo")" />

@@ -422,7 +422,7 @@
                 @* Full width (see scripts-styles.css): squeezed into half, the combo and its
                    link wrapped onto a second line and dragged the whole grid row taller. *@
                 <SettingRow Class="script-hotkey-row" Title="@Localizer.T("scripts.hotkey.title")" Description="@Localizer.T("scripts.hotkey.desc")">
-                    <HotkeyLink Value="@_selected.StartStopHotkey" />
+                    <HotkeyLink Value="@_selected.StartStopHotkey" Failed="@_selected.HotkeyFailed" />
                 </SettingRow>
             </div>
 
