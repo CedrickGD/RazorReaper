@@ -346,13 +346,31 @@ public sealed class FakeScreenSampler : IScreenSampler
     /// </summary>
     public bool CapturesDiffer { get; set; }
 
+    /// <summary>
+    /// Screen-space box that comes back bright from the second capture on, with everything around
+    /// it still black: one corner of the region moving while the rest stays put. Without it every
+    /// capture is uniform, so a check can only ever be shown the two easy answers — all moved or
+    /// none did — and never the noisy middle a live game screen actually hands it.
+    /// </summary>
+    public Rectangle NoisyBox { get; set; }
+
     private int _captures;
 
     public ScreenCapture CaptureRegion(Rectangle region)
     {
         int width = Math.Max(region.Width, 1), height = Math.Max(region.Height, 1);
         var bgra = new byte[width * height * 4];
-        if (CapturesDiffer && Interlocked.Increment(ref _captures) % 2 == 0) Array.Fill(bgra, byte.MaxValue);
+        var nth = Interlocked.Increment(ref _captures);
+
+        if (CapturesDiffer && nth % 2 == 0) Array.Fill(bgra, byte.MaxValue);
+        else if (nth > 1 && !NoisyBox.IsEmpty)
+        {
+            var box = Rectangle.Intersect(NoisyBox, region);
+            for (var y = box.Top - region.Top; y < box.Bottom - region.Top; y++)
+                for (var x = box.Left - region.Left; x < box.Right - region.Left; x++)
+                    Array.Fill(bgra, byte.MaxValue, ((y * width) + x) * 4, 4);
+        }
+
         return new ScreenCapture(width, height, bgra);
     }
 

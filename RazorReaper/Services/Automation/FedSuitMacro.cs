@@ -127,10 +127,11 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private const double SlotMovedTolerance = 2.0;
 
     /// <summary>
-    /// Mean-brightness change (0–255) below which the open key is taken to have done nothing at
-    /// all. Deliberately small: an inventory panel drawn over the world moves those five points by
-    /// tens of levels, while a still camera moves them by nothing, so anything in between is left
-    /// to the "nothing moved" check rather than stopping a run that is working.
+    /// Mean-brightness change (0–255) at one slot point that counts as that point having been
+    /// covered. Deliberately small: an inventory panel drawn over the world moves those five points
+    /// by tens of levels, while a still camera moves them by nothing, so anything in between is
+    /// left to the "nothing moved" check rather than stopping a run that is working. A majority of
+    /// the five has to clear it before the panel counts as open — see <see cref="StopIfStillShut"/>.
     /// </summary>
     private const double InventoryOpenedTolerance = 4.0;
 
@@ -508,6 +509,12 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// tell an inventory opening from one our own key press just closed, so a run started with an
     /// inventory already open still fires one out-of-phase cycle before this catches the next.
     /// Upgrade path is a template match on the panel, which needs an ARK UI asset shipped with it.
+    ///
+    /// ponytail: the tolerance itself is unverified outdoors — the only scene it was ever read
+    /// against is a night one with a still camera. The majority rule below is what buys headroom
+    /// against daytime foliage and VFX until somebody tests one; a whole-scene brightness change
+    /// (sunrise, a lightning flash, the camera swinging as ARK takes the foreground) moves all
+    /// five points at once and still reads as "opened".
     /// </summary>
     private void StopIfStillShut()
     {
@@ -518,8 +525,16 @@ public sealed class FedSuitMacro : IFedSuitMacro
         var opened = SampleSlots();
         if (opened is null || opened.Length != shut.Length) return; // a capture that failed proves nothing
 
+        // A majority of the five, not the first one that differs. The player stands facing a Tek
+        // Transmitter's own particle beam, and that — or wind-blown foliage, or a creature walking
+        // through one sample point — swings a single point's mean past the tolerance with the
+        // inventory still shut, which used to be enough to wave the cycle through into clicks the
+        // game has no panel to catch. A panel that really opened covers all five.
+        var moved = 0;
         for (var i = 0; i < shut.Length; i++)
-            if (Math.Abs(shut[i] - opened[i]) > InventoryOpenedTolerance) return;
+            if (Math.Abs(shut[i] - opened[i]) > InventoryOpenedTolerance) moved++;
+
+        if (moved * 2 > shut.Length) return;
 
         _logger.LogWarning("Fed-Suit stopped itself — the open key left the screen unchanged");
         Stop();

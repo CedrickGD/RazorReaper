@@ -117,6 +117,30 @@ public sealed class FedSuitCycleTests
         Assert.Contains(notifications.Toasts, t => t.Level == "warning" && t.Message.Contains("did not open"));
     }
 
+    /// <summary>
+    /// The answer a live screen actually gives, between "all black" and "all white": the
+    /// transmitter's own particle beam — or wind-blown foliage, or a creature walking past — moves
+    /// one of the five sample points while the inventory is still shut. One point out of five is
+    /// background noise, not a panel; taking it for one waved the cycle through into a tab click
+    /// and five cursor jumps with nothing there to catch them.
+    /// </summary>
+    [Fact]
+    public async Task OnePointOfFiveMovingIsNoiseAndNotAnOpenInventory()
+    {
+        var engine = new FakeMacroEngine();
+        var notifications = new RecordingNotificationService();
+        var head = ArkInventoryLayout.ArmorSlots(FullHd, 1.0)[0];
+        using var macro = Macro(engine, notifications, new FakeScreenSampler
+        {
+            NoisyBox = new Rectangle(head.X - 20, head.Y - 20, 41, 41)
+        });
+
+        await OpenAndTab(macro, engine);
+
+        await WaitUntil(() => !macro.IsRunning);
+        Assert.Contains(notifications.Toasts, t => t.Level == "warning" && t.Message.Contains("did not open"));
+    }
+
     [Fact]
     public async Task AnInventoryThatReallyOpenedIsLeftAlone()
     {
