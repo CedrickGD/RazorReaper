@@ -424,23 +424,4 @@ public sealed class ArkKeyScanTests : IDisposable
 
         protected override Task RunAsync(CancellationToken ct) => Task.Delay(Timeout.Infinite, ct);
     }
-
-    /// <summary>An ARK install wherever the test says it is, including nowhere.</summary>
-    private sealed class FakeArkPathProvider(string? arkRoot) : IArkPathProvider
-    {
-        public string? ArkRoot { get; set; } = arkRoot;
-
-        /// <summary>How often the install was searched for — the expensive half of a scan.</summary>
-        public int Lookups { get; private set; }
-
-        public string? FindArkPath()
-        {
-            Lookups++;
-            return ArkRoot;
-        }
-
-        public string? GetBaseDeviceProfilesPath() => null;
-
-        public bool IsValidArkPath(string path) => !string.IsNullOrWhiteSpace(path);
-    }
 }

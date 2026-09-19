@@ -90,7 +90,7 @@ public sealed class FedSuitQuotaTests
         => new(
             engine,
             new FakeGameDisplayService(),
-            new FakeArkInstall(),
+            new FakeArkPathProvider(),
             new FakeScreenSampler(),
             new RecordingNotificationService(),
             new RecordingActivityService(),

@@ -158,7 +158,7 @@ public sealed class FedSuitCycleTests
         => new(
             engine,
             new FakeGameDisplayService(),
-            new FakeArkInstall(),
+            new FakeArkPathProvider(),
             sampler ?? new FakeScreenSampler(),
             notifications ?? new RecordingNotificationService(),
             new RecordingActivityService(),

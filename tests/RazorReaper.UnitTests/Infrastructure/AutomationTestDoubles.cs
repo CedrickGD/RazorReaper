@@ -513,11 +513,18 @@ public sealed class FakeGameDisplayService : IGameDisplayService
 }
 
 /// <summary>An ARK install wherever the test says it is, including nowhere.</summary>
-public sealed class FakeArkInstall(string? arkRoot = null) : IArkPathProvider
+public sealed class FakeArkPathProvider(string? arkRoot = null) : IArkPathProvider
 {
     public string? ArkRoot { get; set; } = arkRoot;
 
-    public string? FindArkPath() => ArkRoot;
+    /// <summary>How often the install was searched for — the expensive half of a scan.</summary>
+    public int Lookups { get; private set; }
+
+    public string? FindArkPath()
+    {
+        Lookups++;
+        return ArkRoot;
+    }
 
     public string? GetBaseDeviceProfilesPath() => null;
 

@@ -468,6 +468,14 @@ public sealed class FedSuitMacro : IFedSuitMacro
     }
 
     // ─── "Nothing moved" check ─────────────────────────────────────────────────
+    //
+    // ponytail: this is over the ~60-line budget the spec put on wiring vision into the macro
+    // engine — the four methods below are ~67 lines, ~110 with the fields, the plan hook, the
+    // toast and its four translations. Kept rather than skipped because the cheap reuse the
+    // budget assumed is not there: AverageColor captures its own region, so a mean per slot
+    // costs five grabs inside the step loop, and CaptureReference persists a ~280 KB snapshot
+    // to disk every cycle. If the size is not worth it the region deletes cleanly, at the price
+    // of a mis-aimed run looping silently again — which is the thing it was written for.
 
     /// <summary>
     /// Stops the run when three cycles in a row left all five slots looking exactly as they did
