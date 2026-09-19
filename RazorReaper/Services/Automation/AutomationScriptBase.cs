@@ -162,6 +162,13 @@ public abstract class AutomationScriptBase : IDisposable
     /// </summary>
     public bool HotkeyFailed => !string.IsNullOrWhiteSpace(StartStopHotkey) && _hotkeyId == 0;
 
+    /// <summary>
+    /// Who inside RazorReaper is holding the failed key, or null when nothing here does and a
+    /// stranger really is to blame. The toast learned to name the neighbour; the warning that
+    /// stays behind has to say the same thing, because after a restart it is all there is.
+    /// </summary>
+    public string? HotkeyConflictOwner => HotkeyFailed ? ConflictOwner(StartStopHotkey) : null;
+
     // ─── Lifecycle ─────────────────────────────────────────────────────────────
 
     public bool Start() => Start(fromHotkey: false);

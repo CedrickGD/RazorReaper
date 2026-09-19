@@ -646,6 +646,7 @@
   "hotkey.presskey": "请按下按键…",
   "hotkey.notactive": "未生效",
   "hotkey.notactive.hint": "Windows 没有把这个按键交给 RazorReaper —— 它已被其他程序占用。请在此换一个按键。",
+  "hotkey.notactive.conflict": "这个按键在 RazorReaper 内部已被 {0} 占用，所以从未在这里注册成功。请在此换一个按键。",
   "diagnostics.report": "报告问题",
   "media.image.failed": "图片不可用",
   "media.video.failed": "视频不可用",

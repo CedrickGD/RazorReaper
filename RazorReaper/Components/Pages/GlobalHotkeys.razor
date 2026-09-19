@@ -50,7 +50,8 @@
                                shows it. *@
                             @if (binding.HasFailed?.Invoke() == true)
                             {
-                                <span class="hk-warn" title="@Localizer.T("hotkey.notactive.hint")">@Localizer.T("hotkey.notactive")</span>
+                                var owner = binding.FailureOwner?.Invoke();
+                                <span class="hk-warn" title="@(owner is null ? Localizer.T("hotkey.notactive.hint") : Localizer.T("hotkey.notactive.conflict", owner))">@Localizer.T("hotkey.notactive")</span>
                             }
                             <HotkeyField Value="@binding.Get()"
                                          ValueChanged="@(v => Apply(binding, v))"

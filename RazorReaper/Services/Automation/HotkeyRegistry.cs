@@ -50,6 +50,12 @@ public sealed class HotkeyBinding
     public Func<bool>? HasFailed { get; init; }
 
     /// <summary>
+    /// The RazorReaper feature holding the key <see cref="HasFailed"/> is about, already in the
+    /// reader's language. Null where nothing here holds it — then another app does.
+    /// </summary>
+    public Func<string?>? FailureOwner { get; init; }
+
+    /// <summary>
     /// True when the binding can only be edited on its own page. Set for owners whose
     /// registration still lives in page-local state.
     /// </summary>
@@ -142,7 +148,8 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
                     s.SaveHotkey();
                 },
                 IsActive = () => s.IsRunning,
-                HasFailed = () => s.HotkeyFailed
+                HasFailed = () => s.HotkeyFailed,
+                FailureOwner = () => s.HotkeyConflictOwner
             });
         }
     }

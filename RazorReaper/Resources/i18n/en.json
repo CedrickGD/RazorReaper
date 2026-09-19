@@ -646,6 +646,7 @@
   "hotkey.presskey": "Press a key…",
   "hotkey.notactive": "not active",
   "hotkey.notactive.hint": "Windows would not give this key to RazorReaper — another program is already holding it. Pick a different key here.",
+  "hotkey.notactive.conflict": "This key is already taken inside RazorReaper by {0}, so it never got registered here. Pick a different key here.",
   "diagnostics.report": "Report an issue",
   "media.image.failed": "Image unavailable",
   "media.video.failed": "Video unavailable",

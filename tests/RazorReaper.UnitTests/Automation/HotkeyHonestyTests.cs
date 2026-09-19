@@ -157,6 +157,52 @@ public sealed class HotkeyHonestyTests
     }
 
     /// <summary>
+    /// The toast is gone in three seconds; the warning on the row and the tile is what a player
+    /// still sees after a restart, where no toast fires at all. It has to name the same neighbour
+    /// — a generic "another program has it" there would put the original lie back, in the one
+    /// place that lasts.
+    /// </summary>
+    [Fact]
+    public void ThePersistentWarningNamesTheSameNeighbourAsTheToast()
+    {
+        using var script = new HotkeyScript(string.Empty, refuse: F8)
+        {
+            Registry = new StubRegistry(Binding("crosshair:toggle", "Crosshair overlay", "F8"))
+        };
+
+        script.StartStopHotkey = "F8";
+        script.SaveHotkey();
+
+        Assert.True(script.HotkeyFailed);
+        Assert.Equal("Crosshair overlay", script.HotkeyConflictOwner);
+    }
+
+    /// <summary>
+    /// And where nothing here holds the key, the warning has no one to name — Steam is holding
+    /// F12 and "another program" is the honest sentence.
+    /// </summary>
+    [Fact]
+    public void ThePersistentWarningNamesNoOneWhenTheKeyIsHeldOutside()
+    {
+        using var script = new HotkeyScript("F12", refuse: F12) { Registry = new StubRegistry() };
+
+        Assert.True(script.HotkeyFailed);
+        Assert.Null(script.HotkeyConflictOwner);
+    }
+
+    /// <summary>A key that registered has no conflict to report, and no registry to scan for one.</summary>
+    [Fact]
+    public void AKeyThatRegisteredNamesNoOwner()
+    {
+        using var script = new HotkeyScript("F9")
+        {
+            Registry = new StubRegistry(Binding("crosshair:toggle", "Crosshair overlay", "F9"))
+        };
+
+        Assert.Null(script.HotkeyConflictOwner);
+    }
+
+    /// <summary>
     /// What "the same key" means. The field writes "Ctrl + F8", the crosshair stores whatever it
     /// was given, and a text compare would let the two sit on one key while each believed it was
     /// alone.

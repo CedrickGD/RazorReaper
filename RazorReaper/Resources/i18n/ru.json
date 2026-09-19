@@ -646,6 +646,7 @@
   "hotkey.presskey": "Нажмите клавишу…",
   "hotkey.notactive": "не работает",
   "hotkey.notactive.hint": "Windows не отдаёт эту клавишу RazorReaper — её уже занимает другая программа. Выберите здесь другую клавишу.",
+  "hotkey.notactive.conflict": "Эту клавишу внутри RazorReaper уже занимает {0}, поэтому здесь она так и не зарегистрировалась. Выберите здесь другую клавишу.",
   "diagnostics.report": "Сообщить о проблеме",
   "media.image.failed": "Изображение недоступно",
   "media.video.failed": "Видео недоступно",

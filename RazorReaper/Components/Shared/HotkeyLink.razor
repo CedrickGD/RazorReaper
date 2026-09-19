@@ -17,7 +17,7 @@
     }
     @if (Failed)
     {
-        <span class="hk-warn" title="@Localizer.T("hotkey.notactive.hint")">@Localizer.T("hotkey.notactive")</span>
+        <span class="hk-warn" title="@(ConflictOwner is null ? Localizer.T("hotkey.notactive.hint") : Localizer.T("hotkey.notactive.conflict", ConflictOwner))">@Localizer.T("hotkey.notactive")</span>
     }
     <a class="hk-inline-link" href="/hotkeys">@(LinkText ?? Localizer.T("hotkey.changelink"))</a>
 </span>
@@ -43,4 +43,10 @@
     /// failed retry says nothing at all.
     /// </summary>
     [Parameter] public bool Failed { get; set; }
+
+    /// <summary>
+    /// The RazorReaper feature already holding the key, where there is one. Null keeps the
+    /// "another program has it" wording, which is only honest when nothing here holds it.
+    /// </summary>
+    [Parameter] public string? ConflictOwner { get; set; }
 }

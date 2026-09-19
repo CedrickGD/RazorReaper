@@ -646,6 +646,7 @@
   "hotkey.presskey": "Taste drücken…",
   "hotkey.notactive": "nicht aktiv",
   "hotkey.notactive.hint": "Windows gibt diese Taste nicht an RazorReaper — ein anderes Programm belegt sie bereits. Wähle hier eine andere Taste.",
+  "hotkey.notactive.conflict": "Diese Taste ist in RazorReaper schon von {0} belegt, deshalb wurde sie hier nie registriert. Wähle hier eine andere Taste.",
   "diagnostics.report": "Problem melden",
   "media.image.failed": "Bild nicht verfügbar",
   "media.video.failed": "Video nicht verfügbar",
