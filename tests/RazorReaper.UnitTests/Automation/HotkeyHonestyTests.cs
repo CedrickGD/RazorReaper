@@ -1,5 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
+using RazorReaper.Models;
+using RazorReaper.Services;
 using RazorReaper.Services.Automation;
 using RazorReaper.Services.Localization;
 using RazorReaper.UnitTests.Infrastructure;
@@ -239,6 +241,89 @@ public sealed class HotkeyHonestyTests
         Assert.Equal(script.Words.T("scripts.toast.hotkey.inuse", "F12"), Assert.Single(script.Warnings).Message);
     }
 
+    // The two keys that are not scripts: the Auto Clicker's and the crosshair's. Both pages and
+    // the hotkeys list read the registry row, so that row is what these ask.
+
+    /// <summary>
+    /// The Auto Clicker's key refused at app start. No toast has anywhere to show yet, so the row
+    /// is the only place left to say it.
+    /// </summary>
+    [Fact]
+    public void TheAutoClickersRefusedKeyIsFlaggedQuietlyAtStartup()
+    {
+        using var app = new AppKeys(clickerRefused: true);
+
+        Assert.False(app.Clicker.IsBound);
+        Assert.True(app.Row("/autoclicker").HasFailed!());
+        Assert.Empty(app.Warnings);
+    }
+
+    /// <summary>A rebind onto a key a script holds names the script, in the toast and on the row.</summary>
+    [Fact]
+    public void TheAutoClickersRefusedKeyNamesTheScriptHoldingIt()
+    {
+        using var script = new HotkeyScript(AutoClickerHotkey.Display);
+        using var app = new AppKeys(clickerRefused: true, script: script);
+
+        app.Clicker.Rebind();
+
+        Assert.Equal(
+            app.Words.T("scripts.toast.hotkey.conflict", AutoClickerHotkey.Display, "Effects"),
+            Assert.Single(app.Warnings).Message);
+        Assert.Equal("Effects", app.Row("/autoclicker").FailureOwner!());
+    }
+
+    /// <summary>Held outside the app: no neighbour to name, and the Auto Clicker does not name itself.</summary>
+    [Fact]
+    public void TheAutoClickersKeyHeldOutsideStillBlamesAnotherApp()
+    {
+        using var app = new AppKeys(clickerRefused: true);
+
+        app.Clicker.Rebind();
+
+        Assert.Equal(
+            app.Words.T("autoclicker.toast.hotkeyinuse", AutoClickerHotkey.Display),
+            Assert.Single(app.Warnings).Message);
+        Assert.Null(app.Row("/autoclicker").FailureOwner!());
+    }
+
+    [Fact]
+    public void TheAutoClickersFlagClearsOnceTheKeyComesFree()
+    {
+        using var app = new AppKeys(clickerRefused: true);
+
+        app.Hotkeys.Refuse.Clear();
+        app.Clicker.Rebind();
+
+        Assert.True(app.Clicker.IsBound);
+        Assert.False(app.Row("/autoclicker").HasFailed!());
+    }
+
+    /// <summary>Released on purpose while its page records a new key: unbound, but nothing refused it.</summary>
+    [Fact]
+    public void AnAutoClickerKeyReleasedForRecordingIsNotAFailure()
+    {
+        using var app = new AppKeys(clickerRefused: false);
+
+        app.Clicker.IsSuspended = true;
+
+        Assert.False(app.Clicker.IsBound);
+        Assert.False(app.Row("/autoclicker").HasFailed!());
+    }
+
+    /// <summary>The crosshair's key refused because a script holds it: flagged, and the script is named.</summary>
+    [Fact]
+    public void TheCrosshairsRefusedKeyNamesTheScriptHoldingIt()
+    {
+        using var script = new HotkeyScript("F8");
+        using var app = new AppKeys(crosshair: new CrosshairKey("F8", failed: true), script: script);
+
+        var row = app.Row("/crosshair");
+
+        Assert.True(row.HasFailed!());
+        Assert.Equal("Effects", row.FailureOwner!());
+    }
+
     private static HotkeyBinding Binding(string id, string name, string combo, string? nameKey = null, bool failed = false)
         => new()
         {
@@ -263,6 +348,113 @@ public sealed class HotkeyHonestyTests
 
         public HotkeyBinding? OwnerOf(string? combo, string? exceptId = null)
             => bindings.FirstOrDefault(b => b.Id != exceptId && b.Holds(combo));
+    }
+
+    /// <summary>
+    /// The real hotkey registry over the Auto Clicker's real binder. The binder takes the stored
+    /// key — the default, in a test host — and <c>clickerRefused</c> has Windows turn it down
+    /// before the binder first asks.
+    /// </summary>
+    private sealed class AppKeys : IDisposable
+    {
+        private readonly RecordingNotificationService _toasts = new();
+        private readonly HotkeyRegistry _registry;
+
+        public AppKeys(bool clickerRefused = false, ICrosshairService? crosshair = null, AutomationScriptBase? script = null)
+        {
+            if (clickerRefused) Hotkeys.Refuse.Add(AutoClickerHotkey.Code);
+
+            Clicker = new AutoClickerHotkeyBinder(
+                Hotkeys, _toasts, new IdleClicker(), Words, NullLogger<AutoClickerHotkeyBinder>.Instance);
+            _registry = new HotkeyRegistry(
+                script is null ? [] : [script], crosshair ?? new CrosshairKey("", failed: false), Clicker, Words);
+            Clicker.ResolveHotkeyRegistry = () => _registry;
+        }
+
+        public FakeAutomationHotkeyService Hotkeys { get; } = new();
+
+        public ILocalizer Words { get; } = new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US"));
+
+        public AutoClickerHotkeyBinder Clicker { get; }
+
+        public IReadOnlyList<RecordingNotificationService.Toast> Warnings
+            => _toasts.Toasts.Where(t => t.Level == "warning").ToArray();
+
+        /// <summary>The row a page reads for its own key.</summary>
+        public HotkeyBinding Row(string route) => Assert.Single(_registry.ForRoute(route));
+
+        public void Dispose() => Clicker.Dispose();
+    }
+
+    /// <summary>The binder only toggles the clicker on a key press, and no test here presses one.</summary>
+    private sealed class IdleClicker : IAutoClickerRuntime
+    {
+        public bool IsRunning => false;
+
+        public int ClickCount => 0;
+
+        public DateTime? NextClickTime => null;
+
+        public AutoClickerConfig Config { get; } = new();
+
+        public event Action? StateChanged { add { } remove { } }
+
+        public void Configure(AutoClickerConfig config) { }
+
+        public Task StartAsync() => Task.CompletedTask;
+
+        public void Stop() { }
+
+        public Task ToggleAsync() => Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// The crosshair as the registry reads it: a stored key, and whether Windows took it. The real
+    /// service opens an overlay window and a tray icon, which a test host must not.
+    /// </summary>
+    private sealed class CrosshairKey(string label, bool failed) : ICrosshairService
+    {
+        public (string Label, int VirtualKey, bool Ctrl, bool Alt, bool Shift) GetHotkey() => (label, 0, false, false, false);
+
+        public bool HotkeyFailed => failed;
+
+        public bool IsOverlayActive => false;
+
+        public event Action? Changed { add { } remove { } }
+
+        public event Action? LibraryChanged { add { } remove { } }
+
+        public event Action? ShowAppRequested { add { } remove { } }
+
+        public event Action? QuitRequested { add { } remove { } }
+
+        public event Action? ApplyUpdateRequested { add { } remove { } }
+
+        // Nothing below is asked for by the registry.
+        public CrosshairProfile ActiveProfile => throw new NotSupportedException();
+        public bool HasAnimatedActiveImage => throw new NotSupportedException();
+        public string ImportsFolderPath => throw new NotSupportedException();
+        public void SetUpdateReadyLabel(string? versionLabel) => throw new NotSupportedException();
+        public IReadOnlyList<CrosshairProfile> GetBuiltInPresets() => throw new NotSupportedException();
+        public IReadOnlyList<CrosshairProfile> GetSavedProfiles() => throw new NotSupportedException();
+        public IReadOnlyList<MonitorInfo> GetMonitors() => throw new NotSupportedException();
+        public void UpdateActive(CrosshairProfile profile) => throw new NotSupportedException();
+        public void LoadProfile(CrosshairProfile profile) => throw new NotSupportedException();
+        public void StartOverlay() => throw new NotSupportedException();
+        public void StopOverlay() => throw new NotSupportedException();
+        public void ToggleOverlay() => throw new NotSupportedException();
+        public Task<bool> SaveAsAsync(string name) => throw new NotSupportedException();
+        public Task<bool> DeleteSavedAsync(string id) => throw new NotSupportedException();
+        public byte[] RenderPreviewPng(double phase = 0.25) => throw new NotSupportedException();
+        public Task<string?> ImportImageAsync(Stream source, string fileName) => throw new NotSupportedException();
+        public IReadOnlyList<string> GetImportedImagePaths() => throw new NotSupportedException();
+        public byte[]? RenderThumbnailPng(string imagePath, int size = 72) => throw new NotSupportedException();
+        public Task<bool> CopyImportsFolderPathAsync() => throw new NotSupportedException();
+        public bool DeleteImportedImage(string path) => throw new NotSupportedException();
+        public void UseImportedImage(string path) => throw new NotSupportedException();
+        public Task<CrosshairProfile?> ImportWorkshopAsync(string path) => throw new NotSupportedException();
+        public CrosshairProfile? ImportFromCode(string code) => throw new NotSupportedException();
+        public void SetHotkey(string displayLabel, int virtualKey, bool ctrl, bool alt, bool shift) => throw new NotSupportedException();
     }
 
     /// <summary>

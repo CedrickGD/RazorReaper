@@ -25,9 +25,17 @@ public static class AutoClickerHotkey
     /// <summary>Raised after a change so a page showing the hotkey can refresh.</summary>
     public static event Action? Changed;
 
-    public static string Display => Preferences.Get(DisplayPreferenceKey, DefaultDisplay);
+    public static string Display => Read(DisplayPreferenceKey, DefaultDisplay);
 
-    public static int Code => Preferences.Get(CodePreferenceKey, DefaultCode);
+    public static int Code => Read(CodePreferenceKey, DefaultCode);
+
+    // A store that cannot be read (a test host has none) leaves F6, the way a script keeps its
+    // default key.
+    private static T Read<T>(string key, T fallback)
+    {
+        try { return Preferences.Default.Get(key, fallback); }
+        catch { return fallback; }
+    }
 
     /// <summary>
     /// Stores a key by its display name. A name that resolves to no virtual-key code is
