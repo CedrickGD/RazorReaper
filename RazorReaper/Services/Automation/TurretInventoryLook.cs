@@ -138,11 +138,12 @@ public sealed class TurretInventoryLayout
 public static class TurretInventoryLook
 {
     /// <summary>
-    /// Most slots a structure may have and still count as a turret. The Tek turret is reported
-    /// at 5; Auto and Heavy turrets are not measured — 10 covers "1000 bullets = 10 stacks".
-    /// Anything with more (storage, generators, dinos, the transmitter) never triggers.
+    /// Most slots a structure may have and still count as a turret: one row. The Tek turret is
+    /// reported at 5; Auto and Heavy turrets are not measured yet, so anything that spills onto a
+    /// second row (a small container, storage, generators, dinos, the transmitter) never triggers
+    /// until a real turret proves it needs more — the log line shows its rows.
     /// </summary>
-    public const int MaxTurretSlots = 10;
+    public const int MaxTurretSlots = 6;
 
     /// <summary>Frame samples (of 9) that must show the bright panel frame.</summary>
     public const int FrameHitsNeeded = 7;
@@ -174,11 +175,10 @@ public static class TurretInventoryLook
     {
         public int Slots => Row0 + Row1 + Row2;
 
-        /// <summary>A panel frame, and a structure grid with a handful of slots and nothing on row three.</summary>
+        /// <summary>A panel frame, and a structure grid of one short row with nothing below it.</summary>
         public bool IsTurret =>
             FrameHits >= FrameHitsNeeded
-            && Row0 > 0 && Row2 == 0 && Slots <= MaxTurretSlots
-            && (Row1 == 0 || Row0 == 6);
+            && Row0 is > 0 and <= MaxTurretSlots && Row1 == 0 && Row2 == 0;
 
         public override string ToString()
             => string.Create(CultureInfo.InvariantCulture, $"frame {FrameHits}/9, rows {Row0}/{Row1}/{Row2}");

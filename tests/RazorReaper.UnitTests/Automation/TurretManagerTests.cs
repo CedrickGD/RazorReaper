@@ -33,7 +33,7 @@ public sealed class TurretManagerTests
         await rig.FillOnce();
 
         Assert.Equal(3, rig.Clicks);
-        Assert.Equal(10, rig.Game.InTurret);
+        Assert.Equal(6, rig.Game.InTurret);
         Assert.All(rig.Input.Events.OfType<SimulatedInput.Click>(), c => Assert.Equal(rig.Layout.TransferAll, c.At));
         Assert.DoesNotContain(rig.Toasts, t => t.Level == "warning");
     }
@@ -57,6 +57,7 @@ public sealed class TurretManagerTests
         using var rig = new Rig();
         rig.Game.Player.AddRange(Many(AmmoKind.Bullet, 30));
         rig.Game.StacksPerClick = 1;
+        rig.Game.Capacity = 12; // more than one row takes, so every click still moves one
 
         await rig.FillOnce();
 
@@ -164,10 +165,13 @@ public sealed class TurretManagerTests
         Assert.Equal(0, rig.Clicks + rig.Presses);
     }
 
-    [Fact]
-    public async Task AStorageBoxNeverTriggersIt()
+    /// <summary>9 slots draw as 6 + 3: a small container, not a one-row turret.</summary>
+    [Theory]
+    [InlineData(9)]
+    [InlineData(45)]
+    public async Task AStorageBoxNeverTriggersIt(int slots)
     {
-        using var rig = new Rig(slots: 45);
+        using var rig = new Rig(slots: slots);
         rig.Game.Player.AddRange(Many(AmmoKind.Bullet, 5));
 
         rig.Start();
@@ -191,7 +195,7 @@ public sealed class TurretManagerTests
         rig.Game.Close();
         await rig.WaitUntil(() => rig.Game.CapturesWhileClosed > 3);
         rig.Game.Reopen(inTurret: 0);
-        await rig.WaitUntil(() => rig.Game.InTurret == 10);
+        await rig.WaitUntil(() => rig.Game.InTurret == 6);
         await rig.Idle();
 
         Assert.Equal(2 * first, rig.Clicks);
@@ -239,7 +243,7 @@ public sealed class TurretManagerTests
     {
         private readonly RecordingNotificationService _notifications = new();
 
-        public Rig(int slots = 10, AmmoKind accepts = AmmoKind.Bullet)
+        public Rig(int slots = 6, AmmoKind accepts = AmmoKind.Bullet)
         {
             Layout = new TurretInventoryLayout(new Rectangle(0, 0, 1920, 1080), 1.0);
             var sampler = new FakeScreenSampler();
@@ -334,6 +338,8 @@ public sealed class TurretManagerTests
         public int SwallowClicks { get; set; }
         public bool ConfirmationBlocks { get; set; }
         public int StacksPerClick { get; set; } = int.MaxValue;
+        /// <summary>Stacks it takes; the drawn row of slots unless a test needs more clicks than that.</summary>
+        public int? Capacity { get; set; }
         public Action<int>? AfterPress { get; set; }
         public int Violations { get; private set; }
         public int Captures => Volatile.Read(ref _captures);
@@ -359,7 +365,7 @@ public sealed class TurretManagerTests
                         if (!Open || c.At != _layout.TransferAll) { Violations++; break; }
                         if (SwallowClicks > 0) { SwallowClicks--; break; }
                         if (ConfirmationBlocks) break;
-                        for (var moved = 0; moved < StacksPerClick && InTurret < _slots; moved++)
+                        for (var moved = 0; moved < StacksPerClick && InTurret < (Capacity ?? _slots); moved++)
                         {
                             var i = Player.IndexOf(_accepts);
                             if (i < 0) break;
@@ -375,7 +381,7 @@ public sealed class TurretManagerTests
                     case SimulatedInput.KeyPress { VirtualKey: VkT }:
                         if (!Open) { Violations++; break; }
                         var cell = Enumerable.Range(0, Player.Count).FirstOrDefault(i => _layout.PlayerCell(i) == _cursor, -1);
-                        if (cell >= 0 && Player[cell] == _accepts && InTurret < _slots)
+                        if (cell >= 0 && Player[cell] == _accepts && InTurret < (Capacity ?? _slots))
                         {
                             Player.RemoveAt(cell);
                             InTurret++;

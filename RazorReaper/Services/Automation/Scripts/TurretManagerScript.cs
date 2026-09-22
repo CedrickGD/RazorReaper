@@ -247,8 +247,8 @@ public sealed class TurretManagerScript : AutomationScriptBase
         int clicks = 0, quiet = 0, changed = 0;
         while (clicks < MaxClicks && quiet < QuietClicksToStop)
         {
-            EnsureStillOpen(layout);
             var before = _sampler.CaptureRegion(layout.TurretCellsRegion);
+            EnsureStillOpen(layout);
             await _input.ClickAsync(MouseButton.Left, layout.TransferAll, ct: ct);
             clicks++;
             ReportEffect();
@@ -277,12 +277,12 @@ public sealed class TurretManagerScript : AutomationScriptBase
         int moved = 0, misses = 0;
         while (moved < Math.Clamp(stacks, 1, 100) && misses < MissesToStop)
         {
-            EnsureStillOpen(layout);
             var index = Array.IndexOf(ScanPlayer(layout), kind);
             if (index < 0) break; // none of it left in view
 
             var before = _sampler.CaptureRegion(layout.TurretCellsRegion);
             var cell = layout.PlayerCell(index);
+            EnsureStillOpen(layout);
             _input.MoveTo(cell.X, cell.Y);
             await _input.DelayAsync(HoverSettleMs, ct: ct);
             EnsureStillOpen(layout);

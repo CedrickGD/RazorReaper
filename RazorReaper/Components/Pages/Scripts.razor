@@ -252,14 +252,14 @@
                                 <label>@Localizer.T("scripts.turret.calc.turrets")<input class="script-input" type="number" min="0" value="@turret.CalcHeavyTurrets" @onchange="e => SetCalc(e, (t, v) => t.CalcHeavyTurrets = v)" /></label>
                                 <label>@Localizer.T("scripts.turret.calc.bullets")<input class="script-input" type="number" min="0" value="@turret.CalcBullets" @onchange="e => SetCalc(e, (t, v) => t.CalcBullets = v)" /></label>
                                 <label>@Localizer.T("scripts.turret.calc.stacksize")<input class="script-input" type="number" min="1" value="@turret.CalcBulletStack" @onchange="e => SetCalc(e, (t, v) => t.CalcBulletStack = v)" /></label>
-                                <div class="turret-calc-out">@CalcLines(bulletPlan, turret.CalcHeavyTurrets, turret.BulletStacks)</div>
+                                <div class="turret-calc-out">@CalcLines(bulletPlan, turret.CalcHeavyTurrets, turret.Fill == TurretFill.Stacks ? turret.BulletStacks : null)</div>
                             </div>
                             <div class="turret-calc-col">
                                 <div class="turret-calc-head">@Localizer.T("scripts.turret.calc.tek")</div>
                                 <label>@Localizer.T("scripts.turret.calc.turrets")<input class="script-input" type="number" min="0" value="@turret.CalcTekTurrets" @onchange="e => SetCalc(e, (t, v) => t.CalcTekTurrets = v)" /></label>
                                 <label>@Localizer.T("scripts.turret.calc.shards")<input class="script-input" type="number" min="0" value="@turret.CalcShards" @onchange="e => SetCalc(e, (t, v) => t.CalcShards = v)" /></label>
                                 <label>@Localizer.T("scripts.turret.calc.stacksize")<input class="script-input" type="number" min="1" value="@turret.CalcShardStack" @onchange="e => SetCalc(e, (t, v) => t.CalcShardStack = v)" /></label>
-                                <div class="turret-calc-out">@CalcLines(shardPlan, turret.CalcTekTurrets, turret.ShardStacks)</div>
+                                <div class="turret-calc-out">@CalcLines(shardPlan, turret.CalcTekTurrets, turret.Fill == TurretFill.Stacks ? turret.ShardStacks : null)</div>
                             </div>
                         </div>
                         <button class="btn btn-secondary btn-small" @onclick="turret.UsePlan"
@@ -1061,10 +1061,12 @@
     };
 
     /// <summary>The calculator's two answers for one ammo type: the even split, and how far the Stacks setting goes.</summary>
-    private string CalcLines(AmmoPlan plan, int turrets, int stacksEach)
+    /// <summary>The even split, and — only while Fill is Stacks, where that number is on screen — what "N stacks each" covers.</summary>
+    private string CalcLines(AmmoPlan plan, int turrets, int? stacksEach)
     {
         if (turrets == 0) return Localizer.T("scripts.turret.calc.noturrets");
         var even = Localizer.T("scripts.turret.calc.even", plan.StacksPerTurret, plan.AmmoPerTurret, plan.Leftover);
+        if (stacksEach is null) return even;
         var cover = plan.Missing == 0
             ? Localizer.T("scripts.turret.calc.cover.all", stacksEach, turrets)
             : Localizer.T("scripts.turret.calc.cover", stacksEach, plan.TurretsCovered, turrets, plan.Missing);
