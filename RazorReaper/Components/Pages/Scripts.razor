@@ -584,6 +584,9 @@
         try
         {
             ArkKeys.Refresh();
+            // The scan alone changes nothing a script holds: each one re-asks it for the keys the
+            // player never typed, so an undone rebind goes back too. Not mid-run; the next start does.
+            foreach (var s in _scripts) if (!s.IsRunning) s.FollowArkKeys();
             Notifications.ShowInfo(Localizer.T("scripts.keys.rescanned"));
         }
         catch (Exception ex)

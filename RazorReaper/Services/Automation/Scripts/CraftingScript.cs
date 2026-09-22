@@ -28,13 +28,16 @@ public sealed class CraftingScript : CalibratableScriptBase
     public CraftingMode Mode { get; set; } = CraftingMode.Watcher;
 
     /// <summary>Key that starts a craft inside the open station (ARK default: E).</summary>
-    public string CraftKey { get; set; } = "E";
+    public string CraftKey { get => _craftKey.Value; set => _craftKey.Value = value; }
+    private readonly ArkKeySetting _craftKey = new($"{Key}.craftkey", ArkActions.Use, "E");
 
     /// <summary>Key that opens/closes the station (ARK default: F).</summary>
-    public string AccessKey { get; set; } = "F";
+    public string AccessKey { get => _accessKey.Value; set => _accessKey.Value = value; }
+    private readonly ArkKeySetting _accessKey = new($"{Key}.accesskey", ArkActions.AccessInventory, "F");
 
     /// <summary>Movement key used in Walk mode (ARK default: W).</summary>
-    public string ForwardKey { get; set; } = "W";
+    public string ForwardKey { get => _forwardKey.Value; set => _forwardKey.Value = value; }
+    private readonly ArkKeySetting _forwardKey = new($"{Key}.forwardkey", ArkActions.MoveForward, "W");
 
     /// <summary>Craft presses per station.</summary>
     public int CraftPresses { get; set; } = 3;
@@ -83,22 +86,12 @@ public sealed class CraftingScript : CalibratableScriptBase
         return true;
     }
 
-    /// <summary>
-    /// Re-resolves the three keys the player never set by hand — see
-    /// <see cref="AntiAfkScript.OnStarting"/> for why it is only the keys and only when unset.
-    /// </summary>
-    protected override void OnStarting()
+    /// <summary>Follows ARK's Use, Access Inventory and Move Forward unless the player typed keys of their own.</summary>
+    public override void FollowArkKeys()
     {
-        try
-        {
-            if (!Preferences.ContainsKey($"{Key}.craftkey"))
-                CraftKey = ArkKeyDefaults.For(ArkActions.Use, "E");
-            if (!Preferences.ContainsKey($"{Key}.accesskey"))
-                AccessKey = ArkKeyDefaults.For(ArkActions.AccessInventory, "F");
-            if (!Preferences.ContainsKey($"{Key}.forwardkey"))
-                ForwardKey = ArkKeyDefaults.For(ArkActions.MoveForward, "W");
-        }
-        catch (Exception ex) { Logger.LogDebug(ex, "Crafting key re-resolve failed"); }
+        _craftKey.Follow();
+        _accessKey.Follow();
+        _forwardKey.Follow();
     }
 
     private int Pad(int ms) => ms + Math.Clamp(PingCompensationMs, 0, 3000);
@@ -166,9 +159,6 @@ public sealed class CraftingScript : CalibratableScriptBase
 
     public void SaveSettings()
     {
-        CraftKey = string.IsNullOrWhiteSpace(CraftKey) ? "E" : CraftKey.Trim();
-        AccessKey = string.IsNullOrWhiteSpace(AccessKey) ? "F" : AccessKey.Trim();
-        ForwardKey = string.IsNullOrWhiteSpace(ForwardKey) ? "W" : ForwardKey.Trim();
         CraftPresses = Math.Clamp(CraftPresses, 1, 20);
         PingCompensationMs = Math.Clamp(PingCompensationMs, 0, 3000);
         MatchThresholdPercent = Math.Clamp(MatchThresholdPercent, 50, 100);
@@ -177,9 +167,6 @@ public sealed class CraftingScript : CalibratableScriptBase
         try
         {
             Preferences.Set($"{Key}.mode", (int)Mode);
-            Preferences.Set($"{Key}.craftkey", CraftKey);
-            Preferences.Set($"{Key}.accesskey", AccessKey);
-            Preferences.Set($"{Key}.forwardkey", ForwardKey);
             Preferences.Set($"{Key}.presses", CraftPresses);
             Preferences.Set($"{Key}.ping", PingCompensationMs);
             Preferences.Set($"{Key}.threshold", MatchThresholdPercent);
@@ -217,12 +204,8 @@ public sealed class CraftingScript : CalibratableScriptBase
 
             var mode = Preferences.Get($"{Key}.mode", (int)CraftingMode.Watcher);
             Mode = Enum.IsDefined(typeof(CraftingMode), mode) ? (CraftingMode)mode : CraftingMode.Watcher;
-            // "Use" is what actually starts a craft on the highlighted recipe; the access key is
-            // the same one that opens any container. Both follow the player's ARK bindings unless
-            // they have set their own here.
-            CraftKey = Preferences.Get($"{Key}.craftkey", ArkKeyDefaults.For(ArkActions.Use, "E"));
-            AccessKey = Preferences.Get($"{Key}.accesskey", ArkKeyDefaults.For(ArkActions.AccessInventory, "F"));
-            ForwardKey = Preferences.Get($"{Key}.forwardkey", ArkKeyDefaults.For(ArkActions.MoveForward, "W"));
+            // The migration above runs in the constructor body, after the key fields were built.
+            _accessKey.Follow();
             CraftPresses = Preferences.Get($"{Key}.presses", 3);
             PingCompensationMs = Preferences.Get($"{Key}.ping", 0);
             MatchThresholdPercent = Preferences.Get($"{Key}.threshold", 90.0);

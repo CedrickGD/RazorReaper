@@ -45,6 +45,8 @@ public sealed class FedSuitScript : AutomationScriptBase
     /// <summary>The underlying macro, for the settings UI.</summary>
     public IFedSuitMacro Macro => _macro;
 
+    public override void FollowArkKeys() => _macro.FollowArkKeys();
+
     protected override async Task RunAsync(CancellationToken ct)
     {
         Interlocked.Exchange(ref _lastCycle, _macro.CurrentCycle);

@@ -128,6 +128,12 @@ public interface IFedSuitMacro : IDisposable
     void UpdateSettings(FedSuitSettings settings);
 
     /// <summary>
+    /// Re-asks the ARK key scan for the open and transfer keys the player never typed themselves
+    /// (see <see cref="ArkKeyDefaults.Follow"/>). The Scripts page's Rescan; ignored mid-run.
+    /// </summary>
+    void FollowArkKeys();
+
+    /// <summary>
     /// Starts the loop. Returns false when already running, a configured key is invalid, or no
     /// piece is picked.
     /// </summary>
@@ -314,10 +320,24 @@ public sealed class FedSuitMacro : IFedSuitMacro
         if (_disposed || settings is null) return;
 
         var normalized = Normalize(settings);
-        lock (_gate) _settings = normalized;
+        FedSuitSettings before;
+        lock (_gate)
+        {
+            before = _settings;
+            _settings = normalized;
+        }
 
-        SaveSettings(normalized);
+        SaveSettings(normalized, before);
         RaiseChanged();
+    }
+
+    public void FollowArkKeys()
+    {
+        lock (_gate)
+        {
+            if (_running) return;
+            _settings = WithRescannedKeys(_settings);
+        }
     }
 
     public bool Start(bool alreadyMetered = false)
@@ -963,14 +983,16 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
     private FedSuitSettings LoadSettings()
     {
-        var defaults = new FedSuitSettings();
+        // The keys outside the try: they have their own store, and a failing read of the others
+        // must not cost the player the open and transfer keys they typed.
+        var defaults = WithRescannedKeys(new FedSuitSettings());
         try
         {
             return Normalize(new FedSuitSettings
             {
-                OpenKey = Preferences.Get("fedsuit.openkey", defaults.OpenKey),
+                OpenKey = defaults.OpenKey,
                 ExitKey = Preferences.Get("fedsuit.exitkey", defaults.ExitKey),
-                TransferKey = Preferences.Get("fedsuit.transferkey", defaults.TransferKey),
+                TransferKey = defaults.TransferKey,
                 PressDelayMs = Preferences.Get("fedsuit.pressdelay", defaults.PressDelayMs),
                 WaitAfterOpenMs = Preferences.Get("fedsuit.openwait", defaults.WaitAfterOpenMs),
                 RepeatDelayMs = Preferences.Get("fedsuit.repeatdelay", defaults.RepeatDelayMs),
@@ -986,13 +1008,20 @@ public sealed class FedSuitMacro : IFedSuitMacro
         }
     }
 
-    private void SaveSettings(FedSuitSettings s)
+    /// <summary>
+    /// Persists <paramref name="s"/>. The open and transfer keys only when this save changed them:
+    /// every edit on the page comes through here with the whole settings block, and writing the
+    /// keys along with a new Runs count is how F and T got pinned and stopped following ARK.
+    /// </summary>
+    private void SaveSettings(FedSuitSettings s, FedSuitSettings before)
     {
         try
         {
-            Preferences.Set("fedsuit.openkey", s.OpenKey);
+            if (!ArkKeyDefaults.SameKey(s.OpenKey, before.OpenKey))
+                ArkKeyDefaults.Keep(OpenKeyPref, ArkActions.AccessInventory, "F", s.OpenKey);
+            if (!ArkKeyDefaults.SameKey(s.TransferKey, before.TransferKey))
+                ArkKeyDefaults.Keep(TransferKeyPref, ArkActions.TransferItem, "T", s.TransferKey);
             Preferences.Set("fedsuit.exitkey", s.ExitKey);
-            Preferences.Set("fedsuit.transferkey", s.TransferKey);
             Preferences.Set("fedsuit.pressdelay", s.PressDelayMs);
             Preferences.Set("fedsuit.openwait", s.WaitAfterOpenMs);
             Preferences.Set("fedsuit.repeatdelay", s.RepeatDelayMs);
@@ -1006,30 +1035,20 @@ public sealed class FedSuitMacro : IFedSuitMacro
         }
     }
 
+    private const string OpenKeyPref = "fedsuit.openkey";
+    private const string TransferKeyPref = "fedsuit.transferkey";
+
     /// <summary>
-    /// The two keys that name an ARK action, re-taken from the scan when the player never set one
-    /// by hand. Only those two, and only when unset: a stored preference is their own choice and
-    /// still wins, and reloading the whole settings block instead would revert a change whose save
-    /// had failed. A scanned key the macro cannot press is dropped by <see cref="NormalizeKey"/>,
-    /// which is the same guard the stored ones already go through.
+    /// The two keys that name an ARK action, asked of the scan again unless the player typed their
+    /// own (<see cref="ArkKeyDefaults.Follow"/>). Only those two: reloading the whole settings block
+    /// instead would revert a change whose save had failed. A scanned key the macro cannot press
+    /// falls to ARK's stock key, never to the one held before, which may be a binding since undone.
     /// </summary>
-    private FedSuitSettings WithRescannedKeys(FedSuitSettings current)
+    private static FedSuitSettings WithRescannedKeys(FedSuitSettings current)
     {
         var next = current.Clone();
-        try
-        {
-            if (!Preferences.ContainsKey("fedsuit.openkey"))
-                next.OpenKey = NormalizeKey(ArkKeyDefaults.For(ArkActions.AccessInventory, current.OpenKey), current.OpenKey);
-
-            if (!Preferences.ContainsKey("fedsuit.transferkey"))
-                next.TransferKey = NormalizeKey(ArkKeyDefaults.For(ArkActions.TransferItem, current.TransferKey), current.TransferKey);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Fed-Suit key re-resolve failed — keeping the keys already loaded");
-            return current;
-        }
-
+        next.OpenKey = NormalizeKey(ArkKeyDefaults.Follow(OpenKeyPref, ArkActions.AccessInventory, "F"), "F");
+        next.TransferKey = NormalizeKey(ArkKeyDefaults.Follow(TransferKeyPref, ArkActions.TransferItem, "T"), "T");
         return next;
     }
 

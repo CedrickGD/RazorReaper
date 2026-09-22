@@ -301,6 +301,69 @@ public static class ArkKeyDefaults
     }
 
     /// <summary>
+    /// The key a script presses for <paramref name="arkAction"/>: the player's own when they typed
+    /// one into the script's field (a preference under <paramref name="prefKey"/>), otherwise what
+    /// the scan says right now, with <paramref name="stock"/>, ARK's factory key, as the last
+    /// resort. Never the key the script held before: fed back as the fallback, a rebind the player
+    /// undid in ARK stayed on the script until the app restarted.
+    ///
+    /// A stored key that equals the scan is dropped. Until now every settings save wrote the keys
+    /// along with whatever was being saved, so a player who only changed Runs had pinned F and T
+    /// without touching them. A stored copy of ARK's own binding cannot be told apart from that, so
+    /// it goes and the key follows ARK again.
+    /// </summary>
+    public static string Follow(string prefKey, string arkAction, string stock)
+    {
+        var scanned = For(arkAction, stock);
+        try
+        {
+            if (!Prefs.ContainsKey(prefKey)) return scanned;
+
+            var own = Prefs.Get(prefKey, scanned);
+            if (!string.IsNullOrWhiteSpace(own) && !SameKey(own, scanned)) return own.Trim();
+
+            Prefs.Remove(prefKey);
+        }
+        catch
+        {
+            // An unreadable store is a key nobody set.
+        }
+        return scanned;
+    }
+
+    /// <summary>
+    /// Stores a key the player typed into a script's key field and returns the key to use. Only a
+    /// key that differs from ARK's binding is stored; one that matches it, or a blank field, leaves
+    /// no preference behind, so it keeps following ARK. Call it from that field's edit and nowhere
+    /// else: saving any other setting must not touch the key.
+    /// </summary>
+    public static string Keep(string prefKey, string arkAction, string stock, string? typed)
+    {
+        var scanned = For(arkAction, stock);
+        var key = string.IsNullOrWhiteSpace(typed) ? scanned : typed.Trim();
+        try
+        {
+            if (SameKey(key, scanned)) Prefs.Remove(prefKey);
+            else Prefs.Set(prefKey, key);
+        }
+        catch
+        {
+            // The key still applies for this session; the store only decides the next one.
+        }
+        return key;
+    }
+
+    internal static bool SameKey(string? a, string? b) =>
+        string.Equals(a?.Trim(), b?.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Where <see cref="Follow"/> and <see cref="Keep"/> keep the keys a player set. Replaceable
+    /// for the same reason as <see cref="ResolveService"/>: a test must never write the machine's
+    /// real preference store. Restore it afterwards, it is process-wide.
+    /// </summary>
+    internal static IPreferencesStore Prefs { get; set; } = new Implementations.MauiPreferencesStore();
+
+    /// <summary>
     /// Re-reads Input.ini if it changed. Called from <see cref="AutomationScriptBase"/> on every
     /// start, which is the moment a stale scan would actually cost the user a keypress.
     /// </summary>
@@ -335,4 +398,24 @@ public static class ArkKeyDefaults
     internal static Func<IArkKeyBindingService?> ResolveService { get; set; } = DefaultResolver;
 
     private static IArkKeyBindingService? Service => ResolveService();
+}
+
+/// <summary>
+/// One script key that presses an ARK action, on top of <see cref="ArkKeyDefaults.Follow"/> and
+/// <see cref="ArkKeyDefaults.Keep"/>. Setting <see cref="Value"/> is the player typing into the key
+/// field and is the only thing that stores anything; <see cref="Follow"/> is Rescan and every start
+/// asking the scan again. A script's other settings never go through here, so saving them cannot
+/// pin a key the player never set.
+/// </summary>
+public sealed class ArkKeySetting(string prefKey, string arkAction, string stock)
+{
+    private string _value = ArkKeyDefaults.Follow(prefKey, arkAction, stock);
+
+    public string Value
+    {
+        get => _value;
+        set => _value = ArkKeyDefaults.Keep(prefKey, arkAction, stock, value);
+    }
+
+    public void Follow() => _value = ArkKeyDefaults.Follow(prefKey, arkAction, stock);
 }

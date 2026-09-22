@@ -202,7 +202,7 @@ public abstract class AutomationScriptBase : IDisposable
             // answer is still cheap to correct, so the scan is re-checked here and the scripts
             // that resolve a key from it re-read their defaults.
             ArkKeyDefaults.RefreshIfStale();
-            try { OnStarting(); }
+            try { FollowArkKeys(); OnStarting(); }
             catch (Exception ex) { Logger.LogWarning(ex, "{Script} OnStarting threw", _displayName); }
 
             _cts = new CancellationTokenSource();
@@ -666,6 +666,13 @@ public abstract class AutomationScriptBase : IDisposable
     /// here is logged and ignored rather than failing the start.
     /// </summary>
     protected virtual void OnStarting() { }
+
+    /// <summary>
+    /// Re-asks the ARK key scan for every key of this script the player has not set by hand (see
+    /// <see cref="ArkKeySetting"/>). Runs on every start and from the Scripts page's Rescan, never
+    /// while the script is running: the run loop reads those keys on every tick.
+    /// </summary>
+    public virtual void FollowArkKeys() { }
 
     /// <summary>Override for extra teardown when the script stops (e.g. release a held key/mouse button).</summary>
     protected virtual void OnStopped() { }

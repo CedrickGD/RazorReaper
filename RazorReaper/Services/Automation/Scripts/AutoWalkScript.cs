@@ -16,13 +16,15 @@ public sealed class AutoWalkScript : AutomationScriptBase
     private readonly IInputSimulator _input;
 
     /// <summary>The movement key to hold (ARK default forward is W).</summary>
-    public string ForwardKey { get; set; } = "W";
+    public string ForwardKey { get => _forwardKey.Value; set => _forwardKey.Value = value; }
+    private readonly ArkKeySetting _forwardKey = new($"{Key}.forwardkey", ArkActions.MoveForward, "W");
 
     /// <summary>Hold the sprint key as well, instead of walking at normal speed.</summary>
     public bool Sprint { get; set; }
 
     /// <summary>The key held to sprint (ARK default is Left Shift).</summary>
-    public string SprintKey { get; set; } = "LeftShift";
+    public string SprintKey { get => _sprintKey.Value; set => _sprintKey.Value = value; }
+    private readonly ArkKeySetting _sprintKey = new($"{Key}.sprintkey", ArkActions.Run, "LeftShift");
 
     public AutoWalkScript(
         IInputSimulator input,
@@ -38,20 +40,11 @@ public sealed class AutoWalkScript : AutomationScriptBase
         LoadSettings();
     }
 
-    /// <summary>
-    /// Re-resolves the movement keys the player never set by hand — see
-    /// <see cref="AntiAfkScript.OnStarting"/> for why it is only the keys and only when unset.
-    /// </summary>
-    protected override void OnStarting()
+    /// <summary>Follows ARK's Move Forward and Run unless the player typed keys of their own.</summary>
+    public override void FollowArkKeys()
     {
-        try
-        {
-            if (!Preferences.ContainsKey($"{Key}.forwardkey"))
-                ForwardKey = ArkKeyDefaults.For(ArkActions.MoveForward, "W");
-            if (!Preferences.ContainsKey($"{Key}.sprintkey"))
-                SprintKey = ArkKeyDefaults.For(ArkActions.Run, "LeftShift");
-        }
-        catch (Exception ex) { Logger.LogDebug(ex, "Auto-Walk key re-resolve failed"); }
+        _forwardKey.Follow();
+        _sprintKey.Follow();
     }
 
     protected override async Task RunAsync(CancellationToken ct)
@@ -102,13 +95,9 @@ public sealed class AutoWalkScript : AutomationScriptBase
 
     public void SaveSettings()
     {
-        ForwardKey = string.IsNullOrWhiteSpace(ForwardKey) ? "W" : ForwardKey.Trim();
-        SprintKey = string.IsNullOrWhiteSpace(SprintKey) ? "LeftShift" : SprintKey.Trim();
         try
         {
-            Preferences.Set($"{Key}.forwardkey", ForwardKey);
             Preferences.Set($"{Key}.sprint", Sprint);
-            Preferences.Set($"{Key}.sprintkey", SprintKey);
         }
         catch (Exception ex) { Logger.LogWarning(ex, "Auto-Walk SaveSettings failed"); }
         RaiseChanged();
@@ -118,9 +107,7 @@ public sealed class AutoWalkScript : AutomationScriptBase
     {
         try
         {
-            ForwardKey = Preferences.Get($"{Key}.forwardkey", ArkKeyDefaults.For(ArkActions.MoveForward, "W"));
             Sprint = Preferences.Get($"{Key}.sprint", false);
-            SprintKey = Preferences.Get($"{Key}.sprintkey", ArkKeyDefaults.For(ArkActions.Run, "LeftShift"));
         }
         catch (Exception ex) { Logger.LogWarning(ex, "Auto-Walk LoadSettings failed"); }
     }
