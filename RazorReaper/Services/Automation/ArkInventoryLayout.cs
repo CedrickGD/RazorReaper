@@ -87,9 +87,16 @@ public static class ArkInventoryLayout
         return 1.0;
     }
 
+    /// <summary>
+    /// How much bigger or smaller than the 1080p, scale-1.0 measurement the panel is drawn — for
+    /// anything sized in that measurement's pixels, such as a sample box inside a slot.
+    /// </summary>
+    public static double Scale(Rectangle client, double uiScaling)
+        => client.Height / MeasuredHeight * (uiScaling > 0 ? uiScaling : 1.0);
+
     private static Point Project(Rectangle client, double uiScaling, Point offset)
     {
-        var scale = client.Height / MeasuredHeight * (uiScaling > 0 ? uiScaling : 1.0);
+        var scale = Scale(client, uiScaling);
         return new Point(
             client.Left + client.Width / 2 + (int)Math.Round(offset.X * scale),
             client.Top + client.Height / 2 + (int)Math.Round(offset.Y * scale));

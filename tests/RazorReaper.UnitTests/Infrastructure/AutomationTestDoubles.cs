@@ -106,9 +106,16 @@ public sealed class RecordingInputSimulator : IInputSimulator
         lock (_sync) _events.Clear();
     }
 
+    /// <summary>
+    /// Raised after each recorded event, on the caller's thread — how a fake game in a test
+    /// reacts to what the script sent it.
+    /// </summary>
+    public event Action<SimulatedInput>? Recorded;
+
     private void Record(SimulatedInput e)
     {
         lock (_sync) _events.Add(e);
+        Recorded?.Invoke(e);
     }
 
     public void KeyDown(int virtualKey) => Record(new SimulatedInput.KeyDown(virtualKey));
@@ -385,10 +392,18 @@ public sealed class FakeScreenSampler : IScreenSampler
     /// </summary>
     public Rectangle NoisyBox { get; set; }
 
+    /// <summary>
+    /// When set, draws every capture instead of the canned answers above — a fake game whose
+    /// screen follows what the script did to it.
+    /// </summary>
+    public Func<Rectangle, ScreenCapture>? Screen { get; set; }
+
     private int _captures;
 
     public ScreenCapture CaptureRegion(Rectangle region)
     {
+        if (Screen is { } screen) return screen(region);
+
         int width = Math.Max(region.Width, 1), height = Math.Max(region.Height, 1);
         var bgra = new byte[width * height * 4];
         var nth = Interlocked.Increment(ref _captures);
@@ -508,7 +523,7 @@ public sealed class FakeMacroRunner : IMacroRunner
     /// <summary>
     /// Reports a step the way a real run would. The fake presses nothing, so this is the only
     /// way to exercise what a caller hangs off <see cref="StepStarted"/> — the Fed-Suit macro
-    /// watches the slots from there.
+    /// starts its cycles once step 1 says the focus step is behind it.
     /// </summary>
     public void FireStep(int stepIndex, int loopNumber) => StepStarted?.Invoke(stepIndex, loopNumber);
 

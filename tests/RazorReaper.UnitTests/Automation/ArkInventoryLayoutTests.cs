@@ -109,7 +109,7 @@ public sealed class ArkInventoryLayoutTests
         Assert.Equal(1.0, ArkInventoryLayout.ReadUiScaling(Path.Combine(Path.GetTempPath(), "no-ark-here")));
     }
 
-    private static string WriteGameUserSettings(string line)
+    internal static string WriteGameUserSettings(string line)
     {
         var root = Path.Combine(Path.GetTempPath(), "rr-fedsuit-" + Guid.NewGuid().ToString("N"));
         var config = Path.Combine(root, "ShooterGame", "Saved", "Config", "WindowsNoEditor");

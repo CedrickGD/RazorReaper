@@ -430,6 +430,15 @@
     color: var(--accent-purple-light);
 }
 
+/* Fed Suit's five piece toggles share one row's control slot, right-aligned like the inputs
+   above them; on a narrow pane they wrap instead of pushing the row wider. */
+.script-pieces {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2) var(--space-3);
+}
+
 /* .rr-dd is inline-flex and would otherwise size to whichever label is selected, so the
    Mode row would sit narrower than every input above it. Matched to .script-input as a
    floor, not a fixed width: a longer label ("Ganzer Stapel", "Только фильтр") widens the

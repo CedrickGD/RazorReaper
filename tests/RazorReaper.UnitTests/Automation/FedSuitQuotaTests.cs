@@ -92,6 +92,8 @@ public sealed class FedSuitQuotaTests
             new FakeGameDisplayService(),
             new FakeArkPathProvider(),
             new FakeScreenSampler(),
+            new RecordingInputSimulator(),
+            new FakeForegroundGate(gameIsForeground: true),
             new RecordingNotificationService(),
             new RecordingActivityService(),
             gate,

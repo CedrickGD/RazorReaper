@@ -411,11 +411,22 @@
                     <SettingRow Title="@Localizer.T("scripts.fed.exitkey")" Description="@Localizer.T("scripts.fed.exitkey.desc")">
                         <input class="script-input" value="@fed.Macro.Settings.ExitKey" @onchange="SetFedExitKey" />
                     </SettingRow>
+                    <SettingRow Title="@Localizer.T("scripts.fed.pieces")" Description="@Localizer.T("scripts.fed.pieces.desc")">
+                        <div class="script-pieces">
+                            @foreach (var (piece, key) in FedPieceOptions)
+                            {
+                                <CheckBox Value="@fed.Macro.Settings.Pieces.HasFlag(piece)" ValueChanged="@(v => SetFedPiece(piece, v))">@Localizer.T(key)</CheckBox>
+                            }
+                        </div>
+                    </SettingRow>
                     <SettingRow Title="@Localizer.T("scripts.fed.runs")" Description="@Localizer.T("scripts.fed.runs.desc")">
                         <input class="script-input" type="number" min="0" max="9999" value="@fed.Macro.Settings.Runs" @onchange="SetFedRuns" />
                     </SettingRow>
                     <SettingRow Title="@Localizer.T("scripts.fed.wait")" Description="@Localizer.T("scripts.fed.wait.desc")">
-                        <input class="script-input" type="number" min="0" max="5000" value="@fed.Macro.Settings.WaitAfterOpenMs" @onchange="SetFedWait" />
+                        <input class="script-input" type="number" min="200" max="10000" value="@fed.Macro.Settings.WaitAfterOpenMs" @onchange="SetFedWait" />
+                    </SettingRow>
+                    <SettingRow Title="@Localizer.T("scripts.fed.lagbuffer")" Description="@Localizer.T("scripts.fed.lagbuffer.desc")">
+                        <input class="script-input" type="number" min="0" max="1000" value="@fed.Macro.Settings.LagBufferMs" @onchange="SetFedLagBuffer" />
                     </SettingRow>
                 }
 
@@ -790,6 +801,27 @@
         if (_selected is FedSuitScript f && int.TryParse(e.Value?.ToString(), out var v))
             ApplyFed(f, s => s.WaitAfterOpenMs = v);
     }
+
+    private void SetFedLagBuffer(ChangeEventArgs e)
+    {
+        if (_selected is FedSuitScript f && int.TryParse(e.Value?.ToString(), out var v))
+            ApplyFed(f, s => s.LagBufferMs = v);
+    }
+
+    private void SetFedPiece(FedSuitPieces piece, bool on)
+    {
+        if (_selected is FedSuitScript f) ApplyFed(f, s => s.Pieces = on ? s.Pieces | piece : s.Pieces & ~piece);
+    }
+
+    // Helmet down to boots, the way a player lists them — not the order the slots are emptied in.
+    private static readonly (FedSuitPieces Piece, string Key)[] FedPieceOptions =
+    [
+        (FedSuitPieces.Head, "scripts.fed.piece.head"),
+        (FedSuitPieces.Chest, "scripts.fed.piece.chest"),
+        (FedSuitPieces.Hands, "scripts.fed.piece.hands"),
+        (FedSuitPieces.Legs, "scripts.fed.piece.legs"),
+        (FedSuitPieces.Feet, "scripts.fed.piece.feet"),
+    ];
 
     // A property, not a static field: a list built once keeps the language it was built in.
     private IReadOnlyList<Dropdown.Option> AntidoteModeOptions => new List<Dropdown.Option>
