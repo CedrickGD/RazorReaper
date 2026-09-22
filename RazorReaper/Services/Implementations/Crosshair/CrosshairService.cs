@@ -140,6 +140,8 @@ public partial class CrosshairService : ICrosshairService, IDisposable
             logger,
             localizer,
             onHotkeyToggle: OnHotkeyToggle,
+            // Pages showing the key repaint once Windows has answered — see HotkeyFailed.
+            onHotkeyRegistered: () => Changed?.Invoke(),
             onTrayShowApp: () => ShowAppRequested?.Invoke(),
             onTrayQuit: () => QuitRequested?.Invoke(),
             onTrayApplyUpdate: () => ApplyUpdateRequested?.Invoke(),

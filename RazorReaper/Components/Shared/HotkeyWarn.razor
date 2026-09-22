@@ -1,0 +1,20 @@
+@* The "not active" note beside a hotkey Windows refused. One markup for every place that shows
+   a hotkey — HotkeyLink, the Global Hotkeys row, the Auto Clicker's own field. Callers render it
+   only for a failed key. Styled as .hk-warn in wwwroot/css/shared/primitives.css. *@
+
+@using RazorReaper.Services.Localization
+@inject ILocalizer Localizer
+
+<span class="hk-warn" title="@(Owner is null ? Localizer.T("hotkey.notactive.hint") : Localizer.T("hotkey.notactive.conflict", Owner))">@Localizer.T("hotkey.notactive")</span>
+
+@code {
+    /// <summary>Never read: declaring it is what makes a language switch repaint this component.</summary>
+    [CascadingParameter(Name = "Language")]
+    public string? Language { get; set; }
+
+    /// <summary>
+    /// The RazorReaper feature already holding the key, where there is one. Null keeps the
+    /// "another program has it" wording, which is only honest when nothing here holds it.
+    /// </summary>
+    [Parameter] public string? Owner { get; set; }
+}

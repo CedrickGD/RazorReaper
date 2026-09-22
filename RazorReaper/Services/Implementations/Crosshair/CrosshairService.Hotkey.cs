@@ -38,4 +38,7 @@ public partial class CrosshairService
 
     public (string Label, int VirtualKey, bool Ctrl, bool Alt, bool Shift) GetHotkey()
         => (_hotkeyLabel, _hotkeyVk, _hotkeyCtrl, _hotkeyAlt, _hotkeyShift);
+
+    // Read off the overlay's live registration, like a script's, so a restart answers the same.
+    public bool HotkeyFailed => !string.IsNullOrWhiteSpace(_hotkeyLabel) && !_overlay.IsHotkeyRegistered;
 }

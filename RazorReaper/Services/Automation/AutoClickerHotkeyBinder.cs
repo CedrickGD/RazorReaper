@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RazorReaper.Services.Localization;
 
@@ -65,8 +66,19 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
 
         // A binding edited on the hotkeys page has to take effect without a restart.
         AutoClickerHotkey.Changed += Rebind;
-        Rebind();
+
+        // Quiet, like a script's key at app start: no toast has anywhere to show yet, and the
+        // registry cannot be asked who holds the key while it is being built from this binder.
+        // The warning beside the field reads the registration itself, so it still shows.
+        Rebind(notifyOnFailure: false);
     }
+
+    /// <summary>
+    /// How the binder finds the hotkey registry, resolved late the way a script does: the registry
+    /// is built from this binder, so it cannot come in through the constructor.
+    /// </summary>
+    internal Func<IHotkeyRegistry?> ResolveHotkeyRegistry { get; set; }
+        = static () => IPlatformApplication.Current?.Services?.GetService<IHotkeyRegistry>();
 
     public bool IsBound
     {
@@ -88,7 +100,9 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
         }
     }
 
-    public void Rebind()
+    public void Rebind() => Rebind(notifyOnFailure: true);
+
+    private void Rebind(bool notifyOnFailure)
     {
         if (_disposed) return;
 
@@ -114,13 +128,34 @@ public sealed class AutoClickerHotkeyBinder : IAutoClickerHotkeyBinder, IDisposa
 
             if (_registrationId == 0)
             {
-                _logger.LogWarning("Could not register Auto Clicker hotkey {Display} (vk=0x{Vk:X2}) — already held by another app", AutoClickerHotkey.Display, vk);
-                _notifications.ShowWarning(_localizer.T("autoclicker.toast.hotkeyinuse", AutoClickerHotkey.Display));
+                _logger.LogWarning("Could not register Auto Clicker hotkey {Display} (vk=0x{Vk:X2}) — the key is already held", AutoClickerHotkey.Display, vk);
+                if (notifyOnFailure)
+                {
+                    // Same rule as a script's toast: name the neighbour where there is one.
+                    var owner = ConflictOwner(AutoClickerHotkey.Display);
+                    _notifications.ShowWarning(owner is null
+                        ? _localizer.T("autoclicker.toast.hotkeyinuse", AutoClickerHotkey.Display)
+                        : _localizer.T("scripts.toast.hotkey.conflict", AutoClickerHotkey.Display, owner));
+                }
             }
             else
             {
                 _logger.LogDebug("Auto Clicker hotkey bound: {Display} (vk=0x{Vk:X2})", AutoClickerHotkey.Display, vk);
             }
+        }
+    }
+
+    /// <summary>The name of the RazorReaper feature already holding <paramref name="key"/>, or null.</summary>
+    private string? ConflictOwner(string key)
+    {
+        try
+        {
+            return ResolveHotkeyRegistry()?.OwnerOf(key, "autoclicker:toggle")?.LocalName(_localizer);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Auto Clicker hotkey conflict lookup failed");
+            return null;
         }
     }
 

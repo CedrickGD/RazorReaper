@@ -15,6 +15,7 @@
 @inject IActivityService ActivityService
 @inject ILogger<Autoclicker> Logger
 @inject IAutoClickerHotkeyBinder HotkeyBinder
+@inject IHotkeyRegistry Registry
 @inject IAutoClickerRuntime Runtime
 @implements IDisposable
 
@@ -271,7 +272,13 @@
             <p class="ac-cursor"><span class="ac-cursor-label">@Localizer.T("autoclicker.cursor")</span><span class="ac-cursor-val">@currentMouseX, @currentMouseY</span></p>
 
             <div class="field">
-                <label class="field-label">@Localizer.T("autoclicker.hotkey")</label>
+                <label class="field-label">
+                    @Localizer.T("autoclicker.hotkey")
+                    @if (hotkeyRow?.HasFailed?.Invoke() == true)
+                    {
+                        <HotkeyWarn Owner="@hotkeyRow.FailureOwner?.Invoke()" />
+                    }
+                </label>
                 <button class="hotkey-btn full-width @(recordingKey ? "recording" : "")"
                         @onclick="StartHotkeyRecording"
                         @onkeydown="CaptureHotkey"
@@ -374,6 +381,8 @@
     private bool recordingKey = false;
     private int currentHotkeyCode = 0x75; // F6
     private bool hotkeyEnabled = true;
+    // The row the hotkeys page shows for this key, so both say the same about a refused one.
+    private HotkeyBinding? hotkeyRow;
 
     private const string HOTKEY_STORAGE_KEY = "AutoclickerHotkey";
     private const string HOTKEY_CODE_STORAGE_KEY = "AutoclickerHotkeyCode";
@@ -533,6 +542,7 @@
         // this page only subscribes while it is on screen.
         HotkeyBinder.Toggled += HandleHotkeyToggled;
         Runtime.StateChanged += HandleRuntimeStateChanged;
+        hotkeyRow = Registry.ForRoute("/autoclicker").FirstOrDefault();
 
         // Reflect whatever the runtime already holds — the session may have been started from
         // another page, and the settings outlive this component now.

@@ -797,12 +797,8 @@ public abstract class AutomationScriptBase : IDisposable
     {
         try
         {
-            var owner = ResolveHotkeyRegistry()?.OwnerOf(text, $"script:{_scriptKey}");
-            if (owner is null) return null;
-
-            // The hotkeys page names a row the same way: a feature name stands as it is, a row
-            // whose label is a description resolves its key.
-            return owner.NameKey is null ? owner.Name : Localizer.T(owner.NameKey);
+            // Named the way the hotkeys page names the row.
+            return ResolveHotkeyRegistry()?.OwnerOf(text, $"script:{_scriptKey}")?.LocalName(Localizer);
         }
         catch (Exception ex)
         {

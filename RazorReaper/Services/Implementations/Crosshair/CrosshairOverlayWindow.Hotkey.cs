@@ -25,6 +25,9 @@ internal sealed partial class CrosshairOverlayWindow
         return false;
     }
 
+    /// <summary>True while Windows has actually handed the toggle key to this window.</summary>
+    public bool IsHotkeyRegistered => _hotkeyId != 0;
+
     public void RegisterHotkey(int virtualKey, bool ctrl, bool alt, bool shift)
     {
         if (_hwnd == IntPtr.Zero) return;

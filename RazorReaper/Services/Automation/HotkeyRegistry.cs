@@ -1,3 +1,4 @@
+using RazorReaper.Services.Localization;
 using RazorReaper.Services.Overlay;
 
 namespace RazorReaper.Services.Automation;
@@ -60,6 +61,16 @@ public sealed class HotkeyBinding
     /// registration still lives in page-local state.
     /// </summary>
     public bool ReadOnlyHere { get; init; }
+
+    /// <summary>The row's label in the reader's language: the feature name, or its dictionary entry.</summary>
+    public string LocalName(ILocalizer localizer) => NameKey is null ? Name : localizer.T(NameKey);
+
+    /// <summary>
+    /// Whether this binding really has <paramref name="combo"/>: the same key, and live. One that
+    /// Windows refused is only stored here — someone else holds that key, so naming this feature
+    /// as the holder would be the very misattribution the lookup exists to avoid.
+    /// </summary>
+    public bool Holds(string? combo) => HotkeyParser.SameCombo(combo, Get()) && HasFailed?.Invoke() != true;
 }
 
 public interface IHotkeyRegistry
@@ -98,13 +109,19 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
 
     private readonly IEnumerable<AutomationScriptBase> scripts;
     private readonly ICrosshairService crosshair;
+    private readonly IAutoClickerHotkeyBinder autoClicker;
+    private readonly ILocalizer localizer;
 
     public HotkeyRegistry(
         IEnumerable<AutomationScriptBase> scripts,
-        ICrosshairService crosshair)
+        ICrosshairService crosshair,
+        IAutoClickerHotkeyBinder autoClicker,
+        ILocalizer localizer)
     {
         this.scripts = scripts;
         this.crosshair = crosshair;
+        this.autoClicker = autoClicker;
+        this.localizer = localizer;
     }
 
     public IReadOnlyList<HotkeyBinding> GetBindings()
@@ -126,8 +143,7 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
 
     public HotkeyBinding? OwnerOf(string? combo, string? exceptId = null)
         => GetBindings().FirstOrDefault(b =>
-            !string.Equals(b.Id, exceptId, StringComparison.Ordinal)
-            && HotkeyParser.SameCombo(combo, b.Get()));
+            !string.Equals(b.Id, exceptId, StringComparison.Ordinal) && b.Holds(combo));
 
     private void AddScripts(List<HotkeyBinding> list)
     {
@@ -184,7 +200,9 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
                     crosshair.SetHotkey(value, vk, ctrl, alt, shift);
                 }
             },
-            IsActive = () => crosshair.IsOverlayActive
+            IsActive = () => crosshair.IsOverlayActive,
+            HasFailed = () => crosshair.HotkeyFailed,
+            FailureOwner = () => OwnerOf(crosshair.GetHotkey().Label, "crosshair:toggle")?.LocalName(localizer)
         });
     }
 
@@ -193,7 +211,7 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
     /// nothing outside the page could read it — so it was listed here but not editable. It lives
     /// in Preferences now, which any C# can reach, so it is an ordinary binding.
     /// </summary>
-    private static void AddAutoClicker(List<HotkeyBinding> list)
+    private void AddAutoClicker(List<HotkeyBinding> list)
     {
         list.Add(new HotkeyBinding
         {
@@ -209,7 +227,10 @@ public sealed class HotkeyRegistry : IHotkeyRegistry
                 // A combo the key map does not know would store a code of 0 and silently stop
                 // the hotkey working, so an unusable one falls back instead.
                 if (!AutoClickerHotkey.Set(value)) AutoClickerHotkey.Reset();
-            }
+            },
+            // Released on purpose while its page records a new key; that is not a refusal.
+            HasFailed = () => !autoClicker.IsBound && !autoClicker.IsSuspended,
+            FailureOwner = () => OwnerOf(AutoClickerHotkey.Display, "autoclicker:toggle")?.LocalName(localizer)
         });
     }
 }

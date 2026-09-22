@@ -219,7 +219,27 @@ public sealed class HotkeyHonestyTests
     public void TheSameKeySpelledDifferentlyIsTheSameKey(string a, string b, bool same)
         => Assert.Equal(same, HotkeyParser.SameCombo(a, b));
 
-    private static HotkeyBinding Binding(string id, string name, string combo, string? nameKey = null)
+    /// <summary>
+    /// A key two features were refused is held by a third party, not by either of them. The
+    /// crosshair lost F12 to Steam as well, so naming it as the script's neighbour would trade one
+    /// wrong culprit for another.
+    /// </summary>
+    [Fact]
+    public void ANeighbourThatWasRefusedTheKeyTooIsNotBlamed()
+    {
+        using var script = new HotkeyScript(string.Empty, refuse: F12)
+        {
+            Registry = new StubRegistry(Binding("crosshair:toggle", "Crosshair overlay", "F12", failed: true))
+        };
+
+        script.StartStopHotkey = "F12";
+        script.SaveHotkey();
+
+        Assert.Null(script.HotkeyConflictOwner);
+        Assert.Equal(script.Words.T("scripts.toast.hotkey.inuse", "F12"), Assert.Single(script.Warnings).Message);
+    }
+
+    private static HotkeyBinding Binding(string id, string name, string combo, string? nameKey = null, bool failed = false)
         => new()
         {
             Id = id,
@@ -229,7 +249,8 @@ public sealed class HotkeyHonestyTests
             DescriptionKey = "hotkeys.crosshair.description",
             OwnerRoute = "/crosshair",
             Get = () => combo,
-            Set = _ => { }
+            Set = _ => { },
+            HasFailed = () => failed
         };
 
     /// <summary>A registry holding exactly what a test put in it, matched the real way.</summary>
@@ -241,7 +262,7 @@ public sealed class HotkeyHonestyTests
             => bindings.Where(b => b.OwnerRoute == route).ToArray();
 
         public HotkeyBinding? OwnerOf(string? combo, string? exceptId = null)
-            => bindings.FirstOrDefault(b => b.Id != exceptId && HotkeyParser.SameCombo(combo, b.Get()));
+            => bindings.FirstOrDefault(b => b.Id != exceptId && b.Holds(combo));
     }
 
     /// <summary>

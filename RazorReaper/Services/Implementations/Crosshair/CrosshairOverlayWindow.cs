@@ -28,6 +28,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
     private readonly ILogger _logger;
     private readonly ILocalizer _localizer;
     private readonly Action _onHotkeyToggle;
+    private readonly Action _onHotkeyRegistered;
     private readonly Action _onTrayShowApp;
     private readonly Action _onTrayQuit;
     private readonly Action _onTrayApplyUpdate;
@@ -54,7 +55,8 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
     private MonitorInfo[] _monitors = Array.Empty<MonitorInfo>();
 
     private DateTime _animationStart = DateTime.UtcNow;
-    private uint _hotkeyId;
+    // Volatile: written on the overlay thread, read by the app through IsHotkeyRegistered.
+    private volatile uint _hotkeyId;
     private int _registeredHotkeyVk;
     private uint _registeredHotkeyMods;
 
@@ -71,6 +73,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         ILogger logger,
         ILocalizer localizer,
         Action onHotkeyToggle,
+        Action onHotkeyRegistered,
         Action onTrayShowApp,
         Action onTrayQuit,
         Action onTrayApplyUpdate,
@@ -80,6 +83,7 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
         _logger = logger;
         _localizer = localizer;
         _onHotkeyToggle = onHotkeyToggle;
+        _onHotkeyRegistered = onHotkeyRegistered;
         _onTrayShowApp = onTrayShowApp;
         _onTrayQuit = onTrayQuit;
         _onTrayApplyUpdate = onTrayApplyUpdate;
@@ -311,6 +315,9 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
                 return IntPtr.Zero;
             case WM_USER_HOTKEY_REGISTER:
                 DoHotkeyRegister((int)wParam, (uint)lParam);
+                // Whether Windows handed the key over is only known here, after the caller moved on.
+                try { _onHotkeyRegistered(); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Crosshair hotkey registration callback threw"); }
                 return IntPtr.Zero;
             case WM_USER_HOTKEY_UNREGISTER:
                 DoHotkeyUnregister();

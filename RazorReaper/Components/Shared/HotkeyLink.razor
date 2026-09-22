@@ -17,7 +17,7 @@
     }
     @if (Failed)
     {
-        <span class="hk-warn" title="@(ConflictOwner is null ? Localizer.T("hotkey.notactive.hint") : Localizer.T("hotkey.notactive.conflict", ConflictOwner))">@Localizer.T("hotkey.notactive")</span>
+        <HotkeyWarn Owner="@ConflictOwner" />
     }
     <a class="hk-inline-link" href="/hotkeys">@(LinkText ?? Localizer.T("hotkey.changelink"))</a>
 </span>

@@ -97,4 +97,11 @@ public interface ICrosshairService
 
     void SetHotkey(string displayLabel, int virtualKey, bool ctrl, bool alt, bool shift);
     (string Label, int VirtualKey, bool Ctrl, bool Alt, bool Shift) GetHotkey();
+
+    /// <summary>
+    /// A key is stored but nothing is listening: Windows refused it. Registration happens on the
+    /// overlay thread, so the answer arrives a moment after <see cref="SetHotkey"/>, with a
+    /// <see cref="Changed"/> of its own.
+    /// </summary>
+    bool HotkeyFailed { get; }
 }

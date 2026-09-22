@@ -6,9 +6,11 @@
 @using RazorReaper.Services
 @using RazorReaper.Models
 @using RazorReaper.Components.Shared
+@using RazorReaper.Services.Automation
 @implements IDisposable
 
 @inject ICrosshairService CrosshairSvc
+@inject IHotkeyRegistry Registry
 @inject INotificationService Notifications
 @inject ILogger<Crosshair> Logger
 @using RazorReaper.Services.Localization
@@ -444,7 +446,10 @@
             <h3>@Localizer.T("crosshair.hotkey")</h3>
             <div class="row-flex gap-sm align-center">
                 <span class="field-label flex-1 m-0">@Localizer.T("crosshair.hotkey.toggle")</span>
-                <HotkeyLink Value="@hotkeyLabel" />
+                @* The owner lookup walks every binding, so it only runs for a key that did not take. *@
+                <HotkeyLink Value="@hotkeyLabel"
+                            Failed="@CrosshairSvc.HotkeyFailed"
+                            ConflictOwner="@(CrosshairSvc.HotkeyFailed ? hotkeyRow?.FailureOwner?.Invoke() : null)" />
             </div>
             <p class="muted-line">@Localizer.T("crosshair.hotkey.hint")</p>
         </div>
@@ -466,6 +471,8 @@
     private string previewSrc = "";
     private string newProfileName = "";
     private string hotkeyLabel = "F8";
+    // The row the hotkeys page shows for this key, so both name the same owner for a refused one.
+    private HotkeyBinding? hotkeyRow;
     private string codeInput = "";
     private bool guideOpen;
     private List<string> library = new();
@@ -517,6 +524,7 @@
     {
         CrosshairSvc.Changed += OnServiceChanged;
         CrosshairSvc.LibraryChanged += OnLibraryChanged;
+        hotkeyRow = Registry.ForRoute("/crosshair").FirstOrDefault();
         ReadFromService();
         RefreshLibrary();
         RefreshPreview();

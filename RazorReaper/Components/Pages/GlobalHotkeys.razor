@@ -2,6 +2,7 @@
 @using RazorReaper.Services.Automation
 @inject IHotkeyRegistry Registry
 @inject IEnumerable<AutomationScriptBase> AllScripts
+@inject RazorReaper.Services.ICrosshairService Crosshair
 @implements IDisposable
 @using RazorReaper.Services.Localization
 @inject ILocalizer Localizer
@@ -31,7 +32,7 @@
                     <span class="hk-dot @(binding.IsActive?.Invoke() == true ? "on" : "")"></span>
 
                     <span class="hk-text">
-                        <span class="hk-name">@(binding.NameKey is null ? binding.Name : Localizer.T(binding.NameKey))</span>
+                        <span class="hk-name">@binding.LocalName(Localizer)</span>
                         <span class="hk-desc">@Localizer.T(binding.DescriptionKey)</span>
                     </span>
 
@@ -50,8 +51,7 @@
                                shows it. *@
                             @if (binding.HasFailed?.Invoke() == true)
                             {
-                                var owner = binding.FailureOwner?.Invoke();
-                                <span class="hk-warn" title="@(owner is null ? Localizer.T("hotkey.notactive.hint") : Localizer.T("hotkey.notactive.conflict", owner))">@Localizer.T("hotkey.notactive")</span>
+                                <HotkeyWarn Owner="@binding.FailureOwner?.Invoke()" />
                             }
                             <HotkeyField Value="@binding.Get()"
                                          ValueChanged="@(v => Apply(binding, v))"
@@ -84,6 +84,9 @@
         // status dots need to follow along without a navigation.
         _scripts = AllScripts.ToList();
         foreach (var script in _scripts) script.Changed += OnOwnerChanged;
+
+        // The crosshair hears back from Windows a moment after a rebind, not during Apply.
+        Crosshair.Changed += OnOwnerChanged;
     }
 
     private void OnOwnerChanged() => this.DispatchRender(() => InvokeAsync(StateHasChanged));
@@ -101,5 +104,6 @@
     {
         this.StopRenderDispatch();
         foreach (var script in _scripts) script.Changed -= OnOwnerChanged;
+        Crosshair.Changed -= OnOwnerChanged;
     }
 }

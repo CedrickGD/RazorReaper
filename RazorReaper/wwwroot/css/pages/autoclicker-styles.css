@@ -169,6 +169,14 @@
     font-family: var(--font-mono);
 }
 
+/* A refused hotkey says so on its label line (HotkeyWarn), clear of the word it follows and
+   in its own case — the label around it is set in capitals. */
+.autoclicker-layout .field-label .hk-warn {
+    margin-left: 0.4rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
 /* ── Numeric field chips (interval h/m/s/ms, hold, pre-delay, X/Y, burst) ─ */
 .autoclicker-layout .interval-row {
     display: flex;
