@@ -264,6 +264,26 @@ public sealed class FedSuitCycleTests
     }
 
     /// <summary>
+    /// The last set opens but the panel will not shut: that is the ordinary "did not close"
+    /// warning, and the counts are still only the cycles the run made.
+    /// </summary>
+    [Fact]
+    public async Task ALastSetThatDoesNotCloseWarnsWithTheRunsCounts()
+    {
+        var rig = new Rig();
+        rig.Game.StaysOpenFromOpen = 3;
+        rig.Configure(s => s.Runs = 2);
+
+        await rig.RunToEnd();
+
+        Assert.True(rig.Game.Open);
+        Assert.Equal(10, rig.Game.InTransmitter);
+        Assert.Contains(rig.Toasts, t =>
+            t.Level == "warning" && t.Message.Contains("did not close") && t.Message.Contains("cycles: 2, pieces moved: 10"));
+        Assert.DoesNotContain(rig.Toasts, t => t.Level == "info" && t.Message.Contains("cycles:"));
+    }
+
+    /// <summary>
     /// The owner's other ask: a dropped press was only pressed again after the whole leave timeout.
     /// Once its neighbours have gone, a piece that sits unchanged for the short quiet window is
     /// pressed again — counted in the simulated time the macro waited, not the wall clock.
@@ -587,6 +607,9 @@ public sealed class FedSuitCycleTests
         /// <summary>Captures after the exit key before the panel is gone.</summary>
         public int ClosesAfterCaptures { get; set; }
 
+        /// <summary>The open (1-based) from which the exit key no longer shuts the panel.</summary>
+        public int StaysOpenFromOpen { get; set; } = int.MaxValue;
+
         /// <summary>Input the real game would have taken the wrong way: an open key on an open panel, a click or transfer with nothing to catch it.</summary>
         public int Violations { get; private set; }
 
@@ -606,6 +629,7 @@ public sealed class FedSuitCycleTests
 
                 case SimulatedInput.KeyPress { VirtualKey: VkEsc }:
                     if (!Open) { Violations++; break; }
+                    if (_opens >= StaysOpenFromOpen) break;
                     _closingIn = ClosesAfterCaptures;
                     if (_closingIn == 0) Close();
                     break;
