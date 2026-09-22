@@ -195,6 +195,9 @@ public partial class CrosshairService : ICrosshairService, IDisposable
 
     public IReadOnlyList<MonitorInfo> GetMonitors() => _overlay.GetMonitors();
 
+    /// <summary>The in-game banner lives on the overlay thread; <see cref="GameBannerNotifier"/> drives it.</summary>
+    internal IGameBanner GameBanner => _overlay;
+
     public void UpdateActive(CrosshairProfile profile)
     {
         // Snapshot — the caller (the page) holds a long-lived reference to its slider-bound

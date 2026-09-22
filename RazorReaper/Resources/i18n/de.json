@@ -333,6 +333,8 @@
   "settings.startwithark.description": "Ein schlanker Wächter startet Razor Reaper, sobald ARK startet.",
   "settings.closewithark.title": "Mit ARK schließen",
   "settings.closewithark.description": "Beendet Razor Reaper, wenn ARK geschlossen wird.",
+  "settings.gamebanner.title": "Skript-Warnungen über dem Spiel anzeigen",
+  "settings.gamebanner.description": "Stopp- und Fehlermeldungen erscheinen oben in ARK, während du spielst.",
   "settings.updates.title": "Updates",
   "settings.updates.description": "Updates installieren sich selbst und starten die App neu. Abschalten geht nicht.",
   "settings.elsewhere.title": "An anderer Stelle",

@@ -23,6 +23,7 @@ internal sealed partial class CrosshairOverlayWindow
     private const int WM_USER_HOTKEY_REGISTER = 0x0400 + 2;
     private const int WM_USER_HOTKEY_UNREGISTER = 0x0400 + 3;
     private const int WM_USER_TRAY_RETIP = 0x0400 + 4;
+    private const int WM_USER_BANNER = 0x0400 + 5;
     private const int WM_USER_TRAY = 0x0400 + 10;
 
     // ─── Shell_NotifyIcon constants ─────────────────────────────────────────────
@@ -60,6 +61,14 @@ internal sealed partial class CrosshairOverlayWindow
 
     private const int SW_HIDE = 0;
     private const int SW_SHOWNOACTIVATE = 4;
+
+    private static readonly IntPtr HWND_TOPMOST = new(-1);
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOACTIVATE = 0x0010;
+
+    /// <summary>Timer 1 is the crosshair animation tick; this one hides the in-game banner.</summary>
+    private static readonly IntPtr BannerTimerId = new(2);
 
     // ─── Layered window blend ──────────────────────────────────────────────────
 
@@ -195,6 +204,12 @@ internal sealed partial class CrosshairOverlayWindow
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+
+    [DllImport("user32.dll")]
+    private static extern bool KillTimer(IntPtr hWnd, IntPtr uIDEvent);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);

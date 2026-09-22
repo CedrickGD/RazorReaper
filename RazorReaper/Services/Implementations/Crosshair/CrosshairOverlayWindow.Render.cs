@@ -99,7 +99,7 @@ internal sealed partial class CrosshairOverlayWindow
         var (screenX, screenY) = CrosshairPlacement.ScreenTopLeft(
             monitor, bmp.Width, bmp.Height, profile.OffsetX, profile.OffsetY);
 
-        PushBitmapToWindow(bmp, screenX, screenY);
+        PushBitmapToWindow(_hwnd, bmp, screenX, screenY);
 
         if (!IsWindowVisible(_hwnd))
         {
@@ -134,7 +134,7 @@ internal sealed partial class CrosshairOverlayWindow
         return (seconds / period) % 1.0;
     }
 
-    private void PushBitmapToWindow(Bitmap bmp, int screenX, int screenY)
+    private static void PushBitmapToWindow(IntPtr hwnd, Bitmap bmp, int screenX, int screenY)
     {
         var screenDc = GetDC(IntPtr.Zero);
         var memDc = CreateCompatibleDC(screenDc);
@@ -157,7 +157,7 @@ internal sealed partial class CrosshairOverlayWindow
             };
 
             UpdateLayeredWindow(
-                _hwnd, screenDc, ref pointDst, ref size,
+                hwnd, screenDc, ref pointDst, ref size,
                 memDc, ref pointSrc, 0, ref blend, ULW_ALPHA);
         }
         finally

@@ -300,13 +300,21 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
+        // The in-game banner shares this class; only the crosshair window runs the handlers below
+        // (a WM_DESTROY meant for the banner must not end the message loop).
+        if (hwnd != _hwnd) return DefWindowProc(hwnd, msg, wParam, lParam);
+
         switch (msg)
         {
             case WM_USER_UPDATE:
                 Render();
                 return IntPtr.Zero;
+            case WM_USER_BANNER:
+                RenderBanner();
+                return IntPtr.Zero;
             case WM_TIMER:
-                MaybeAnimate();
+                if (wParam == BannerTimerId) HideBanner();
+                else MaybeAnimate();
                 return IntPtr.Zero;
             case WM_HOTKEY:
                 if (ShouldDebounceHotkey()) return IntPtr.Zero;

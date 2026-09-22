@@ -7,6 +7,7 @@
 @inject IDiscordPresenceService DiscordPresence
 @inject IArkLinkService ArkLink
 @inject INotificationService NotificationService
+@inject GameBannerNotifier GameBanner
 @inject ILocalizer Localizer
 @inject IJSRuntime JS
 @implements IDisposable
@@ -95,6 +96,11 @@
         <SettingRow Title="@Localizer.T("settings.closewithark.title")"
                     Description="@Localizer.T("settings.closewithark.description")">
             <Switch Value="ArkLink.CloseWithArk" ValueChanged="OnCloseWithArkChanged" />
+        </SettingRow>
+
+        <SettingRow Title="@Localizer.T("settings.gamebanner.title")"
+                    Description="@Localizer.T("settings.gamebanner.description")">
+            <Switch Value="GameBanner.Enabled" ValueChanged="OnGameBannerChanged" />
         </SettingRow>
 
         <SettingRow Title="@Localizer.T("settings.updates.title")"
@@ -214,6 +220,12 @@
     private void OnCloseWithArkChanged(bool enabled)
     {
         ArkLink.CloseWithArk = enabled;
+        StateHasChanged();
+    }
+
+    private void OnGameBannerChanged(bool enabled)
+    {
+        GameBanner.Enabled = enabled;
         StateHasChanged();
     }
 

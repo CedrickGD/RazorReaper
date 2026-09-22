@@ -333,6 +333,8 @@
   "settings.startwithark.description": "Лёгкий наблюдатель запускает Razor Reaper, как только стартует ARK.",
   "settings.closewithark.title": "Закрывать вместе с ARK",
   "settings.closewithark.description": "Закрывает Razor Reaper, когда закрывается ARK.",
+  "settings.gamebanner.title": "Показывать предупреждения скриптов поверх игры",
+  "settings.gamebanner.description": "Сообщения об остановке и ошибках появляются вверху ARK, пока вы играете.",
   "settings.updates.title": "Обновления",
   "settings.updates.description": "Обновления устанавливаются сами и перезапускают приложение. Отключить нельзя.",
   "settings.elsewhere.title": "В других местах",

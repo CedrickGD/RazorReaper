@@ -143,6 +143,9 @@ namespace RazorReaper.WinUI
 
             crosshair.ShowAppRequested += () => _requestShowMainWindow?.Invoke();
 
+            // Resolving it subscribes it to the toasts; it draws through the overlay started above.
+            services?.GetService<GameBannerNotifier>();
+
             crosshair.QuitRequested += () =>
             {
                 // Hard exit — we want the overlay, tray icon, and everything else torn down.

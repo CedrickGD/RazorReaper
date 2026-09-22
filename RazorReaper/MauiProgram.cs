@@ -309,6 +309,9 @@ namespace RazorReaper
             services.AddSingleton<ITextureBackupService, TextureBackupService>();
             services.AddSingleton<ICompactArkService, CompactArkService>();
             services.AddSingleton<ICrosshairService, CrosshairService>();
+            // Warnings and errors repeated over ARK, drawn by the crosshair overlay thread.
+            services.AddSingleton(sp => ActivatorUtilities.CreateInstance<GameBannerNotifier>(sp,
+                ((CrosshairService)sp.GetRequiredService<ICrosshairService>()).GameBanner));
             services.AddSingleton<ICustomLabSettingsService, CustomLabSettingsService>();
             services.AddSingleton<ISkyInjectorService, RazorReaper.Services.Implementations.CustomLab.SkyInjectorService>();
             services.AddSingleton<ISkyInjectorSessionState, RazorReaper.Services.Implementations.CustomLab.SkyInjectorSessionState>();

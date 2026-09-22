@@ -333,6 +333,8 @@
   "settings.startwithark.description": "一个轻量的监视程序会在 ARK 启动时立刻启动 Razor Reaper。",
   "settings.closewithark.title": "随 ARK 关闭",
   "settings.closewithark.description": "ARK 关闭时退出 Razor Reaper。",
+  "settings.gamebanner.title": "在游戏上方显示脚本警告",
+  "settings.gamebanner.description": "游戏时，停止和错误消息会显示在 ARK 顶部。",
   "settings.updates.title": "更新",
   "settings.updates.description": "更新会自动安装并重启应用。无法关闭。",
   "settings.elsewhere.title": "其他位置",

@@ -333,6 +333,8 @@
   "settings.startwithark.description": "A lightweight watcher launches Razor Reaper as soon as ARK starts.",
   "settings.closewithark.title": "Close with ARK",
   "settings.closewithark.description": "Exits Razor Reaper when ARK closes.",
+  "settings.gamebanner.title": "Show script warnings over the game",
+  "settings.gamebanner.description": "Stop and error messages appear at the top of ARK while you play.",
   "settings.updates.title": "Updates",
   "settings.updates.description": "Updates install themselves and restart the app. There is no opt-out.",
   "settings.elsewhere.title": "Elsewhere",
