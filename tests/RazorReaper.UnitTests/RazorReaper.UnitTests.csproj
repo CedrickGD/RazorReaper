@@ -28,6 +28,8 @@
   <ItemGroup>
     <!-- Server-generated rr.install.v1 vectors (RR-Admin-Panel/tests/install-auth/fixtures/vectors.json). -->
     <None Include="Fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Armour slots cut from the owner's screenshots and recorder frames, for ArmorSlotLookTests. -->
+    <None Include="Automation\TestData\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

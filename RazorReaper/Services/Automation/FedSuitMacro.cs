@@ -61,7 +61,9 @@ public sealed class FedSuitSettings
     public int RepeatDelayMs { get; set; } = 150;
 
     /// <summary>
-    /// Added to every wait and every timeout, in milliseconds — the one knob for a laggy server.
+    /// Added to the waits the server decides — the transmitter opening, the new set arriving, the
+    /// pieces leaving — in milliseconds. The one knob for a laggy server; the client's own steps
+    /// (hover, tab, close) never wait for it.
     /// </summary>
     public int LagBufferMs { get; set; }
 
@@ -168,9 +170,11 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
     /// <summary>
     /// How long the transmitter gets to put the new set on the player once the player's tab is
-    /// up. It is handed out when the transmitter opens, so this only runs long on a lagging server.
+    /// up. It is handed out when the transmitter opens and a worn piece is recognised the frame it
+    /// shows, so this only runs out on a lagging server — the lag buffer is added to it. A piece
+    /// still missing then is not waited for: the others go, and the next cycle tries again.
     /// </summary>
-    private const int SetTimeoutMs = 2000;
+    private const int SetTimeoutMs = 1000;
 
     /// <summary>How long the pressed pieces get to leave their slots, per round of presses.</summary>
     private const int LeaveTimeoutMs = 600;
@@ -182,27 +186,31 @@ public sealed class FedSuitMacro : IFedSuitMacro
     private const int CloseTimeoutMs = 1500;
 
     /// <summary>
-    /// Presses a piece gets before the run gives up on it and stops. Generous on purpose — the
-    /// owner's rule is "keep trying until every piece is across": with the leave check between
-    /// rounds this is several seconds of retries, so only a piece that really cannot move (a full
-    /// transmitter) ends the run.
+    /// Rounds of presses a piece gets within one cycle. A piece still worn after them is not the
+    /// end of the run: the transmitter closes, opens again, and the piece is pressed in the next
+    /// cycle — see <see cref="StuckAfterCycles"/> and <see cref="FullAfterIdleCycles"/>.
     /// </summary>
     private const int MaxPresses = 8;
 
     /// <summary>
-    /// Half-width of the box sampled at each slot centre, at 1080p and interface scale 1.0. Scaled
-    /// with the panel, so a small interface scale still samples inside the slot.
+    /// Cycles in a row the same slot may fail — its piece never arrived, or never left — before
+    /// the run stops. One bad cycle is lag; three in a row on the same slot is something the
+    /// player has to look at.
     /// </summary>
-    private const int SlotSampleHalf = 6;
+    private const int StuckAfterCycles = 3;
 
     /// <summary>
-    /// Mean-brightness difference (0–255) between a slot holding a piece and the same slot empty.
-    ///
-    /// ponytail: unverified in game — picked between the few levels a still screen drifts by and
-    /// the tens an icon covers. Too high and every piece reads as stuck (the run stops loudly with
-    /// the "did not move" toast); too low and background noise reads as a piece. Tune here.
+    /// Cycles in a row whose presses moved nothing although pieces were there before the run
+    /// stops with "the transmitter seems full". Two, so a single cycle lost to lag carries on.
     /// </summary>
-    private const double SlotChangedTolerance = 6.0;
+    private const int FullAfterIdleCycles = 2;
+
+    /// <summary>
+    /// Half-width of the box sampled at each slot centre for the open and close checks, at 1080p
+    /// and interface scale 1.0. Scaled with the panel. Worn or not is judged by
+    /// <see cref="ArmorSlotLook"/> over the slot's whole interior, not by this box.
+    /// </summary>
+    private const int SlotSampleHalf = 6;
 
     /// <summary>
     /// Mean-brightness change (0–255) at one slot point that counts as that point having been
@@ -397,7 +405,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     // ─── Run lifecycle ─────────────────────────────────────────────────────────
 
     /// <summary>How a run ended — which toast it gets.</summary>
-    private enum Outcome { Finished, Stopped, NoArk, NotOpen, NotClosed, Stuck }
+    private enum Outcome { Finished, Stopped, NoArk, NotOpen, NotClosed, Stuck, Full }
 
     /// <summary>Thrown by an input helper when ARK is no longer the window in front.</summary>
     private sealed class FocusLostException : Exception;
@@ -492,6 +500,9 @@ public sealed class FedSuitMacro : IFedSuitMacro
                     case Outcome.Stuck:
                         _notifications.ShowWarning(_localizer.T("scripts.fed.toast.stuck", cycles, pieces));
                         break;
+                    case Outcome.Full:
+                        _notifications.ShowWarning(_localizer.T("scripts.fed.toast.full", cycles, pieces));
+                        break;
                     default:
                         _notifications.ShowInfo(_localizer.T("scripts.fed.toast.stopped", cycles, pieces));
                         break;
@@ -512,24 +523,33 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// The cycles, each one checked against the screen before it moves on:
     /// open → wait for the panel → player tab → wait for the picked pieces → press them in one
     /// round → check which left → press the rest again (up to MaxPresses) → close → wait
-    /// for the panel to be gone. Anything the screen does not confirm in time stops the run
-    /// rather than carrying on into an odd count.
+    /// for the panel to be gone.
+    ///
+    /// A piece that did not arrive in time, or did not leave, does not end the run: the pieces
+    /// that are there go, the transmitter closes and opens again, and the next cycle presses
+    /// whatever is still worn. The run stops only when it is really over — two cycles in a row
+    /// moved nothing although the pieces were there (the transmitter is full), or the same slot
+    /// failed in three cycles in a row.
+    ///
+    /// The lag buffer goes where the server decides the timing: the open, the set arriving and the
+    /// pieces leaving. Everything the client alone decides — hover, tab, close — runs at its own pace.
     /// </summary>
     private async Task<Outcome> RunCyclesAsync(CyclePlan p, CancellationToken ct)
     {
         var s = p.Settings;
         var lag = s.LagBufferMs;
 
-        // Each picked slot's look once its piece has gone, with the cursor off the slots. Unknown
-        // until the first cycle has emptied them, and that cycle trusts the player came wearing a set.
-        double[]? empty = null;
+        // Cycles in a row each slot's piece failed — never arrived, or never left.
+        var failures = new int[p.Slots.Length];
+        // Cycles in a row whose presses moved nothing although pieces were there.
+        var idleCycles = 0;
 
         for (var cycle = 1; s.Runs <= 0 || cycle <= s.Runs; cycle++)
         {
             lock (_gate) _currentCycle = cycle;
             RaiseChanged();
 
-            var (shut, _) = await PollAsync(p, lag, _ => true, ct);
+            var (shut, _) = await PollAsync(p, 0, _ => true, ct);
             if (shut is null) return Outcome.NotOpen;
 
             await PressAsync(p.OpenVk, ct);
@@ -548,7 +568,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
             // the key a toggle in ARK, the close would pass for an open; upgrade path is a
             // template match on the panel.
             var (_, opened) = await PollAsync(
-                p, s.WaitAfterOpenMs + lag, now => Majority(now, shut, InventoryOpenedTolerance, differ: true), ct);
+                p, s.WaitAfterOpenMs + lag, now => Majority(now.Means, shut.Means, InventoryOpenedTolerance, differ: true), ct);
             if (!opened)
             {
                 // Before the tab click on purpose: everything after it is clicks and cursor jumps
@@ -563,84 +583,86 @@ public sealed class FedSuitMacro : IFedSuitMacro
             // The transmitter opens with its own tab in front, and the transfer key moves what the
             // panel in front is showing — so without this click the whole cycle transfers nothing.
             await ClickAsync(p.Tab, ct);
-            await DelayAsync(TabSettleMs + lag, ct);
+            await DelayAsync(TabSettleMs, ct);
 
-            double[]? start;
-            if (empty is null)
-            {
-                start = await SettleAsync(p, lag, ct);
-            }
-            else
-            {
-                var known = empty;
-                (start, _) = await PollAsync(
-                    p, SetTimeoutMs + lag, now => p.Selected.All(i => Differs(now[i], known[i])), ct);
-            }
-            if (start is null) return Outcome.Stuck;
+            var (start, _) = await PollAsync(p, SetTimeoutMs + lag, now => p.Selected.All(i => now.Filled[i]), ct);
 
-            // Timed out waiting for the set: move what is there, then stop over the rest.
-            var pending = p.Selected.Where(i => empty is null || Differs(start[i], empty[i])).ToList();
-            var missing = p.Selected.Length - pending.Count;
-            var nextEmpty = empty is null ? new double[p.Slots.Length] : (double[])empty.Clone();
+            // Whatever is there goes now; a piece that has not shown up is the next cycle's.
+            var pending = p.Selected.Where(i => start?.Filled[i] == true).ToList();
+            var arrived = pending.Count;
+            var failed = p.Selected.Except(pending).ToHashSet();
             var openLook = start;
-            var moved = 0;
 
             for (var round = 0; round < MaxPresses && pending.Count > 0; round++)
             {
                 foreach (var i in pending)
                 {
                     await MoveAsync(p.Slots[i], ct);
-                    await DelayAsync(HoverSettleMs + lag, ct);
+                    await DelayAsync(HoverSettleMs, ct);
                     await PressAsync(p.TransferVk, ct);
-                    await DelayAsync(s.PressDelayMs + lag, ct);
+                    await DelayAsync(s.PressDelayMs, ct);
                 }
 
                 // Off the slots before they are read: the cursor lights up whatever it rests on,
                 // and the tooltip of the last piece hovered covers its neighbours.
+                //
+                // ponytail: a tooltip still fading when the check runs hides the piece under it,
+                // which then reads as gone. It is still worn, so the next cycle presses it again;
+                // only the pieces count is one high. Upgrade path: two agreeing samples.
                 await MoveAsync(p.Tab, ct);
-                await DelayAsync(HoverSettleMs + lag, ct);
+                await DelayAsync(HoverSettleMs, ct);
 
-                var before = empty;
-                var round0 = start;
                 var check = pending.ToArray();
-                var (after, _) = await PollAsync(
-                    p, LeaveTimeoutMs + lag, now => check.All(i => Left(now[i], round0[i], before?[i])), ct);
+                var (after, _) = await PollAsync(p, LeaveTimeoutMs + lag, now => check.All(i => !now.Filled[i]), ct);
                 if (after is null) continue;
 
                 openLook = after;
-                foreach (var i in check.Where(i => Left(after[i], round0[i], before?[i])))
-                {
-                    nextEmpty[i] = after[i];
-                    pending.Remove(i);
-                    moved++;
-                }
+                pending.RemoveAll(i => !after.Filled[i]);
             }
 
-            lock (_gate) _piecesMoved += moved;
+            var moved = arrived - pending.Count;
+            failed.UnionWith(pending);
+            foreach (var i in p.Selected) failures[i] = failed.Contains(i) ? failures[i] + 1 : 0;
+            if (moved > 0) idleCycles = 0;
+            else if (arrived > 0) idleCycles++;
 
-            if (pending.Count > 0 || missing > 0)
+            lock (_gate)
+            {
+                _piecesMoved += moved;
+                if (moved > 0) _cyclesCompleted++;
+            }
+            RaiseChanged();
+
+            // Left open on purpose: the player looks at what the stop is about.
+            if (idleCycles >= FullAfterIdleCycles)
             {
                 _logger.LogWarning(
-                    "Fed-Suit stopped itself — {Stuck} piece(s) did not move, {Missing} never arrived",
-                    pending.Count, missing);
-                RaiseChanged();
+                    "Fed-Suit stopped itself — {Cycles} cycles in a row moved nothing, the transmitter seems full", idleCycles);
+                return Outcome.Full;
+            }
+            if (p.Selected.Any(i => failures[i] >= StuckAfterCycles))
+            {
+                _logger.LogWarning("Fed-Suit stopped itself — the same piece failed {Cycles} cycles in a row", StuckAfterCycles);
                 return Outcome.Stuck;
             }
-
-            empty = nextEmpty;
-            lock (_gate) _cyclesCompleted = cycle;
-            RaiseChanged();
+            if (failed.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Fed-Suit cycle {Cycle}: {Stuck} piece(s) did not move, {Missing} never arrived — carrying on",
+                    cycle, pending.Count, failed.Count - pending.Count);
+            }
 
             await PressAsync(p.ExitVk, ct);
 
             // Gone from the panel's look, or back to the look from before the open — either one
             // says the panel is shut. Only the first would miss a camera nudged on close; only the
-            // second would miss a night scene as dark as an empty slot.
+            // second would miss a night scene as dark as an empty slot. No lag buffer: closing is
+            // the client's own business, and the poll carries on the moment the panel is gone.
             var shutLook = shut;
             var (_, closed) = await PollAsync(
-                p, CloseTimeoutMs + lag,
-                now => Majority(now, openLook, InventoryOpenedTolerance, differ: true)
-                    || Majority(now, shutLook, InventoryOpenedTolerance, differ: false),
+                p, CloseTimeoutMs,
+                now => (openLook is not null && Majority(now.Means, openLook.Means, InventoryOpenedTolerance, differ: true))
+                    || Majority(now.Means, shutLook.Means, InventoryOpenedTolerance, differ: false),
                 ct);
             if (!closed)
             {
@@ -649,8 +671,8 @@ public sealed class FedSuitMacro : IFedSuitMacro
             }
 
             // The fade-out, again: the next cycle's "before" look has to be the world, not the panel on its way out.
-            await SettleAsync(p, lag, ct);
-            if (s.Runs <= 0 || cycle < s.Runs) await DelayAsync(s.RepeatDelayMs + lag, ct);
+            await SettleAsync(p, 0, ct);
+            if (s.Runs <= 0 || cycle < s.Runs) await DelayAsync(s.RepeatDelayMs, ct);
         }
 
         return Outcome.Finished;
@@ -663,10 +685,10 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// ponytail: the timeout is counted in poll intervals, not read off a clock, so a slow capture
     /// stretches it a little. The upside is a test can drive every wait with instant delays.
     /// </summary>
-    private async Task<(double[]? Sample, bool Met)> PollAsync(
-        CyclePlan p, int timeoutMs, Func<double[], bool> done, CancellationToken ct)
+    private async Task<(SlotsLook? Sample, bool Met)> PollAsync(
+        CyclePlan p, int timeoutMs, Func<SlotsLook, bool> done, CancellationToken ct)
     {
-        double[]? last = null;
+        SlotsLook? last = null;
         for (var waited = 0; ; waited += PollMs)
         {
             ct.ThrowIfCancellationRequested();
@@ -682,12 +704,12 @@ public sealed class FedSuitMacro : IFedSuitMacro
     }
 
     /// <summary>Waits for two samples in a row to agree — the panel has finished drawing — and returns the last.</summary>
-    private async Task<double[]?> SettleAsync(CyclePlan p, int lag, CancellationToken ct)
+    private async Task<SlotsLook?> SettleAsync(CyclePlan p, int lag, CancellationToken ct)
     {
-        double[]? previous = null;
+        SlotsLook? previous = null;
         var (last, _) = await PollAsync(p, SettleTimeoutMs + lag, now =>
         {
-            var stable = previous is not null && Majority(now, previous, InventoryOpenedTolerance, differ: false);
+            var stable = previous is not null && Majority(now.Means, previous.Means, InventoryOpenedTolerance, differ: false);
             previous = now;
             return stable;
         }, ct);
@@ -702,15 +724,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
             if (Math.Abs(now[i] - reference[i]) > tolerance == differ) count++;
         return count * 2 > now.Length;
     }
-
-    private static bool Differs(double a, double b) => Math.Abs(a - b) > SlotChangedTolerance;
-
-    /// <summary>
-    /// Whether a slot's piece has gone. Once the empty look is known: nearer to it than to the
-    /// look the cycle started with. Before that, in the first cycle: no longer the starting look.
-    /// </summary>
-    private static bool Left(double now, double start, double? empty)
-        => empty is { } e ? Math.Abs(now - e) < Math.Abs(now - start) : Differs(now, start);
 
     // ─── Input, only while ARK is in front ─────────────────────────────────────
 
@@ -752,7 +765,14 @@ public sealed class FedSuitMacro : IFedSuitMacro
         Point[] Slots,
         int[] Selected,
         int SampleHalf,
+        double Scale,
         Rectangle SlotsBounds);
+
+    /// <summary>
+    /// One look at the five slots: the mean brightness at each centre, for the open and close
+    /// checks, and whether each holds a piece.
+    /// </summary>
+    private sealed record SlotsLook(double[] Means, bool[] Filled);
 
     private CyclePlan? BuildPlan(FedSuitSettings s)
     {
@@ -794,20 +814,23 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
         var uiScaling = ArkInventoryLayout.ReadUiScaling(_arkPath.FindArkPath());
         var slots = ArkInventoryLayout.ArmorSlots(client, uiScaling);
-        var half = Math.Max(2, (int)Math.Round(SlotSampleHalf * ArkInventoryLayout.Scale(client, uiScaling)));
+        var scale = ArkInventoryLayout.Scale(client, uiScaling);
+        var half = Math.Max(2, (int)Math.Round(SlotSampleHalf * scale));
+
+        // One capture holds every slot's whole interior, and with it the centre boxes.
+        var bounds = slots.Select(c => ArmorSlotLook.Interior(c, scale)).Aggregate(Rectangle.Union);
 
         return new CyclePlan(
             s, openVk, exitVk, transferVk,
             ArkInventoryLayout.PlayerTab(client, uiScaling),
-            slots, selected, half, BoxAround(slots, half));
+            slots, selected, half, scale, bounds);
     }
 
     /// <summary>
-    /// Mean brightness of a small box at each of the five slot centres, all out of a single
-    /// capture of the box that holds them — the waits poll this every few frames. All five, not
-    /// only the picked ones: the open and close checks go by the majority of them.
+    /// All five slots out of a single capture — the waits poll this every few frames. All five,
+    /// not only the picked ones: the open and close checks go by the majority of them.
     /// </summary>
-    private double[]? SampleSlots(CyclePlan p)
+    private SlotsLook? SampleSlots(CyclePlan p)
     {
         try
         {
@@ -815,8 +838,13 @@ public sealed class FedSuitMacro : IFedSuitMacro
             if (capture.IsEmpty) return null;
 
             var means = new double[p.Slots.Length];
-            for (var i = 0; i < p.Slots.Length; i++) means[i] = MeanAt(capture, p.SlotsBounds, p.Slots[i], p.SampleHalf);
-            return means;
+            var filled = new bool[p.Slots.Length];
+            for (var i = 0; i < p.Slots.Length; i++)
+            {
+                means[i] = MeanAt(capture, p.SlotsBounds, p.Slots[i], p.SampleHalf);
+                filled[i] = ArmorSlotLook.IsFilled(capture, p.SlotsBounds.Location, p.Slots[i], p.Scale);
+            }
+            return new SlotsLook(means, filled);
         }
         catch (Exception ex)
         {
@@ -845,17 +873,6 @@ public sealed class FedSuitMacro : IFedSuitMacro
             }
         }
         return channels == 0 ? 0 : sum / (double)channels;
-    }
-
-    private static Rectangle BoxAround(Point[] slots, int half)
-    {
-        if (slots.Length == 0) return Rectangle.Empty;
-
-        var left = slots.Min(p => p.X) - half;
-        var top = slots.Min(p => p.Y) - half;
-        var right = slots.Max(p => p.X) + half;
-        var bottom = slots.Max(p => p.Y) + half;
-        return Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
     }
 
     /// <summary>

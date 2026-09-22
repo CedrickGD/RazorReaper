@@ -19,7 +19,8 @@ namespace RazorReaper.UnitTests.Automation;
 /// The second moved the pieces on fixed timers and, after two or three suits on a real server,
 /// left one behind and closed the transmitter on an odd count. So everything here is about the
 /// count: every picked piece goes in, a press the game dropped is pressed again, a slow set is
-/// waited for, and a piece that will not go stops the run instead of cycling on.
+/// waited for, and a piece that did not go or did not arrive is the next cycle's — the run stops
+/// only on a full transmitter or the same slot failing three cycles in a row.
 ///
 /// Shares <c>ArkKeyDefaults</c> with <see cref="ArkKeyScanTests"/>: the macro rescans its open
 /// and transfer keys through a process-wide static that those tests swap out.
@@ -147,23 +148,80 @@ public sealed class FedSuitCycleTests
     }
 
     /// <summary>
-    /// A piece that will not leave — here because the transmitter is full — gets eight presses and
-    /// then stops the run. Carrying on would only stack up odd counts, and the toast says what
-    /// was moved so the player can check it against the transmitter.
+    /// A full transmitter: the second cycle moves two pieces and then nothing goes in. That cycle
+    /// and the next carry on — one cycle that moved nothing could be lag — and the second cycle in
+    /// a row that moved nothing although the pieces were there stops the run and says why.
     /// </summary>
     [Fact]
-    public async Task APieceThatWillNotMoveStopsTheRun()
+    public async Task AFullTransmitterStopsAfterTwoCyclesThatMovedNothing()
     {
         var rig = new Rig();
         rig.Game.Capacity = 7;
 
-        await rig.RunToEnd(); // Runs = 0: only the stuck piece can end it
+        await rig.RunToEnd(); // Runs = 0: only the stop rule can end it
 
         Assert.Equal(7, rig.Game.InTransmitter);
-        Assert.Equal(2, rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkF }));
-        Assert.Equal(5 + 2 + (3 * 8), rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkT }));
+        Assert.Equal(4, rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkF }));
+        Assert.Equal(0, rig.Game.Violations);
         Assert.Contains(rig.Toasts, t =>
-            t.Level == "warning" && t.Message.Contains("did not move") && t.Message.Contains("cycles: 1, pieces moved: 7"));
+            t.Level == "warning" && t.Message.Contains("seems full") && t.Message.Contains("cycles: 2, pieces moved: 7"));
+    }
+
+    /// <summary>
+    /// The owner's rule: a piece that would not go is no reason to stop. The cycle closes with the
+    /// chest still worn, the next one presses it again, and the run finishes its three cycles.
+    /// </summary>
+    [Fact]
+    public async Task APieceThatStayedIsPressedAgainNextCycle()
+    {
+        var rig = new Rig();
+        rig.Game.StuckForOpens[1] = 1; // the chest ignores every press in cycle 1
+        rig.Configure(s => s.Runs = 3);
+
+        await rig.RunToEnd();
+
+        // Cycle 1 moves four, cycle 2 the old chest and four new pieces, cycle 3 a whole suit.
+        Assert.Equal(14, rig.Game.InTransmitter);
+        Assert.Equal(new[] { false, false, false, false, false }, rig.Game.Worn);
+        Assert.Equal(0, rig.Game.Violations);
+        Assert.Contains(rig.Toasts, t => t.Level == "info" && t.Message.Contains("cycles: 3, pieces moved: 14"));
+    }
+
+    /// <summary>
+    /// A piece the server did not hand out in time: the others go, the cycle closes, and the run
+    /// goes on — the next open brings the missing one.
+    /// </summary>
+    [Fact]
+    public async Task APieceThatNeverArrivedDoesNotStopTheRun()
+    {
+        var rig = new Rig();
+        rig.Game.Withheld.Add((Open: 2, Slot: 2)); // the second open brings no trousers
+        rig.Configure(s => s.Runs = 3);
+
+        await rig.RunToEnd();
+
+        Assert.Equal(14, rig.Game.InTransmitter);
+        Assert.Equal(0, rig.Game.Violations);
+        Assert.Contains(rig.Toasts, t => t.Level == "info" && t.Message.Contains("cycles: 3, pieces moved: 14"));
+    }
+
+    /// <summary>
+    /// The same slot failing cycle after cycle is something to look at: the third cycle in a row
+    /// that the boots would not go stops the run, while the other pieces kept moving.
+    /// </summary>
+    [Fact]
+    public async Task TheSameSlotFailingThreeCyclesInARowStopsTheRun()
+    {
+        var rig = new Rig();
+        rig.Game.StuckForOpens[4] = int.MaxValue;
+
+        await rig.RunToEnd(); // Runs = 0: only the stop rule can end it
+
+        Assert.Equal(12, rig.Game.InTransmitter);
+        Assert.Equal(3, rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkF }));
+        Assert.True(rig.Game.Worn[4]);
+        Assert.Contains(rig.Toasts, t =>
+            t.Level == "warning" && t.Message.Contains("same piece") && t.Message.Contains("cycles: 3, pieces moved: 12"));
     }
 
     [Fact]
@@ -396,6 +454,7 @@ public sealed class FedSuitCycleTests
         private Point _cursor;
         private int _presses;
         private int _moved;
+        private int _opens;
         private int _capturesSinceOpen;
         private bool _setPending;
         private int _closingIn = -1;
@@ -426,6 +485,12 @@ public sealed class FedSuitCycleTests
         /// <summary>Transfer presses (1-based, counted over the whole run) the game does nothing with.</summary>
         public HashSet<int> DroppedPresses { get; } = new();
 
+        /// <summary>Slot → the number of opens during which that slot's piece ignores every press.</summary>
+        public Dictionary<int, int> StuckForOpens { get; } = new();
+
+        /// <summary>(open, slot) pairs: that open (1-based) brings no piece for that slot.</summary>
+        public HashSet<(int Open, int Slot)> Withheld { get; } = new();
+
         /// <summary>Captures after the open before the new set shows on the player.</summary>
         public int SetArrivesAfterCaptures { get; set; }
 
@@ -443,6 +508,7 @@ public sealed class FedSuitCycleTests
                     if (Open) { Violations++; break; }
                     if (!OpenKeyWorks) break;
                     Open = true;
+                    _opens++;
                     _playerTab = false;
                     _setPending = true;
                     _capturesSinceOpen = 0;
@@ -469,6 +535,7 @@ public sealed class FedSuitCycleTests
                     if (DroppedPresses.Contains(++_presses)) break;
                     var slot = Array.IndexOf(_slots, _cursor);
                     if (slot < 0 || !Worn[slot] || _moved >= Capacity) break;
+                    if (StuckForOpens.TryGetValue(slot, out var stuck) && _opens <= stuck) break;
                     Worn[slot] = false;
                     Interlocked.Increment(ref _moved);
                     break;
@@ -486,7 +553,8 @@ public sealed class FedSuitCycleTests
             if (_closingIn > 0 && --_closingIn == 0) Close();
             if (Open && _setPending && ++_capturesSinceOpen > SetArrivesAfterCaptures)
             {
-                Array.Fill(Worn, true);
+                for (var i = 0; i < Worn.Length; i++)
+                    if (!Withheld.Contains((_opens, i))) Worn[i] = true;
                 _setPending = false;
             }
 
