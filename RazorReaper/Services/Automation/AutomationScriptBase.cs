@@ -709,10 +709,16 @@ public abstract class AutomationScriptBase : IDisposable
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { Logger.LogError(ex, "{Script} tick error", _displayName); }
 
-            try { await Task.Delay(RemainingDelayMs(intervalMs, tickClock.ElapsedMilliseconds), ct); }
+            try { await WaitOutIntervalAsync(RemainingDelayMs(intervalMs, tickClock.ElapsedMilliseconds), ct); }
             catch (OperationCanceledException) { return; }
         }
     }
+
+    /// <summary>
+    /// The scan loop's wait between ticks. A test seam and nothing else: the cadence test overrides
+    /// it to see the wait the loop asked for, which wall-clock gaps cannot show on a loaded machine.
+    /// </summary>
+    protected virtual Task WaitOutIntervalAsync(int delayMs, CancellationToken ct) => Task.Delay(delayMs, ct);
 
     /// <summary>
     /// What is left of <paramref name="intervalMs"/> after a tick that took
