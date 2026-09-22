@@ -52,16 +52,17 @@ public sealed class ArkKeyFollowTests : IDisposable
     {
         using var fed = Macro();
         using var afk = AntiAfk();
-        Assert.Equal(("F", "T", "O"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey));
+        using var turret = Turret();
+        Assert.Equal(("F", "T", "O", "T"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey, turret.TransferKey));
 
         Rebind();
-        Rescan(fed, afk);
-        Assert.Equal(("G", "Y", "K"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey));
+        Rescan(fed, afk, turret);
+        Assert.Equal(("G", "Y", "K", "Y"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey, turret.TransferKey));
 
         // The player puts ARK back. The install's DefaultInput.ini answers, not the key held before.
         File.Delete(InputIni);
-        Rescan(fed, afk);
-        Assert.Equal(("F", "T", "O"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey));
+        Rescan(fed, afk, turret);
+        Assert.Equal(("F", "T", "O", "T"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey, turret.TransferKey));
     }
 
     [Fact]
@@ -69,21 +70,25 @@ public sealed class ArkKeyFollowTests : IDisposable
     {
         using var fed = Macro();
         using var afk = AntiAfk();
+        using var turret = Turret();
         Configure(fed, s => s.OpenKey = "P");
         afk.InventoryKey = "P";
+        turret.TransferKey = "P";
 
         Rebind();
-        Rescan(fed, afk);
-        Assert.Equal(("P", "Y", "P"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey));
+        Rescan(fed, afk, turret);
+        Assert.Equal(("P", "Y", "P", "P"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey, turret.TransferKey));
 
         File.Delete(InputIni);
-        Rescan(fed, afk);
-        Assert.Equal(("P", "T", "P"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey));
+        Rescan(fed, afk, turret);
+        Assert.Equal(("P", "T", "P", "P"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey, turret.TransferKey));
 
         using var restartedAfk = AntiAfk();
         using var restartedFed = Macro();
+        using var restartedTurret = Turret();
         Assert.Equal("P", restartedFed.Settings.OpenKey);
         Assert.Equal("P", restartedAfk.InventoryKey);
+        Assert.Equal("P", restartedTurret.TransferKey);
     }
 
     [Fact]
@@ -107,19 +112,27 @@ public sealed class ArkKeyFollowTests : IDisposable
     {
         using var fed = Macro();
         using var afk = AntiAfk();
+        using var turret = Turret();
 
         Configure(fed, s => s.Runs = 5);
         Configure(fed, s => s.LagBufferMs = 120);
         afk.IntervalSeconds = 120;
         afk.SaveSettings();
+        turret.Fill = TurretFill.Stacks;
+        turret.BulletStacks = 3;
+        turret.ShardStacks = 2;
+        turret.LagBufferMs = 200;
+        turret.SaveSettings();
+        turret.UsePlan();
 
         Assert.False(_prefs.ContainsKey("fedsuit.openkey"));
         Assert.False(_prefs.ContainsKey("fedsuit.transferkey"));
         Assert.False(_prefs.ContainsKey("antiafk.invkey"));
+        Assert.False(_prefs.ContainsKey("turret.transfer"));
 
         Rebind();
-        Rescan(fed, afk);
-        Assert.Equal(("G", "Y", "K"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey));
+        Rescan(fed, afk, turret);
+        Assert.Equal(("G", "Y", "K", "Y"), (fed.Settings.OpenKey, fed.Settings.TransferKey, afk.InventoryKey, turret.TransferKey));
         Assert.Equal(5, fed.Settings.Runs);
     }
 
@@ -130,18 +143,21 @@ public sealed class ArkKeyFollowTests : IDisposable
         _prefs.Seed("fedsuit.openkey", "F");
         _prefs.Seed("fedsuit.transferkey", "T");
         _prefs.Seed("antiafk.invkey", "P");
+        _prefs.Seed("turret.transfer", "T");
 
         using var fed = Macro();
         using var afk = AntiAfk();
+        using var turret = Turret();
 
         Assert.False(_prefs.ContainsKey("fedsuit.openkey"));
         Assert.False(_prefs.ContainsKey("fedsuit.transferkey"));
+        Assert.False(_prefs.ContainsKey("turret.transfer"));
         // One that differs from ARK's is a choice, and stays.
         Assert.Equal("P", afk.InventoryKey);
 
         Rebind();
-        Rescan(fed, afk);
-        Assert.Equal(("G", "Y"), (fed.Settings.OpenKey, fed.Settings.TransferKey));
+        Rescan(fed, afk, turret);
+        Assert.Equal(("G", "Y", "Y"), (fed.Settings.OpenKey, fed.Settings.TransferKey, turret.TransferKey));
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -156,11 +172,11 @@ public sealed class ArkKeyFollowTests : IDisposable
         "ActionMappings=(ActionName=\"ShowMyInventory\",Key=K,bShift=False)");
 
     /// <summary>What the Scripts page's Rescan does: a forced scan, then every script re-asks it.</summary>
-    private void Rescan(FedSuitMacro fed, AutomationScriptBase script)
+    private void Rescan(FedSuitMacro fed, params AutomationScriptBase[] scripts)
     {
         _scan.Refresh();
         fed.FollowArkKeys();
-        script.FollowArkKeys();
+        foreach (var script in scripts) script.FollowArkKeys();
     }
 
     private static void WriteFile(string path, params string[] lines)
@@ -199,4 +215,16 @@ public sealed class ArkKeyFollowTests : IDisposable
         new RecordingActivityService(),
         English(),
         NullLogger<AntiAfkScript>.Instance);
+
+    private static TurretManagerScript Turret() => new(
+        new RecordingInputSimulator(),
+        new FakeScreenSampler(),
+        new FakeGameDisplayService(),
+        new FakeArkPathProvider(),
+        new FakeForegroundGate(gameIsForeground: true),
+        new NullAutomationHotkeyService(),
+        new RecordingNotificationService(),
+        new RecordingActivityService(),
+        English(),
+        NullLogger<TurretManagerScript>.Instance);
 }

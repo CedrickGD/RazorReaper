@@ -242,9 +242,13 @@ public sealed class TurretManagerTests
     private sealed class Rig : IDisposable
     {
         private readonly RecordingNotificationService _notifications = new();
+        private readonly RazorReaper.Services.IPreferencesStore _realPrefs = ArkKeyDefaults.Prefs;
 
         public Rig(int slots = 6, AmmoKind accepts = AmmoKind.Bullet)
         {
+            // The transfer key follows the scan (no service here, so stock T) and is kept in this
+            // store, never the machine's.
+            ArkKeyDefaults.Prefs = new FakePreferencesStore();
             Layout = new TurretInventoryLayout(new Rectangle(0, 0, 1920, 1080), 1.0);
             var sampler = new FakeScreenSampler();
             Game = new FakeTurretScreen(Layout, Input, sampler, slots, accepts);
@@ -253,7 +257,6 @@ public sealed class TurretManagerTests
                 new NullAutomationHotkeyService(), _notifications, new RecordingActivityService(),
                 new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US")),
                 NullLogger<TurretManagerScript>.Instance);
-            Script.TransferKey = "T";
         }
 
         public TurretInventoryLayout Layout { get; }
@@ -298,7 +301,11 @@ public sealed class TurretManagerTests
             Assert.Fail("The Turret Manager did not reach the expected state within 10 s.");
         }
 
-        public void Dispose() => Script.Dispose();
+        public void Dispose()
+        {
+            Script.Dispose();
+            ArkKeyDefaults.Prefs = _realPrefs;
+        }
     }
 
     /// <summary>

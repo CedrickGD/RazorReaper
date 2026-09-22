@@ -85,7 +85,9 @@ public sealed class TurretManagerScript : AutomationScriptBase
     /// <summary>Added to the waits for the server to answer a transfer — raise it on laggy servers.</summary>
     public int LagBufferMs { get; set; }
 
-    public string TransferKey { get; set; } = "T";
+    /// <summary>Key that moves the hovered stack across (ARK default: T).</summary>
+    public string TransferKey { get => _transferKey.Value; set => _transferKey.Value = value; }
+    private readonly ArkKeySetting _transferKey = new($"{Key}.transfer", ArkActions.TransferItem, "T");
 
     /// <summary>Whether ARK's inventory tooltips are on — Transfer All then asks for a confirmation.</summary>
     public bool TooltipsOn { get; private set; }
@@ -124,15 +126,11 @@ public sealed class TurretManagerScript : AutomationScriptBase
     /// <summary>Until the owner has watched it fill real turrets, the turret check itself is an inference.</summary>
     public override bool IsExperimental => true;
 
+    /// <summary>Follows ARK's Transfer Item unless the player typed a key of their own.</summary>
+    public override void FollowArkKeys() => _transferKey.Follow();
+
     protected override void OnStarting()
     {
-        try
-        {
-            if (!Preferences.ContainsKey($"{Key}.transfer"))
-                TransferKey = ArkKeyDefaults.For(ArkActions.TransferItem, "T");
-        }
-        catch (Exception ex) { Logger.LogDebug(ex, "Turret Manager key re-resolve failed"); }
-
         RefreshGameSettings();
         _armed = true;
         _sightings = 0;
@@ -350,14 +348,12 @@ public sealed class TurretManagerScript : AutomationScriptBase
     public void SaveSettings()
     {
         Normalize();
-        TransferKey = string.IsNullOrWhiteSpace(TransferKey) ? "T" : TransferKey.Trim();
         try
         {
             Preferences.Set($"{Key}.fill", (int)Fill);
             Preferences.Set($"{Key}.bulletstacks", BulletStacks);
             Preferences.Set($"{Key}.shardstacks", ShardStacks);
             Preferences.Set($"{Key}.lagbuffer", LagBufferMs);
-            Preferences.Set($"{Key}.transfer", TransferKey);
             Preferences.Set($"{Key}.calc.heavy", CalcHeavyTurrets);
             Preferences.Set($"{Key}.calc.tek", CalcTekTurrets);
             Preferences.Set($"{Key}.calc.bullets", CalcBullets);
@@ -379,7 +375,6 @@ public sealed class TurretManagerScript : AutomationScriptBase
             BulletStacks = Preferences.Get($"{Key}.bulletstacks", 1);
             ShardStacks = Preferences.Get($"{Key}.shardstacks", 1);
             LagBufferMs = Preferences.Get($"{Key}.lagbuffer", 0);
-            TransferKey = Preferences.Get($"{Key}.transfer", ArkKeyDefaults.For(ArkActions.TransferItem, "T"));
             CalcHeavyTurrets = Preferences.Get($"{Key}.calc.heavy", 0);
             CalcTekTurrets = Preferences.Get($"{Key}.calc.tek", 0);
             CalcBullets = Preferences.Get($"{Key}.calc.bullets", 0);
