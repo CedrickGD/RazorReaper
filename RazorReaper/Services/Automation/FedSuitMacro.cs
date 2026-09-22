@@ -181,8 +181,13 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// <summary>How long the transmitter gets to close after the exit key.</summary>
     private const int CloseTimeoutMs = 1500;
 
-    /// <summary>Presses a piece gets before the run gives up on it and stops.</summary>
-    private const int MaxPresses = 3;
+    /// <summary>
+    /// Presses a piece gets before the run gives up on it and stops. Generous on purpose — the
+    /// owner's rule is "keep trying until every piece is across": with the leave check between
+    /// rounds this is several seconds of retries, so only a piece that really cannot move (a full
+    /// transmitter) ends the run.
+    /// </summary>
+    private const int MaxPresses = 8;
 
     /// <summary>
     /// Half-width of the box sampled at each slot centre, at 1080p and interface scale 1.0. Scaled
@@ -506,7 +511,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// <summary>
     /// The cycles, each one checked against the screen before it moves on:
     /// open → wait for the panel → player tab → wait for the picked pieces → press them in one
-    /// round → check which left → press the rest again (three presses at most) → close → wait
+    /// round → check which left → press the rest again (up to MaxPresses) → close → wait
     /// for the panel to be gone. Anything the screen does not confirm in time stops the run
     /// rather than carrying on into an odd count.
     /// </summary>

@@ -147,7 +147,7 @@ public sealed class FedSuitCycleTests
     }
 
     /// <summary>
-    /// A piece that will not leave — here because the transmitter is full — gets three presses and
+    /// A piece that will not leave — here because the transmitter is full — gets eight presses and
     /// then stops the run. Carrying on would only stack up odd counts, and the toast says what
     /// was moved so the player can check it against the transmitter.
     /// </summary>
@@ -161,7 +161,7 @@ public sealed class FedSuitCycleTests
 
         Assert.Equal(7, rig.Game.InTransmitter);
         Assert.Equal(2, rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkF }));
-        Assert.Equal(5 + 2 + (3 * 3), rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkT }));
+        Assert.Equal(5 + 2 + (3 * 8), rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkT }));
         Assert.Contains(rig.Toasts, t =>
             t.Level == "warning" && t.Message.Contains("did not move") && t.Message.Contains("cycles: 1, pieces moved: 7"));
     }
