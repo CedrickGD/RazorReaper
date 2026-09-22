@@ -176,8 +176,19 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// </summary>
     private const int SetTimeoutMs = 1000;
 
-    /// <summary>How long the pressed pieces get to leave their slots, per round of presses.</summary>
+    /// <summary>
+    /// How long the pressed pieces get to leave their slots, per round of presses, while none of
+    /// them has gone yet — the server has not answered. The lag buffer is added to it.
+    /// </summary>
     private const int LeaveTimeoutMs = 600;
+
+    /// <summary>
+    /// Once a piece of the round has left, how long the rest may stay unchanged before they count
+    /// as dropped presses and are pressed again. The server answers a round's presses together, so
+    /// a piece still worn this long after its neighbours went was never taken — waiting out
+    /// <see cref="LeaveTimeoutMs"/> for it only slowed every such cycle down.
+    /// </summary>
+    private const int LeaveQuietMs = 150;
 
     /// <summary>How long the panel gets to settle after it opened or closed before the next step.</summary>
     private const int SettleTimeoutMs = 300;
@@ -523,7 +534,8 @@ public sealed class FedSuitMacro : IFedSuitMacro
     /// The cycles, each one checked against the screen before it moves on:
     /// open → wait for the panel → player tab → wait for the picked pieces → press them in one
     /// round → check which left → press the rest again (up to MaxPresses) → close → wait
-    /// for the panel to be gone.
+    /// for the panel to be gone. A run that reached its count opens once more and closes right
+    /// away, so the player ends it wearing a set.
     ///
     /// A piece that did not arrive in time, or did not leave, does not end the run: the pieces
     /// that are there go, the transmitter closes and opens again, and the next cycle presses
@@ -549,26 +561,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
             lock (_gate) _currentCycle = cycle;
             RaiseChanged();
 
-            var (shut, _) = await PollAsync(p, 0, _ => true, ct);
-            if (shut is null) return Outcome.NotOpen;
-
-            await PressAsync(p.OpenVk, ct);
-
-            // A majority of the five, not the first one that differs. The player stands facing a
-            // Tek Transmitter's own particle beam, and that — or wind-blown foliage, or a creature
-            // walking through one sample point — swings a single point's mean past the tolerance
-            // with the inventory still shut. A panel that really opened covers all five.
-            //
-            // ponytail: a difference, not a recognition — it cannot tell an inventory opening from
-            // one our own key press just closed. The close check at the end of every cycle is what
-            // keeps the next open key from ever landing on an open panel. Cycle 1 has no such
-            // check: a run started on an open panel (a stuck stop leaves it open, for the player
-            // to look at) relies on the open key doing nothing there, which reads as
-            // "did not open" — and that toast asks for open inventories to be closed first. Were
-            // the key a toggle in ARK, the close would pass for an open; upgrade path is a
-            // template match on the panel.
-            var (_, opened) = await PollAsync(
-                p, s.WaitAfterOpenMs + lag, now => Majority(now.Means, shut.Means, InventoryOpenedTolerance, differ: true), ct);
+            var (shut, opened) = await OpenAsync(p, ct);
             if (!opened)
             {
                 // Before the tab click on purpose: everything after it is clicks and cursor jumps
@@ -612,8 +605,20 @@ public sealed class FedSuitMacro : IFedSuitMacro
                 await MoveAsync(p.Tab, ct);
                 await DelayAsync(HoverSettleMs, ct);
 
+                // Done when every pressed piece left — or when some did and the rest have sat
+                // unchanged for LeaveQuietMs since: those presses were dropped, and the next round
+                // presses them again now instead of after the full timeout. Nothing gone yet is the
+                // server still thinking, and gets the whole LeaveTimeoutMs + lag.
                 var check = pending.ToArray();
-                var (after, _) = await PollAsync(p, LeaveTimeoutMs + lag, now => check.All(i => !now.Filled[i]), ct);
+                int gone = 0, quietMs = 0;
+                var (after, _) = await PollAsync(p, LeaveTimeoutMs + lag, now =>
+                {
+                    var left = check.Count(i => !now.Filled[i]);
+                    if (left == check.Length) return true;
+                    if (left != gone) (gone, quietMs) = (left, 0);
+                    else if (gone > 0) quietMs += PollMs;
+                    return quietMs >= LeaveQuietMs;
+                }, ct);
                 if (after is null) continue;
 
                 openLook = after;
@@ -652,19 +657,7 @@ public sealed class FedSuitMacro : IFedSuitMacro
                     cycle, pending.Count, failed.Count - pending.Count);
             }
 
-            await PressAsync(p.ExitVk, ct);
-
-            // Gone from the panel's look, or back to the look from before the open — either one
-            // says the panel is shut. Only the first would miss a camera nudged on close; only the
-            // second would miss a night scene as dark as an empty slot. No lag buffer: closing is
-            // the client's own business, and the poll carries on the moment the panel is gone.
-            var shutLook = shut;
-            var (_, closed) = await PollAsync(
-                p, CloseTimeoutMs,
-                now => (openLook is not null && Majority(now.Means, openLook.Means, InventoryOpenedTolerance, differ: true))
-                    || Majority(now.Means, shutLook.Means, InventoryOpenedTolerance, differ: false),
-                ct);
-            if (!closed)
+            if (!await CloseAsync(p, shut!, openLook, ct))
             {
                 _logger.LogWarning("Fed-Suit stopped itself — the transmitter did not close");
                 return Outcome.NotClosed;
@@ -672,10 +665,76 @@ public sealed class FedSuitMacro : IFedSuitMacro
 
             // The fade-out, again: the next cycle's "before" look has to be the world, not the panel on its way out.
             await SettleAsync(p, 0, ct);
-            if (s.Runs <= 0 || cycle < s.Runs) await DelayAsync(s.RepeatDelayMs, ct);
+            await DelayAsync(s.RepeatDelayMs, ct);
+        }
+
+        // Only a run that reached its count gets here — every stop rule returns above, and an
+        // endless run only ends by a stop. The last cycle took the suit off; one more open puts a
+        // fresh one on, and it closes straight away with nothing pressed, so the player walks off
+        // wearing it. Not counted, and a transmitter that will not open again is no warning: the
+        // run itself went fine.
+        var (lastShut, lastOpened) = await OpenAsync(p, ct);
+        if (!lastOpened)
+        {
+            _logger.LogInformation("Fed-Suit finished without a last set — the transmitter did not open again");
+            return Outcome.Finished;
+        }
+
+        var panel = await SettleAsync(p, lag, ct);
+        if (!await CloseAsync(p, lastShut!, panel, ct))
+        {
+            _logger.LogWarning("Fed-Suit finished, but the transmitter did not close after the last set");
+            return Outcome.NotClosed;
         }
 
         return Outcome.Finished;
+    }
+
+    /// <summary>
+    /// Presses the open key on a shut screen and waits for the panel. Returns the look from before
+    /// the key — the close check goes back to it — and whether the panel came up.
+    /// </summary>
+    private async Task<(SlotsLook? Shut, bool Opened)> OpenAsync(CyclePlan p, CancellationToken ct)
+    {
+        var (shut, _) = await PollAsync(p, 0, _ => true, ct);
+        if (shut is null) return (null, false);
+
+        await PressAsync(p.OpenVk, ct);
+
+        // A majority of the five, not the first one that differs. The player stands facing a
+        // Tek Transmitter's own particle beam, and that — or wind-blown foliage, or a creature
+        // walking through one sample point — swings a single point's mean past the tolerance
+        // with the inventory still shut. A panel that really opened covers all five.
+        //
+        // ponytail: a difference, not a recognition — it cannot tell an inventory opening from
+        // one our own key press just closed. The close check at the end of every cycle is what
+        // keeps the next open key from ever landing on an open panel. Cycle 1 has no such
+        // check: a run started on an open panel (a stuck stop leaves it open, for the player
+        // to look at) relies on the open key doing nothing there, which reads as
+        // "did not open" — and that toast asks for open inventories to be closed first. Were
+        // the key a toggle in ARK, the close would pass for an open; upgrade path is a
+        // template match on the panel.
+        var (_, opened) = await PollAsync(
+            p, p.Settings.WaitAfterOpenMs + p.Settings.LagBufferMs,
+            now => Majority(now.Means, shut.Means, InventoryOpenedTolerance, differ: true), ct);
+        return (shut, opened);
+    }
+
+    /// <summary>Presses the exit key and waits for the panel to be gone; false when it stayed.</summary>
+    private async Task<bool> CloseAsync(CyclePlan p, SlotsLook shut, SlotsLook? openLook, CancellationToken ct)
+    {
+        await PressAsync(p.ExitVk, ct);
+
+        // Gone from the panel's look, or back to the look from before the open — either one
+        // says the panel is shut. Only the first would miss a camera nudged on close; only the
+        // second would miss a night scene as dark as an empty slot. No lag buffer: closing is
+        // the client's own business, and the poll carries on the moment the panel is gone.
+        var (_, closed) = await PollAsync(
+            p, CloseTimeoutMs,
+            now => (openLook is not null && Majority(now.Means, openLook.Means, InventoryOpenedTolerance, differ: true))
+                || Majority(now.Means, shut.Means, InventoryOpenedTolerance, differ: false),
+            ct);
+        return closed;
     }
 
     /// <summary>

@@ -92,7 +92,6 @@ public sealed class FedSuitCycleTests
         await rig.RunToEnd();
 
         Assert.Equal(4, rig.Game.InTransmitter);
-        Assert.Equal(new[] { true, false, true, false, true }, rig.Game.Worn);
 
         // The cursor never even visits the three that stay on.
         var slots = ArkInventoryLayout.ArmorSlots(FullHd, 1.0);
@@ -182,7 +181,6 @@ public sealed class FedSuitCycleTests
 
         // Cycle 1 moves four, cycle 2 the old chest and four new pieces, cycle 3 a whole suit.
         Assert.Equal(14, rig.Game.InTransmitter);
-        Assert.Equal(new[] { false, false, false, false, false }, rig.Game.Worn);
         Assert.Equal(0, rig.Game.Violations);
         Assert.Contains(rig.Toasts, t => t.Level == "info" && t.Message.Contains("cycles: 3, pieces moved: 14"));
     }
@@ -222,6 +220,91 @@ public sealed class FedSuitCycleTests
         Assert.True(rig.Game.Worn[4]);
         Assert.Contains(rig.Toasts, t =>
             t.Level == "warning" && t.Message.Contains("same piece") && t.Message.Contains("cycles: 3, pieces moved: 12"));
+    }
+
+    /// <summary>
+    /// The owner's ask after ten clean runs: the last cycle takes the suit off, so a run that
+    /// reached its count opens the transmitter once more and closes it straight away — nothing
+    /// clicked, nothing transferred, nothing counted — and the player walks off wearing a set.
+    /// </summary>
+    [Fact]
+    public async Task AFinishedRunEndsWithTheNextSetOnThePlayer()
+    {
+        var rig = new Rig();
+        rig.Configure(s => s.Runs = 2);
+
+        await rig.RunToEnd();
+
+        var events = rig.Input.Events.ToList();
+        var lastOpen = events.FindLastIndex(e => e is SimulatedInput.KeyPress { VirtualKey: VkF });
+        Assert.Equal(3, events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkF }));
+        Assert.DoesNotContain(events.Skip(lastOpen), e => e is SimulatedInput.Click or SimulatedInput.KeyPress { VirtualKey: VkT });
+        Assert.Contains(events.Skip(lastOpen), e => e is SimulatedInput.KeyPress { VirtualKey: VkEsc });
+
+        Assert.False(rig.Game.Open);
+        Assert.Equal(new[] { true, true, true, true, true }, rig.Game.Worn);
+        Assert.Equal(10, rig.Game.InTransmitter);
+        Assert.Equal(0, rig.Game.Violations);
+        Assert.Contains(rig.Toasts, t => t.Level == "info" && t.Message.Contains("cycles: 2, pieces moved: 10"));
+    }
+
+    /// <summary>A transmitter that will not open for the last set ends the run quietly: it went fine.</summary>
+    [Fact]
+    public async Task ALastSetThatDoesNotOpenFinishesWithoutAWarning()
+    {
+        var rig = new Rig();
+        rig.Game.MaxOpens = 2;
+        rig.Configure(s => s.Runs = 2);
+
+        await rig.RunToEnd();
+
+        Assert.Equal(10, rig.Game.InTransmitter);
+        Assert.DoesNotContain(rig.Toasts, t => t.Level == "warning");
+        Assert.Contains(rig.Toasts, t => t.Level == "info" && t.Message.Contains("cycles: 2, pieces moved: 10"));
+    }
+
+    /// <summary>
+    /// The owner's other ask: a dropped press was only pressed again after the whole leave timeout.
+    /// Once its neighbours have gone, a piece that sits unchanged for the short quiet window is
+    /// pressed again — counted in the simulated time the macro waited, not the wall clock.
+    /// </summary>
+    [Fact]
+    public async Task ADroppedPressIsPressedAgainOnceTheOthersHaveGone()
+    {
+        var rig = new Rig();
+        rig.Game.DroppedPresses.Add(3); // the trousers, in the first round
+        rig.Configure(s => s.Runs = 1);
+
+        await rig.RunToEnd();
+
+        var events = rig.Input.Events.ToList();
+        var presses = Enumerable.Range(0, events.Count)
+            .Where(i => events[i] is SimulatedInput.KeyPress { VirtualKey: VkT }).ToList();
+        Assert.Equal(6, presses.Count);
+
+        // Press delay, hover on the tab, the quiet window, hover on the slot: 300 ms. The flat
+        // wait for every piece made it 750.
+        var waited = events.Take(presses[5]).Skip(presses[4] + 1).OfType<SimulatedInput.Delay>().Sum(d => d.Ms);
+        Assert.InRange(waited, 150, 400);
+        Assert.Equal(5, rig.Game.InTransmitter);
+    }
+
+    /// <summary>
+    /// A slow server answers the whole round late and all at once. Nothing has left yet, so that
+    /// is no dropped press: no piece is pressed a second time.
+    /// </summary>
+    [Fact]
+    public async Task ASlowServerIsNotPressedAgainEarly()
+    {
+        var rig = new Rig();
+        rig.Game.LeavesAfterCaptures = 10; // 300 ms of polling, twice the quiet window
+        rig.Configure(s => s.Runs = 2);
+
+        await rig.RunToEnd();
+
+        Assert.Equal(10, rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkT }));
+        Assert.Equal(10, rig.Game.InTransmitter);
+        Assert.Equal(0, rig.Game.Violations);
     }
 
     [Fact]
@@ -458,6 +541,7 @@ public sealed class FedSuitCycleTests
         private int _capturesSinceOpen;
         private bool _setPending;
         private int _closingIn = -1;
+        private readonly Dictionary<int, int> _leavingIn = new();
 
         public FakeTransmitter(RecordingInputSimulator input, FakeScreenSampler screen, Rectangle client, double uiScale)
         {
@@ -481,6 +565,12 @@ public sealed class FedSuitCycleTests
         public int Capacity { get; set; } = 100;
 
         public bool OpenKeyWorks { get; set; } = true;
+
+        /// <summary>Opens after which the open key does nothing any more.</summary>
+        public int MaxOpens { get; set; } = int.MaxValue;
+
+        /// <summary>Captures after a transfer press before the piece is gone from its slot.</summary>
+        public int LeavesAfterCaptures { get; set; }
 
         /// <summary>Transfer presses (1-based, counted over the whole run) the game does nothing with.</summary>
         public HashSet<int> DroppedPresses { get; } = new();
@@ -506,7 +596,7 @@ public sealed class FedSuitCycleTests
             {
                 case SimulatedInput.KeyPress { VirtualKey: VkF }:
                     if (Open) { Violations++; break; }
-                    if (!OpenKeyWorks) break;
+                    if (!OpenKeyWorks || _opens >= MaxOpens) break;
                     Open = true;
                     _opens++;
                     _playerTab = false;
@@ -536,10 +626,16 @@ public sealed class FedSuitCycleTests
                     var slot = Array.IndexOf(_slots, _cursor);
                     if (slot < 0 || !Worn[slot] || _moved >= Capacity) break;
                     if (StuckForOpens.TryGetValue(slot, out var stuck) && _opens <= stuck) break;
-                    Worn[slot] = false;
-                    Interlocked.Increment(ref _moved);
+                    if (LeavesAfterCaptures > 0) { _leavingIn.TryAdd(slot, LeavesAfterCaptures); break; }
+                    Leave(slot);
                     break;
             }
+        }
+
+        private void Leave(int slot)
+        {
+            Worn[slot] = false;
+            Interlocked.Increment(ref _moved);
         }
 
         private void Close()
@@ -551,6 +647,8 @@ public sealed class FedSuitCycleTests
         private ScreenCapture Render(Rectangle region)
         {
             if (_closingIn > 0 && --_closingIn == 0) Close();
+            foreach (var slot in _leavingIn.Keys.ToList())
+                if (--_leavingIn[slot] == 0) { _leavingIn.Remove(slot); Leave(slot); }
             if (Open && _setPending && ++_capturesSinceOpen > SetArrivesAfterCaptures)
             {
                 for (var i = 0; i < Worn.Length; i++)
