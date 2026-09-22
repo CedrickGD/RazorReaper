@@ -210,6 +210,25 @@ public sealed class FedSuitCycleTests
     }
 
     /// <summary>
+    /// A run started again right after a stuck stop, which leaves the transmitter open on the
+    /// player's tab. The open key does nothing to an open panel, so the screen does not change
+    /// and the run ends before a single click or transfer — the toast asks to close it first.
+    /// </summary>
+    [Fact]
+    public async Task ARunStartedOnAnOpenTransmitterStopsBeforeTheTabClick()
+    {
+        var rig = new Rig();
+        rig.Game.LeaveOpen();
+
+        await rig.RunToEnd();
+
+        Assert.Equal(1, rig.Input.Events.Count(e => e is SimulatedInput.KeyPress { VirtualKey: VkF }));
+        Assert.DoesNotContain(rig.Input.Events, e => e is SimulatedInput.Click or SimulatedInput.KeyPress { VirtualKey: VkT });
+        Assert.Equal(0, rig.Game.InTransmitter);
+        Assert.Contains(rig.Toasts, t => t.Level == "warning" && t.Message.Contains("did not open"));
+    }
+
+    /// <summary>
     /// The answer a live screen actually gives, between "all black" and "all white": the
     /// transmitter's own particle beam — or wind-blown foliage, or a creature walking past — moves
     /// one of the five sample points while the inventory is still shut. One point out of five is
@@ -391,6 +410,9 @@ public sealed class FedSuitCycleTests
         }
 
         public bool Open { get; private set; }
+
+        /// <summary>The state a stuck stop leaves behind: the panel open on the player's tab.</summary>
+        public void LeaveOpen() => (Open, _playerTab) = (true, true);
 
         /// <summary>Which of the five slots hold a piece, in the layout's slot order.</summary>
         public bool[] Worn { get; } = [true, true, true, true, true];

@@ -536,7 +536,12 @@ public sealed class FedSuitMacro : IFedSuitMacro
             //
             // ponytail: a difference, not a recognition — it cannot tell an inventory opening from
             // one our own key press just closed. The close check at the end of every cycle is what
-            // keeps the next open key from ever landing on an open panel.
+            // keeps the next open key from ever landing on an open panel. Cycle 1 has no such
+            // check: a run started on an open panel (a stuck stop leaves it open, for the player
+            // to look at) relies on the open key doing nothing there, which reads as
+            // "did not open" — and that toast asks for open inventories to be closed first. Were
+            // the key a toggle in ARK, the close would pass for an open; upgrade path is a
+            // template match on the panel.
             var (_, opened) = await PollAsync(
                 p, s.WaitAfterOpenMs + lag, now => Majority(now, shut, InventoryOpenedTolerance, differ: true), ct);
             if (!opened)
