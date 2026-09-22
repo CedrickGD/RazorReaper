@@ -214,78 +214,57 @@
                 }
                 else if (_selected is TurretManagerScript turret)
                 {
-                    <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.turret.threshold.desc")">
-                        <input class="script-input" type="number" min="50" max="100" value="@turret.MatchThresholdPercent" @onchange="SetTurretThreshold" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.field.transferkey")" Description="@Localizer.T("scripts.turret.transferkey.desc")">
-                        <input class="script-input" value="@turret.TransferKey" @onchange="SetTurretKey" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.turret.presses")" Description="@Localizer.T("scripts.turret.presses.desc")">
-                        <input class="script-input" type="number" min="1" max="20" value="@turret.TransferPresses" @onchange="SetTurretPresses" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.field.scaninterval")" Description="@Localizer.T("scripts.desc.scaninterval")">
-                        <input class="script-input" type="number" min="100" max="5000" value="@turret.ScanIntervalMs" @onchange="SetTurretScan" />
-                    </SettingRow>
-                }
-                else if (_selected is TurretFillerScript tf)
-                {
-                    @* Said once, above the settings rather than beside one of them: nothing below
-                       changes which stack a press moves — the cursor does, and it is the one thing
-                       this page cannot set. *@
-                    <div class="setting-row-desc" style="margin-bottom: 0.75rem;">@Localizer.T("scripts.turretfill.cursorwarning")</div>
+                    <div class="setting-row-desc" style="margin-bottom: 0.75rem;">@Localizer.T("scripts.turret.howto")</div>
 
-                    <SettingRow Title="@Localizer.T("scripts.turretfill.mode")" Description="@Localizer.T("scripts.turretfill.mode.desc")">
-                        <Dropdown Value="@tf.Mode.ToString()" ValueChanged="SetTurretFillMode" Options="TurretFillModeOptions" />
+                    <SettingRow Title="@Localizer.T("scripts.turret.fill")" Description="@Localizer.T("scripts.turret.fill.desc")">
+                        <Dropdown Value="@turret.Fill.ToString()" ValueChanged="SetTurretFill" Options="TurretFillOptions" />
                     </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.turretfill.amount")" Description="@Localizer.T("scripts.turretfill.amount.desc")">
-                        <Dropdown Value="@tf.Amount.ToString()" ValueChanged="SetTurretFillAmount" Options="TurretFillAmountOptions" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.turretfill.presses")" Description="@Localizer.T("scripts.turretfill.presses.desc")">
-                        <input class="script-input" type="number" min="1" max="20" value="@tf.PressesPerTurret" @onchange="SetTurretFillPresses" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.field.transferkey")" Description="@Localizer.T("scripts.turretfill.transferkey.desc")">
-                        <input class="script-input" value="@tf.TransferKey" @onchange="SetTurretFillKey" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.turretfill.pressdelay")" Description="@Localizer.T("scripts.turretfill.pressdelay.desc")">
-                        <input class="script-input" type="number" min="60" max="2000" value="@tf.PressDelayMs" @onchange="SetTurretFillDelay" />
-                    </SettingRow>
-                    @* The same sentence Turret Manager's threshold carries, because it is the same
-                       question about the same rectangle. *@
-                    <SettingRow Title="@Localizer.T("scripts.field.matchthreshold")" Description="@Localizer.T("scripts.turret.threshold.desc")">
-                        <input class="script-input" type="number" min="50" max="100" value="@tf.MatchThresholdPercent" @onchange="SetTurretFillThreshold" />
-                    </SettingRow>
-                    @* Invariant out and invariant back in: this machine is de-DE, and a field
-                       rendered as "0,20" is a field the control empties on the next repaint. *@
-                    <SettingRow Title="@Localizer.T("scripts.turretfill.changethreshold")" Description="@Localizer.T("scripts.turretfill.changethreshold.desc")">
-                        <input class="script-input" type="number" min="0.02" max="10" step="0.01"
-                               value="@tf.ChangeThresholdPercent.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
-                               @onchange="SetTurretFillChange" />
-                    </SettingRow>
-                    <SettingRow Title="@Localizer.T("scripts.turretfill.usefilter")" Description="@Localizer.T("scripts.turretfill.usefilter.desc")">
-                        <Switch Value="tf.UseFilter" ValueChanged="SetTurretFillUseFilter" />
-                    </SettingRow>
-                    @if (tf.Filtering)
+                    @* Transfer All asks "are you sure" while ARK's item tooltips are on, and the
+                       script cannot answer that dialog without reading it — so it says so here,
+                       once, instead of a toast on every turret. *@
+                    @if (turret.Fill == TurretFill.Max && turret.TooltipsOn)
                     {
-                        <SettingRow Title="@Localizer.T("scripts.turretfill.filtertext")" Description="@Localizer.T("scripts.turretfill.filtertext.desc")">
-                            <input class="script-input" value="@tf.FilterText" @onchange="SetTurretFillText" />
+                        <div class="setting-row-desc turret-hint">@Localizer.T("scripts.turret.tooltiphint")</div>
+                    }
+                    @if (turret.Fill == TurretFill.Stacks)
+                    {
+                        <SettingRow Title="@Localizer.T("scripts.turret.bulletstacks")" Description="@Localizer.T("scripts.turret.bulletstacks.desc")">
+                            <input class="script-input" type="number" min="1" max="100" value="@turret.BulletStacks" @onchange="SetTurretBulletStacks" />
                         </SettingRow>
-                        <SettingRow Title="@Localizer.T("scripts.turretfill.settle")" Description="@Localizer.T("scripts.turretfill.settle.desc")">
-                            <input class="script-input" type="number" min="100" max="2000" value="@tf.FilterSettleMs" @onchange="SetTurretFillSettle" />
+                        <SettingRow Title="@Localizer.T("scripts.turret.shardstacks")" Description="@Localizer.T("scripts.turret.shardstacks.desc")">
+                            <input class="script-input" type="number" min="1" max="100" value="@turret.ShardStacks" @onchange="SetTurretShardStacks" />
                         </SettingRow>
-                        @* Two points, and they stay here rather than on the calibration card
-                           below: that card is about the rectangle, and these two are only asked
-                           for while the filter is on — by the switch above or by the mode. The
-                           countdown still lands in its status line, which is the one place this
-                           page reports a capture. *@
-                        <SettingRow Title="@Localizer.T("scripts.turretfill.point.search")" Description="@PointLine(tf, TurretFillerScript.SearchPointName)">
-                            <button class="btn btn-secondary" @onclick="() => CaptureTurretFillPoint(TurretFillerScript.SearchPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.capture")</button>
-                            <button class="btn btn-secondary" @onclick="() => tf.ClearPoint(TurretFillerScript.SearchPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.clear")</button>
-                        </SettingRow>
-                        <SettingRow Title="@Localizer.T("scripts.turretfill.point.slot")" Description="@PointLine(tf, TurretFillerScript.SlotPointName)">
-                            <button class="btn btn-secondary" @onclick="() => CaptureTurretFillPoint(TurretFillerScript.SlotPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.capture")</button>
-                            <button class="btn btn-secondary" @onclick="() => tf.ClearPoint(TurretFillerScript.SlotPointName)" disabled="@_calibrating">@Localizer.T("scripts.turretfill.point.clear")</button>
+                        <SettingRow Title="@Localizer.T("scripts.field.transferkey")" Description="@Localizer.T("scripts.turret.transferkey.desc")">
+                            <input class="script-input" value="@turret.TransferKey" @onchange="SetTurretKey" />
                         </SettingRow>
                     }
+                    <SettingRow Title="@Localizer.T("scripts.fed.lagbuffer")" Description="@Localizer.T("scripts.turret.lagbuffer.desc")">
+                        <input class="script-input" type="number" min="0" max="1000" value="@turret.LagBufferMs" @onchange="SetTurretLagBuffer" />
+                    </SettingRow>
+
+                    var (bulletPlan, shardPlan) = turret.Plan();
+                    <div class="turret-calc">
+                        <div class="setting-row-title">@Localizer.T("scripts.turret.calc.title")</div>
+                        <div class="setting-row-desc">@Localizer.T("scripts.turret.calc.desc")</div>
+                        <div class="turret-calc-cols">
+                            <div class="turret-calc-col">
+                                <div class="turret-calc-head">@Localizer.T("scripts.turret.calc.heavy")</div>
+                                <label>@Localizer.T("scripts.turret.calc.turrets")<input class="script-input" type="number" min="0" value="@turret.CalcHeavyTurrets" @onchange="e => SetCalc(e, (t, v) => t.CalcHeavyTurrets = v)" /></label>
+                                <label>@Localizer.T("scripts.turret.calc.bullets")<input class="script-input" type="number" min="0" value="@turret.CalcBullets" @onchange="e => SetCalc(e, (t, v) => t.CalcBullets = v)" /></label>
+                                <label>@Localizer.T("scripts.turret.calc.stacksize")<input class="script-input" type="number" min="1" value="@turret.CalcBulletStack" @onchange="e => SetCalc(e, (t, v) => t.CalcBulletStack = v)" /></label>
+                                <div class="turret-calc-out">@CalcLines(bulletPlan, turret.CalcHeavyTurrets, turret.BulletStacks)</div>
+                            </div>
+                            <div class="turret-calc-col">
+                                <div class="turret-calc-head">@Localizer.T("scripts.turret.calc.tek")</div>
+                                <label>@Localizer.T("scripts.turret.calc.turrets")<input class="script-input" type="number" min="0" value="@turret.CalcTekTurrets" @onchange="e => SetCalc(e, (t, v) => t.CalcTekTurrets = v)" /></label>
+                                <label>@Localizer.T("scripts.turret.calc.shards")<input class="script-input" type="number" min="0" value="@turret.CalcShards" @onchange="e => SetCalc(e, (t, v) => t.CalcShards = v)" /></label>
+                                <label>@Localizer.T("scripts.turret.calc.stacksize")<input class="script-input" type="number" min="1" value="@turret.CalcShardStack" @onchange="e => SetCalc(e, (t, v) => t.CalcShardStack = v)" /></label>
+                                <div class="turret-calc-out">@CalcLines(shardPlan, turret.CalcTekTurrets, turret.ShardStacks)</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" @onclick="turret.UsePlan"
+                                disabled="@(bulletPlan.StacksPerTurret == 0 && shardPlan.StacksPerTurret == 0)">@Localizer.T("scripts.turret.calc.use")</button>
+                    </div>
                 }
                 else if (_selected is FlakScript flak)
                 {
@@ -698,7 +677,6 @@
         InvSizeScript => Localizer.T("scripts.desc.invsize"),
         AntiAfkScript => Localizer.T("scripts.desc.antiafk"),
         TurretManagerScript => Localizer.T("scripts.desc.turret"),
-        TurretFillerScript => Localizer.T("scripts.desc.turretfill"),
         FlakScript => Localizer.T("scripts.desc.flak"),
         DinoReadyScript => Localizer.T("scripts.desc.dinoready"),
         CraftingScript => Localizer.T("scripts.desc.crafting"),
@@ -1069,39 +1047,29 @@
     }
 
 
-    private void SetTurretThreshold(ChangeEventArgs e) { if (_selected is TurretManagerScript t && double.TryParse(e.Value?.ToString(), out var v)) { t.MatchThresholdPercent = v; t.SaveSettings(); } }
+    private void SetTurretFill(string value) { if (_selected is TurretManagerScript t && Enum.TryParse<TurretFill>(value, out var f)) { t.Fill = f; t.SaveSettings(); } }
+    private void SetTurretBulletStacks(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.BulletStacks = v; t.SaveSettings(); } }
+    private void SetTurretShardStacks(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.ShardStacks = v; t.SaveSettings(); } }
     private void SetTurretKey(ChangeEventArgs e) { if (_selected is TurretManagerScript t) { t.TransferKey = e.Value?.ToString() ?? "T"; t.SaveSettings(); } }
-    private void SetTurretPresses(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.TransferPresses = v; t.SaveSettings(); } }
-    private void SetTurretScan(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.ScanIntervalMs = v; t.SaveSettings(); } }
+    private void SetTurretLagBuffer(ChangeEventArgs e) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.LagBufferMs = v; t.SaveSettings(); } }
+    private void SetCalc(ChangeEventArgs e, Action<TurretManagerScript, int> set) { if (_selected is TurretManagerScript t && int.TryParse(e.Value?.ToString(), out var v)) { set(t, v); t.SaveSettings(); } }
 
-    private void SetTurretFillMode(string value) { if (_selected is TurretFillerScript t && Enum.TryParse<TurretFillMode>(value, out var m)) { t.Mode = m; t.SaveSettings(); } }
-    private void SetTurretFillAmount(string value) { if (_selected is TurretFillerScript t && Enum.TryParse<TurretFillAmount>(value, out var a)) { t.Amount = a; t.SaveSettings(); } }
-    private void SetTurretFillPresses(ChangeEventArgs e) { if (_selected is TurretFillerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.PressesPerTurret = v; t.SaveSettings(); } }
-    private void SetTurretFillKey(ChangeEventArgs e) { if (_selected is TurretFillerScript t) { t.TransferKey = e.Value?.ToString() ?? "T"; t.SaveSettings(); } }
-    private void SetTurretFillDelay(ChangeEventArgs e) { if (_selected is TurretFillerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.PressDelayMs = v; t.SaveSettings(); } }
-    private void SetTurretFillThreshold(ChangeEventArgs e) { if (_selected is TurretFillerScript t && double.TryParse(e.Value?.ToString(), out var v)) { t.MatchThresholdPercent = v; t.SaveSettings(); } }
-
-    // The one field on this page that steps by a fraction, so the one that has to read itself
-    // back invariantly — the browser sends "0.2" whatever the machine's culture says.
-    private void SetTurretFillChange(ChangeEventArgs e)
+    private IReadOnlyList<Dropdown.Option> TurretFillOptions => new List<Dropdown.Option>
     {
-        if (_selected is TurretFillerScript t && double.TryParse(e.Value?.ToString(),
-                System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
-        {
-            t.ChangeThresholdPercent = v;
-            t.SaveSettings();
-        }
+        new(nameof(TurretFill.Max), Localizer.T("scripts.turret.fill.max")),
+        new(nameof(TurretFill.Stacks), Localizer.T("scripts.turret.fill.stacks")),
+    };
+
+    /// <summary>The calculator's two answers for one ammo type: the even split, and how far the Stacks setting goes.</summary>
+    private string CalcLines(AmmoPlan plan, int turrets, int stacksEach)
+    {
+        if (turrets == 0) return Localizer.T("scripts.turret.calc.noturrets");
+        var even = Localizer.T("scripts.turret.calc.even", plan.StacksPerTurret, plan.AmmoPerTurret, plan.Leftover);
+        var cover = plan.Missing == 0
+            ? Localizer.T("scripts.turret.calc.cover.all", stacksEach, turrets)
+            : Localizer.T("scripts.turret.calc.cover", stacksEach, plan.TurretsCovered, turrets, plan.Missing);
+        return $"{even} · {cover}";
     }
-
-    private void SetTurretFillUseFilter(bool value) { if (_selected is TurretFillerScript t) { t.UseFilter = value; t.SaveSettings(); } }
-    private void SetTurretFillText(ChangeEventArgs e) { if (_selected is TurretFillerScript t) { t.FilterText = e.Value?.ToString() ?? ""; t.SaveSettings(); } }
-    private void SetTurretFillSettle(ChangeEventArgs e) { if (_selected is TurretFillerScript t && int.TryParse(e.Value?.ToString(), out var v)) { t.FilterSettleMs = v; t.SaveSettings(); } }
-
-    /// <summary>Where a calibrated point sits, or what to do about it not existing yet.</summary>
-    private string PointLine(TurretFillerScript filler, string name)
-        => filler.TryGetPoint(name, out var point)
-            ? Localizer.T("scripts.turretfill.point.set", point.X, point.Y)
-            : Localizer.T("scripts.turretfill.point.notset");
 
     /// <summary>The line under "Last read": what was seen, and what the script made of it.</summary>
     private string FlakReadingHint(FlakScript f)
@@ -1158,21 +1126,6 @@
         new(nameof(CraftingMode.Walk), Localizer.T("scripts.craft.mode.walk")),
     };
 
-    // Same shape: the value stays the enum name the Set handler parses, and only the label moves.
-    private IReadOnlyList<Dropdown.Option> TurretFillModeOptions => new List<Dropdown.Option>
-    {
-        new(nameof(TurretFillMode.EvenSplit), Localizer.T("scripts.turretfill.mode.evensplit")),
-        new(nameof(TurretFillMode.Fill), Localizer.T("scripts.turretfill.mode.fill")),
-        new(nameof(TurretFillMode.FilterOnly), Localizer.T("scripts.turretfill.mode.filteronly")),
-    };
-
-    private IReadOnlyList<Dropdown.Option> TurretFillAmountOptions => new List<Dropdown.Option>
-    {
-        new(nameof(TurretFillAmount.WholeStack), Localizer.T("scripts.turretfill.amount.stack")),
-        new(nameof(TurretFillAmount.HalfStack), Localizer.T("scripts.turretfill.amount.half")),
-        new(nameof(TurretFillAmount.SingleItem), Localizer.T("scripts.turretfill.amount.single")),
-    };
-
     private void SetCraftMode(string value) { if (_selected is CraftingScript c && Enum.TryParse<CraftingMode>(value, out var m)) { c.Mode = m; c.SaveSettings(); } }
     private void SetCraftKey(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.CraftKey = e.Value?.ToString() ?? "E"; c.SaveSettings(); } }
     private void SetCraftAccess(ChangeEventArgs e) { if (_selected is CraftingScript c) { c.AccessKey = e.Value?.ToString() ?? "F"; c.SaveSettings(); } }
@@ -1196,27 +1149,6 @@
             this.DispatchRender(() => InvokeAsync(StateHasChanged));
         });
         try { await cal.CalibrateRegionAsync(progress); }
-        finally
-        {
-            _calibrating = false;
-            _calStatus = "";
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    // The region flow one control down, with the countdown in the same status line: a point is
-    // captured where the cursor is standing when it runs out, so the only thing on screen has to
-    // be how long is left.
-    private async Task CaptureTurretFillPoint(string name)
-    {
-        if (_selected is not TurretFillerScript filler) return;
-        _calibrating = true;
-        var countdown = new Progress<int>(seconds =>
-        {
-            _calStatus = Localizer.T("scripts.turretfill.point.countdown", seconds);
-            this.DispatchRender(() => InvokeAsync(StateHasChanged));
-        });
-        try { await filler.CapturePointAsync(name, countdown); }
         finally
         {
             _calibrating = false;

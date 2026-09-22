@@ -452,3 +452,52 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Turret Manager: the tooltip hint is a caution, not an error — amber text, no box. */
+.scripts-detail .turret-hint {
+    color: var(--accent-orange-soft);
+}
+
+/* The ammo calculator: one column per ammo type, inputs right-aligned like the rows above. */
+.turret-calc {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem 0.7rem;
+}
+
+.turret-calc-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.5rem 1rem;
+}
+
+.turret-calc-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+    .turret-calc-col label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+.turret-calc-head {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.turret-calc-out {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--accent-purple-light);
+}
+
+.turret-calc .btn {
+    align-self: flex-start;
+}

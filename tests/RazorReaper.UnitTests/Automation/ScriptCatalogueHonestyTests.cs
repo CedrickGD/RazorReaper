@@ -14,6 +14,8 @@ namespace RazorReaper.UnitTests.Automation;
 /// and Crafting in Walk mode. They work when the game and the server keep up, and when those lag
 /// they send exactly the same keys, change nothing, and report a clean run. From the page there
 /// was no way to tell which kind of script you had picked until you had watched one fail.
+/// Turret Manager has since learned to read the turret it fills, and stays marked until that
+/// reading is proven on a real turret.
 ///
 /// Both halves are pinned: which scripts declare it, and that the page actually renders the chip
 /// and the line. A flag nothing draws is the same silence as no flag at all.
@@ -32,20 +34,6 @@ public sealed class ScriptCatalogueHonestyTests
         Assert.True(turret.IsExperimental);
         Assert.True(download.IsExperimental);
         Assert.True(fastTp.IsExperimental);
-    }
-
-    /// <summary>
-    /// The Turret Filler checks more than those four — pixels in the calibrated rectangle have to
-    /// move for a press to count — and it is still marked, because what moved and which way is
-    /// exactly what that check cannot say. A stack taken out of the turret scores the same as one
-    /// put in.
-    /// </summary>
-    [Fact]
-    public void AChangeCheckThatCannotSayWhatChangedIsMarkedToo()
-    {
-        using var filler = TurretFiller();
-
-        Assert.True(filler.IsExperimental);
     }
 
     /// <summary>
@@ -190,14 +178,9 @@ public sealed class ScriptCatalogueHonestyTests
         NullLogger<FastTpScript>.Instance);
 
     private static TurretManagerScript Turret() => new(
-        new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
+        new RecordingInputSimulator(), new FakeScreenSampler(), new FakeGameDisplayService(), new FakeArkPathProvider(),
         Gate(), Hotkeys(), Toasts(), Activity(), English(),
         NullLogger<TurretManagerScript>.Instance);
-
-    private static TurretFillerScript TurretFiller() => new(
-        new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),
-        Gate(), Hotkeys(), Toasts(), Activity(), English(),
-        NullLogger<TurretFillerScript>.Instance);
 
     private static CraftingScript Crafting() => new(
         new RecordingInputSimulator(), new FakeScreenSampler(), new FakeCalibrationService(),

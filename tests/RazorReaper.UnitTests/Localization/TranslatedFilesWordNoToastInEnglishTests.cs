@@ -312,7 +312,7 @@ public sealed class TranslatedFilesWordNoToastInEnglishTests
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(18, scripts.Length);
+        Assert.Equal(17, scripts.Length);
         Assert.All(scripts, path => Assert.Contains(path, inRange));
     }
 

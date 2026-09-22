@@ -95,7 +95,7 @@ public sealed class DiagnosticSnapshotServiceTests
             Assert.Contains(key, keys);
         }
 
-        Assert.Equal(18, keys.Count(key => key.StartsWith("script_", StringComparison.Ordinal)));
+        Assert.Equal(17, keys.Count(key => key.StartsWith("script_", StringComparison.Ordinal)));
         Assert.DoesNotContain(reports.SelectMany(report => report.Checks), check => Equals(check.Value, "included"));
     }
 
@@ -306,7 +306,7 @@ public sealed class DiagnosticSnapshotServiceTests
 
         // The route that broke the ticket, and the script keys, still arrive under a stable spelling.
         Assert.Contains(checks, check => check.Key == "route_guides_dino_level");
-        Assert.Equal(18, checks.Count(check => check.Key.StartsWith("script_", StringComparison.Ordinal)));
+        Assert.Equal(17, checks.Count(check => check.Key.StartsWith("script_", StringComparison.Ordinal)));
     }
 
     [Theory]
