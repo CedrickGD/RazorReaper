@@ -78,7 +78,7 @@
                            is the moment the difference is worth knowing. *@
                         @if (_selected.IsExperimental)
                         {
-                            <span class="scripts-exp-chip" title="@Localizer.T("scripts.experimental.note")">@Localizer.T("scripts.experimental")</span>
+                            <span class="scripts-exp-chip" title="@Localizer.T(_selected.ExperimentalNoteKey)">@Localizer.T("scripts.experimental")</span>
                         }
                         @if (!_selected.UsesVision)
                         {
@@ -104,7 +104,7 @@
                    a caveat nobody hovers is a caveat nobody reads. *@
                 @if (_selected.IsExperimental)
                 {
-                    <div class="script-effect-line script-experimental-line">@Localizer.T("scripts.experimental.note")</div>
+                    <div class="script-effect-line script-experimental-line">@Localizer.T(_selected.ExperimentalNoteKey)</div>
                 }
                 @* Where the key defaults in the card below came from. Quiet and always present:
                    a script pressing the wrong key because the scan never ran looks exactly like

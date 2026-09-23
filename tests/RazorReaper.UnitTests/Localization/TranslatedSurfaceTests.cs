@@ -3126,6 +3126,12 @@ public sealed class TranslatedSurfaceTests
             yield return ("DinoLevelGuide.razor", $"dinolevel.step.{step}.head");
             yield return ("DinoLevelGuide.razor", $"dinolevel.step.{step}.detail");
         }
+
+        // The experimental-chip note is read through ExperimentalNoteKey, a per-script virtual
+        // property rather than a literal inside a T( call, so a grep for that shape sees neither
+        // the shared default nor Turret Manager's override.
+        yield return ("AutomationScriptBase.cs", "scripts.experimental.note");
+        yield return ("TurretManagerScript.cs", "scripts.turret.experimental.note");
     }
 
     /// <summary>

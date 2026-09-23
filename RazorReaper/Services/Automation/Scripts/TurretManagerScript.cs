@@ -126,6 +126,12 @@ public sealed class TurretManagerScript : AutomationScriptBase
     /// <summary>Until the owner has watched it fill real turrets, the turret check itself is an inference.</summary>
     public override bool IsExperimental => true;
 
+    /// <summary>
+    /// Unlike the shared note, Turret Manager checks every step — the chip is only up because
+    /// nobody has watched it fill a real turret yet.
+    /// </summary>
+    public override string ExperimentalNoteKey => "scripts.turret.experimental.note";
+
     /// <summary>Follows ARK's Transfer Item unless the player typed a key of their own.</summary>
     public override void FollowArkKeys() => _transferKey.Follow();
 

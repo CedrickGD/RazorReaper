@@ -149,6 +149,13 @@ public abstract class AutomationScriptBase : IDisposable
     /// </summary>
     public virtual bool IsExperimental => false;
 
+    /// <summary>
+    /// The localizer key for the sentence the Scripts page shows under <see cref="IsExperimental"/>'s
+    /// chip. The shared default describes the blind-timing scripts; Turret Manager overrides it,
+    /// because it checks every step and the shared sentence would be false for it.
+    /// </summary>
+    public virtual string ExperimentalNoteKey => "scripts.experimental.note";
+
     /// <summary>Raised whenever state or a script-specific stat changes. May fire on a background thread.</summary>
     public event Action? Changed;
 

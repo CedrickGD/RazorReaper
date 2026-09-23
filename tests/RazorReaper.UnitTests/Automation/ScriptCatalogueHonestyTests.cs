@@ -37,6 +37,26 @@ public sealed class ScriptCatalogueHonestyTests
     }
 
     /// <summary>
+    /// The shared sentence ("runs blind") is true of Astro, Auto Download and Fast TP, but not of
+    /// Turret Manager, which checks every step before it acts. Only Turret Manager gets its own
+    /// note key; the rest keep the base class's default.
+    /// </summary>
+    [Fact]
+    public void OnlyTurretManagerOverridesTheSharedExperimentalNote()
+    {
+        using var astro = Astro();
+        using var turret = Turret();
+        using var download = Download();
+        using var fastTp = FastTp();
+
+        Assert.Equal("scripts.experimental.note", astro.ExperimentalNoteKey);
+        Assert.Equal("scripts.experimental.note", download.ExperimentalNoteKey);
+        Assert.Equal("scripts.experimental.note", fastTp.ExperimentalNoteKey);
+
+        Assert.Equal("scripts.turret.experimental.note", turret.ExperimentalNoteKey);
+    }
+
+    /// <summary>
     /// Crafting is the one that is both. Watcher waits until it can see the station inventory
     /// before it crafts; Walk holds forward for a fixed number of milliseconds and presses where
     /// it hopes the next station is. Marking the whole script would be as wrong as marking none
@@ -78,7 +98,7 @@ public sealed class ScriptCatalogueHonestyTests
 
         // The sentence, not only the tooltip: a caveat nobody hovers is a caveat nobody reads.
         Assert.Contains("script-experimental-line", page, StringComparison.Ordinal);
-        Assert.Contains(@"Localizer.T(""scripts.experimental.note"")", page, StringComparison.Ordinal);
+        Assert.Contains(@"Localizer.T(_selected.ExperimentalNoteKey)", page, StringComparison.Ordinal);
     }
 
     /// <summary>
