@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using RazorReaper.Diagnostics;
-using Xunit.Abstractions;
 
 namespace RazorReaper.UnitTests.Diagnostics;
 
@@ -9,7 +7,7 @@ namespace RazorReaper.UnitTests.Diagnostics;
 /// one fault goes missing — every row carries the number of faults it stands for, so summing
 /// Occurrences reproduces the true count.
 /// </summary>
-public sealed class BackgroundFaultTrackerTests(ITestOutputHelper output)
+public sealed class BackgroundFaultTrackerTests
 {
     [Fact]
     public void ReportsTheFirstOccurrenceInFull()
@@ -514,52 +512,48 @@ public sealed class BackgroundFaultTrackerTests(ITestOutputHelper output)
     /// Until this change every call to RecordRenderDispatch described the frames — before the
     /// dedupe, on whichever thread observed the fault — so a component faulting at Crosshair's
     /// 20 Hz paid a symbol lookup per tick on the thread that draws the UI. Now a repeat costs a
-    /// symbol-free site capture and an interlocked count. Measured here rather than asserted from
-    /// memory; the numbers print with the test output.
+    /// symbol-free site capture and an interlocked count, and never touches the PDB-backed walk
+    /// that describing needs.
+    ///
+    /// This used to time one call to <see cref="BackgroundFaultFrames.DescribeRenderDispatch"/>
+    /// against one repeat call (2,000 iterations, best of 5 rounds) and assert the repeat came in
+    /// faster. It failed about once a night while a game or a build loaded the machine: two
+    /// separately-timed microsecond loops, and the scheduler noise between them was the same size
+    /// as the gap the test was checking for. So instead of timing anything, this asks the question
+    /// the timing was a proxy for — did a repeat perform the walk at all? — directly, with the
+    /// tracker's own seam for that: <see cref="PendingBackgroundFaultReport.IsDescribed"/>, already
+    /// used by <see cref="DescribesTheFramesOnTheReportingPathNotWhereTheFaultWasObserved"/> above.
+    /// Ten thousand repeats on the same key, and the first sighting's bucket is still undescribed —
+    /// no repeat did anything a description would have left a trace of. Deterministic at any load,
+    /// because nothing here is timed.
     /// </summary>
     [Fact]
     public void ARepeatOnTheObservingThreadCostsLessThanOneFrameDescription()
     {
         var exception = ThrowFromFirstSite();
         var tracker = new BackgroundFaultTracker();
-        tracker.RecordRenderDispatch(exception, "Home", "OnTick", stopped: false)!.Describe();
 
-        var describe = Measure(() => BackgroundFaultFrames.DescribeRenderDispatch(exception, "Home", "OnTick"));
-        var repeat = Measure(() => tracker.RecordRenderDispatch(exception, "Home", "OnTick", stopped: false));
-        var capture = Measure(() => BackgroundFaultFrames.CaptureSite(exception));
+        var first = tracker.RecordRenderDispatch(exception, "Home", "OnTick", stopped: false);
+        Assert.NotNull(first);
+        Assert.False(first!.IsDescribed);
 
-        output.WriteLine($"describe (what every repeat used to cost): {describe:F2} us/op");
-        output.WriteLine($"repeat on the observing thread now:        {repeat:F2} us/op");
-        output.WriteLine($"of which the site capture:                 {capture:F2} us/op");
-
-        Assert.True(
-            repeat < describe,
-            $"a repeat ({repeat:F2} us) must cost the observing thread less than describing the frames ({describe:F2} us)");
-    }
-
-    private static double Measure(Func<object?> work)
-    {
-        const int Iterations = 2_000;
-        var best = double.MaxValue;
-
-        for (var run = 0; run < 5; run++)
+        for (var i = 0; i < 10_000; i++)
         {
-            for (var i = 0; i < 100; i++)
-            {
-                work();
-            }
-
-            var watch = Stopwatch.StartNew();
-            for (var i = 0; i < Iterations; i++)
-            {
-                work();
-            }
-
-            watch.Stop();
-            best = Math.Min(best, watch.Elapsed.TotalMilliseconds * 1000 / Iterations);
+            // Same key as `first`, so every one of these is a repeat, folded into its count.
+            Assert.Null(tracker.RecordRenderDispatch(exception, "Home", "OnTick", stopped: false));
         }
 
-        return best;
+        // The claim itself: none of the 10,000 repeats touched the PDB-backed walk. If even one
+        // had described the frames instead of just counting, `first` would already read as
+        // described here — this is the same bucket a repeat and `first` both key onto.
+        Assert.False(
+            first.IsDescribed,
+            "a repeat must cost the observing thread nothing that a frame description would leave behind");
+
+        // And describing still works, exactly once, whenever it is actually asked for.
+        var report = first.Describe();
+        Assert.True(first.IsDescribed);
+        Assert.Contains(nameof(ThrowFromFirstSite), report.TopFrame, StringComparison.Ordinal);
     }
 
     /// <summary>What App does on the pool: finish the row. Null stays null so repeats read as before.</summary>
