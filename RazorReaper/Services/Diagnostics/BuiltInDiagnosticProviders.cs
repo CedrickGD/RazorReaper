@@ -433,7 +433,7 @@ public sealed class FeatureCatalogDiagnosticProvider : IDiagnosticProvider
             "dino-prices" or "oc-bps" or "bosses" or "tp-locations" or "underwater-drops" or "map-mods"
                 => DiagnosticChecks.Pass(Key(route), page.Label, "built-in data ready", detail),
 
-            "building" => DiagnosticChecks.Pass(Key(route), page.Label, "built-in guide ready", detail),
+            "building" or "guides/dino-level" => DiagnosticChecks.Pass(Key(route), page.Label, "built-in guide ready", detail),
             "desync" => DesyncCheck(route, page.Label, state, detail),
             "file-modifier" => StateCheck(route, page.Label, state.ArkRootFound && state.IsAdministrator,
                 $"ready; {state.FileModifierBackups} backups", state.ArkRootFound ? "administrator required" : "ARK install missing", detail),
@@ -447,6 +447,7 @@ public sealed class FeatureCatalogDiagnosticProvider : IDiagnosticProvider
             "troubleshoot" => DiagnosticChecks.Pass(Key(route), page.Label, "diagnostics ready", detail),
             "feedback" => DiagnosticChecks.Pass(Key(route), page.Label, "in-app reports ready", detail),
             "credits" => DiagnosticChecks.Pass(Key(route), page.Label, "support links ready", detail),
+            "account" or "inbox" => DiagnosticChecks.Pass(Key(route), page.Label, "page ready", detail),
             _ => DiagnosticChecks.Unknown(Key(route), page.Label, "state unavailable", detail),
         };
 

@@ -97,6 +97,9 @@ public sealed class DiagnosticSnapshotServiceTests
 
         Assert.Equal(17, keys.Count(key => key.StartsWith("script_", StringComparison.Ordinal)));
         Assert.DoesNotContain(reports.SelectMany(report => report.Checks), check => Equals(check.Value, "included"));
+        // A page without its own arm in the route switch arrives as "unknown" in every support report.
+        Assert.DoesNotContain(reports.SelectMany(report => report.Checks),
+            check => check.Key.StartsWith("route_", StringComparison.Ordinal) && check.Status == "unknown");
     }
 
     [Fact]
