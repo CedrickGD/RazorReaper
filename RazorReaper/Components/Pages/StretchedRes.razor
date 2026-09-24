@@ -365,16 +365,18 @@
 
     /// <summary>
     /// The curated presets are the service's, and so is their English. Spelled out here with
-    /// literal keys because the key scan reads the source, not the running app.
+    /// literal keys because the key scan reads the source, not the running app. A classic keeps
+    /// its own note even at the native height: on a 1080p panel 1440x1080 and 1600x1080 both keep
+    /// it, and one shared label would hide which is which.
     /// </summary>
     private string PresetNote(StretchedPreset preset) => (preset.Width, preset.Height) switch
     {
-        _ when preset.KeepsNativeHeight => Localizer.T("stretchedres.preset.note.nativeheight"),
         (1440, 1080) => Localizer.T("stretchedres.preset.note.1440x1080"),
         (1280, 1024) => Localizer.T("stretchedres.preset.note.1280x1024"),
         (1024, 768) => Localizer.T("stretchedres.preset.note.1024x768"),
         (1600, 1080) => Localizer.T("stretchedres.preset.note.1600x1080"),
         (1280, 960) => Localizer.T("stretchedres.preset.note.1280x960"),
+        _ when preset.KeepsNativeHeight => Localizer.T("stretchedres.preset.note.nativeheight"),
         _ => preset.Note
     };
 

@@ -119,6 +119,27 @@ public sealed class StretchedResPageTests
         Assert.Equal(2, Regex.Matches(page, @"T\(""stretchedres\.monitor\.fallback""").Count);
     }
 
+    /// <summary>
+    /// A switch takes its first matching arm. On a 1080p panel 1440x1080 and 1600x1080 both keep
+    /// the native height, so a native-height arm ahead of the named sizes gives the two most used
+    /// presets one identical note.
+    /// </summary>
+    [Fact]
+    public void AClassicPresetKeepsItsOwnNoteAtTheNativeHeight()
+    {
+        var page = Page();
+        var start = page.IndexOf("private string PresetNote(", StringComparison.Ordinal);
+        var body = page[start..page.IndexOf("};", start, StringComparison.Ordinal)];
+        var nativeHeight = body.IndexOf("stretchedres.preset.note.nativeheight", StringComparison.Ordinal);
+
+        Assert.True(nativeHeight > 0);
+        foreach (var size in new[] { "1440x1080", "1280x1024", "1024x768", "1600x1080", "1280x960" })
+        {
+            var own = body.IndexOf($"stretchedres.preset.note.{size}", StringComparison.Ordinal);
+            Assert.InRange(own, 0, nativeHeight);
+        }
+    }
+
     private static string Page() => File.ReadAllText(Path.Combine(
         RepositoryRoot(), "RazorReaper", "Components", "Pages", "StretchedRes.razor"));
 
