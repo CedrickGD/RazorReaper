@@ -125,6 +125,51 @@ public sealed class StretchedResServiceTests
         Assert.DoesNotContain("stretchedres.", message);
     }
 
+    /// <summary>
+    /// On a 1440p panel every classic preset is scaled on both axes. 4:3 and 5:4 at the panel's own
+    /// height are only scaled sideways, so they lead the list when the driver lists them.
+    /// </summary>
+    [Fact]
+    public void A1440pPanelLeadsWithItsNativeHeightModes()
+    {
+        var presets = StretchedResService.BuildPresets(
+            new DisplayResolution(2560, 1440, 144),
+            [new(2560, 1440, 144), new(1920, 1440, 144), new(1800, 1440, 144), new(1440, 1080, 144)]);
+
+        Assert.Equal(
+            new[] { (1920, 1440, "4:3"), (1800, 1440, "5:4") },
+            presets.Take(2).Select(p => (p.Width, p.Height, p.AspectLabel)));
+        Assert.All(presets.Take(2), p => Assert.True(p.KeepsNativeHeight));
+        Assert.All(presets.Skip(2), p => Assert.False(p.KeepsNativeHeight));
+        Assert.Equal(7, presets.Count);
+    }
+
+    /// <summary>A mode the driver does not list would only be rejected on apply, so it is not offered.</summary>
+    [Fact]
+    public void AnUnlistedNativeHeightModeLeavesTheClassicFive()
+    {
+        var presets = StretchedResService.BuildPresets(
+            new DisplayResolution(2560, 1440, 60), [new(2560, 1440, 60), new(1920, 1080, 60)]);
+
+        Assert.Equal(
+            new[] { (1440, 1080), (1280, 1024), (1024, 768), (1600, 1080), (1280, 960) },
+            presets.Select(p => (p.Width, p.Height)));
+        Assert.DoesNotContain(presets, p => p.KeepsNativeHeight);
+    }
+
+    /// <summary>On a 1080p panel two classics already keep the height; they are marked, not repeated.</summary>
+    [Fact]
+    public void A1080pPanelMarksItsClassicNativeHeightPresetsWithoutDuplicates()
+    {
+        var presets = StretchedResService.BuildPresets(
+            new DisplayResolution(1920, 1080, 60), [new(1920, 1080, 60), new(1440, 1080, 60), new(1600, 1080, 60)]);
+
+        Assert.Single(presets, p => (p.Width, p.Height) == (1440, 1080));
+        Assert.Equal(
+            new[] { (1440, 1080), (1600, 1080) },
+            presets.Where(p => p.KeepsNativeHeight).Select(p => (p.Width, p.Height)));
+    }
+
     private static ILocalizer English()
         => new Localizer(new FakePreferencesStore(), CultureInfo.GetCultureInfo("en-US"));
 }

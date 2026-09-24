@@ -442,8 +442,9 @@
   "stretchedres.preset.note.1440x1080": "Популярная растяжка широких моделей",
   "stretchedres.preset.note.1280x1024": "Классическая растяжка 5:4 под хитбоксы",
   "stretchedres.preset.note.1024x768": "Максимальная ширина моделей",
-  "stretchedres.preset.note.1600x1080": "Лёгкая растяжка, чётче",
+  "stretchedres.preset.note.1600x1080": "Лёгкая растяжка",
   "stretchedres.preset.note.1280x960": "Более мягкий вариант 4:3",
+  "stretchedres.preset.note.nativeheight": "Родная высота, самая чёткая растяжка",
   "stretchedres.safety": "Если экран стал чёрным или нечитаемым, ничего не трогайте — разрешение вернётся само через 15 секунд.",
 
   "stretchedres.custom.title": "Своё разрешение",

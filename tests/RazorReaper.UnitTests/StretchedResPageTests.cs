@@ -73,6 +73,7 @@ public sealed class StretchedResPageTests
     [InlineData("GetNativeResolution")]
     [InlineData("GetGpuInfo")]
     [InlineData("RestoreNative")]
+    [InlineData("GetPresets")]
     public void NoDisplayCallLeavesTheMonitorOut(string method)
     {
         var call = Regex.Matches(Page(), Regex.Escape($"Stretched.{method}(") + @"\s*\)");

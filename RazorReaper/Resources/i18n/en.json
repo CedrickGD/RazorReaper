@@ -442,8 +442,9 @@
   "stretchedres.preset.note.1440x1080": "Popular wide-model stretch",
   "stretchedres.preset.note.1280x1024": "Classic 5:4 hitbox stretch",
   "stretchedres.preset.note.1024x768": "Maximum model width",
-  "stretchedres.preset.note.1600x1080": "Mild stretch, sharper",
+  "stretchedres.preset.note.1600x1080": "Mild stretch",
   "stretchedres.preset.note.1280x960": "Lighter 4:3 option",
+  "stretchedres.preset.note.nativeheight": "Native height, sharpest stretch",
   "stretchedres.safety": "If the screen goes black or unreadable, do not touch anything — the resolution reverts by itself after 15 seconds.",
 
   "stretchedres.custom.title": "Custom resolution",

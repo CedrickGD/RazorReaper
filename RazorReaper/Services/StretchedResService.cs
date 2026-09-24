@@ -71,13 +71,16 @@ namespace RazorReaper.Services
     }
 
     /// <summary>A curated, known-safe stretched-resolution preset.</summary>
-    public sealed class StretchedPreset
+    public sealed record StretchedPreset
     {
         public string Name { get; init; } = string.Empty;
         public int Width { get; init; }
         public int Height { get; init; }
         public string AspectLabel { get; init; } = string.Empty;
         public string Note { get; init; } = string.Empty;
+
+        /// <summary>Same height as the screen's native mode, so it is only scaled sideways.</summary>
+        public bool KeepsNativeHeight { get; init; }
     }
 
     /// <summary>Result of a validation / display-change operation.</summary>
@@ -122,8 +125,8 @@ namespace RazorReaper.Services
         /// <summary>All distinct desktop modes the driver reports for the device (deduped by size, highest refresh kept).</summary>
         IReadOnlyList<DisplayResolution> GetAvailableModes(string? deviceName = null);
 
-        /// <summary>The curated stretched presets.</summary>
-        IReadOnlyList<StretchedPreset> GetPresets();
+        /// <summary>The stretched presets for the device (null = primary), built from its native height.</summary>
+        IReadOnlyList<StretchedPreset> GetPresets(string? deviceName = null);
 
         /// <summary>The device's GPU vendor + adapter string, best effort (null = primary).</summary>
         GpuInfo GetGpuInfo(string? deviceName = null);
@@ -443,7 +446,40 @@ namespace RazorReaper.Services
                 .ToList();
         }
 
-        public IReadOnlyList<StretchedPreset> GetPresets() => Presets;
+        public IReadOnlyList<StretchedPreset> GetPresets(string? deviceName = null)
+            => BuildPresets(GetNativeResolution(deviceName), GetAvailableModes(deviceName));
+
+        /// <summary>
+        /// The classic presets were picked for 1080p panels; on a taller one every one of them is
+        /// scaled on both axes. A size at the panel's own height is only scaled sideways, the
+        /// sharpest a stretch gets, so 4:3 and 5:4 at the native height lead the list — only when
+        /// the driver lists them, because an unlisted mode is rejected on apply. The classics stay
+        /// as they were: a rejected one explains how to create the mode in the GPU's control panel.
+        /// </summary>
+        internal static IReadOnlyList<StretchedPreset> BuildPresets(
+            DisplayResolution native, IEnumerable<DisplayResolution> modes)
+        {
+            var listed = modes.Select(m => (m.Width, m.Height)).ToHashSet();
+            var h = native.Height;
+            bool KeepsHeight(int width, int height) => height == h && width < native.Width;
+
+            var own = new[] { h * 4 / 3, h * 5 / 4 }
+                .Where(w => KeepsHeight(w, h) && listed.Contains((w, h))
+                            && !ClassicPresets.Any(c => c.Width == w && c.Height == h))
+                .Select(w => new StretchedPreset
+                {
+                    Name = $"{w} × {h}",
+                    Width = w,
+                    Height = h,
+                    AspectLabel = DescribeAspect(w, h),
+                    Note = "Native height, sharpest stretch",
+                    KeepsNativeHeight = true
+                });
+
+            return own
+                .Concat(ClassicPresets.Select(c => c with { KeepsNativeHeight = KeepsHeight(c.Width, c.Height) }))
+                .ToList();
+        }
 
         public GpuInfo GetGpuInfo(string? deviceName = null)
         {
@@ -1102,12 +1138,12 @@ namespace RazorReaper.Services
 
         private const string ShooterSection = "/Script/ShooterGame.ShooterGameUserSettings";
 
-        private static readonly IReadOnlyList<StretchedPreset> Presets = new List<StretchedPreset>
+        private static readonly IReadOnlyList<StretchedPreset> ClassicPresets = new List<StretchedPreset>
         {
             new() { Name = "1440 × 1080", Width = 1440, Height = 1080, AspectLabel = "4:3",  Note = "Popular wide-model stretch" },
             new() { Name = "1280 × 1024", Width = 1280, Height = 1024, AspectLabel = "5:4",  Note = "Classic 5:4 hitbox stretch" },
             new() { Name = "1024 × 768",  Width = 1024, Height = 768,  AspectLabel = "4:3",  Note = "Maximum model width" },
-            new() { Name = "1600 × 1080", Width = 1600, Height = 1080, AspectLabel = "40:27", Note = "Mild stretch, sharper" },
+            new() { Name = "1600 × 1080", Width = 1600, Height = 1080, AspectLabel = "40:27", Note = "Mild stretch" },
             new() { Name = "1280 × 960",  Width = 1280, Height = 960,  AspectLabel = "4:3",  Note = "Lighter 4:3 option" }
         };
     }

@@ -442,8 +442,9 @@
   "stretchedres.preset.note.1440x1080": "Beliebter Stretch für breite Modelle",
   "stretchedres.preset.note.1280x1024": "Klassischer 5:4-Hitbox-Stretch",
   "stretchedres.preset.note.1024x768": "Maximale Modellbreite",
-  "stretchedres.preset.note.1600x1080": "Leichter Stretch, schärfer",
+  "stretchedres.preset.note.1600x1080": "Leichter Stretch",
   "stretchedres.preset.note.1280x960": "Sanftere 4:3-Variante",
+  "stretchedres.preset.note.nativeheight": "Native Höhe, schärfster Stretch",
   "stretchedres.safety": "Wenn der Bildschirm schwarz oder unlesbar wird, fass nichts an — die Auflösung setzt sich nach 15 Sekunden von selbst zurück.",
 
   "stretchedres.custom.title": "Eigene Auflösung",

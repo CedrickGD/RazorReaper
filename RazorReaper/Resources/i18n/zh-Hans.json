@@ -442,8 +442,9 @@
   "stretchedres.preset.note.1440x1080": "常用的宽模型拉伸",
   "stretchedres.preset.note.1280x1024": "经典 5:4 判定框拉伸",
   "stretchedres.preset.note.1024x768": "模型最宽",
-  "stretchedres.preset.note.1600x1080": "轻微拉伸，更清晰",
+  "stretchedres.preset.note.1600x1080": "轻微拉伸",
   "stretchedres.preset.note.1280x960": "更温和的 4:3 选项",
+  "stretchedres.preset.note.nativeheight": "保持原生高度，最清晰的拉伸",
   "stretchedres.safety": "如果屏幕变黑或看不清，什么都别动 —— 分辨率会在 15 秒后自动还原。",
 
   "stretchedres.custom.title": "自定义分辨率",

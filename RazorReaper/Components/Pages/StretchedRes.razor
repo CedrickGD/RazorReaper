@@ -368,6 +368,7 @@
     /// </summary>
     private string PresetNote(StretchedPreset preset) => (preset.Width, preset.Height) switch
     {
+        _ when preset.KeepsNativeHeight => Localizer.T("stretchedres.preset.note.nativeheight"),
         (1440, 1080) => Localizer.T("stretchedres.preset.note.1440x1080"),
         (1280, 1024) => Localizer.T("stretchedres.preset.note.1280x1024"),
         (1024, 768) => Localizer.T("stretchedres.preset.note.1024x768"),
@@ -425,8 +426,8 @@
     {
         try
         {
-            presets = Stretched.GetPresets();
             LoadMonitors();
+            presets = Stretched.GetPresets(Device(stretchedDevice));
             RefreshDisplayFacts();
 
             var last = Stretched.LoadLastChoice();
@@ -470,6 +471,8 @@
         stretchedDevice = deviceName;
         stretchedFellBack = false;
         Stretched.SaveDeviceChoice(ResolutionFeature.Stretched, Device(deviceName));
+        // The presets are built from this screen's native height and the modes its driver lists.
+        presets = Stretched.GetPresets(Device(deviceName));
         RefreshDisplayFacts();
     }
 
