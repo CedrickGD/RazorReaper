@@ -236,7 +236,7 @@
             isBusy = true;
             var targetValue = pendingFov;
 
-            await Task.Run(() =>
+            var written = await Task.Run(() =>
             {
                 if (!sessionBackupTaken)
                 {
@@ -265,11 +265,17 @@
                 else
                 {
                     this.DispatchRender(() => InvokeAsync(() => NotificationService.ShowWarning(Localizer.T("vision.toast.nosection"))));
-                    return;
+                    return false;
                 }
 
-                File.WriteAllText(gameUserSettingsPath, content);
+                ArkUtilities.WriteArkConfig(gameUserSettingsPath, () => File.WriteAllText(gameUserSettingsPath, content));
+                return true;
             });
+
+            if (!written)
+            {
+                return;
+            }
 
             currentFov = targetValue;
             NotificationService.ShowSuccess(Localizer.T("vision.fov.toast.set", targetValue.ToString("F2", CultureInfo.InvariantCulture)));
