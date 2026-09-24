@@ -2477,23 +2477,7 @@ public sealed class TranslatedSurfaceTests
             "title=\"Delete\"",
             "<h3>Import</h3>",
             "Import image or video\n",
-            "Import Crosshair X workshop file\n",
-            "Import Crosshair X workshop folder\n",
-            ">From game code (Valorant / CS2)</label>",
-            "placeholder=\"Paste a Valorant string or CSGO-XXXXX-… code\"",
             ">Import</button>",
-            "Covers color, length, thickness, gap, dot",
-            ">How do I find a crosshair to import?</span>",
-            ">Image file (any game)</div>",
-            "Animated GIFs play frame-by-frame",
-            ">Steam Workshop (Crosshair X)</div>",
-            "Either drag a <code>.png</code>",
-            ">Valorant</div>",
-            "top-right <strong>Export profile code</strong>",
-            ">CS2 / CSGO</div>",
-            "five groups of five",
-            ">Rust</div>",
-            "Facepunch has never published how it's encoded",
             "<h3>Hotkey</h3>",
             ">Toggle overlay</span>",
             "Works globally — even while a game has focus.",
@@ -2508,9 +2492,6 @@ public sealed class TranslatedSurfaceTests
             "$\"Saved '{name}'.\"",
             "\"Image imported.\"",
             "$\"Image picker failed:",
-            "CrosshairCodeParsers.Describe",
-            "$\"Imported '{imported.Name}'.\"",
-            "$\"Workshop import failed:",
             "CrosshairType.Cross => \"Cross\"",
         })
         {
@@ -2545,12 +2526,6 @@ public sealed class TranslatedSurfaceTests
             "\"Video imported.\"",
             "unrecognised image format",
             "$\"Image import failed:",
-            "$\"Unrecognized workshop file type:",
-            "\"Workshop path doesn't exist.\"",
-            "\"No usable image or config found in workshop file.\"",
-            "$\"Workshop import failed:",
-            "\"Couldn't read that crosshair code.\"",
-            "$\"Code import failed:",
         })
         {
             data.Add("Services/Implementations/Crosshair/CrosshairService.Imports.cs", literal);
@@ -2580,17 +2555,6 @@ public sealed class TranslatedSurfaceTests
         })
         {
             data.Add("Services/Implementations/CustomLab/SkyInjectorService.cs", literal);
-        }
-
-        foreach (var literal in new[]
-        {
-            "public static string Describe(CrosshairProfile p)",
-            "\" · size \"",
-            "\" · thickness \"",
-            "\" · outline \"",
-        })
-        {
-            data.Add("Services/Implementations/CrosshairCodeParsers.cs", literal);
         }
 
         foreach (var literal in new[]

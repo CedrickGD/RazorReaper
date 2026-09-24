@@ -25,10 +25,6 @@ internal static class ImageFormatDetection
           ".webp", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif",
           ".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v" };
 
-    /// <summary>File extensions accepted as crosshair-config files inside workshop bundles.</summary>
-    public static readonly HashSet<string> ConfigExtensions = new(StringComparer.OrdinalIgnoreCase)
-        { ".json", ".ini", ".cfg", ".txt", ".crosshair" };
-
     /// <summary>True if <paramref name="path"/> is an extracted video-frame folder we own
     /// (named <c>&lt;guid&gt;.frames</c>, created by the video importer).</summary>
     public static bool IsFramesFolder(string path)

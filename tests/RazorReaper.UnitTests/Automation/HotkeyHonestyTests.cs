@@ -452,8 +452,6 @@ public sealed class HotkeyHonestyTests
         public Task<bool> CopyImportsFolderPathAsync() => throw new NotSupportedException();
         public bool DeleteImportedImage(string path) => throw new NotSupportedException();
         public void UseImportedImage(string path) => throw new NotSupportedException();
-        public Task<CrosshairProfile?> ImportWorkshopAsync(string path) => throw new NotSupportedException();
-        public CrosshairProfile? ImportFromCode(string code) => throw new NotSupportedException();
         public void SetHotkey(string displayLabel, int virtualKey, bool ctrl, bool alt, bool shift) => throw new NotSupportedException();
     }
 

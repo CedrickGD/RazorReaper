@@ -17,7 +17,8 @@ namespace RazorReaper.Services.Implementations;
 /// Implementation is split across partial files so each concern stays readable:
 ///  • <c>CrosshairService.cs</c> — fields, ctor, profile CRUD, persistence, Dispose (you are here).
 ///  • <c>CrosshairService.Preview.cs</c> — editor-side preview rendering and image-load lifecycle.
-///  • <c>CrosshairService.Library.cs</c> — imports (image / video / workshop / code) and the library cache.
+///  • <c>CrosshairService.Imports.cs</c> — image / video import into the library.
+///  • <c>CrosshairService.Library.cs</c> — the library cache: list, delete, use, thumbnails.
 ///  • <c>CrosshairService.Hotkey.cs</c> — global hotkey wiring and the hotkey-toggle event handler.
 /// </summary>
 public partial class CrosshairService : ICrosshairService, IDisposable

@@ -398,6 +398,8 @@
 
     .crosshair-layout .rr-input {
         flex: 1;
+        /* Shrinks, so the save row's two buttons never push the card wider. */
+        min-width: 0;
         font-size: 0.85rem !important;
         padding: 0.55rem 0.85rem !important;
     }
@@ -973,7 +975,7 @@
         border-color: var(--accent-red);
     }
 
-    /* ── Code import + guide ─────────────────────────────────────────────── */
+    /* ── Crosshair code ──────────────────────────────────────────────────── */
 
     .crosshair-layout .code-import {
         margin-top: 0.85rem;
@@ -991,89 +993,6 @@
         flex: 1;
         min-width: 0;
     }
-
-    .crosshair-layout .guide-toggle {
-        margin-top: 0.85rem;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.55rem 0.8rem;
-        background: rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: var(--radius-control);
-        color: var(--text-secondary);
-        font-size: 0.82rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        text-align: left;
-    }
-
-        .crosshair-layout .guide-toggle:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(255, 255, 255, 0.18);
-        }
-
-    .crosshair-layout .guide-toggle .chev {
-        display: inline-block;
-        transition: transform 0.18s ease;
-        color: var(--accent-purple-light);
-    }
-
-        .crosshair-layout .guide-toggle .chev.open {
-            transform: rotate(90deg);
-        }
-
-    .crosshair-layout .guide-body {
-        margin-top: 0.6rem;
-        padding: 0.85rem 1rem;
-        background: rgba(0, 0, 0, 0.25);
-        border-radius: var(--radius-control);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        animation: rrGuideIn 0.18s ease-out;
-    }
-
-    @keyframes rrGuideIn {
-        from { opacity: 0; transform: translateY(-2px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .crosshair-layout .guide-item {
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-    }
-
-    .crosshair-layout .guide-title {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--accent-purple-light);
-        letter-spacing: 0.02em;
-    }
-
-    .crosshair-layout .guide-text {
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-        line-height: 1.5;
-    }
-
-        .crosshair-layout .guide-text code,
-        .crosshair-layout .guide-text strong {
-            color: var(--text-primary);
-        }
-
-        .crosshair-layout .guide-text code {
-            font-family: var(--font-mono);
-            font-size: 0.74rem;
-            padding: 0.05rem 0.3rem;
-            background: rgba(255, 255, 255, 0.06);
-            border-radius: var(--radius-sm);
-        }
 
     .crosshair-layout kbd {
         font-family: var(--font-mono);

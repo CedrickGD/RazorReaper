@@ -232,7 +232,7 @@ public static class NavCatalog
 
             new NavPage("Crosshair", "/crosshair", "Utilities", NavIcons.Crosshair,
                 "Always-on-top crosshair overlay with editor & presets",
-                new[] { "crosshair", "overlay", "reticle", "aim", "dot", "valorant", "cs", "sniper", "workshop", "crosshairx", "rainbow", "preset" }),
+                new[] { "crosshair", "overlay", "reticle", "aim", "dot", "valorant", "cs", "sniper", "code", "share", "rainbow", "preset" }),
 
             new NavPage("Convert", "/convert", "Utilities", NavIcons.Convert,
                 "Convert video, image and audio files between formats",

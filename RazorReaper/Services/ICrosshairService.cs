@@ -83,18 +83,6 @@ public interface ICrosshairService
     /// <summary>Set the active crosshair to use a specific imported image path (must already exist).</summary>
     void UseImportedImage(string path);
 
-    /// <summary>
-    /// Best-effort Crosshair X workshop import. Accepts a file or folder path. Returns a profile if at
-    /// least an image was found; null if nothing usable.
-    /// </summary>
-    Task<CrosshairProfile?> ImportWorkshopAsync(string path);
-
-    /// <summary>
-    /// Best-effort parser for community crosshair codes — currently Valorant strings and CSGO/CS2
-    /// share codes. Returns null if the code isn't recognised.
-    /// </summary>
-    CrosshairProfile? ImportFromCode(string code);
-
     void SetHotkey(string displayLabel, int virtualKey, bool ctrl, bool alt, bool shift);
     (string Label, int VirtualKey, bool Ctrl, bool Alt, bool Shift) GetHotkey();
 

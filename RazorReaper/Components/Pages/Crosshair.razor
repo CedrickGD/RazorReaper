@@ -7,6 +7,7 @@
 @using RazorReaper.Models
 @using RazorReaper.Components.Shared
 @using RazorReaper.Services.Automation
+@using RazorReaper.Services.Implementations
 @implements IDisposable
 
 @inject ICrosshairService CrosshairSvc
@@ -335,6 +336,9 @@
             <div class="save-row">
                 <input type="text" placeholder="@Localizer.T("crosshair.profile.placeholder")" @bind="newProfileName" class="rr-input" />
                 <button class="rr-pill-btn primary" @onclick="SaveCurrent" disabled="@string.IsNullOrWhiteSpace(newProfileName)">@Localizer.T("common.save")</button>
+                @* An image crosshair has no code: the picture is a file on this PC, not part of the look. *@
+                <button class="rr-pill-btn ghost" @onclick="CopyCode" disabled="@(!CrosshairCode.CanEncode(profile))"
+                        title="@Localizer.T(CrosshairCode.CanEncode(profile) ? "crosshair.code.copy.tooltip" : "crosshair.code.copy.image")">@Localizer.T("crosshair.code.copy")</button>
             </div>
         </div>
 
@@ -381,12 +385,6 @@
                 <button class="rr-pill-btn ghost" @onclick="ImportImageFile">
                     @Localizer.T("crosshair.import.image")
                 </button>
-                <button class="rr-pill-btn ghost" @onclick="ImportWorkshopFile">
-                    @Localizer.T("crosshair.import.workshopfile")
-                </button>
-                <button class="rr-pill-btn ghost" @onclick="ImportWorkshopFolder">
-                    @Localizer.T("crosshair.import.workshopfolder")
-                </button>
             </div>
 
             <div class="code-import">
@@ -402,44 +400,6 @@
                     @Localizer.T("crosshair.code.hint")
                 </p>
             </div>
-
-            <button class="guide-toggle" @onclick="@(() => guideOpen = !guideOpen)">
-                <span class="chev @(guideOpen ? "open" : "")">▸</span>
-                <span>@Localizer.T("crosshair.guide.toggle")</span>
-            </button>
-            @if (guideOpen)
-            {
-                <div class="guide-body">
-                    <div class="guide-item">
-                        <div class="guide-title">@Localizer.T("crosshair.guide.image.title")</div>
-                        <div class="guide-text">@Localizer.T("crosshair.guide.image.text")</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-title">@Localizer.T("crosshair.guide.workshop.title")</div>
-                        <div class="guide-text">
-                            @Localizer.T("crosshair.guide.workshop.text")
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-title">@Localizer.T("crosshair.guide.valorant.title")</div>
-                        <div class="guide-text">
-                            @Localizer.T("crosshair.guide.valorant.text")
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-title">@Localizer.T("crosshair.guide.cs2.title")</div>
-                        <div class="guide-text">
-                            @Localizer.T("crosshair.guide.cs2.text")
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-title">@Localizer.T("crosshair.guide.rust.title")</div>
-                        <div class="guide-text">
-                            @Localizer.T("crosshair.guide.rust.text")
-                        </div>
-                    </div>
-                </div>
-            }
         </div>
 
         <div class="content-card">
@@ -474,7 +434,6 @@
     // The row the hotkeys page shows for this key, so both name the same owner for a refused one.
     private HotkeyBinding? hotkeyRow;
     private string codeInput = "";
-    private bool guideOpen;
     private List<string> library = new();
     private readonly Dictionary<string, string> thumbCache = new(StringComparer.OrdinalIgnoreCase);
     // Paths whose thumbnail decode already failed (e.g., a file with .png extension but
@@ -987,102 +946,56 @@
 
     private async Task ImportImageFile() => await PickImage();
 
+    private async Task CopyCode()
+    {
+        var code = CrosshairCode.Encode(profile);
+        if (code == null) return;
+        try
+        {
+            await Clipboard.Default.SetTextAsync(code);
+            Notifications.ShowSuccess(Localizer.T("crosshair.code.copied"));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Copying the crosshair code failed");
+            Notifications.ShowError(Localizer.T("crosshair.code.error.copy", ex.Message));
+        }
+    }
+
     private async Task ImportCode()
     {
         if (string.IsNullOrWhiteSpace(codeInput)) return;
-        var imported = CrosshairSvc.ImportFromCode(codeInput.Trim());
-        if (imported == null) return;
 
-        CrosshairSvc.LoadProfile(imported);
+        // The code carries the look; monitor and offset stay the ones this PC already uses.
+        var result = CrosshairCode.Decode(codeInput, profile);
+        if (result.Profile == null)
+        {
+            Notifications.ShowError(Localizer.T(result.Error switch
+            {
+                CrosshairCodeError.GameCode => "crosshair.code.error.gamecode",
+                CrosshairCodeError.NotACode => "crosshair.code.error.notacode",
+                CrosshairCodeError.NewerVersion => "crosshair.code.error.newer",
+                _ => "crosshair.code.error.damaged",
+            }));
+            return;
+        }
 
-        // Auto-save under a generated name so the user doesn't lose the import. They can rename via
-        // delete-and-re-save, but the most common workflow is "paste code → it shows up in profiles".
-        var stamp = DateTime.Now.ToString("HH:mm");
-        var saveName = $"{imported.Name} {stamp}";
-        await CrosshairSvc.SaveAsAsync(saveName);
+        // Saved under a generated name so the paste is never lost: "paste code → it shows up in profiles".
+        var name = Localizer.T("crosshair.code.savedname", DateTime.Now.ToString("HH:mm:ss"));
+        result.Profile.Name = name;
+        CrosshairSvc.LoadProfile(result.Profile);
+        var ok = await CrosshairSvc.SaveAsAsync(name);
 
         ReadFromService();
         RefreshPreview();
         EnsureAnimTimer();
         codeInput = "";
-        // Surface the parsed values so it's obvious what landed (and easy to spot when a code
-        // parses but values look wrong).
-        Notifications.ShowSuccess(Localizer.T("crosshair.toast.savedcode", saveName, DescribeImported(imported)));
+        if (ok) Notifications.ShowSuccess(Localizer.T("crosshair.code.imported", name));
     }
 
     private async Task OnCodeKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") await ImportCode();
-    }
-
-    private async Task ImportWorkshopFile()
-    {
-        try
-        {
-            var fileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-            {
-                { DevicePlatform.WinUI, new[] { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".json", ".ini", ".cfg", ".txt", ".crosshair" } }
-            });
-            var result = await FilePicker.Default.PickAsync(new PickOptions
-            {
-                PickerTitle = "Pick a workshop file",
-                FileTypes = fileTypes
-            });
-            if (result == null) return;
-            var imported = await CrosshairSvc.ImportWorkshopAsync(result.FullPath);
-            if (imported != null)
-            {
-                CrosshairSvc.LoadProfile(imported);
-                ReadFromService();
-                RefreshPreview();
-                EnsureAnimTimer();
-                Notifications.ShowSuccess(Localizer.T("crosshair.toast.workshopimported", imported.Name));
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Workshop file import failed");
-            Notifications.ShowError(Localizer.T("crosshair.error.workshop", ex.Message));
-        }
-    }
-
-    private async Task ImportWorkshopFolder()
-    {
-        try
-        {
-            var folder = await PickFolderAsync();
-            if (string.IsNullOrWhiteSpace(folder)) return;
-            var imported = await CrosshairSvc.ImportWorkshopAsync(folder);
-            if (imported != null)
-            {
-                CrosshairSvc.LoadProfile(imported);
-                ReadFromService();
-                RefreshPreview();
-                EnsureAnimTimer();
-                Notifications.ShowSuccess(Localizer.T("crosshair.toast.workshopimported", imported.Name));
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Workshop folder import failed");
-            Notifications.ShowError(Localizer.T("crosshair.error.workshop", ex.Message));
-        }
-    }
-
-    private static async Task<string?> PickFolderAsync()
-    {
-        var picker = new Windows.Storage.Pickers.FolderPicker();
-        picker.FileTypeFilter.Add("*");
-
-        var windows = Microsoft.Maui.Controls.Application.Current?.Windows;
-        if (windows == null || windows.Count == 0) return null;
-
-        var window = windows[0].Handler?.PlatformView as Microsoft.UI.Xaml.Window;
-        if (window == null) return null;
-
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
-        var folder = await picker.PickSingleFolderAsync();
-        return folder?.Path;
     }
 
     private static string BuildHotkeyLabel(string key, bool ctrl, bool alt, bool shift)
@@ -1139,20 +1052,6 @@
         CrosshairAnimation.Rotate => Localizer.T("crosshair.anim.rotate"),
         _ => a.ToString()
     };
-
-    /// <summary>
-    /// What a pasted code turned into. It used to be built by CrosshairCodeParsers, which is a
-    /// pure decoder with no localizer and no other caller — the line is only ever read in a
-    /// toast on this page, so it is worded here.
-    /// </summary>
-    private string DescribeImported(CrosshairProfile p)
-    {
-        var line = Localizer.T(
-            "crosshair.describe",
-            TypeLabel(p.Type), p.Color, p.Size, p.Thickness, p.Gap, p.OutlineThickness, p.Opacity);
-
-        return p.ShowDot ? line + " " + Localizer.T("crosshair.describe.dot", p.DotSize) : line;
-    }
 
     // Inline SVGs render cleanly at every font size and theme. The previous mix of
     // text glyphs ("+", "·", "○", "⊥") + an emoji ("🖼") rendered inconsistently —

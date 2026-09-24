@@ -1,15 +1,12 @@
 using Microsoft.Extensions.Logging;
-using RazorReaper.Models;
 
 namespace RazorReaper.Services.Implementations;
 
 /// <summary>
-/// Inbound import pipelines — turning external bytes (a stream, a workshop folder, a share-code
-/// string) into a stored library asset and/or a usable <see cref="CrosshairProfile"/>. Each
-/// public method here delegates the heavy lifting to a single-purpose helper
-/// (<see cref="ImageFormatDetection"/>, <see cref="VideoFrameExtractor"/>,
-/// <see cref="CrosshairWorkshopConfigParser"/>, <see cref="CrosshairCodeParsers"/>) and just
-/// connects the pieces to the service's state (library cache, notifications, persistence).
+/// Inbound import pipeline — turning an image or video stream into a stored library asset. The
+/// heavy lifting is in single-purpose helpers (<see cref="ImageFormatDetection"/>,
+/// <see cref="VideoFrameExtractor"/>); this connects them to the service's state (library cache,
+/// notifications, persistence). Crosshair codes are <see cref="CrosshairCode"/>, which needs none.
 /// </summary>
 public partial class CrosshairService
 {
@@ -153,104 +150,5 @@ public partial class CrosshairService
         LibraryChanged?.Invoke();
 
         return dest;
-    }
-
-    public async Task<CrosshairProfile?> ImportWorkshopAsync(string path)
-    {
-        try
-        {
-            string? imageCandidate = null;
-            string? configCandidate = null;
-
-            if (File.Exists(path))
-            {
-                var ext = (Path.GetExtension(path) ?? "").ToLowerInvariant();
-                if (ImageFormatDetection.AllowedImageExtensions.Contains(ext)) imageCandidate = path;
-                else if (ImageFormatDetection.ConfigExtensions.Contains(ext)) configCandidate = path;
-                else
-                {
-                    // Some workshop bundles are .zip-ish — try as folder if it's a dir, else give up.
-                    _notifications.ShowWarning(_localizer.T("crosshair.import.error.workshoptype", ext));
-                    return null;
-                }
-            }
-            else if (Directory.Exists(path))
-            {
-                imageCandidate = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
-                    .FirstOrDefault(f => ImageFormatDetection.AllowedImageExtensions.Contains((Path.GetExtension(f) ?? "").ToLowerInvariant()));
-                configCandidate = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
-                    .FirstOrDefault(f => ImageFormatDetection.ConfigExtensions.Contains((Path.GetExtension(f) ?? "").ToLowerInvariant()));
-            }
-            else
-            {
-                _notifications.ShowError(_localizer.T("crosshair.import.error.workshopmissing"));
-                return null;
-            }
-
-            // Start from the current active profile (so things like monitor/offset/hotkey carry over),
-            // then layer image + parsed config on top.
-            var profile = ActiveProfile.Clone();
-            profile.Id = Guid.NewGuid().ToString("N");
-            profile.IsBuiltIn = false;
-            profile.Name = Path.GetFileNameWithoutExtension(imageCandidate ?? configCandidate ?? path);
-            if (string.IsNullOrWhiteSpace(profile.Name)) profile.Name = "Imported";
-
-            if (imageCandidate != null)
-            {
-                await using var fs = File.OpenRead(imageCandidate);
-                var stored = await ImportImageAsync(fs, Path.GetFileName(imageCandidate));
-                if (stored != null)
-                {
-                    profile.Type = CrosshairType.Image;
-                    profile.ImagePath = stored;
-                    profile.ImageScale = ComputeDefaultImageScale(stored);
-                }
-            }
-
-            if (configCandidate != null)
-            {
-                if (!CrosshairWorkshopConfigParser.TryApplyConfig(configCandidate, profile, out var parseError) && parseError != null)
-                {
-                    _logger.LogWarning(parseError, "Workshop config parse failed for {Path}", configCandidate);
-                }
-            }
-
-            if (imageCandidate == null && configCandidate == null)
-            {
-                _notifications.ShowError(_localizer.T("crosshair.import.error.workshopempty"));
-                return null;
-            }
-
-            return profile;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Workshop import failed for {Path}", path);
-            _notifications.ShowError(_localizer.T("crosshair.error.workshop", ex.Message));
-            return null;
-        }
-    }
-
-    public CrosshairProfile? ImportFromCode(string code)
-    {
-        try
-        {
-            var result = CrosshairCodeParsers.TryParse(code, ActiveProfile);
-            if (result.Profile == null)
-            {
-                // The parser names the field it choked on — pass that through verbatim instead of
-                // collapsing every failure into one unhelpful "couldn't recognise that code".
-                _notifications.ShowError(result.Error ?? _localizer.T("crosshair.import.error.code"));
-                _logger.LogInformation("Crosshair code import rejected ({Format}): {Error}", result.Format, result.Error);
-                return null;
-            }
-            return result.Profile;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Code import failed");
-            _notifications.ShowError(_localizer.T("crosshair.import.error.codefailed", ex.Message));
-            return null;
-        }
     }
 }
