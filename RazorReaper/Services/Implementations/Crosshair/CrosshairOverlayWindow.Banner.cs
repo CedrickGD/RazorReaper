@@ -72,13 +72,12 @@ internal sealed partial class CrosshairOverlayWindow : IGameBanner
 
             var scale = Math.Clamp(banner.Area.Height / 1080f, 1f, 2.5f);
             using var bmp = DrawBanner(banner.Message, banner.Area.Width, scale);
+            // PushBitmapToWindow also lifts the banner above ARK, which may sit in the topmost band.
             PushBitmapToWindow(
                 _bannerHwnd, bmp,
                 banner.Area.X + (banner.Area.Width - bmp.Width) / 2,
                 banner.Area.Y + (int)(24 * scale));
             ShowWindow(_bannerHwnd, SW_SHOWNOACTIVATE);
-            // ARK itself may sit in the topmost band — lift the banner above it without activating.
-            SetWindowPos(_bannerHwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
             // Re-arming the same timer id restarts the countdown for a replacing message.
             SetTimer(_hwnd, BannerTimerId, (uint)Math.Max(1000, banner.DurationMs), IntPtr.Zero);
         }

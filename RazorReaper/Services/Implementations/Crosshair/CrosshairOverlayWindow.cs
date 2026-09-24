@@ -242,8 +242,8 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
             }
 
             // Don't ShowWindow yet — first paint happens on first WM_USER_UPDATE.
-            // Animation tick runs at ~30Hz when something is animated — plenty smooth for a
-            // crosshair, and halves the GDI+ render load vs 60Hz.
+            // ~30Hz tick: redraws an animated crosshair (plenty smooth, half the GDI+ load of
+            // 60Hz) and keeps a static one above ARK without redrawing it.
             var timerId = (IntPtr)1;
             SetTimer(_hwnd, timerId, 33, IntPtr.Zero);
 

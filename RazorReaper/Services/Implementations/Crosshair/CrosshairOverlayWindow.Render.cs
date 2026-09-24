@@ -41,7 +41,13 @@ internal sealed partial class CrosshairOverlayWindow
             hasAnimatedImage = _cachedAnimated?.IsAnimated == true && p?.Type == CrosshairType.Image;
         }
         if (!visible || p == null) return;
-        if (p.Animation == CrosshairAnimation.None && !p.Rainbow && !hasAnimatedImage) return;
+        if (p.Animation == CrosshairAnimation.None && !p.Rainbow && !hasAnimatedImage)
+        {
+            // A static crosshair is never redrawn, so the lift PushBitmapToWindow gives every
+            // frame has to come from this tick instead. Z-order only: no render, no move.
+            KeepOnTop(_hwnd);
+            return;
+        }
         Render();
     }
 
@@ -159,6 +165,7 @@ internal sealed partial class CrosshairOverlayWindow
             UpdateLayeredWindow(
                 hwnd, screenDc, ref pointDst, ref size,
                 memDc, ref pointSrc, 0, ref blend, ULW_ALPHA);
+            KeepOnTop(hwnd);
         }
         finally
         {
@@ -168,6 +175,15 @@ internal sealed partial class CrosshairOverlayWindow
             ReleaseDC(IntPtr.Zero, screenDc);
         }
     }
+
+    /// <summary>
+    /// ARK in Fullscreen (with fullscreen optimizations) is itself a topmost window and goes back
+    /// to the top of that band whenever it takes focus, burying a window that was made topmost
+    /// once. Re-asserting HWND_TOPMOST without activating keeps us above it and leaves ARK its
+    /// focus — the same fix the HUD overlay runs every frame.
+    /// </summary>
+    private static void KeepOnTop(IntPtr hwnd)
+        => SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
     private static MonitorInfo[] EnumerateMonitors()
     {
