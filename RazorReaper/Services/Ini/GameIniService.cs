@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorReaper.Configuration;
 using RazorReaper.Services.Localization;
+using RazorReaper.Utilities;
 
 namespace RazorReaper.Services
 {
@@ -427,7 +428,7 @@ namespace RazorReaper.Services.Implementations
                             }
                         }
 
-                        File.Copy(backup.FullPath, livePath, overwrite: true);
+                        ArkUtilities.WriteArkConfig(livePath, () => File.Copy(backup.FullPath, livePath, overwrite: true));
                         _logger.LogInformation("Restored INI backup {Backup} over {Live}", backup.FileName, livePath);
                         return GameIniApplyResult.Ok(0, safetyBackup);
                     }
@@ -574,7 +575,7 @@ namespace RazorReaper.Services.Implementations
                         ApplyEntryToLines(lines, entry, eol);
                     }
 
-                    WritePreservingEncoding(path, bytes, bomLength, encoding, string.Concat(lines));
+                    ArkUtilities.WriteArkConfig(path, () => WritePreservingEncoding(path, bytes, bomLength, encoding, string.Concat(lines)));
                 }
                 else
                 {

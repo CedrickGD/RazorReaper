@@ -54,5 +54,33 @@ namespace RazorReaper.Utilities
             if (arkPath == null) return null;
             return Path.Combine(arkPath, "Engine", "Config", "BaseDeviceProfiles.ini");
         }
+
+        /// <summary>
+        /// Runs <paramref name="write"/> against an ARK config file even when the player marked it
+        /// read-only (a common trick to stop ARK resetting settings). The flag is lifted for the
+        /// write and put back afterwards, so the player's lock survives.
+        /// </summary>
+        public static void WriteArkConfig(string path, Action write)
+        {
+            var info = new FileInfo(path);
+            var wasReadOnly = info.Exists && info.IsReadOnly;
+            if (wasReadOnly)
+            {
+                info.IsReadOnly = false;
+            }
+
+            try
+            {
+                write();
+            }
+            finally
+            {
+                info.Refresh();
+                if (info.Exists && info.IsReadOnly != wasReadOnly)
+                {
+                    info.IsReadOnly = wasReadOnly;
+                }
+            }
+        }
     }
 }

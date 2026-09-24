@@ -225,7 +225,7 @@
                     return;
                 }
 
-                File.WriteAllText(gameUserSettingsPath, content);
+                ArkUtilities.WriteArkConfig(gameUserSettingsPath, () => File.WriteAllText(gameUserSettingsPath, content));
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
                     bUseOldThirdPersonCameraTrace = true;
@@ -263,7 +263,7 @@
                 content = Regex.Replace(content, @"bUseOldThirdPersonCameraTrace=\w+", "bUseOldThirdPersonCameraTrace=False", RegexOptions.IgnoreCase);
                 content = Regex.Replace(content, @"bUseOldThirdPersonCameraOffset=\w+", "bUseOldThirdPersonCameraOffset=False", RegexOptions.IgnoreCase);
 
-                File.WriteAllText(gameUserSettingsPath, content);
+                ArkUtilities.WriteArkConfig(gameUserSettingsPath, () => File.WriteAllText(gameUserSettingsPath, content));
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
                     bUseOldThirdPersonCameraTrace = false;

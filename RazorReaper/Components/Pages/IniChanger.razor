@@ -844,7 +844,7 @@
 
                 BackupLiveIni(iniPath);
                 currentIniContent = "";
-                File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
+                ArkUtilities.WriteArkConfig(iniPath, () => File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8));
 
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
@@ -936,7 +936,7 @@
                 }
 
                 BackupLiveIni(iniPath);
-                File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8);
+                ArkUtilities.WriteArkConfig(iniPath, () => File.WriteAllText(iniPath, currentIniContent, System.Text.Encoding.UTF8));
                 this.DispatchRender(() => InvokeAsync(() =>
                 {
                     NotificationService.ShowSuccess(Localizer.T("inichanger.toast.inisaved"));
