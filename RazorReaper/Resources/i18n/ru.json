@@ -2713,6 +2713,7 @@
   "scripts.toast.regionfailed": "Не удалось захватить область.",
   "scripts.toast.needregion": "Сначала откалибруйте область.",
   "scripts.toast.referencefailed": "Не удалось сделать эталонный снимок.",
+  "scripts.toast.referenceblank": "Снимок пустой — сравнивать нечего. Если ARK запущен в полноэкранном режиме, переключите его на оконный полноэкранный и снимите ещё раз, пока цель на экране.",
   "scripts.toast.referencecaptured": "Эталонный снимок сделан.",
   "scripts.toast.needreference": "Сначала сделайте эталонный снимок.",
   "scripts.toast.masknothing": "Ничего не осталось неизменным — элемент всё ещё на экране?",

@@ -2713,6 +2713,7 @@
   "scripts.toast.regionfailed": "区域采集失败。",
   "scripts.toast.needregion": "请先校准区域。",
   "scripts.toast.referencefailed": "无法采集参考图。",
+  "scripts.toast.referenceblank": "采集到的画面是空的，没有可比对的内容。如果 ARK 处于全屏模式，请切换为无边框全屏，然后在目标显示在屏幕上时重新采集。",
   "scripts.toast.referencecaptured": "参考图已采集。",
   "scripts.toast.needreference": "请先采集参考图。",
   "scripts.toast.masknothing": "没有任何部分保持不变 —— 该元素还在屏幕上吗？",

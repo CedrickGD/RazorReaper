@@ -249,6 +249,15 @@ public abstract class CalibratableScriptBase : AutomationScriptBase, ICalibratab
             Notifications.ShowError(Localizer.T("scripts.toast.referencefailed"));
             return false;
         }
+        if (capture.IsFlat)
+        {
+            // The black frame a fullscreen ARK hands the capture path, most often. Stored, it
+            // would match every later black frame at 100 % — Take All clicking on every tick with
+            // no inventory open is exactly that. Refused here with the reason, since the sampler
+            // refuses it silently.
+            Notifications.ShowWarning(Localizer.T("scripts.toast.referenceblank"));
+            return false;
+        }
         Sampler.CaptureReference(_regionKey, region);
 
         // The snapshot is what gets compared from here on, so the display it came off is the one

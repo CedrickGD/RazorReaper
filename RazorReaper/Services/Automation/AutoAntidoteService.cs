@@ -314,6 +314,12 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
                 _notifications.ShowError(_localizer.T("scripts.antidote.toast.referencefailed"));
                 return false;
             }
+            if (capture.IsFlat)
+            {
+                // A blank reference matches every later blank frame — see CalibratableScriptBase.
+                _notifications.ShowWarning(_localizer.T("scripts.toast.referenceblank"));
+                return false;
+            }
 
             _reference = capture;
             _sampler.CaptureReference(ReferenceKey, region);
@@ -605,25 +611,9 @@ public sealed class AutoAntidoteService : IAutoAntidoteService
         }
     }
 
-    /// <summary>Mean per-channel similarity (0–100, alpha ignored); null on size mismatch or empty capture.</summary>
+    /// <summary>The same comparison the other vision scripts use — see <see cref="ScreenCapture.Similarity"/>.</summary>
     private static double? ComputeSimilarity(ScreenCapture reference, ScreenCapture current)
-    {
-        if (reference.IsEmpty || current.IsEmpty) return null;
-        if (reference.Width != current.Width || reference.Height != current.Height) return null;
-
-        var a = reference.Bgra;
-        var b = current.Bgra;
-        long diffSum = 0;
-        var pixels = current.Width * current.Height;
-        for (var i = 0; i < pixels * 4; i += 4)
-        {
-            diffSum += Math.Abs(a[i] - b[i]);         // B
-            diffSum += Math.Abs(a[i + 1] - b[i + 1]); // G
-            diffSum += Math.Abs(a[i + 2] - b[i + 2]); // R
-        }
-        var meanDiff = diffSum / (double)(pixels * 3);
-        return Math.Clamp(100.0 * (1.0 - meanDiff / 255.0), 0.0, 100.0);
-    }
+        => ScreenCapture.Similarity(reference, current, null);
 
     private bool IsGameForeground()
     {

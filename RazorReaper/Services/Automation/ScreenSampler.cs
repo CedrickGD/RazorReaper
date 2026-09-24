@@ -18,6 +18,86 @@ public sealed record ScreenCapture(int Width, int Height, byte[] Bgra)
 {
     /// <summary>True when the capture actually holds pixels.</summary>
     public bool IsEmpty => Width <= 0 || Height <= 0 || Bgra.Length == 0;
+
+    /// <summary>
+    /// Below this spread (standard deviation across the pixels, per channel, 0–255) a capture is
+    /// blank: the black frame a capture path returns when it cannot see a fullscreen game, or a
+    /// patch of flat panel in any tint. Text, an icon or a button edge is far above it; kept low
+    /// so a dim element on a dark panel still counts as something.
+    /// </summary>
+    public const double FlatStdDev = 4.0;
+
+    /// <summary>True when there is no structure here to match on (see <see cref="FlatStdDev"/>).</summary>
+    public bool IsFlat => IsFlatUnder(null);
+
+    /// <summary><see cref="IsFlat"/> over the pixels <paramref name="mask"/> keeps (all of them when null).</summary>
+    public bool IsFlatUnder(bool[]? mask) =>
+        IsEmpty || Statistics(Bgra, Bgra, mask, Width * Height).VarA < FlatStdDev * FlatStdDev;
+
+    /// <summary>
+    /// How much <paramref name="current"/> looks like <paramref name="reference"/>, 0–100, over the
+    /// unmasked pixels: the normalised correlation of the two, not their mean difference.
+    ///
+    /// The mean difference is what made Take All "punch the air". A dark inventory panel and the
+    /// dark game world behind a closed inventory differ by a few levels per channel — 95 %
+    /// similar on that scale — and a black frame from a capture path that cannot see a
+    /// fullscreen game matched a dark reference outright, so the script clicked on every tick
+    /// with nothing on screen. Correlation asks whether the same PATTERN is there — the letters
+    /// on the button, the edge of the icon — and does not care about the brightness offset a
+    /// hover highlight or a darker night adds.
+    ///
+    /// Null when the sizes differ or the reference has nothing to match on (flat over the
+    /// unmasked pixels); 0 when the live capture is flat.
+    /// </summary>
+    public static double? Similarity(ScreenCapture reference, ScreenCapture current, bool[]? mask)
+    {
+        if (reference.IsEmpty || current.IsEmpty) return null;
+        if (current.Width != reference.Width || current.Height != reference.Height) return null;
+
+        var (varA, varB, cov) = Statistics(reference.Bgra, current.Bgra, mask, reference.Width * reference.Height);
+        if (varA < FlatStdDev * FlatStdDev) return null;
+        if (varB < FlatStdDev * FlatStdDev) return 0;
+
+        return Math.Clamp(cov / Math.Sqrt(varA * varB), 0, 1) * 100.0;
+    }
+
+    /// <summary>
+    /// Variances and covariance across the unmasked pixels, taken per channel (B, G, R; alpha
+    /// ignored) and averaged over the three. Per channel, not pooled: pooled, a uniform tinted
+    /// panel — say B25 G30 R40 — has "variance" from the tint alone, passes as structure, and two
+    /// blank frames of it correlate at 100 %. All zero when no pixel is compared.
+    /// </summary>
+    private static (double VarA, double VarB, double Cov) Statistics(byte[] a, byte[] b, bool[]? mask, int pixels)
+    {
+        // Sums of squares stay below 2^63 even at the 40 M-pixel cap TryLoad enforces.
+        Span<long> sumA = stackalloc long[3], sumB = stackalloc long[3];
+        Span<long> sumAA = stackalloc long[3], sumBB = stackalloc long[3], sumAB = stackalloc long[3];
+        long n = 0;
+        for (var p = 0; p < pixels; p++)
+        {
+            if (mask is not null && !mask[p]) continue;
+
+            var i = p * 4;
+            for (var c = 0; c < 3; c++)
+            {
+                long x = a[i + c], y = b[i + c];
+                sumA[c] += x; sumB[c] += y;
+                sumAA[c] += x * x; sumBB[c] += y * y; sumAB[c] += x * y;
+            }
+            n++;
+        }
+        if (n == 0) return (0, 0, 0);
+
+        double varA = 0, varB = 0, cov = 0;
+        for (var c = 0; c < 3; c++)
+        {
+            double meanA = sumA[c] / (double)n, meanB = sumB[c] / (double)n;
+            varA += sumAA[c] / (double)n - meanA * meanA;
+            varB += sumBB[c] / (double)n - meanB * meanB;
+            cov += sumAB[c] / (double)n - meanA * meanB;
+        }
+        return (varA / 3, varB / 3, cov / 3);
+    }
 }
 
 /// <summary>
@@ -125,9 +205,10 @@ public interface IScreenSampler
     void ClearReference(string key);
 
     /// <summary>
-    /// Recaptures the region and compares it to the stored reference. Returns true when the mean
-    /// per-channel difference (0–255 scale, alpha ignored) is at or below <paramref name="tolerance"/>.
-    /// Returns false when no reference exists or the dimensions differ.
+    /// Recaptures the region and compares it to the stored reference. <paramref name="tolerance"/>
+    /// is on the old mean-difference scale (0–255; 25.5 = "90 % similar") so the harness keeps its
+    /// numbers; the comparison itself is <see cref="SimilarityPercent"/>. False when no reference
+    /// exists or the dimensions differ.
     /// </summary>
     bool MatchesReference(string key, Rectangle region, double tolerance);
 
@@ -360,6 +441,13 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
             _logger.LogWarning("Reference capture for '{Key}' produced no pixels", key);
             return;
         }
+        if (capture.IsFlat)
+        {
+            // A blank frame stored as the reference is a script that fires on every tick: every
+            // later blank frame matches it perfectly, with nothing on screen at all.
+            _logger.LogWarning("Reference capture for '{Key}' is blank — not stored", key);
+            return;
+        }
         _references[key] = capture;
         _referenceMasks.TryRemove(key, out _);
         Persist(key);
@@ -408,6 +496,16 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
         if (kept == 0)
         {
             _logger.LogWarning("Mask refine for '{Key}' kept no pixels — ignoring it", key);
+            kept = existing?.Count(m => m) ?? 0;
+            return false;
+        }
+
+        // Same failure, quieter: only the flat fill inside an icon stayed put (its edges blend
+        // into the new background and get written off). The similarity has nothing to correlate
+        // there and would answer "no match" forever, behind a success toast.
+        if (reference.IsFlatUnder(mask))
+        {
+            _logger.LogWarning("Mask refine for '{Key}' kept only flat pixels — ignoring it", key);
             kept = existing?.Count(m => m) ?? 0;
             return false;
         }
@@ -520,7 +618,15 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
             var bgra = reader.ReadBytes(pixels * 4);
             if (bgra.Length != pixels * 4) return false;
 
-            _references[key] = new ScreenCapture(width, height, bgra);
+            var loaded = new ScreenCapture(width, height, bgra);
+            if (loaded.IsFlat)
+            {
+                // Written before blank captures were refused. Left on disk (the next capture
+                // overwrites it); not loaded, so the page says "not captured" instead of matching.
+                _logger.LogWarning("Stored reference for '{Key}' is blank — ignoring it", key);
+                return false;
+            }
+            _references[key] = loaded;
 
             if (hasMask)
             {
@@ -544,47 +650,23 @@ public sealed class ScreenSampler : IScreenSampler, IDisposable
     }
 
     public bool MatchesReference(string key, Rectangle region, double tolerance)
-        => MeanDifference(key, region) is { } meanDiff && meanDiff <= tolerance;
-
-    public double? SimilarityPercent(string key, Rectangle region)
-        => MeanDifference(key, region) is { } meanDiff
-            ? Math.Clamp(100.0 - meanDiff / 255.0 * 100.0, 0, 100)
-            : null;
+        => SimilarityPercent(key, region) is { } similarity && similarity >= 100.0 - tolerance / 255.0 * 100.0;
 
     /// <summary>
-    /// Mean per-channel difference (0–255) between the region now and its reference, over the
+    /// <see cref="ScreenCapture.Similarity"/> of the region now against its reference, over the
     /// unmasked pixels only. Null when there is no reference, the capture failed, or the region
     /// changed size (a resolution change invalidates the snapshot).
     /// </summary>
-    private double? MeanDifference(string key, Rectangle region)
+    public double? SimilarityPercent(string key, Rectangle region)
     {
         if (string.IsNullOrWhiteSpace(key)) return null;
         if (!TryGetReference(key, out var reference)) return null;
 
         var current = CaptureRegion(region);
         if (current.IsEmpty) return null;
-        if (current.Width != reference.Width || current.Height != reference.Height) return null;
 
         _referenceMasks.TryGetValue(key, out var mask);
-
-        var a = reference.Bgra;
-        var b = current.Bgra;
-        long diffSum = 0;
-        var pixels = current.Width * current.Height;
-        var compared = 0;
-        for (var p = 0; p < pixels; p++)
-        {
-            if (mask is not null && !mask[p]) continue;
-
-            var i = p * 4;
-            diffSum += Math.Abs(a[i] - b[i]);         // B
-            diffSum += Math.Abs(a[i + 1] - b[i + 1]); // G
-            diffSum += Math.Abs(a[i + 2] - b[i + 2]); // R
-            compared++;
-        }
-
-        if (compared == 0) return null;
-        return diffSum / (double)(compared * 3);
+        return ScreenCapture.Similarity(reference, current, mask);
     }
 
     public Point? FindTemplate(Rectangle searchRegion, TemplateImage template, double threshold, out double score)

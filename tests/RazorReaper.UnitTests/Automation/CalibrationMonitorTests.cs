@@ -152,7 +152,8 @@ public sealed class CalibrationMonitorTests
     [Fact]
     public void CapturingAReferenceRecordsTheDisplayItCameOff()
     {
-        var (script, calibration, _, _) = Calibrated(withReference: false);
+        var (script, calibration, sampler, _) = Calibrated(withReference: false);
+        sampler.Screen = Textured;
 
         calibration.CurrentGameMonitor = MonitorTwo;
         Assert.True(((ICalibratableScript)script).CaptureReference());
@@ -185,7 +186,35 @@ public sealed class CalibrationMonitorTests
         script.Dispose();
     }
 
+    /// <summary>
+    /// A blank frame — what a capture path hands back when it cannot see a fullscreen game — would
+    /// match every later blank frame at 100 %. It is refused, with the reason, and nothing is stored.
+    /// </summary>
+    [Fact]
+    public void ABlankCaptureIsNotTakenAsTheReference()
+    {
+        var (script, _, sampler, toasts) = Calibrated(withReference: false);
+
+        Assert.False(((ICalibratableScript)script).CaptureReference());
+        Assert.False(sampler.HasReference(RegionKey));
+        Assert.Contains(toasts.Toasts, t => t.Level == "warning" && t.Message.Contains("blank", StringComparison.Ordinal));
+
+        script.Dispose();
+    }
+
     // ─── Harness ───────────────────────────────────────────────────────────────
+
+    /// <summary>Stripes: something a reference can match on, unlike the fake's default all-black frame.</summary>
+    private static ScreenCapture Textured(Rectangle region)
+    {
+        var bgra = new byte[region.Width * region.Height * 4];
+        for (var p = 0; p < region.Width * region.Height; p++)
+        {
+            var level = (byte)(p % region.Width / 4 % 2 == 0 ? 220 : 30);
+            bgra[p * 4] = bgra[p * 4 + 1] = bgra[p * 4 + 2] = level;
+        }
+        return new ScreenCapture(region.Width, region.Height, bgra);
+    }
 
     /// <summary>
     /// Take All stands in for the five scripts on this base: the monitor stamp, the mismatch and

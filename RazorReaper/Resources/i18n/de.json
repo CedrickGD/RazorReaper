@@ -2713,6 +2713,7 @@
   "scripts.toast.regionfailed": "Der Bereich konnte nicht aufgenommen werden.",
   "scripts.toast.needregion": "Kalibriere zuerst den Bereich.",
   "scripts.toast.referencefailed": "Die Referenzaufnahme konnte nicht erstellt werden.",
+  "scripts.toast.referenceblank": "Die Aufnahme ist leer – nichts, woran sich etwas erkennen ließe. Läuft ARK im Vollbild, stell auf Fenster-Vollbild um und nimm erneut auf, während das Ziel zu sehen ist.",
   "scripts.toast.referencecaptured": "Referenzaufnahme erstellt.",
   "scripts.toast.needreference": "Nimm zuerst eine Referenz auf.",
   "scripts.toast.masknothing": "Nichts ist gleich geblieben — ist das Element noch auf dem Bildschirm?",
