@@ -74,4 +74,47 @@ public sealed class ArkConfigWriteTests : IDisposable
         Assert.True(new FileInfo(_path).IsReadOnly);
         Assert.Equal("old", File.ReadAllText(_path));
     }
+
+    // File.Copy carries the read-only flag over: a backup of a locked config would itself be
+    // locked, so the pruning could never delete it and the next session backup could not
+    // overwrite it.
+    [Fact]
+    public void ABackupOfAReadOnlyFileIsWritable()
+    {
+        var backup = _path + ".bak";
+        try
+        {
+            new FileInfo(_path).IsReadOnly = true;
+
+            ArkUtilities.CopyToBackup(_path, backup, overwrite: false);
+
+            Assert.Equal("old", File.ReadAllText(backup));
+            Assert.False(new FileInfo(backup).IsReadOnly);
+            Assert.True(new FileInfo(_path).IsReadOnly);
+        }
+        finally
+        {
+            if (File.Exists(backup)) { File.SetAttributes(backup, FileAttributes.Normal); File.Delete(backup); }
+        }
+    }
+
+    [Fact]
+    public void AReadOnlyBackupLeftByAnOlderBuildIsOverwritten()
+    {
+        var backup = _path + ".bak";
+        try
+        {
+            File.WriteAllText(backup, "stale");
+            new FileInfo(backup).IsReadOnly = true;
+
+            ArkUtilities.CopyToBackup(_path, backup, overwrite: true);
+
+            Assert.Equal("old", File.ReadAllText(backup));
+            Assert.False(new FileInfo(backup).IsReadOnly);
+        }
+        finally
+        {
+            if (File.Exists(backup)) { File.SetAttributes(backup, FileAttributes.Normal); File.Delete(backup); }
+        }
+    }
 }

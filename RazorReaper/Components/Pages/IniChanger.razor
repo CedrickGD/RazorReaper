@@ -889,7 +889,7 @@
 
             var name = Path.GetFileNameWithoutExtension(iniPath);
             var dest = Path.Combine(dir, $"{name}_{DateTime.Now:yyyyMMdd_HHmmss}.ini");
-            File.Copy(iniPath, dest, overwrite: true);
+            ArkUtilities.CopyToBackup(iniPath, dest, overwrite: true);
 
             foreach (var stale in new DirectoryInfo(dir)
                          .GetFiles($"{name}_*.ini")

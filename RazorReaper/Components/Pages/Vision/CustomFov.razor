@@ -242,7 +242,7 @@
                 {
                     try
                     {
-                        File.Copy(gameUserSettingsPath, gameUserSettingsPath + BackupSuffix, overwrite: true);
+                        ArkUtilities.CopyToBackup(gameUserSettingsPath, gameUserSettingsPath + BackupSuffix, overwrite: true);
                         sessionBackupTaken = true;
                     }
                     catch (Exception ex)

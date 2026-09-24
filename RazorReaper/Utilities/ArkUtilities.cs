@@ -56,6 +56,20 @@ namespace RazorReaper.Utilities
         }
 
         /// <summary>
+        /// Copies an ARK config file to one of our backups. <see cref="File.Copy(string, string, bool)"/>
+        /// carries the read-only flag over, and a locked backup could then never be pruned or
+        /// overwritten — backups are ours, so the copy always ends up writable.
+        /// </summary>
+        public static void CopyToBackup(string source, string backup, bool overwrite)
+        {
+            var existing = new FileInfo(backup);
+            if (overwrite && existing.Exists && existing.IsReadOnly) existing.IsReadOnly = false;
+            File.Copy(source, backup, overwrite);
+            var copy = new FileInfo(backup);
+            if (copy.IsReadOnly) copy.IsReadOnly = false;
+        }
+
+        /// <summary>
         /// Runs <paramref name="write"/> against an ARK config file even when the player marked it
         /// read-only (a common trick to stop ARK resetting settings). The flag is lifted for the
         /// write and put back afterwards, so the player's lock survives.

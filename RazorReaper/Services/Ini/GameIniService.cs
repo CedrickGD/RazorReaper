@@ -845,7 +845,7 @@ namespace RazorReaper.Services.Implementations
                     suffix++;
                 }
 
-                File.Copy(sourcePath, destPath, overwrite: false);
+                ArkUtilities.CopyToBackup(sourcePath, destPath, overwrite: false);
                 PruneBackups(baseName);
                 _logger.LogInformation("Created INI backup: {Backup}", destPath);
                 return destPath;
