@@ -309,6 +309,12 @@ internal sealed partial class CrosshairOverlayWindow : IDisposable
             case WM_USER_UPDATE:
                 Render();
                 return IntPtr.Zero;
+            case WM_DISPLAYCHANGE:
+                // A mode switch (ARK going fullscreen at its own resolution, or a Stretched Res
+                // apply or revert) moves the monitor's centre. A static crosshair is never redrawn
+                // on its own, so without this it would stay at the old mode's centre.
+                Render();
+                return IntPtr.Zero;
             case WM_USER_BANNER:
                 RenderBanner();
                 return IntPtr.Zero;

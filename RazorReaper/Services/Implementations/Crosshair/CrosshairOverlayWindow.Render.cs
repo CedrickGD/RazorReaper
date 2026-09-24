@@ -69,7 +69,7 @@ internal sealed partial class CrosshairOverlayWindow
             return;
         }
 
-        // Resolve monitor rect each render — handles display config changes for free.
+        // Resolve monitor rect each render; WM_DISPLAYCHANGE triggers one so a mode change re-centres.
         var monitor = ResolveMonitor(profile.MonitorDeviceName);
 
         var phase = ComputePhase(profile);

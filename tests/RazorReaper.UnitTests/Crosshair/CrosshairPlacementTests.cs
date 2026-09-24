@@ -163,6 +163,24 @@ public class CrosshairPlacementTests
             - CrosshairPlacement.AxisTopLeft(0, logicalHeight, bitmap, 0));
     }
 
+    /// <summary>
+    /// A stretched mode (2560x1440 panel switched to 1440x1080) centres on the new mode, and the
+    /// position kept from the old mode would sit 560 px right and 180 px low — which is what a
+    /// static crosshair did before WM_DISPLAYCHANGE re-rendered it.
+    /// </summary>
+    [Fact]
+    public void ScreenTopLeft_AfterASwitchToAStretchedMode_CentresOnTheNewMode()
+    {
+        var native = new MonitorInfo("\\\\.\\DISPLAY1", "test", 0, 0, 2560, 1440, true);
+        var stretched = native with { Width = 1440, Height = 1080 };
+
+        var (x, y) = CrosshairPlacement.ScreenTopLeft(stretched, 128, 128, 0, 0);
+        var (oldX, oldY) = CrosshairPlacement.ScreenTopLeft(native, 128, 128, 0, 0);
+
+        Assert.Equal((720 - 64, 540 - 64), (x, y));
+        Assert.Equal((560, 180), (oldX - x, oldY - y));
+    }
+
     [Fact]
     public void ScreenTopLeft_UsesBothAxesOfTheMonitorRect()
     {

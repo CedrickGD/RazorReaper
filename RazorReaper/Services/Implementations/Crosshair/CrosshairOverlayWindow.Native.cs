@@ -13,6 +13,7 @@ internal sealed partial class CrosshairOverlayWindow
 
     private const int WM_DESTROY = 0x0002;
     private const int WM_TIMER = 0x0113;
+    private const int WM_DISPLAYCHANGE = 0x007E;
     private const int WM_HOTKEY = 0x0312;
     private const int WM_COMMAND = 0x0111;
     private const int WM_CONTEXTMENU = 0x007B;
