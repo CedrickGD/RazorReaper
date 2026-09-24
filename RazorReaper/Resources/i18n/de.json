@@ -439,6 +439,7 @@
 
   "stretchedres.presets.title": "Gestreckte Vorgaben",
   "stretchedres.presets.intro": "Jede setzt ihre Auflösung vorübergehend auf den Monitor unten — du hast 15 Sekunden zum Bestätigen, sonst wird sie von selbst zurückgesetzt.",
+  "stretchedres.presets.soft": "Ein gestrecktes Bild ist immer etwas weich, weil GPU oder Monitor es auf das ganze Panel hochskalieren. Presets mit der nativen Höhe deines Bildschirms sind am schärfsten, und die Schärfung deiner GPU hilft zusätzlich.",
   "stretchedres.preset.note.1440x1080": "Beliebter Stretch für breite Modelle",
   "stretchedres.preset.note.1280x1024": "Klassischer 5:4-Hitbox-Stretch",
   "stretchedres.preset.note.1024x768": "Maximale Modellbreite",

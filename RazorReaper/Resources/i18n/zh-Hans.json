@@ -439,6 +439,7 @@
 
   "stretchedres.presets.title": "拉伸预设",
   "stretchedres.presets.intro": "每个预设都会把分辨率临时应用到下方的显示器 —— 你有 15 秒确认，否则它会自动还原。",
+  "stretchedres.presets.soft": "拉伸后的画面总会有点发虚，因为显卡或显示器要把它放大到整个屏幕。保持屏幕原生高度的预设最清晰，开启显卡的锐化也有帮助。",
   "stretchedres.preset.note.1440x1080": "常用的宽模型拉伸",
   "stretchedres.preset.note.1280x1024": "经典 5:4 判定框拉伸",
   "stretchedres.preset.note.1024x768": "模型最宽",

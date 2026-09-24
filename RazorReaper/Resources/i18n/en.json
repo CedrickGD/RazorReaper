@@ -439,6 +439,7 @@
 
   "stretchedres.presets.title": "Stretched presets",
   "stretchedres.presets.intro": "Each one applies its resolution to the monitor below temporarily — you get 15 seconds to confirm before it reverts on its own.",
+  "stretchedres.presets.soft": "A stretched picture is always a little soft, because the GPU or the monitor scales it up to fill the panel. Presets that keep your screen's height are the sharpest, and your GPU's sharpening setting helps.",
   "stretchedres.preset.note.1440x1080": "Popular wide-model stretch",
   "stretchedres.preset.note.1280x1024": "Classic 5:4 hitbox stretch",
   "stretchedres.preset.note.1024x768": "Maximum model width",
