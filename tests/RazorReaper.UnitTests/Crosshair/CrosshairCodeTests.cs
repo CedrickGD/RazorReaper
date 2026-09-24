@@ -135,6 +135,9 @@ public class CrosshairCodeTests
             { "hello there", nameof(CrosshairCodeError.NotACode) },
             { "XX1-" + payload, nameof(CrosshairCodeError.NotACode) },
             { payload, nameof(CrosshairCodeError.NotACode) },
+            // An Arabic-Indic or fullwidth "1" is no version number.
+            { "RR١-" + payload, nameof(CrosshairCodeError.NotACode) },
+            { "RR１-" + payload, nameof(CrosshairCodeError.NotACode) },
             // A CS2 share code and a Valorant profile code: named, never decoded.
             { "CSGO-O4Jsi-V36wY-rTMGK-9w7qF-jQ8WB", nameof(CrosshairCodeError.GameCode) },
             { "0;P;c;5;h;0;m;1;0l;4;0o;2;0a;1;0f;0;1b;0", nameof(CrosshairCodeError.GameCode) },

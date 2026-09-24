@@ -58,7 +58,8 @@ internal static class CrosshairCode
     private const int MaxJsonBytes = 8 * 1024;
 
     private static readonly CrosshairProfile Defaults = new();
-    private static readonly Regex VersionPrefix = new(@"^RR(\d{1,6})-", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    // [0-9], not \d: \d takes any Unicode digit, which int.Parse then throws on.
+    private static readonly Regex VersionPrefix = new(@"^RR([0-9]{1,6})-",RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     // The renderer's own CrosshairColor.ParseHex rules: #rgb, #rrggbb or #aarrggbb, the # optional.
     private static readonly Regex HexColour = new(@"^#?(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\z", RegexOptions.CultureInvariant);
     private static readonly Regex PixelCells = new(@"^[01]{0,4096}\z", RegexOptions.CultureInvariant);
