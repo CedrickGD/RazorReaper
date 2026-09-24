@@ -11,6 +11,7 @@
 @implements IDisposable
 
 @inject ICrosshairService CrosshairSvc
+@inject IGameIniService GameIni
 @inject IHotkeyRegistry Registry
 @inject INotificationService Notifications
 @inject ILogger<Crosshair> Logger
@@ -38,6 +39,18 @@
                 </button>
             </div>
         </div>
+
+        @if (arkFullscreen)
+        {
+            <div class="content-card">
+                <SettingRow Title="@Localizer.T("crosshair.fullscreen.title")"
+                            Description="@Localizer.T(fsoOff ? "crosshair.fullscreen.desc.fsooff" : "crosshair.fullscreen.desc")">
+                    <button class="rr-pill-btn ghost" @onclick="SwitchToWindowedFullscreen" disabled="@switchingMode">
+                        @Localizer.T("crosshair.fullscreen.switch")
+                    </button>
+                </SettingRow>
+            </div>
+        }
 
         <div class="content-card">
             <div class="card-title-row">
@@ -446,6 +459,12 @@
     private System.Timers.Timer? _animTimer;
     private DateTime _animStart = DateTime.UtcNow;
 
+    // ARK's window mode as GameUserSettings.ini last saved it. Fullscreen is the one mode a
+    // topmost overlay can fail to show over, so only it gets the hint under the status card.
+    private bool arkFullscreen;
+    private bool fsoOff;
+    private bool switchingMode;
+
     private static readonly CrosshairType[] AllTypes = (CrosshairType[])Enum.GetValues(typeof(CrosshairType));
     private static readonly CrosshairAnimation[] AllAnimations = (CrosshairAnimation[])Enum.GetValues(typeof(CrosshairAnimation));
 
@@ -488,6 +507,48 @@
         RefreshLibrary();
         RefreshPreview();
         EnsureAnimTimer();
+        ReadArkWindowMode();
+    }
+
+    private void ReadArkWindowMode()
+    {
+        arkFullscreen = ArkWindowMode.ReadFullscreenMode(GameIni.GetIniPath(GameIniTarget.GameUserSettings))
+                        == ArkWindowMode.Fullscreen;
+        fsoOff = arkFullscreen && ArkWindowMode.FullscreenOptimizationsOffForArk();
+    }
+
+    private async Task SwitchToWindowedFullscreen()
+    {
+        // ARK rewrites GameUserSettings.ini when it exits, which would put Fullscreen straight back.
+        if (GameIni.IsArkRunning())
+        {
+            Notifications.ShowWarning(Localizer.T("crosshair.fullscreen.closefirst"));
+            return;
+        }
+
+        switchingMode = true;
+        try
+        {
+            const string section = "/Script/ShooterGame.ShooterGameUserSettings";
+            var result = await GameIni.ApplyEntriesAsync(GameIniTarget.GameUserSettings,
+            [
+                new GameIniEntry(section, "FullscreenMode", "1"),
+                new GameIniEntry(section, "LastConfirmedFullscreenMode", "1")
+            ]);
+            if (result.Success)
+            {
+                Notifications.ShowSuccess(Localizer.T("crosshair.fullscreen.switched"));
+                ReadArkWindowMode();
+            }
+            else
+            {
+                Notifications.ShowError(result.Error ?? Localizer.T("crosshair.fullscreen.failed"));
+            }
+        }
+        finally
+        {
+            switchingMode = false;
+        }
     }
 
     private void OnServiceChanged()
