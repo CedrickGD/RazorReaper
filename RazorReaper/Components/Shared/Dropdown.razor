@@ -128,6 +128,13 @@
         {
             // The window is going away; there is no layer left to tidy.
         }
+        catch (JSException)
+        {
+            // One 1.5.3 install reported "rrDropdownLayer was undefined" twelve minutes into a
+            // session. Uncaught, that became a background fault; caught, the list still opens
+            // where Blazor rendered it, only without the top layer. Next opening tries again.
+            _layered = false;
+        }
     }
 
     private void Toggle()
@@ -205,6 +212,10 @@
             catch (JSDisconnectedException)
             {
                 // Shutting down: the layer is going with the window.
+            }
+            catch (JSException)
+            {
+                // No layer script to close anything with — see OnAfterRenderAsync.
             }
         }
 
